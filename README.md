@@ -78,7 +78,7 @@ curl -X POST http://localhost:3160/v1/memory/search \
 
 ### Core Innovation: Browser Paradigm for AI Memory
 
-Just as browsers download only the shards needed for the current view, Anchor loads only the atoms required for the current thought—enabling 4GB RAM laptops to navigate 10TB datasets.
+Just as browsers download only the shards needed for the current view, Anchor loads only the atoms required for the current thought—enabling resource-constrained devices to navigate large datasets efficiently.
 
 ### Data Model: Compound → Molecule → Atom
 
@@ -133,27 +133,36 @@ Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
 
 ## 📊 Performance Benchmarks
 
-| Metric | Value | Status |
-|--------|-------|--------|
-| **Ingestion (90MB)** | ~178s | ✅ 2x faster than vector RAG |
-| **Memory Peak** | <1.7GB | ✅ 60-80% less than vectors |
-| **Search Latency (p95)** | ~150ms | ✅ 25% faster than vectors |
-| **SimHash Speed** | ~2ms/atom | ✅ 20x speedup (C++) |
-| **Explainability** | 4.6/5.0 | ✅ 155% better than vectors |
+### Production Verified (February 2026)
 
-### Production Verified (Feb 2026)
+| Metric | Value | Notes |
+|--------|-------|-------|
+| **Dataset Size** | ~28M tokens (~100MB) | Chat history corpus |
+| **Atoms Restored** | 281,690 | Phoenix Protocol restore |
+| **Restore Time** | 828.8s (13.8 min) | Full database + filesystem |
+| **Restore Throughput** | 340 atoms/second | 1000-item batching |
+| **Search Latency** | <200ms (p95) | Typical queries |
+| **Memory Usage** | <600MB peak | During restore |
+| **Ingestion Speed** | ~8-15ms/clean | With Data Refinery |
 
-- ✅ 436 files, ~100MB ingested
-- ✅ ~280,000 molecules, ~1,500 atoms
-- ✅ 331 files rehydrated successfully
-- ✅ Zero data loss with ephemeral index
+### Data Refinery Performance
 
-### Phoenix Protocol (Feb 22, 2026)
+| Content Type | Cleaning Time | Size Reduction |
+|--------------|--------------|----------------|
+| **Chat messages (<1KB)** | ~5ms | 5-15% |
+| **Web pages (50KB)** | ~15ms | 30-50% |
+| **Documents (500KB)** | ~50ms | 20-40% |
 
-- ✅ **281,690 atoms** restored in 828.8s
-- ✅ **340 atoms/second** throughput
-- ✅ **Full filesystem rebuild** (inbox, external-inbox, mirrored_brain)
-- ✅ **1000-item batching** (10x faster than initial)
+### System Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| **RAM** | 4GB | 8GB+ |
+| **Storage** | 10GB free | SSD recommended |
+| **Node.js** | v18+ | v20+ |
+| **Build Tools** | C++ compiler | For native modules |
+
+**Note:** Performance scales with dataset size. Current benchmarks based on ~28M token corpus (chat history). Large-scale testing (TB+ datasets) planned for future validation.
 
 ---
 
