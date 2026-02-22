@@ -325,37 +325,37 @@ export async function restoreBackup(filename: string): Promise<BackupStats> {
 }
 
 /**
- * Rebuild inbox, external-inbox, and mirrored_brain from database sources
+ * Rebuild inbox and external-inbox from database sources
+ * Mirror Protocol will populate mirrored_brain/ on next startup
  */
 async function rebuildFilesystemFromSources(): Promise<void> {
     const { INBOX_DIR, EXTERNAL_INBOX_DIR } = PATHS;
-    const mirroredBrainDir = path.join(path.dirname(INBOX_DIR), 'mirrored_brain');
     
     // Ensure directories exist
     if (!fs.existsSync(INBOX_DIR)) fs.mkdirSync(INBOX_DIR, { recursive: true });
     if (!fs.existsSync(EXTERNAL_INBOX_DIR)) fs.mkdirSync(EXTERNAL_INBOX_DIR, { recursive: true });
-    if (!fs.existsSync(mirroredBrainDir)) fs.mkdirSync(mirroredBrainDir, { recursive: true });
 
     // Get all sources from database
     const sourcesResult = await db.run('SELECT path, hash, total_atoms FROM sources');
     const sources = sourcesResult.rows || [];
 
-    console.log(`[Backup] 📦 Rebuilding ${sources.length} source files...`);
+    console.log(`[Backup] 📦 Rebuilding ${sources.length} source files in inbox/external-inbox...`);
 
     let inboxCount = 0;
     let externalCount = 0;
-    let mirrorCount = 0;
+    let fileCount = 0;
+    let emptyCount = 0;
 
     for (const source of sources) {
         const sourcePath = source.path;
         if (!sourcePath) continue;
 
-        // Determine target directories
-        let inboxTargetDir = INBOX_DIR;
+        // Determine target directory
+        let targetDir = INBOX_DIR;
         let isExternal = false;
         
         if (sourcePath.includes('external-inbox') || sourcePath.includes('web_scrape') || sourcePath.includes('news_agent')) {
-            inboxTargetDir = EXTERNAL_INBOX_DIR;
+            targetDir = EXTERNAL_INBOX_DIR;
             isExternal = true;
             externalCount++;
         } else {
@@ -367,38 +367,38 @@ async function rebuildFilesystemFromSources(): Promise<void> {
             .replace(/^inbox[\\/]/, '')
             .replace(/^external-inbox[\\/]/, '');
 
-        // Target paths for inbox/external-inbox AND mirrored_brain
-        const inboxTargetPath = path.join(inboxTargetDir, relativePath);
-        const mirrorTargetPath = path.join(mirroredBrainDir, isExternal ? '@external-inbox' : '@inbox', relativePath);
-        
-        // Create directory structures
-        [path.dirname(inboxTargetPath), path.dirname(mirrorTargetPath)].forEach(dir => {
-            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        });
+        const targetPath = path.join(targetDir, relativePath);
+        const targetDirPath = path.dirname(targetPath);
+
+        // Create directory structure
+        if (!fs.existsSync(targetDirPath)) {
+            fs.mkdirSync(targetDirPath, { recursive: true });
+        }
 
         // Get atoms for this source and aggregate content
         const atomsResult = await db.run(
-            `SELECT content FROM atoms WHERE source_path = $1 ORDER BY sequence, timestamp`,
+            `SELECT content, sequence, timestamp FROM atoms WHERE source_path = $1 ORDER BY sequence NULLS LAST, timestamp`,
             [sourcePath]
         );
+
+        console.log(`[Backup] 🔍 Source: ${sourcePath} | Atoms found: ${atomsResult.rows?.length || 0}`);
 
         if (atomsResult.rows && atomsResult.rows.length > 0) {
             const content = atomsResult.rows.map((r: any) => r.content).join('\n');
             
             try {
-                // Write to inbox/external-inbox
-                fs.writeFileSync(inboxTargetPath, content, 'utf-8');
-                
-                // Write to mirrored_brain
-                fs.writeFileSync(mirrorTargetPath, content, 'utf-8');
-                
-                mirrorCount++;
-                console.log(`[Backup] 📄 Restored: ${inboxTargetPath}`);
+                fs.writeFileSync(targetPath, content, 'utf-8');
+                fileCount++;
+                console.log(`[Backup] 📄 Restored: ${targetPath} (${content.length} chars)`);
             } catch (e: any) {
-                console.warn(`[Backup] ⚠️ Failed to write ${inboxTargetPath}: ${e.message}`);
+                console.warn(`[Backup] ⚠️ Failed to write ${targetPath}: ${e.message}`);
             }
+        } else {
+            emptyCount++;
+            console.warn(`[Backup] ⚠️ No atoms found for source: ${sourcePath}`);
         }
     }
 
-    console.log(`[Backup] ✅ Filesystem rebuild complete: ${inboxCount} inbox, ${externalCount} external, ${mirrorCount} total files`);
+    console.log(`[Backup] ✅ Filesystem rebuild complete: ${inboxCount} inbox, ${externalCount} external, ${fileCount} files written, ${emptyCount} empty sources`);
+    console.log(`[Backup] ℹ️ mirrored_brain/ will be populated on next startup by Mirror Protocol (Standard 110)`);
 }

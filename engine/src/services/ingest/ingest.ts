@@ -8,9 +8,11 @@
 import { db } from '../../core/db.js';
 import crypto from 'crypto';
 import { config } from '../../config/index.js';
+import { cleanContent, getCleaningStats } from './content-cleaner.js';
 
 interface IngestOptions {
   atomize?: boolean;
+  skipCleaning?: boolean;
 }
 
 /**
@@ -51,46 +53,38 @@ export async function ingestContent(
   type: string = 'text',
   buckets: string[] = ['core'],
   tags: string[] = [],
-  _options: IngestOptions = {}
+  options: IngestOptions = {}
 ): Promise<{ status: string; id?: string; message?: string }> {
 
   if (!content) {
     throw new Error('Content is required for ingestion');
   }
 
-  // --- NATIVE ACCELERATION: HTML Parsing ---
-  // Use the "Iron Lung" native parser for HTML/Web content
+  // --- DATA REFINERY: Clean content ---
   let processedContent = content;
-  let processedTags = [...tags];
+  const processedTags = [...tags];
 
-  if (type === 'html' || type === 'web_page') {
-    /*
-    try {
-      const { nativeModuleManager } = await import('../../utils/native-module-manager.js');
-      const native = nativeModuleManager.loadNativeModule('ece_native', 'ece_native.node');
+  if (!options.skipCleaning) {
+    const startTime = Date.now();
+    
+    // Configure cleaning based on content type
+    const cleanOptions = {
+      stripHtml: type === 'html' || type === 'web_page',
+      decodeHtml: true,
+      normalizeUnicode: true,
+      removeControlChars: true,
+      normalizeWhitespace: true,
+      removeBoilerplate: type === 'web_page',
+      normalizeLineEndings: true,
+      collapseBlankLines: true
+    };
 
-      if (native && native.HtmlIngestor) {
-        console.log('[Ingest] Engaging Native HTML Parser ⚡');
-
-        // 1. Extract Clean Text
-        const cleanText = native.HtmlIngestor.extractContent(content);
-        if (cleanText && cleanText.length > 0) {
-          processedContent = cleanText;
-        }
-
-        // 2. Extract Metadata
-        const metadata = native.HtmlIngestor.extractMetadata(content);
-        if (metadata) {
-          if (metadata.title) processedTags.push(`meta:title:${metadata.title.replace(/[:,\s]+/g, '_')}`);
-          // Add other metadata as needed
-        }
-      }
-    } catch (e) {
-      console.warn('[Ingest] Native HTML parsing failed, using raw content:', e);
+    processedContent = cleanContent(content, cleanOptions);
+    const stats = getCleaningStats(content, processedContent);
+    
+    if (stats.charsRemoved > 0) {
+      console.log(`[Ingest] 🏭 Content cleaned: -${stats.charsRemoved} chars (${stats.reductionPercent}% reduction) in ${Date.now() - startTime}ms`);
     }
-    */
-    // Native parser disabled for stability
-    console.log('[Ingest] Native HTML parser disabled for stability. Using raw content.');
   }
 
   // Auto-assign provenance based on source

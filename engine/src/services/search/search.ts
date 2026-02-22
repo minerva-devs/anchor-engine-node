@@ -384,14 +384,18 @@ export async function findAnchors(
       anchors = atomResults;
     }
 
-    // Intercept: Read content from Mirror
-    // We do this AFTER finding anchors but BEFORE returning them.
-    // This ensures we serve the "Live" content from the Mirror Brain.
-
+    // Intercept: Read content from Mirror (if source_path exists)
+    // For atoms without source files (chat history), keep DB content
+    
     const { getMirrorPath } = await import('../mirror/mirror.js');
     const fs = await import('fs');
 
     for (const anchor of anchors) {
+      // Skip mirror read if no source_path (chat history atoms)
+      if (!anchor.source || anchor.source.trim() === '') {
+        continue; // Keep DB content
+      }
+      
       try {
         // Calculate Mirror Path
         const mirrorPath = getMirrorPath(anchor.source, anchor.provenance);
@@ -404,8 +408,7 @@ export async function findAnchors(
           }
         }
       } catch (e: any) {
-        // Fail silently -> Fallback to DB content
-        // console.warn(`[Search] Failed to hydrate from mirror: ${e.message}`);
+        // Fail silently -> Keep DB content
       }
     }
 

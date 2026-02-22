@@ -203,7 +203,10 @@ const atomizer = new AtomizerService();
 const atomicIngest = new AtomicIngestService();
 
 async function processFile(filePath: string, event: string) {
-    if (!filePath.endsWith('.md') && !filePath.endsWith('.txt') && !filePath.endsWith('.yaml') && !filePath.endsWith('.csv') && !filePath.endsWith('.json')) return;
+    // Accept markdown, text, YAML, CSV, JSON, and HTML files
+    if (!filePath.endsWith('.md') && !filePath.endsWith('.txt') && !filePath.endsWith('.yaml') && 
+        !filePath.endsWith('.csv') && !filePath.endsWith('.json') && 
+        !filePath.endsWith('.html') && !filePath.endsWith('.htm')) return;
     if (filePath.includes('mirrored_brain')) return;
 
     console.log(`[Watchdog] Detected ${event}: ${filePath}`);
@@ -261,9 +264,14 @@ async function processFile(filePath: string, event: string) {
             }
         }
 
-        // Determine type
+        // Determine type (auto-detect HTML for cleaning)
         const ext = path.extname(filePath).replace('.', '');
-        const type = ext || 'text';
+        let type = ext || 'text';
+        
+        // Auto-detect HTML content for cleaning pipeline
+        if (ext === 'html' || ext === 'htm') {
+            type = 'web_page';  // Triggers full HTML cleaning
+        }
 
         // Determine Provenance
         let provenance: 'internal' | 'external' = 'internal';
