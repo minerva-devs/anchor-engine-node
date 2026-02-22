@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button } from '../ui/Button';
 
 interface SourceViewerProps {
   fileName?: string;
@@ -6,9 +7,9 @@ interface SourceViewerProps {
   language?: string;
 }
 
-export const SourceViewer: React.FC<SourceViewerProps> = ({ 
-  fileName = 'Selected File Preview', 
-  content = 'No file selected. When the agent accesses files, they will appear here for review.', 
+export const SourceViewer: React.FC<SourceViewerProps> = ({
+  fileName = 'Selected File Preview',
+  content = 'No file selected. When the agent accesses files, they will appear here for review.',
   language = 'text'
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -33,12 +34,14 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
           {fileName}
         </span>
         <div className="flex gap-2">
-          <button 
+          <Button
+            variant="ghost"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-[8px] font-mono text-gray-500 hover:text-gray-300 px-2 py-1 border border-gray-700 rounded"
+            className="text-[8px] font-mono hover:text-gray-300 rounded"
+            style={{ color: '#64748b', border: '1px solid #334155', padding: '4px 8px' }}
           >
             {isExpanded ? 'COLLAPSE' : 'EXPAND'}
-          </button>
+          </Button>
         </div>
       </div>
 

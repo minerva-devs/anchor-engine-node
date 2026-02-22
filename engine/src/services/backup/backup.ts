@@ -3,11 +3,28 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { db } from '../../core/db.js';
+import PATHS from '../../config/paths.js';
 
 const BACKUP_DIR = path.join(process.cwd(), 'backups');
 
 if (!fs.existsSync(BACKUP_DIR)) {
     fs.mkdirSync(BACKUP_DIR);
+}
+
+/**
+ * Convert JS array to PostgreSQL array format
+ * ['a','b'] => '{a,b}'
+ */
+function toPgArray(arr: any[]): string {
+    if (!arr || !Array.isArray(arr)) return '{}';
+    return '{' + arr.map(v => {
+        if (v === null || v === undefined) return 'NULL';
+        const str = String(v);
+        if (str.includes(',') || str.includes('{') || str.includes('}') || str.includes('"')) {
+            return '"' + str.replace(/"/g, '""') + '"';
+        }
+        return str;
+    }).join(',') + '}';
 }
 
 export interface BackupStats {
@@ -130,7 +147,11 @@ export async function restoreBackup(filename: string): Promise<BackupStats> {
         throw new Error(`Backup file not found: ${filename}`);
     }
 
-    console.log(`[Backup] Restoring from ${filename} (Streaming Mode)...`);
+    const fileSize = fs.statSync(filePath).size;
+    const fileSizeMB = (fileSize / 1024 / 1024).toFixed(2);
+    const startTime = Date.now();
+    
+    console.log(`[Backup] 🔄 Starting restore: ${filename} (${fileSizeMB} MB)`);
 
     const fileStream = fs.createReadStream(filePath);
     const rl = readline.createInterface({
@@ -140,7 +161,9 @@ export async function restoreBackup(filename: string): Promise<BackupStats> {
 
     let currentSection: 'none' | 'memory' | 'source' | 'engrams' = 'none';
     let batch: any[] = [];
-    const BATCH_SIZE = 100;
+    const BATCH_SIZE = 1000; // Increased for speed (10x faster)
+    let lineCount = 0;
+    let lastLogTime = Date.now();
 
     // Stats tracking
     let stats: BackupStats = {
@@ -155,6 +178,29 @@ export async function restoreBackup(filename: string): Promise<BackupStats> {
 
         if (currentSection === 'memory') {
             for (const row of batch) {
+                // Parse embedding from string to array if needed
+                let embedding = row.embedding;
+                if (typeof embedding === 'string') {
+                    try { embedding = JSON.parse(embedding); } catch (e) { embedding = []; }
+                } else if (!Array.isArray(embedding)) {
+                    embedding = [];
+                }
+
+                // Ensure arrays for TEXT[] columns
+                let buckets = row.buckets;
+                if (typeof buckets === 'string') {
+                    try { buckets = JSON.parse(buckets); } catch (e) { buckets = []; }
+                } else if (!Array.isArray(buckets)) {
+                    buckets = [];
+                }
+
+                let tags = row.tags;
+                if (typeof tags === 'string') {
+                    try { tags = JSON.parse(tags); } catch (e) { tags = []; }
+                } else if (!Array.isArray(tags)) {
+                    tags = [];
+                }
+
                 await db.run(
                     `INSERT INTO atoms (id, timestamp, content, source_path, source_id, sequence, type, hash, buckets, tags, epochs, provenance, simhash, embedding)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
@@ -172,7 +218,13 @@ export async function restoreBackup(filename: string): Promise<BackupStats> {
                        provenance = EXCLUDED.provenance,
                        simhash = EXCLUDED.simhash,
                        embedding = EXCLUDED.embedding`,
-                    row
+                    [
+                        row.id || '', row.timestamp || 0, row.content || '', row.source_path || '',
+                        row.source_id || null, row.sequence !== undefined && row.sequence !== null ? row.sequence : null,
+                        row.type || null, row.hash || null,
+                        toPgArray(buckets), toPgArray(tags), row.epochs || null, row.provenance || 'external',
+                        row.simhash || '0', toPgArray(embedding)
+                    ]
                 );
             }
             stats.memory_count += batch.length;
@@ -185,7 +237,7 @@ export async function restoreBackup(filename: string): Promise<BackupStats> {
                        hash = EXCLUDED.hash,
                        total_atoms = EXCLUDED.total_atoms,
                        last_ingest = EXCLUDED.last_ingest`,
-                    row
+                    [row.path || '', row.hash || '', row.total_atoms || 0, row.last_ingest || null]
                 );
             }
             stats.source_count += batch.length;
@@ -229,6 +281,15 @@ export async function restoreBackup(filename: string): Promise<BackupStats> {
 
         // Process Data Lines
         if (currentSection !== 'none') {
+            lineCount++;
+
+            // Progress logging every 10k lines or 10 seconds
+            const now = Date.now();
+            if (lineCount % 10000 === 0 || (now - lastLogTime) > 10000) {
+                console.log(`[Backup] 📊 Progress: ${lineCount} lines, ${stats.memory_count} atoms, ${stats.source_count} sources`);
+                lastLogTime = now;
+            }
+
             // Remove trailing comma if present
             const jsonStr = trimmed.endsWith(',') ? trimmed.slice(0, -1) : trimmed;
             try {
@@ -250,6 +311,94 @@ export async function restoreBackup(filename: string): Promise<BackupStats> {
     // Final flush if any leftovers (though `],` should catch it)
     await flushBatch();
 
-    console.log(`[Backup] Restore Completed. Stats:`, stats);
+    // Rebuild filesystem from sources
+    console.log(`[Backup] 📁 Rebuilding filesystem from sources...`);
+    await rebuildFilesystemFromSources();
+
+    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+    const atomsPerSec = Math.round(stats.memory_count / parseFloat(totalTime));
+
+    console.log(`[Backup] ✅ Restore Completed in ${totalTime}s!`);
+    console.log(`[Backup] 📊 Stats:`, stats);
+    console.log(`[Backup] ⚡ Speed: ${atomsPerSec} atoms/second`);
     return stats;
+}
+
+/**
+ * Rebuild inbox, external-inbox, and mirrored_brain from database sources
+ */
+async function rebuildFilesystemFromSources(): Promise<void> {
+    const { INBOX_DIR, EXTERNAL_INBOX_DIR } = PATHS;
+    const mirroredBrainDir = path.join(path.dirname(INBOX_DIR), 'mirrored_brain');
+    
+    // Ensure directories exist
+    if (!fs.existsSync(INBOX_DIR)) fs.mkdirSync(INBOX_DIR, { recursive: true });
+    if (!fs.existsSync(EXTERNAL_INBOX_DIR)) fs.mkdirSync(EXTERNAL_INBOX_DIR, { recursive: true });
+    if (!fs.existsSync(mirroredBrainDir)) fs.mkdirSync(mirroredBrainDir, { recursive: true });
+
+    // Get all sources from database
+    const sourcesResult = await db.run('SELECT path, hash, total_atoms FROM sources');
+    const sources = sourcesResult.rows || [];
+
+    console.log(`[Backup] 📦 Rebuilding ${sources.length} source files...`);
+
+    let inboxCount = 0;
+    let externalCount = 0;
+    let mirrorCount = 0;
+
+    for (const source of sources) {
+        const sourcePath = source.path;
+        if (!sourcePath) continue;
+
+        // Determine target directories
+        let inboxTargetDir = INBOX_DIR;
+        let isExternal = false;
+        
+        if (sourcePath.includes('external-inbox') || sourcePath.includes('web_scrape') || sourcePath.includes('news_agent')) {
+            inboxTargetDir = EXTERNAL_INBOX_DIR;
+            isExternal = true;
+            externalCount++;
+        } else {
+            inboxCount++;
+        }
+
+        // Get relative path
+        let relativePath = sourcePath
+            .replace(/^inbox[\\/]/, '')
+            .replace(/^external-inbox[\\/]/, '');
+
+        // Target paths for inbox/external-inbox AND mirrored_brain
+        const inboxTargetPath = path.join(inboxTargetDir, relativePath);
+        const mirrorTargetPath = path.join(mirroredBrainDir, isExternal ? '@external-inbox' : '@inbox', relativePath);
+        
+        // Create directory structures
+        [path.dirname(inboxTargetPath), path.dirname(mirrorTargetPath)].forEach(dir => {
+            if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        });
+
+        // Get atoms for this source and aggregate content
+        const atomsResult = await db.run(
+            `SELECT content FROM atoms WHERE source_path = $1 ORDER BY sequence, timestamp`,
+            [sourcePath]
+        );
+
+        if (atomsResult.rows && atomsResult.rows.length > 0) {
+            const content = atomsResult.rows.map((r: any) => r.content).join('\n');
+            
+            try {
+                // Write to inbox/external-inbox
+                fs.writeFileSync(inboxTargetPath, content, 'utf-8');
+                
+                // Write to mirrored_brain
+                fs.writeFileSync(mirrorTargetPath, content, 'utf-8');
+                
+                mirrorCount++;
+                console.log(`[Backup] 📄 Restored: ${inboxTargetPath}`);
+            } catch (e: any) {
+                console.warn(`[Backup] ⚠️ Failed to write ${inboxTargetPath}: ${e.message}`);
+            }
+        }
+    }
+
+    console.log(`[Backup] ✅ Filesystem rebuild complete: ${inboxCount} inbox, ${externalCount} external, ${mirrorCount} total files`);
 }

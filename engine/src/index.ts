@@ -96,7 +96,7 @@ if (existsSync(externalFrontendDist)) {
     }
   }));
   app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring") || req.path.startsWith("/chat")) return next();
+    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring")) return next();
     res.sendFile(path.join(externalFrontendDist, "index.html"));
   });
 } else if (existsSync(localFrontendDist)) {
@@ -107,7 +107,7 @@ if (existsSync(externalFrontendDist)) {
     }
   }));
   app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring") || req.path.startsWith("/chat")) return next();
+    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring")) return next();
     res.sendFile(path.join(localFrontendDist, "index.html"));
   });
 } else {
@@ -118,7 +118,7 @@ if (existsSync(externalFrontendDist)) {
     }
   }));
   app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring") || req.path.startsWith("/chat")) return next();
+    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring")) return next();
     res.sendFile(path.join(internalFrontendDist, "index.html"));
   });
 }

@@ -11,7 +11,9 @@ backups/
 logs/
 *.log
 *.sqlite
+*.sqlite-*
 *.db
+*.db-journal
 
 # Model Archives & Heavy Binaries
 archive/
@@ -45,6 +47,10 @@ codebase
 codebase/*
 external-inbox/*
 inbox/*
+notebook/
+mirrored_brain/
+user_settings.json
+context/
 
 # Generated documentation
 QWEN.md

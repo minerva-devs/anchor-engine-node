@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import type { SemanticRule } from '../../types/taxonomy';
 import { SemanticCategory } from '../../types/taxonomy';
 import { X, Plus } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 interface RuleCardProps {
     rule: SemanticRule;
@@ -83,10 +84,10 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onUpdate }) => {
             <div className="mb-4">
                 <label className="block text-xs uppercase text-slate-500 mb-1">Triggers (Keywords)</label>
                 <div className="flex flex-wrap gap-2 mb-2">
-                    {rule.triggers.map(t => (
+                    {rule.triggers.map((t: string) => (
                         <span key={t} className="px-2 py-1 bg-slate-800 rounded text-sm text-slate-200 flex items-center gap-1 border border-slate-700">
                             {t}
-                            <button onClick={() => removeTrigger(t)} className="hover:text-red-400"><X size={12} /></button>
+                            <Button variant="icon" onClick={() => removeTrigger(t)} style={{ color: '#f87171' }}><X size={12} /></Button>
                         </span>
                     ))}
                 </div>
@@ -99,7 +100,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onUpdate }) => {
                         placeholder="Add trigger..."
                         className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-slate-500"
                     />
-                    <button onClick={addTrigger} className="p-1 bg-slate-800 rounded text-slate-400 hover:text-white"><Plus size={16} /></button>
+                    <Button variant="icon" onClick={addTrigger} className="bg-slate-800 rounded text-slate-400" style={{ padding: '4px' }}><Plus size={16} /></Button>
                 </div>
             </div>
 
@@ -107,10 +108,10 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onUpdate }) => {
             <div>
                 <label className="block text-xs uppercase text-slate-500 mb-1">Exclusions (Negative)</label>
                 <div className="flex flex-wrap gap-2 mb-2">
-                    {rule.exclusions.map(e => (
+                    {rule.exclusions.map((e: string) => (
                         <span key={e} className="px-2 py-1 bg-red-900/20 rounded text-sm text-red-300 flex items-center gap-1 border border-red-900/50">
                             {e}
-                            <button onClick={() => removeExclusion(e)} className="hover:text-red-100"><X size={12} /></button>
+                            <Button variant="icon" onClick={() => removeExclusion(e)} style={{ color: '#fca5a5' }}><X size={12} /></Button>
                         </span>
                     ))}
                 </div>
@@ -123,7 +124,7 @@ export const RuleCard: React.FC<RuleCardProps> = ({ rule, onUpdate }) => {
                         placeholder="Add exclusion..."
                         className="flex-1 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-sm text-slate-200 focus:outline-none focus:border-red-900/50"
                     />
-                    <button onClick={addExclusion} className="p-1 bg-slate-800 rounded text-slate-400 hover:text-white"><Plus size={16} /></button>
+                    <Button variant="icon" onClick={addExclusion} className="bg-slate-800 rounded text-slate-400" style={{ padding: '4px' }}><Plus size={16} /></Button>
                 </div>
             </div>
         </div>

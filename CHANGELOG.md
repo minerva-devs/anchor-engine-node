@@ -6,6 +6,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.1.0] - 2026-02-22 — Phoenix Protocol Complete
+
+### ✅ Phoenix Protocol Implementation
+
+Full transactional backup/restore system with filesystem rebuild:
+
+- ✅ **Database Restore** - atoms, sources, engrams tables
+- ✅ **Filesystem Rebuild** - inbox/, external-inbox/, mirrored_brain/
+- ✅ **Performance Metrics** - timing, throughput stats
+- ✅ **UI Integration** - inline confirmation, progress display
+- ✅ **Optimized Batching** - 1000 items/batch (10x faster)
+
+### Performance Benchmarks (Production Verified)
+
+| Metric | Value |
+|--------|-------|
+| **Backup Size** | 1,015.40 MB |
+| **Atoms Restored** | 281,690 |
+| **Sources Restored** | 17 |
+| **Total Time** | 828.8s (13.8 min) |
+| **Throughput** | 340 atoms/second |
+| **Memory Peak** | <600 MB |
+
+### New Standards
+
+- **Standard 116** - Phoenix Protocol (transactional backup/restore)
+
+### API Changes
+
+- `POST /v1/backup/restore` - Now includes timing metrics
+- Response includes `totalTime` and `atomsPerSec`
+
+### UI Changes
+
+- Restore button with inline confirmation
+- Progress logging every 10 seconds
+- Final stats display with timing
+
+---
+
 ## [4.0.0] - 2026-02-20 — Production Ready
 
 ### ✅ Whitepaper Implementation Complete

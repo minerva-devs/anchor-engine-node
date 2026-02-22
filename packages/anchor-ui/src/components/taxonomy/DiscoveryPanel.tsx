@@ -3,6 +3,7 @@ import React from 'react';
 import type { DiscoveredEntity } from '../../types/taxonomy';
 import { SemanticCategory } from '../../types/taxonomy';
 import { Sparkles, PlusCircle } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 interface DiscoveryPanelProps {
     suggestions: DiscoveredEntity[];
@@ -39,13 +40,15 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ suggestions, onA
 
                             <div className="flex items-center justify-between">
                                 <span className="text-xs text-slate-500 uppercase">{entity.suggestedCategory}</span>
-                                <button
+                                <Button
+                                    variant="icon"
                                     onClick={() => onAdd(entity, entity.suggestedCategory)}
-                                    className="text-purple-400 hover:text-purple-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    style={{ color: '#c084fc', opacity: 0 }}
+                                    className="group-hover:opacity-100 transition-opacity hover:text-purple-300"
                                     title="Add to Rules"
                                 >
                                     <PlusCircle size={18} />
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     ))}

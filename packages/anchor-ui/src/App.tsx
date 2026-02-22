@@ -11,28 +11,37 @@ import { QuarantinePage } from './components/features/QuarantinePage';
 import { ChatInterface } from './components/Chat/ChatInterface';
 import { ModelSelector } from './components/Chat/ModelSelector';
 import { PathManager } from './components/features/PathManager';
+import { GithubModal } from './components/features/GithubModal';
+import { navigate } from './utils/routing';
+
+// ...
+
+
+
+// ... (existing imports)
+
+// ... (existing imports)
+
+// ... (imports)
 
 // Simple Router
 const Dashboard = () => (
   <div className="flex-col-center" style={{ height: '100%', justifyContent: 'center', alignItems: 'center', gap: '2rem' }}>
-    <h1 style={{ fontSize: '3rem', background: 'linear-gradient(to right, #fff, var(--accent-primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+    <h1 style={{ fontSize: '3rem', background: 'linear-gradient(to right, #fff, #646cff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
       Sovereign Context Engine
     </h1>
     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-      <Button onClick={() => window.location.hash = '#search'}>
+      <Button onClick={() => navigate('/search')}>
         Search Memories
       </Button>
-      <Button onClick={() => window.location.hash = '#chat'}>
+      <Button onClick={() => navigate('/chat')}>
         Launch Chat
       </Button>
 
-      <Button onClick={() => window.location.hash = '#quarantine'}>
+      <Button onClick={() => navigate('/quarantine')}>
         Infection Center
       </Button>
-      <Button onClick={() => window.location.hash = '#taxonomy'}>
-        Cortex UI
-      </Button>
-      <Button onClick={() => window.location.hash = '#paths'}>
+      <Button onClick={() => navigate('/paths')}>
         Manage Paths
       </Button>
     </div>
@@ -40,17 +49,17 @@ const Dashboard = () => (
 );
 
 // --- SEARCH PAGE CONTAINER ---
-const SearchPage = ({ isInitializing }: { isInitializing?: boolean }) => {
+const SearchPage = () => {
   const [columns, setColumns] = useState<{ id: number; query?: string }[]>([{ id: 1 }]);
 
   // Global State
   const [backupStatus, setBackupStatus] = useState('');
   const [showResearch, setShowResearch] = useState(false);
+  const [showGithub, setShowGithub] = useState(false);
   const [availableBuckets, setAvailableBuckets] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   useEffect(() => {
-    if (isInitializing) return; // Wait for backend
     Promise.all([
       api.getBuckets().catch(() => []),
       api.getTags().catch(() => [])
@@ -58,7 +67,7 @@ const SearchPage = ({ isInitializing }: { isInitializing?: boolean }) => {
       setAvailableBuckets(Array.isArray(buckets) ? buckets : []);
       setAvailableTags(Array.isArray(tags) ? tags : []);
     });
-  }, [isInitializing]);
+  }, []);
 
   const addColumn = useCallback((initialQuery?: string) => {
     setColumns(prev => {
@@ -91,17 +100,17 @@ const SearchPage = ({ isInitializing }: { isInitializing?: boolean }) => {
   };
 
   return (
-    <GlassPanel className="search-page-container" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+    <div className="search-page-container" style={{ padding: '0.5rem 0.5rem 0.5rem 0.5rem', height: 'calc(100% - 2rem)', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-primary)' }}>
 
       {/* GLOBAL HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem', width: '100%' }}>
-        <h2 style={{ margin: 0, minWidth: 'min-content' }}>Memory Command</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 style={{ margin: 0 }}>Memory Command</h2>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 0%', minWidth: 0 }}>
-          <Button onClick={() => window.location.hash = '#dashboard'} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button onClick={() => navigate('/dashboard')} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
             🏠 Home
           </Button>
-          <Button onClick={() => window.location.hash = '#quarantine'} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
+          <Button onClick={() => navigate('/quarantine')} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
             ☣️ Infection
           </Button>
 
@@ -113,14 +122,13 @@ const SearchPage = ({ isInitializing }: { isInitializing?: boolean }) => {
           <Button onClick={() => setShowResearch(true)} style={{ fontSize: '0.8rem', padding: '0.4rem' }}>
             🕵️ Research
           </Button>
-          <Button onClick={async () => {
-            const d = await api.dream();
-            alert(`Dream Analyzed: ${d.analyzed}`);
-          }} style={{ background: 'rgba(100, 108, 255, 0.1)', fontSize: '0.8rem', padding: '0.4rem' }}>
-            🌙 Dream
+          <Button onClick={() => setShowGithub(true)} style={{ fontSize: '0.8rem', padding: '0.4rem' }}>
+            🐙 GitHub
           </Button>
 
           <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)', margin: '0 0.5rem' }} />
+
+          {/* Removed redundant copy buttons: Copy Limit and Copy All */}
 
           <Button onClick={() => addColumn()} disabled={columns.length >= 8} style={{ fontSize: '1rem', padding: '0.2rem 0.8rem', background: 'var(--accent-primary)', color: 'white' }}>
             +
@@ -140,7 +148,7 @@ const SearchPage = ({ isInitializing }: { isInitializing?: boolean }) => {
             onFullUpdate={handleFullUpdate}
             onRemove={removeColumn}
             onAddColumn={addColumn}
-            isOnly={columns.length === 1}
+            columnCount={columns.length}
             initialQuery={col.query}
           />
         ))}
@@ -148,103 +156,45 @@ const SearchPage = ({ isInitializing }: { isInitializing?: boolean }) => {
 
       {/* Research Modal */}
       {showResearch && <ResearchModal onClose={() => setShowResearch(false)} />}
-    </GlassPanel>
+
+      {/* Github Modal */}
+      {showGithub && <GithubModal onClose={() => setShowGithub(false)} />}
+    </div>
   );
 };
 
 function App() {
-  const [hash, setHash] = useState(window.location.hash);
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [initMessage, setInitMessage] = useState('Connecting to Engine...');
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   useEffect(() => {
-    const onHashChange = () => setHash(window.location.hash);
-    window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
-
-  // Poll backend health during startup
-  useEffect(() => {
-    let pollingInterval: number;
-    const checkHealth = async () => {
-      try {
-        const res = await fetch('/health');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.status === 'starting') {
-          setIsInitializing(true);
-          setInitMessage(data.message || 'Initializing database...');
-        } else {
-          setIsInitializing(false);
-          clearInterval(pollingInterval);
-        }
-      } catch (err) {
-        setInitMessage('Waiting for connection...');
-      }
+    const onLocationChange = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', onLocationChange);
+    window.addEventListener('pushstate', onLocationChange);
+    return () => {
+      window.removeEventListener('popstate', onLocationChange);
+      window.removeEventListener('pushstate', onLocationChange);
     };
-    checkHealth();
-    pollingInterval = window.setInterval(checkHealth, 2000);
-    return () => clearInterval(pollingInterval);
   }, []);
 
-  // Persist model and backend choice in localStorage
-  const [selectedModel, setSelectedModel] = useState<string>(() => {
-    return localStorage.getItem('anchor-chat-model') || 'DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC'; // Best reasoning model
-  });
-  const [useInferenceServer, setUseInferenceServer] = useState<boolean>(() => {
-    const saved = localStorage.getItem('anchor-chat-backend');
-    return saved === 'remote'; // Default to false (WebLLM) if not saved
-  });
+  const [selectedModel, setSelectedModel] = useState<string>('Llama-3-8B-Instruct-q4f32_1-MLC');
+  const [useInferenceServer, setUseInferenceServer] = useState(false);
 
-  // Save preferences when they change
-  useEffect(() => {
-    localStorage.setItem('anchor-chat-model', selectedModel);
-  }, [selectedModel]);
-
-  useEffect(() => {
-    localStorage.setItem('anchor-chat-backend', useInferenceServer ? 'remote' : 'webllm');
-  }, [useInferenceServer]);
-
-  if (!hash || hash === '#dashboard') return <Dashboard />;
+  if (currentPath === '/dashboard') return <Dashboard />;
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#050507] overflow-hidden text-gray-300">
+    <div className="h-screen w-screen flex flex-col overflow-hidden text-gray-300" style={{ background: 'var(--bg-primary)' }}>
       <PerformanceMonitor />
 
-      {isInitializing && (
-        <div style={{
-          position: 'fixed',
-          bottom: '1.5rem',
-          right: '1.5rem',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          background: 'rgba(5, 5, 7, 0.85)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid var(--border-subtle)',
-          padding: '0.8rem 1.2rem',
-          borderRadius: '12px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
-        }}>
-          <div className="animate-spin text-cyan-400" style={{ fontSize: '1.5rem', animationDuration: '3s' }}>⏳</div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: 600, color: 'white', fontSize: '0.9rem' }}>Server Starting</span>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{initMessage}</span>
-          </div>
-        </div>
-      )}
-
       <div style={{ position: 'fixed', top: '1rem', left: '1rem', zIndex: 1000 }}>
-        <Button onClick={() => window.location.hash = '#dashboard'} style={{ fontSize: '1.2rem', padding: '0.4rem 0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', boxShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+        <Button onClick={() => navigate('/dashboard')} style={{ fontSize: '1.2rem', padding: '0.4rem 0.8rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', boxShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
           ←
         </Button>
       </div>
 
-      {hash === '#chat' ? (
-        <GlassPanel className="chat-page-container" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem', width: '100%' }}>
-            <h2 style={{ margin: 0, minWidth: 'min-content' }}>Sovereign Agent Chat</h2>
+      {currentPath === '/chat' ? (
+        <GlassPanel className="chat-page-container" style={{ margin: '1rem', padding: '1rem', height: 'calc(100% - 2rem)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ margin: 0 }}>Sovereign Agent Chat</h2>
             <div style={{ width: '300px' }}>
               <ModelSelector
                 onModelChange={setSelectedModel}
@@ -263,10 +213,10 @@ function App() {
         </GlassPanel>
       ) : (
         <>
-          {hash === '#search' ? <SearchPage isInitializing={isInitializing} /> :
-            hash === '#quarantine' ? <QuarantinePage /> :
-              hash === '#paths' ? <PathManager /> :
-                <div style={{ padding: '4rem 2rem' }}>🚧 Module "{hash}" Under Construction</div>}
+          {currentPath === '/' || currentPath === '/search' ? <SearchPage /> :
+            currentPath === '/quarantine' ? <QuarantinePage /> :
+              currentPath === '/paths' ? <PathManager /> :
+                <div style={{ padding: '4rem 2rem' }}>🚧 Module "{currentPath}" Under Construction</div>}
         </>
       )}
     </div>
@@ -275,9 +225,11 @@ function App() {
 
 export default App;
 
-// Mount the App since index.html points directly to this file
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);
+const rootElement = document.getElementById('root');
+if (rootElement && !rootElement.innerHTML) {
+  createRoot(rootElement).render(
+    <StrictMode>
+      <App />
+    </StrictMode>
+  );
+}
