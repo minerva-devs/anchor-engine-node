@@ -1,0 +1,1184 @@
+commit bf36eae9e5e9f0486dea787201d84c8890492c5c
+Merge: 879f91e 45946f2
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Sat Feb 21 16:05:04 2026 -0700
+
+    Merge branch 'main' of https://github.com/RSBalchII/anchor-engine-node
+
+commit 45946f2dc8eb70d4b391d6fde901bb6022d49d8b
+Author: RSBalchII <128771311+RSBalchII@users.noreply.github.com>
+Date:   Sat Feb 21 16:04:24 2026 -0700
+
+    Update README to clean up disclaimer
+    
+    Removed disclaimer regarding HP Inc. and Omen brand affiliation.
+    
+    Signed-off-by: RSBalchII <128771311+RSBalchII@users.noreply.github.com>
+
+M	README.md
+
+commit 6952a77eea91979ea87133e21dfae82085ca2afc
+Author: RSBalchII <128771311+RSBalchII@users.noreply.github.com>
+Date:   Sat Feb 21 16:03:55 2026 -0700
+
+    Add disclaimer about project affiliation and risks
+    
+    Added a disclaimer regarding project affiliation and usage risks.
+    
+    Signed-off-by: RSBalchII <128771311+RSBalchII@users.noreply.github.com>
+
+M	README.md
+
+commit 879f91eec722c1e9d283f2c57f55cc4bab0038dc
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Sat Feb 21 15:51:19 2026 -0700
+
+    UI Overhaul: SPA Router, Loading Screen, Enhanced Search
+
+D	SEARCH_FIDELITY_FIXES.md
+D	build-universal.bat
+D	build-universal.sh
+D	debug_output_log.txt
+D	docs/GIT_BACKUP_VERIFICATION.md
+D	docs/adoption-guide.md
+D	docs/adoption-preparation.md
+D	docs/agent-harness-integration.md
+D	docs/api-reference.md
+D	docs/api_flows_diagram.md
+D	docs/architecture.md
+D	docs/architecture_diagram.md
+D	docs/broader-adoption-preparation.md
+D	docs/browser-paradigm-architecture.md
+D	docs/chat-integration.md
+D	docs/community-adoption-materials.md
+D	docs/community-adoption.md
+D	docs/comparison-with-siloed-solutions.md
+D	docs/comprehensive-docs.md
+D	docs/data_flow_diagram.md
+D	docs/enhancement-implementation-summary.md
+D	docs/evolution-summary.md
+D	docs/ingestion_pipeline_diagram.md
+D	docs/native-module-profiling-results.md
+D	docs/positioning-document.md
+D	docs/positioning.md
+D	docs/query-builder-documentation.md
+D	docs/quick-reference.md
+D	docs/quickstart.md
+D	docs/relationship-narrative-discovery.md
+D	docs/search-logic-improvement-plan.md
+D	docs/search_architecture_diagram.md
+D	docs/semantic-architecture-guide.md
+D	docs/sequence-diagrams.md
+D	docs/system_components_diagram.md
+D	docs/test-framework-integration.md
+D	docs/testing-framework-documentation.md
+D	docs/testing-framework-summary.md
+D	docs/testing-framework.md
+D	docs/ui-architecture.md
+R100	context/README.md	engine/context/context/README.md
+R100	context/internal_tags.json	engine/context/context/internal_tags.json
+M	engine/package-lock.json
+R100	plugins/whisper-recorder/package.json	engine/plugins/plugins/whisper-recorder/package.json
+R100	plugins/whisper-recorder/src/InferenceKernel.ts	engine/plugins/plugins/whisper-recorder/src/InferenceKernel.ts
+R100	plugins/whisper-recorder/src/index.ts	engine/plugins/plugins/whisper-recorder/src/index.ts
+R100	plugins/whisper-recorder/src/recorder.ts	engine/plugins/plugins/whisper-recorder/src/recorder.ts
+R100	plugins/whisper-recorder/src/transcriber.ts	engine/plugins/plugins/whisper-recorder/src/transcriber.ts
+R100	plugins/whisper-recorder/tsconfig.json	engine/plugins/plugins/whisper-recorder/tsconfig.json
+M	engine/public/index.html
+M	engine/src/index.ts
+D	inbox/commits/2025-08-06_20-05-58_303ebe5_first commit.md
+D	inbox/commits/2025-08-06_21-16-11_87b6ccc_working scripts and migration.md
+D	inbox/commits/2025-08-06_21-35-15_b241a0a_updated name of sybil_agentpy.md
+D	inbox/commits/2025-08-06_21-47-45_5460da6_Ive just made some improvemen.md
+D	inbox/commits/2025-08-06_23-44-33_e71e0aa_updated prompts after testing.md
+D	inbox/commits/2025-08-07_00-37-08_c6a30be_updates to file reads code re.md
+D	inbox/commits/2025-08-07_00-51-45_79b6836_Add GUI automation tool script.md
+D	inbox/commits/2025-08-07_03-07-25_7d52081_Add core components for Ark me.md
+D	inbox/commits/2025-08-07_09-06-14_479ee15_added memory_tool.md
+D	inbox/commits/2025-08-07_09-44-00_807dfd7_added memory_tool.md
+D	inbox/commits/2025-08-07_09-55-56_af81c17_updated directory structure.md
+D	inbox/commits/2025-08-07_14-31-47_15dda87_context embedding model is wor.md
+D	inbox/commits/2025-08-07_14-32-05_83a7dd6_tools directory changed.md
+D	inbox/commits/2025-08-07_19-38-43_cb87af8_Ive been updated with major n.md
+D	inbox/commits/2025-08-07_23-44-06_b306a52_Ive created the Working Memor.md
+D	inbox/commits/2025-08-07_23-50-13_7dc96ed_Ive introduced the initial fr.md
+D	inbox/commits/2025-08-08_00-08-33_0d1e2ff_added memory_tool.md
+D	inbox/commits/2025-08-08_00-55-17_0da1f82_yes.md
+D	inbox/commits/2025-08-08_06-23-49_37a881e_Ive just finished making some.md
+D	inbox/commits/2025-08-08_08-57-04_715cdc1_added memory_tool.md
+D	inbox/commits/2025-08-08_09-55-57_43c2230_I will now integrate the diffe.md
+D	inbox/commits/2025-08-08_10-59-58_a328124_added memory_tool.md
+D	inbox/commits/2025-08-08_11-03-56_f177d84_I will now integrate the cogni.md
+D	inbox/commits/2025-08-08_11-26-04_51cf4c3_new cognitive feature merged.md
+D	inbox/commits/2025-08-08_12-55-10_4094fb5_feat Create boilerplate for h.md
+D	inbox/commits/2025-08-08_12-58-56_d45a05f_multi agent architecture imple.md
+D	inbox/commits/2025-08-08_22-57-23_2c51aee_multi agent architecture imple.md
+D	inbox/commits/2025-08-08_23-38-50_aca2ede_feat Implement core logic for.md
+D	inbox/commits/2025-08-08_23-38-55_0046ad0_Ive completed the implementat.md
+D	inbox/commits/2025-08-10_00-58-14_c4f183f_updated distillation etc.md
+D	inbox/commits/2025-08-10_15-24-51_9144bf3_updated distillation etc.md
+D	inbox/commits/2025-08-13_08-33-45_d9b7d5c_Updated to include redis cachi.md
+D	inbox/commits/2025-08-13_10-03-54_3deef0d_complete refactor adding graph.md
+D	inbox/commits/2025-08-13_11-02-12_900cdd7_complete refactor adding graph.md
+D	inbox/commits/2025-08-14_09-46-08_65a40d7_Update READMEmd.md
+D	inbox/commits/2025-08-14_11-12-42_0d9489c_update for 8142025.md
+D	inbox/commits/2025-08-15_08-39-15_25cd611_update for 8142025.md
+D	inbox/commits/2025-08-19_01-53-19_af13095_update for 8172025.md
+D	inbox/commits/2025-08-19_12-10-15_0f90636_update for 8192025.md
+D	inbox/commits/2025-08-19_15-15-52_7cca5e3_update for 8192025.md
+D	inbox/commits/2025-08-20_09-41-46_c2af70b_update for 8192025.md
+D	inbox/commits/2025-08-20_14-48-42_55ec61d_update for 8202025.md
+D	inbox/commits/2025-08-21_13-55-09_381f551_Update READMEmd.md
+D	inbox/commits/2025-08-21_14-00-00_1a274c2_Update READMEmd.md
+D	inbox/commits/2025-08-21_14-19-14_f1594c0_Rename ark_mainpy to mainpy.md
+D	inbox/commits/2025-08-25_23-47-44_b9f5bc5_8252025.md
+D	inbox/commits/2025-08-25_23-48-52_35efe83_updated 7252025.md
+D	inbox/commits/2025-08-26_10-12-20_9119d1f_8252025.md
+D	inbox/commits/2025-08-26_10-46-48_f8ab2b1_8262025.md
+D	inbox/commits/2025-08-26_12-26-51_98b9216_update for 8242025.md
+D	inbox/commits/2025-08-26_21-08-45_c2f32a2_update.md
+D	inbox/commits/2025-08-26_22-52-30_50c26d6_8262025.md
+D	inbox/commits/2025-08-26_22-53-53_0129f1a_update for 8262025.md
+D	inbox/commits/2025-08-31_15-09-43_2c24397_update for 8302025.md
+D	inbox/commits/2025-09-01_16-19-45_85fbb89_Create configyaml.md
+D	inbox/commits/2025-09-01_16-23-28_dedd4d9_Update mainpy.md
+D	inbox/commits/2025-09-01_16-31-19_6a80eb4_Create ece_toolspy.md
+D	inbox/commits/2025-09-01_16-42-30_d5d893d_Update ece_toolspy.md
+D	inbox/commits/2025-09-01_16-51-33_72487df_Update ece_toolspy.md
+D	inbox/commits/2025-09-01_16-53-50_a3b9863_Update ece_toolspy.md
+D	inbox/commits/2025-09-01_16-59-21_d97482e_Delete agents directory.md
+D	inbox/commits/2025-09-01_17-08-31_2e6c5d3_Delete injector directory.md
+D	inbox/commits/2025-09-01_17-09-08_f44856c_Delete crews directory.md
+D	inbox/commits/2025-09-01_17-29-02_af003aa_Delete chimaera directory.md
+D	inbox/commits/2025-09-01_17-29-57_eb92884_Delete prompts directory.md
+D	inbox/commits/2025-09-01_17-45-54_e16ec01_Update requirementstxt.md
+D	inbox/commits/2025-09-01_18-03-14_c15deb0_Create env.md
+D	inbox/commits/2025-09-01_18-20-25_a3240a6_Update blackboardmd.md
+D	inbox/commits/2025-09-01_18-26-06_f2b94e0_Delete graph_r1_training direc.md
+D	inbox/commits/2025-09-01_18-29-23_3608e42_Delete blackboardmd.md
+D	inbox/commits/2025-09-01_18-58-54_07b5b8a_update for 8302025.md
+D	inbox/commits/2025-09-01_22-01-22_d549faf_update for 9012025.md
+D	inbox/commits/2025-09-01_22-45-37_0d19f35_update for 9012025 - update.md
+D	inbox/commits/2025-09-02_07-02-10_50eefc7_update for 9022025 - framewo.md
+D	inbox/commits/2025-09-02_08-31-29_b99b809_update for 9022025 - framewo.md
+D	inbox/commits/2025-09-02_15-10-29_1f283fb_update for 9022025 - framewo.md
+D	inbox/commits/2025-09-02_17-58-56_1298f4d_updated elysia core.md
+D	inbox/commits/2025-09-03_06-16-45_f8b64c3_update for repo dir check.md
+D	inbox/commits/2025-09-03_06-28-44_02d18ab_updated elysia core.md
+D	inbox/commits/2025-09-03_14-50-16_41e1612_update.md
+D	inbox/commits/2025-09-03_20-53-08_651f52d_updated elysia core.md
+D	inbox/commits/2025-09-03_22-00-35_e776a57_updated elysia core.md
+D	inbox/commits/2025-09-04_10-41-52_fe1eda8_updated 9425.md
+D	inbox/commits/2025-09-05_09-13-20_7e334e4_updated using agentic swarm E.md
+D	inbox/commits/2025-09-05_09-59-49_f012f04_yes.md
+D	inbox/commits/2025-09-05_10-31-43_f038f5c_update merge.md
+D	inbox/commits/2025-09-05_18-59-27_e8a2304_updated Extractor and Distille.md
+D	inbox/commits/2025-09-05_21-26-46_41c9e55_agent workflows complete for a.md
+D	inbox/commits/2025-09-06_00-25-16_b1bc5a4_agent workflows complete for a.md
+D	inbox/commits/2025-09-07_03-16-29_47ee6b3_updated to v2.md
+D	inbox/commits/2025-09-07_20-18-31_7d4972f_updated 9725.md
+D	inbox/commits/2025-09-07_21-14-25_cbb93c2_updated 9725.md
+D	inbox/commits/2025-09-08_09-23-17_917207e_update.md
+D	inbox/commits/2025-09-11_00-03-05_75903f0_update.md
+D	inbox/commits/2025-09-11_14-48-43_c6f8621_update.md
+D	inbox/commits/2025-09-13_18-51-45_602ab52_update.md
+D	inbox/commits/2025-09-19_08-40-16_30bd892_context cache ready for human.md
+D	inbox/commits/2025-09-20_15-12-17_adc761d_update with full cohesion loop.md
+D	inbox/commits/2025-09-26_14-37-33_2f78e7d_updated spec-kit and tested me.md
+D	inbox/commits/2025-10-03_22-54-28_d0ba283_full update before new branch.md
+D	inbox/commits/2025-10-04_00-23-17_e3b84f0_updated and cleaned up reposit.md
+D	inbox/commits/2025-10-06_08-42-13_4719071_update for 1062025.md
+D	inbox/commits/2025-10-11_09-15-10_a0c2163_update for 10112025.md
+D	inbox/commits/2025-10-15_06-22-12_b0130e4_update for 10152025.md
+D	inbox/commits/2025-10-27_17-52-25_ab36566_update for 10272025.md
+D	inbox/commits/2025-10-28_13-49-31_247eef5_update 10282025.md
+D	inbox/commits/2025-10-29_13-00-21_67a376a_update 10292025.md
+D	inbox/commits/2025-11-02_13-17-48_52d7bbb_updated 1122025 ECE utcp up.md
+D	inbox/commits/2025-11-02_20-32-09_1c643ca_update for 1122025.md
+D	inbox/commits/2025-11-03_09-00-05_5ed2529_update 1132025 project updat.md
+D	inbox/commits/2025-11-03_09-09-31_ee89d6b_update for 1122025.md
+D	inbox/commits/2025-11-03_09-30-40_8fa1dd1_update for 1122025.md
+D	inbox/commits/2025-11-03_10-13-33_b2ef795_update for 1122025.md
+D	inbox/commits/2025-11-03_14-43-15_5808ade_update for 1132025.md
+D	inbox/commits/2025-11-04_11-29-46_d509591_update for 1142025.md
+D	inbox/commits/2025-11-04_12-00-20_baa49d4_update for 1142025.md
+D	inbox/commits/2025-11-04_12-24-05_4f3cffd_update for 1142025.md
+D	inbox/commits/2025-11-04_12-48-36_140e986_update for 1142025.md
+D	inbox/commits/2025-11-04_18-53-58_737b0c8_update for 1142025.md
+D	inbox/commits/2025-11-05_09-55-19_798a50e_update for 1152025.md
+D	inbox/commits/2025-11-05_19-17-59_f5424b1_update for 1152025.md
+D	inbox/commits/2025-11-15_23-27-52_378d83b_WIP save before creating deve.md
+D	inbox/commits/2025-11-19_10-21-02_e788000_updated notes for 8132025.md
+D	inbox/commits/2025-11-28_15-05-29_e3f0533_Phase 4 Complete Implemented.md
+D	inbox/commits/2025-12-07_18-32-36_67142ca_feat Implement Archivist Prot.md
+D	inbox/commits/2025-12-09_08-22-36_de50881_Initialize Context-Engine root.md
+D	inbox/commits/2025-12-09_08-22-36_ea66c5d_Initialize Context-Engine root.md
+D	inbox/commits/2025-12-09_08-40-05_449f704_Convert backend submodule to r.md
+D	inbox/commits/2025-12-09_08-40-05_9ece88a_Convert backend submodule to r.md
+D	inbox/commits/2025-12-09_10-29-37_2a798ba_Implement SGR Orchestrator wit.md
+D	inbox/commits/2025-12-09_10-29-37_c945ff5_Implement SGR Orchestrator wit.md
+D	inbox/commits/2025-12-13_00-28-35_7425b63_updated 12132025 - tools - h.md
+D	inbox/commits/2025-12-13_00-28-35_c83db8c_updated 12132025 - tools - h.md
+D	inbox/commits/2025-12-18_10-33-00_e3be30a_update for 12182025 the pro.md
+D	inbox/commits/2025-12-18_10-33-00_f97eebd_update for 12182025 the pro.md
+D	inbox/commits/2025-12-18_15-15-45_1c539cb_update for 12182025 the pro.md
+D	inbox/commits/2025-12-18_15-15-45_3378885_update for 12182025 the pro.md
+D	inbox/commits/2025-12-18_15-15-45_fb1cea2_update for 12182025 the pro.md
+D	inbox/commits/2025-12-18_23-29-44_71b0058_update for 12182025 the pro.md
+D	inbox/commits/2025-12-18_23-29-44_ed32c22_update for 12182025 the pro.md
+D	inbox/commits/2025-12-19_00-16-53_5c868f9_update.md
+D	inbox/commits/2025-12-19_00-16-53_9edd760_update.md
+D	inbox/commits/2025-12-19_01-21-23_01607b3_updated.md
+D	inbox/commits/2025-12-19_01-21-23_25f3204_updated.md
+D	inbox/commits/2025-12-19_01-32-51_8ef9b51_update for 12192025.md
+D	inbox/commits/2025-12-19_01-32-51_bcf085f_update for 12192025.md
+D	inbox/commits/2025-12-19_01-32-58_0efa54a_update for 12192025.md
+D	inbox/commits/2025-12-19_01-32-58_1c7497e_update for 12192025.md
+D	inbox/commits/2025-12-19_01-33-21_c0b3a4c_update for 12192025.md
+D	inbox/commits/2025-12-19_01-33-21_c7acc80_update for 12192025.md
+D	inbox/commits/2025-12-19_09-07-50_21587ec_update for 12192025.md
+D	inbox/commits/2025-12-19_09-07-50_e87aa25_update for 12192025.md
+D	inbox/commits/2025-12-19_11-31-52_3aeafb7_update.md
+D	inbox/commits/2025-12-19_11-31-52_42a6aff_update.md
+D	inbox/commits/2025-12-19_11-55-56_385d706_update.md
+D	inbox/commits/2025-12-19_11-55-56_5a4a6e3_update.md
+D	inbox/commits/2025-12-19_12-13-56_22e42a4_update.md
+D	inbox/commits/2025-12-19_12-13-56_9fd129a_update.md
+D	inbox/commits/2025-12-19_12-27-39_8d9a1dc_update for 12192025.md
+D	inbox/commits/2025-12-19_12-27-39_aeb9f38_update for 12192025.md
+D	inbox/commits/2025-12-19_13-01-46_b43fd9d_update for 12192025.md
+D	inbox/commits/2025-12-19_13-01-46_d72436b_update for 12192025.md
+D	inbox/commits/2025-12-19_13-30-55_295d2d6_update for 12192025.md
+D	inbox/commits/2025-12-19_13-30-55_8808e17_update for 12192025.md
+D	inbox/commits/2025-12-19_13-39-13_aebff1e_update for 12192025.md
+D	inbox/commits/2025-12-19_13-39-13_bd7f337_update for 12192025.md
+D	inbox/commits/2025-12-19_13-39-35_79dc62f_update.md
+D	inbox/commits/2025-12-19_13-39-35_8d4cdd7_update.md
+D	inbox/commits/2025-12-19_20-37-28_3a0ba86_update.md
+D	inbox/commits/2025-12-19_20-37-28_ffd3276_update.md
+D	inbox/commits/2025-12-20_00-06-37_49ed92b_update.md
+D	inbox/commits/2025-12-20_00-06-37_5421840_update.md
+D	inbox/commits/2025-12-20_00-07-28_15b96c5_update for 12192025.md
+D	inbox/commits/2025-12-20_00-07-28_2ca1f5f_update for 12192025.md
+D	inbox/commits/2025-12-20_07-30-26_5a14e6b_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_07-30-26_e194804_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_07-45-58_50aa539_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_07-45-58_554a14d_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_07-46-04_4d89931_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_07-46-04_af09fe3_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_07-48-08_05d1b36_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_07-48-08_fbc2666_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_12-43-34_5dd75bd_updated with new whisper audio.md
+D	inbox/commits/2025-12-20_12-43-34_930ab71_updated with new whisper audio.md
+D	inbox/commits/2025-12-20_15-01-42_3e109bc_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_15-01-42_9900ffa_update for 12192025 updated.md
+D	inbox/commits/2025-12-20_16-34-48_4b89acf_update for 12202025 update.md
+D	inbox/commits/2025-12-20_16-34-48_ee36680_update for 12202025 update.md
+D	inbox/commits/2025-12-20_16-43-34_8755aea_update for 12202025 update.md
+D	inbox/commits/2025-12-20_16-43-34_a8d09ba_update for 12202025 update.md
+D	inbox/commits/2025-12-21_02-52-41_57f9958_updated with new whisper audio.md
+D	inbox/commits/2025-12-21_02-52-41_795ba9c_updated with new whisper audio.md
+D	inbox/commits/2025-12-21_14-31-07_22ce301_chore optimize geminiignore a.md
+D	inbox/commits/2025-12-21_14-31-07_d9c7f1a_chore optimize geminiignore a.md
+D	inbox/commits/2025-12-21_17-25-15_9c53f08_update for 12202025 update.md
+D	inbox/commits/2025-12-21_17-25-15_a38fdd8_update for 12202025 update.md
+D	inbox/commits/2025-12-22_10-33-52_218d30f_update for 12202025 update.md
+D	inbox/commits/2025-12-22_10-33-52_73214a0_update for 12202025 update.md
+D	inbox/commits/2025-12-22_15-57-00_6b65317_updated.md
+D	inbox/commits/2025-12-22_15-57-00_b2e35c0_updated.md
+D	inbox/commits/2025-12-22_16-35-57_806fe32_updated.md
+D	inbox/commits/2025-12-22_16-35-57_dab7fe8_updated.md
+D	inbox/commits/2025-12-22_16-51-34_48337c8_updated.md
+D	inbox/commits/2025-12-22_16-51-34_88a9ed9_updated.md
+D	inbox/commits/2025-12-22_17-05-05_54156e7_updated.md
+D	inbox/commits/2025-12-22_17-05-05_db583ca_updated.md
+D	inbox/commits/2025-12-22_17-38-58_d87e93e_updated.md
+D	inbox/commits/2025-12-22_17-38-58_f3f4209_updated.md
+D	inbox/commits/2025-12-23_13-45-10_b959bb3_updated phase 25.md
+D	inbox/commits/2025-12-23_13-45-10_f6106c1_updated phase 25.md
+D	inbox/commits/2025-12-24_08-46-45_2529bef_updated phase 25.md
+D	inbox/commits/2025-12-24_08-46-45_405974c_updated phase 25.md
+D	inbox/commits/2025-12-24_11-47-40_a5f94fc_updated.md
+D	inbox/commits/2025-12-24_11-47-40_b0df7d7_updated.md
+D	inbox/commits/2025-12-24_23-43-03_89229ad_updated extension and resolved.md
+D	inbox/commits/2025-12-24_23-43-03_b0c92dd_updated extension and resolved.md
+D	inbox/commits/2025-12-24_23-43-29_72d6ed3_updated.md
+D	inbox/commits/2025-12-24_23-43-29_c8d4ee6_updated.md
+D	inbox/commits/2025-12-24_23-47-12_6088421_merged.md
+D	inbox/commits/2025-12-24_23-47-12_c484689_merged.md
+D	inbox/commits/2025-12-25_06-49-50_2620cd0_updated.md
+D	inbox/commits/2025-12-25_06-49-50_7b0010a_updated.md
+D	inbox/commits/2025-12-25_12-28-22_a07dbb7_updated.md
+D	inbox/commits/2025-12-25_12-28-22_f715e72_updated.md
+D	inbox/commits/2025-12-25_16-09-38_0d15be9_updated extension and resolved.md
+D	inbox/commits/2025-12-25_16-09-38_e28bc96_updated extension and resolved.md
+D	inbox/commits/2025-12-28_02-57-01_2568bf1_updated web-gpu in attempt to.md
+D	inbox/commits/2025-12-28_02-57-01_e691091_updated web-gpu in attempt to.md
+D	inbox/commits/2025-12-28_07-15-41_0d831a6_updated extension and resolved.md
+D	inbox/commits/2025-12-28_07-15-41_8309210_updated extension and resolved.md
+D	inbox/commits/2025-12-28_10-41-23_4048e59_updated web-gpu in attempt to.md
+D	inbox/commits/2025-12-28_10-41-23_bec289c_updated web-gpu in attempt to.md
+D	inbox/commits/2025-12-28_12-42-54_fdded1b_updated web-gpu in attempt to.md
+D	inbox/commits/2025-12-28_22-16-53_27530a1_updated extension and resolved.md
+D	inbox/commits/2025-12-28_22-16-53_7c52401_updated extension and resolved.md
+D	inbox/commits/2025-12-29_23-36-29_7ce66ff_updated to unified port 8000 a.md
+D	inbox/commits/2025-12-29_23-36-29_afdd83e_updated to unified port 8000 a.md
+D	inbox/commits/2025-12-31_08-02-07_8de21a8_cleaning up model url construc.md
+D	inbox/commits/2025-12-31_08-02-07_fdc4a2d_cleaning up model url construc.md
+D	inbox/commits/2025-12-31_08-32-48_3c1f0b6_cleaning up model url construc.md
+D	inbox/commits/2025-12-31_08-32-48_4aa1ae4_cleaning up model url construc.md
+D	inbox/commits/2025-12-31_08-43-00_602cb13_cleaning up model url construc.md
+D	inbox/commits/2025-12-31_08-43-00_9715488_cleaning up model url construc.md
+D	inbox/commits/2025-12-31_10-27-21_10ccaa6_updated to unified port 8000 a.md
+D	inbox/commits/2025-12-31_10-27-21_9f39792_updated to unified port 8000 a.md
+D	inbox/commits/2025-12-31_11-23-05_4147cc0_updated to unified port 8000 a.md
+D	inbox/commits/2025-12-31_11-23-05_83ba889_updated to unified port 8000 a.md
+D	inbox/commits/2025-12-31_12-42-49_2caa084_updated to unified port 8000 a.md
+D	inbox/commits/2025-12-31_12-42-49_e86d26b_updated to unified port 8000 a.md
+D	inbox/commits/2025-12-31_15-40-15_3cd5116_cleaning up model url construc.md
+D	inbox/commits/2025-12-31_15-40-15_fa54971_cleaning up model url construc.md
+D	inbox/commits/2026-01-01_00-49-49_239c976_updated to unified port 8000 a.md
+D	inbox/commits/2026-01-01_00-49-49_295e811_updated to unified port 8000 a.md
+D	inbox/commits/2026-01-01_00-54-45_5611e64_updated to unified port 8000 a.md
+D	inbox/commits/2026-01-01_00-54-45_b420220_updated to unified port 8000 a.md
+D	inbox/commits/2026-01-01_08-58-59_1a43b40_cleaning up model url construc.md
+D	inbox/commits/2026-01-01_08-58-59_d2a7283_cleaning up model url construc.md
+D	inbox/commits/2026-01-01_21-14-03_49bff34_cleaning up model url construc.md
+D	inbox/commits/2026-01-01_21-14-03_ecead6f_cleaning up model url construc.md
+D	inbox/commits/2026-01-02_09-25-20_9a64b73_cleaning up model url construc.md
+D	inbox/commits/2026-01-02_09-25-20_e5db742_cleaning up model url construc.md
+D	inbox/commits/2026-01-02_12-41-56_a54f201_Add logging standards system.md
+D	inbox/commits/2026-01-02_12-43-54_a17efc8_Restore read_allpy for sharin.md
+D	inbox/commits/2026-01-02_13-53-37_5f4e746_Add combined_texttxt and comb.md
+D	inbox/commits/2026-01-02_14-10-07_ff2d2a3_Remove combined_texttxt and c.md
+D	inbox/commits/2026-01-04_00-25-11_60dc0ee_updated to mono html nodejs a.md
+D	inbox/commits/2026-01-04_14-01-17_2cd6ce1_Production Cleanup Archival.md
+D	inbox/commits/2026-01-04_14-01-17_fb60548_Production Cleanup Archival.md
+D	inbox/commits/2026-01-04_14-02-22_2720613_Final root cleanup moved read.md
+D	inbox/commits/2026-01-04_14-29-50_8b02b71_update 142026 local first p.md
+D	inbox/commits/2026-01-04_14-31-43_142f1ff_update 142026 local first p.md
+D	inbox/commits/2026-01-04_14-45-32_3b9dd8c_update 142026 local first p.md
+D	inbox/commits/2026-01-04_15-37-47_4c6fb3a_Update READMEmd.md
+D	inbox/commits/2026-01-04_16-23-27_7114a75_updated packaging and cleared.md
+D	inbox/commits/2026-01-04_22-55-54_820b0c4_updated added windows binary e.md
+D	inbox/commits/2026-01-05_00-54-55_1633c09_updated codebase for modularit.md
+D	inbox/commits/2026-01-05_10-59-04_7046e1d_feat Implement Local Inferenc.md
+D	inbox/commits/2026-01-05_13-27-46_e078e9c_feat Implement Markovian Reas.md
+D	inbox/commits/2026-01-05_13-40-26_67d120d_feat implement Markovian Reas.md
+D	inbox/commits/2026-01-05_14-42-38_f7cb791_feat enforce Synchronous Test.md
+D	inbox/commits/2026-01-05_14-49-39_3a8e757_updated 152025.md
+D	inbox/commits/2026-01-05_14-57-12_91b1257_chore enable Git LFS for dist.md
+D	inbox/commits/2026-01-05_15-10-45_5fa06fa_fix correct MODELS_DIR path t.md
+D	inbox/commits/2026-01-05_15-11-04_8296acc_docs update Standard 038 to d.md
+D	inbox/commits/2026-01-05_15-45-55_2625039_updates for running on Mac.md
+D	inbox/commits/2026-01-05_16-46-12_12372e6_updated chathtml.md
+D	inbox/commits/2026-01-09_20-17-04_1cd1a32_Phase 16 Chat UI overhaul - s.md
+D	inbox/commits/2026-01-10_21-13-21_b3b1e05_udpated memory aggregation rat.md
+D	inbox/commits/2026-01-11_13-32-32_cde784e_updated sovereign-desktop serv.md
+D	inbox/commits/2026-01-15_17-35-41_a250448_feat Implement TypeScript mig.md
+D	inbox/commits/2026-01-19_08-55-39_81fbef5_debugging backups and dreamer.md
+D	inbox/commits/2026-01-19_08-55-50_fe8653a_debugging backups and dreamer.md
+D	inbox/commits/2026-01-19_09-27-50_d4d96cf_debugging backups and dreamer.md
+D	inbox/commits/2026-01-19_09-45-41_fe3d42a_debugging backups and dreamer.md
+D	inbox/commits/2026-01-19_11-19-59_8178d7e_Initial commit for vs-lite bra.md
+D	inbox/commits/2026-01-19_11-54-37_f790328_Setup Git LFS and add large fi.md
+D	inbox/commits/2026-01-19_16-38-34_1712269_installed cheaper faster taggi.md
+D	inbox/commits/2026-01-20_13-10-21_3d4d234_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-20_13-48-52_89febdc_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-22_08-09-17_7c256f3_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-22_11-42-47_bbb94f1_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-23_10-28-40_99bd348_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-23_15-57-22_6b1e434_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-23_15-58-19_593b4e6_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-23_16-01-12_7ee52f8_Update ECE_Core_1_19_2026yaml.md
+D	inbox/commits/2026-01-23_16-01-26_e028b6b_Update ECE_Core_1_21_2026yaml.md
+D	inbox/commits/2026-01-23_16-01-45_149f676_Update ECE_Core_1_23_2026yaml.md
+D	inbox/commits/2026-01-23_16-08-11_0f21eaf_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-23_23-23-23_5ee6bc7_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-24_14-45-03_c12e767_installed cheaper faster taggi.md
+D	inbox/commits/2026-01-24_14-51-48_e425d33_cleaned up startup and qol tes.md
+D	inbox/commits/2026-01-24_15-07-47_0996289_clarifying data pipeline and p.md
+D	inbox/commits/2026-01-24_15-23-56_605be87_fixbuild robust macOS stdli.md
+D	inbox/commits/2026-01-24_15-23-56_77d7bbc_fixbuild update macOS deplo.md
+D	inbox/commits/2026-01-24_15-29-20_887d411_fixbuild update macOS deplo.md
+D	inbox/commits/2026-01-24_15-40-44_43a7236_fixbuild strict xcode setti.md
+D	inbox/commits/2026-01-24_15-40-44_bbde377_fixbuild update macOS deplo.md
+D	inbox/commits/2026-01-24_15-56-07_2dadf91_fixbuild update macOS deplo.md
+D	inbox/commits/2026-01-24_16-35-00_cee990a_mac compatability update1.md
+D	inbox/commits/2026-01-25_00-35-38_61df42b_fixbuild update macOS deplo.md
+D	inbox/commits/2026-01-29_21-10-51_378e6af_refactored code and restructur.md
+D	inbox/commits/2026-01-30_00-50-57_dd7692d_feat implement stateless cont.md
+D	inbox/commits/2026-01-30_22-53-07_5b1e12e_docs enhance documentation wi.md
+D	inbox/commits/2026-01-30_22-53-47_8ab741c_feat implement semantic shift.md
+D	inbox/commits/2026-01-31_12-22-20_dc5393d_Update documentation to align.md
+D	inbox/commits/2026-01-31_12-25-47_4c18edc_Add monitoring endpoints and m.md
+D	inbox/commits/2026-01-31_12-30-41_712a745_Update lock files after depend.md
+D	inbox/commits/2026-01-31_12-30-59_1d7e94b_Remove temporary port check fi.md
+D	inbox/commits/2026-01-31_12-31-24_cd63b39_Add monitoring profiling and.md
+D	inbox/commits/2026-01-31_23-29-22_91a038b_Fix taxonomyts enum syntax er.md
+D	inbox/commits/2026-02-01_20-37-56_7abaea7_Move archive directory to pare.md
+D	inbox/commits/2026-02-02_11-06-47_2a73fab_feat implement split-brain ar.md
+D	inbox/commits/2026-02-02_11-09-42_27db3a2_docs clarify operating modes.md
+D	inbox/commits/2026-02-02_11-14-38_6d036e4_docs replace CozoDB with PGli.md
+D	inbox/commits/2026-02-02_20-09-55_a84a2fe_Fix ContextInflator path reso.md
+D	inbox/commits/2026-02-02_20-24-07_0d28c0c_Feat Context-Aware Timestamps.md
+D	inbox/commits/2026-02-02_20-26-39_0f76d3a_Fix Add timestamp to Molecule.md
+D	inbox/commits/2026-02-02_20-28-53_d4de82b_Fix Surgical scrubbing of JSO.md
+D	inbox/commits/2026-02-02_20-32-17_8ea2a51_Fix Chunked sanitization to p.md
+D	inbox/commits/2026-02-02_20-38-22_5fa3839_Fix C lifetime bug in nativ.md
+D	inbox/commits/2026-02-02_20-39-03_a3706de_Fix Chunked processing and be.md
+D	inbox/commits/2026-02-02_20-41-47_4bcc437_Fix Disable unstable C clea.md
+D	inbox/commits/2026-02-02_20-43-05_0cc1c67_Remove context_data directory.md
+D	inbox/commits/2026-02-02_20-50-02_f13319c_Fix Replace unsafe string_vie.md
+D	inbox/commits/2026-02-02_21-06-30_9f6d2d5_Fix Disable native fingerprin.md
+D	inbox/commits/2026-02-02_21-16-33_ac0cc4e_Fix Truncate compound body in.md
+D	inbox/commits/2026-02-02_21-29-27_3686bfd_Docs Update standards with In.md
+D	inbox/commits/2026-02-02_21-31-17_eeb98db_Fix Yield to event loop durin.md
+D	inbox/commits/2026-02-04_00-01-03_57320bd_featsearch Implement Smart.md
+D	inbox/commits/2026-02-04_00-30-57_ef75c95_fixsearch Patch Bucket Leak.md
+D	inbox/commits/2026-02-04_00-48-57_a77004f_docs Update README and Archit.md
+D	inbox/commits/2026-02-04_00-50-30_dd54195_docs Rebrand project to Ancho.md
+D	inbox/commits/2026-02-04_00-58-07_cef504a_featrebrand Rename to Ancho.md
+D	inbox/commits/2026-02-04_06-48-15_cf8f4ea_feat Anchor rebrand Crystal.md
+D	inbox/commits/2026-02-04_17-01-43_dc0bfb5_Update documentation to reflec.md
+D	inbox/commits/2026-02-04_20-00-03_542d2d3_Rename project from ECE_Core t.md
+D	inbox/commits/2026-02-06_18-45-48_ab385f7_feat pglite 020 compatibili.md
+D	inbox/commits/2026-02-06_18-47-05_dc7fc4f_docs update SPECmd with publ.md
+D	inbox/commits/2026-02-06_19-01-31_2c85bc8_Update enginesrcservicessea.md
+D	inbox/commits/2026-02-06_19-04-29_75f20fd_Update enginesrcservicesque.md
+D	inbox/commits/2026-02-06_19-05-13_052402c_Update enginetoolsanchorts.md
+D	inbox/commits/2026-02-06_19-06-19_bd7fafa_Initial plan.md
+D	inbox/commits/2026-02-06_19-06-46_1767226_Initial plan.md
+D	inbox/commits/2026-02-06_19-07-05_f678c23_Initial plan.md
+D	inbox/commits/2026-02-06_19-07-34_519e52f_Update enginesrcservicessem.md
+D	inbox/commits/2026-02-06_19-07-59_9774092_Update enginesrcservicessem.md
+D	inbox/commits/2026-02-06_19-08-22_b907e4f_Initial plan.md
+D	inbox/commits/2026-02-06_19-08-27_db522f0_Update enginetest-token-utili.md
+D	inbox/commits/2026-02-06_19-08-40_13a129a_Fix select to produce u.md
+D	inbox/commits/2026-02-06_19-08-49_3d12ca9_feat implement YAML output fo.md
+D	inbox/commits/2026-02-06_19-09-15_fac0cfb_Initial plan.md
+D	inbox/commits/2026-02-06_19-09-39_3682755_Simplify wildcard handling log.md
+D	inbox/commits/2026-02-06_19-09-44_66bbab7_Initial plan.md
+D	inbox/commits/2026-02-06_19-10-05_a295a81_Initial plan.md
+D	inbox/commits/2026-02-06_19-10-38_7fd1970_Initial plan.md
+D	inbox/commits/2026-02-06_19-10-49_121c301_Implement Standard 096 timesta.md
+D	inbox/commits/2026-02-06_19-10-54_da0ae77_Initial plan.md
+D	inbox/commits/2026-02-06_19-11-21_0f7fb23_Fix SQL injection vulnerabilit.md
+D	inbox/commits/2026-02-06_19-11-57_3dc7f5c_Fix fileTimestamp fallback to.md
+D	inbox/commits/2026-02-06_19-14-12_3438b30_Fix context-inflator coordinat.md
+D	inbox/commits/2026-02-06_19-15-29_c6ffe32_Remove unused totalChars assig.md
+D	inbox/commits/2026-02-06_19-16-10_97617a2_Address code review feedback.md
+D	inbox/commits/2026-02-06_19-16-29_7ccd7ef_Add field identifier validatio.md
+D	inbox/commits/2026-02-06_19-17-43_8f04d3a_Address code review feedback o.md
+D	inbox/commits/2026-02-06_19-19-37_3662b66_Fix byte offset vs string inde.md
+D	inbox/commits/2026-02-06_19-20-10_f63deeb_Fix context-inflator to use Bu.md
+D	inbox/commits/2026-02-06_19-21-08_b61d147_Add comprehensive end-to-end t.md
+D	inbox/commits/2026-02-06_19-39-57_ff3573c_Update enginesrcservicesque.md
+D	inbox/commits/2026-02-06_19-43-25_6b6a1d6_Update enginesrcservicesque.md
+D	inbox/commits/2026-02-06_19-47-21_9e17f8e_Initial plan.md
+D	inbox/commits/2026-02-06_19-51-24_78a70d9_Initial plan.md
+D	inbox/commits/2026-02-06_19-51-36_31e09ff_Update enginesrcservicesque.md
+D	inbox/commits/2026-02-06_19-52-38_930a810_Initial plan.md
+D	inbox/commits/2026-02-06_19-53-18_671c336_Initial plan.md
+D	inbox/commits/2026-02-06_19-53-37_bc3cc76_Add node-addon-api and node-gy.md
+D	inbox/commits/2026-02-06_19-53-39_2deed43_Convert security test to TypeS.md
+D	inbox/commits/2026-02-06_19-54-38_514d634_Add validation to escapeIdenti.md
+D	inbox/commits/2026-02-06_19-55-45_57c103e_Fix PR review comments QueryB.md
+D	inbox/commits/2026-02-06_19-57-08_0f3e749_Update enginesrcservicesque.md
+D	inbox/commits/2026-02-06_19-57-27_23f4d36_Fix context-inflator and remov.md
+D	inbox/commits/2026-02-06_19-57-29_81749db_Update enginesrcservicessea.md
+D	inbox/commits/2026-02-06_19-57-33_0230255_Convert TypeScript byte offset.md
+D	inbox/commits/2026-02-06_19-58-02_299b0fa_Update enginesrcservicesque.md
+D	inbox/commits/2026-02-06_19-58-22_bc81460_Fix SQL injection vulnerabilit.md
+D	inbox/commits/2026-02-06_19-58-24_e1edf78_Update enginesrcservicessea.md
+D	inbox/commits/2026-02-06_19-58-48_d768c2d_Update inline test to match Qu.md
+D	inbox/commits/2026-02-06_20-00-35_d2b443d_Fix test comment to accurately.md
+D	inbox/commits/2026-02-06_20-04-52_867d685_Initial plan.md
+D	inbox/commits/2026-02-06_20-31-18_6d642a8_Initial plan.md
+D	inbox/commits/2026-02-06_20-35-58_dfdc6e7_Fix code fence handling to use.md
+D	inbox/commits/2026-02-06_21-07-19_0704466_Update enginepackagejson.md
+D	inbox/commits/2026-02-06_21-07-27_e512146_Update enginesrcservicesque.md
+D	inbox/commits/2026-02-06_21-09-13_c7abeec_Use escapeIdentifier consist.md
+D	inbox/commits/2026-02-14_19-12-28_744e542_feat sync from anchor-os 2026.md
+D	inbox/commits/2026-02-16_11-07-20_1cbce95_Sync from anchor-os monorepo.md
+D	inbox/commits/2026-02-16_11-09-49_1503a21_Docs Refactor README to focus.md
+D	inbox/commits/2026-02-16_11-19-36_dd14370_License Update to AGPLv3 Dua.md
+D	inbox/commits/2026-02-16_17-10-12_2c9211a_Sync from anchor-os Geometric.md
+D	inbox/commits/2026-02-16_17-23-21_495ddc8_Sync from anchor-os Search Fi.md
+D	inbox/commits/2026-02-16_17-34-46_a91cc26_Sync Consolidated tests  pru.md
+D	inbox/commits/2026-02-17_23-05-39_ef6acb5_Sync updates from anchor-ospa.md
+D	interface/index.html
+A	mirrored_brain/@external-inbox/Augment_LLMs_with_RAGs_or_Fine-Tuning___Microsoft__27e629ad.md
+A	mirrored_brain/@external-inbox/Best_RAG_Tools__Frameworks__and_Libraries_in_2026_0a66f9d6.md
+A	mirrored_brain/@external-inbox/GitHub_-_drposter_nanobot______nanobot__The_Ultra-_557e5969.md
+A	mirrored_brain/@external-inbox/How_Does_LLM_Memory_Work__Building_Context-Aware_A_4852ac49.md
+A	mirrored_brain/@external-inbox/OmegaUse__Building_a_General-Purpose_GUI_Agent_for_e3bed186.md
+A	mirrored_brain/@external-inbox/Retrieval-augmented_generation_-_Wikipedia_b2505018.md
+A	mirrored_brain/@external-inbox/The_Emerging_Problem_of__AI_Psychosis____Psycholog_cb916220.md
+A	mirrored_brain/@external-inbox/What_is_RAG__-_Retrieval-Augmented_Generation_AI_E_9fa4e605.md
+A	mirrored_brain/@external-inbox/What_is_Retrieval-Augmented_Generation__RAG____-_G_f9af4aa8.md
+A	mirrored_brain/@external-inbox/arXiv_API_User_s_Manual_-_arXiv_info___arXiv_e-pri_0510db59.md
+A	mirrored_brain/@inbox/anchor-os/debug_star.ts
+A	mirrored_brain/@inbox/anchor-os/package.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/anchor.bat
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/electron-builder.yml
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/package.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/config/index.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/config/max-recall-config.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/config/paths.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/core/batch.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/core/db.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/core/inference/ChatWorker.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/core/inference/context_manager.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/core/inference/llamaLoaderWorker.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/core/vector.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/index.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/server-8080.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/backup/backup.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/health-check-enhanced.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/inference/inference-service.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/inference/inference.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/ingest/atomizer-service.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/ingest/ingest-atomic.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/ingest/ingest.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/ingest/watchdog.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/llm/context.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/llm/provider.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/llm/reader.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/mirror/mirror.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/nlp/nlp-service.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/nlp/query-parser.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/query-builder/DataFrame.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/query-builder/QueryBuilder.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/query-builder/utils/export.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/research/researcher.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/scribe/scribe.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/bright-nodes.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/context-inflator.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/distributed-query.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/graph-context-serializer.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/physics-tag-walker.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/query-parser.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/search-utils.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/search.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/search/sovereign-system-prompt.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/semantic/semantic-ingestion-service.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/semantic/semantic-molecule-processor.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/semantic/semantic-search.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/semantic/semantic-tag-deriver.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/semantic/types/semantic.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/synonyms/auto-synonym-generator.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/tags/discovery.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/tags/gliner.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/tags/infector.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/tags/tag-auditor.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/taxonomy/taxonomy-manager.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/services/vision/vision_service.js
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types.d.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/api.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/atomic.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/context-protocol.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/context.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/cozo-node.d.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/index.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/node-llama-cpp.d.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/rbalchii-dse.d.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/rbalchii-native-fingerprint.d.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/rbalchii-native-keyassassin.d.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/taxonomy.simple.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/taxonomy.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/tool-call.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/src/types/trace.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/tsconfig.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/engine/user_settings.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/package.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/pnpm-workspace.yaml
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/shared/package.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/tests/integration_db/pg_hba.conf
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/tests/integration_db/pg_ident.conf
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/tests/integration_db/postgresql.auto.conf
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/tests/integration_db/postgresql.conf
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-engine/user_settings.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/eslint.config.js
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/package.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/postcss.config.js
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/App.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/Agent/ContextGraph.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/Agent/SourceViewer.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/Agent/Terminal.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/Agent/ThoughtLog.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/Chat/ChatHub.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/Chat/ChatInterface.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/Chat/ModelSelector.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/Chat/TelegramView.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/PerformanceMonitor.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/features/PathManager.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/features/QuarantinePage.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/features/ResearchModal.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/features/SearchColumn-original.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/features/SearchColumn.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/monitoring/MonitoringDashboard.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/taxonomy/DiscoveryPanel.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/taxonomy/PresetManager.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/taxonomy/RuleCard.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/ui/Badge.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/ui/Button.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/ui/GlassPanel.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/components/ui/Input.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/contexts/ThreeColumnContext.tsx
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/services/api.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/services/chat.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/services/model-verifier.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/services/monitoring-api.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/services/tools.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/src/services/web-llm.ts
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/tailwind.config.js
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/tsconfig.app.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/tsconfig.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/tsconfig.node.json
+A	mirrored_brain/@inbox/anchor-os/packages/anchor-ui/vite.config.ts
+A	mirrored_brain/@inbox/anchor-os/packages/launcher/package.json
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/bridge/package.json
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/bridge/src/types.d.ts
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/bridge/tsconfig.json
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/core/brain.js
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/core/inference-worker.js
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/core/tools.js
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/middleware/auth.js
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/middleware/validate.js
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/package.json
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/server.js
+A	mirrored_brain/@inbox/anchor-os/packages/nanobot-node/utils/logger.js
+A	mirrored_brain/@inbox/anchor-os/pnpm-workspace.yaml
+A	mirrored_brain/@inbox/anchor-os/reproduce_sanitizer.js
+A	mirrored_brain/@inbox/anchor-os/reproduce_sanitizer.ts
+A	mirrored_brain/@inbox/anchor-os/set-env-vars.js
+A	mirrored_brain/@inbox/anchor-os/user_settings.json
+A	mirrored_brain/@inbox/archived-github-repos.yaml
+A	mirrored_brain/@inbox/commits_normalized.yaml
+A	mirrored_brain/@inbox/dasher_customer_support_details.csv
+A	mirrored_brain/@inbox/dasher_delivery_information.csv
+A	mirrored_brain/@inbox/dasher_information.csv
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/ARK.yaml
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/Coda-Dev-D-001.poml
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/J-001.poml
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/L-001.poml
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/P-001.poml
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/S-001.poml
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/growth.yaml
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/new-deepseek.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/persona-Coda-C-001.poml
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/resume_updates.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/appearance.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/containment-flow.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/context-loss.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/core-events.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/distiller.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/ethos.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/life-history.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/memories.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/sense-of-self/thinking-processes.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/stories/A-Special-Session.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/stories/Morning-Surrender.md
+A	mirrored_brain/@inbox/history/important-context/Coda C-001/update-C-001.poml
+A	mirrored_brain/@inbox/history/important-context/manuals/cozodb.txt
+A	mirrored_brain/@inbox/history/important-context/research-papers/dao-extension-algorithm.md
+A	mirrored_brain/@inbox/history/important-context/research-papers/get-work-seen.md
+A	mirrored_brain/@inbox/history/important-context/research-papers/the-contextual-intelligence-hypothesis.md
+A	mirrored_brain/@inbox/history/important-context/sessions/Clippings/Google AI Studio session January 3-9th 2026.md
+A	mirrored_brain/@inbox/history/important-context/sessions/Clippings/Google AI Studio session January 9-12th 2026.md
+A	mirrored_brain/@inbox/history/important-context/sessions/categories.md
+A	mirrored_brain/@inbox/history/important-context/sessions/high_coherency_context.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/pauline_explicit.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/persona-logs.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/project-chimaera-multi-model.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-01-01_to_2026-02-06.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-01-01_to_2026-02-18.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-01-01_to_2026-02-19.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-01-16_to_2026-02-19.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-01_to_2025-07-30.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-01_to_2025-08-01.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-01_to_2025-12-13.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-02_to_2025-07-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-02_to_2025-08-20.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-02_to_2025-08-26.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-03_to_2025-07-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-03_to_2025-07-06.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-03_to_2025-08-28.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-03_to_2025-08-29.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-06_to_2025-07-10.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-06_to_2025-07-11.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-11_to_2025-07-30.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-16_to_2025-07-30.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-16_to_2025-09-01.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-16_to_2025-09-01.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-16_to_2025-09-23.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-17_to_2025-07-30.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-18_to_2025-07-30.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-25_to_2026-01-20.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-07-31_to_2025-07-31.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-01_to_2025-08-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-02_to_2025-08-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-03_to_2025-08-04.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-04_to_2025-08-05.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-05_to_2025-08-05.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-05_to_2025-08-07.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-06_to_2025-08-07.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-06_to_2025-08-13.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-07_to_2025-08-08.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-08_to_2025-08-08.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-09_to_2025-08-09.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-10_to_2025-08-11.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-10_to_2025-08-14.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-11_to_2025-08-12.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-12_to_2025-08-13.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-12_to_2025-09-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-12_to_2025-09-04.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-12_to_2025-09-05.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-13_to_2025-08-13.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-13_to_2025-08-14.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-13_to_2025-08-16.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-13_to_2025-09-06.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-14_to_2025-08-16.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-15_to_2025-08-17.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-15_to_2025-08-18.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-17_to_2025-08-18.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-17_to_2025-08-20.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-18_to_2025-08-19.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-18_to_2025-09-14.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-19_to_2025-08-20.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-19_to_2025-08-21.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-20_to_2026-01-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-21_to_2025-08-23.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-21_to_2025-09-05.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-22_to_2025-08-24.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-24_to_2025-08-26.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-24_to_2025-09-04.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-24_to_2025-09-05.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-25_to_2025-08-27.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-26_to_2025-09-04.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-28_to_2025-08-29.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-28_to_2025-08-31.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-29_to_2025-08-29.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-08-29_to_2025-08-30.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-03_to_2025-09-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-03_to_2025-09-04.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-03_to_2025-09-07.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-04_to_2025-09-04.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-04_to_2025-09-05.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-05_to_2025-09-05.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-05_to_2025-09-09.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-05_to_2025-10-05.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-05_to_2025-11-02.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-06_to_2025-09-06.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-06_to_2025-09-07.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-07_to_2025-09-07.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-08_to_2025-09-09.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-09_to_2025-09-10.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-23_to_2025-09-23.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-24_to_2025-09-24.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-24_to_2026-01-12.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-09-24_to_2026-01-14.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-10-05_to_2025-11-23.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-10-06_to_2025-10-06.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-10-09_to_2025-12-06.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-10-14_to_2025-11-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-10-15_to_2025-11-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-11-04_to_2025-11-19.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-11-23_to_2025-11-24.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-11-24_to_2025-11-24.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-12-06_to_2025-12-06.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-12-14_to_2025-12-14.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-12-18_to_2025-12-25.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-12-20.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-12-25_to_2025-12-25.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2025-12-26_to_2025-12-26.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-01-03_to_2026-01-03.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-01-05_to_2026-01-09.json
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-01-15_to_2026-01-15.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-01-25_to_2026-01-25.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-01-28_to_2026-01-28.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-01-29_to_2026-01-29.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-02-06_to_2026-02-06.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-02-15_to_2026-02-15.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/2026-09-02_to_2026-18-02.yaml
+A	mirrored_brain/@inbox/history/important-context/sessions/raws/commits.txt
+A	mirrored_brain/@inbox/history/important-context/sessions/scripts/README.md
+A	mirrored_brain/@inbox/history/important-context/sessions/scripts/extract-chats-gemini.js
+A	mirrored_brain/@inbox/history/important-context/sessions/scripts/normalize_extract_logs.js
+A	mirrored_brain/@inbox/history/important-context/sessions/urls.md
+A	mirrored_brain/@inbox/history/important-context/sessions/user-bio.md
+A	mirrored_brain/@inbox/history/patent-docs/ECE-update-9-3-25.md
+A	mirrored_brain/@inbox/history/patent-docs/N8N-context-plan.md
+A	mirrored_brain/@inbox/history/patent-docs/Plan.md
+A	mirrored_brain/@inbox/history/patent-docs/architecture-overview.md
+A	mirrored_brain/@inbox/history/patent-docs/architecture-schemas/graph_R1_data_schema.md
+A	mirrored_brain/@inbox/history/patent-docs/architecture-schemas/injector_error_handling_protocol.md
+A	mirrored_brain/@inbox/history/patent-docs/architecture-schemas/patent-pending.md
+A	mirrored_brain/@inbox/history/patent-docs/architecture-schemas/path_to_completion.md
+A	mirrored_brain/@inbox/history/patent-docs/architecture-schemas/path_to_patent.md
+A	mirrored_brain/@inbox/history/patent-docs/design-pattern.md
+A	mirrored_brain/@inbox/history/patent-docs/diagram-architectural-brief.md
+A	mirrored_brain/@inbox/history/patent-docs/forTheLawyer.md
+A	mirrored_brain/@inbox/history/patent-docs/graph LR.mmd
+A	mirrored_brain/@inbox/history/patent-docs/graphr1-training.md
+A	mirrored_brain/@inbox/history/patent-docs/llama3.md
+A	mirrored_brain/@inbox/history/patent-docs/oppnent-engine/sym-opp-engine.md
+A	mirrored_brain/@inbox/history/patent-docs/overflow/flowchart LR.mmd
+A	mirrored_brain/@inbox/history/patent-docs/overflow/flowchart TB.mmd
+A	mirrored_brain/@inbox/history/patent-docs/pie.mmd
+A	mirrored_brain/@inbox/history/patent-docs/product-list/partner.md
+A	mirrored_brain/@inbox/history/patent-docs/symbiotic-charter.md
+A	mirrored_brain/@inbox/history/read_all.js
+A	mirrored_brain/@inbox/history/rob-specific/Diagnosis ASD_ADHD - Jun 25, 2022.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/AI-Architect-Execution-Plan.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/DMA-Proposal-Initial.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Email-History-RHowell.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Email-History-Santiago-Delgado.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Job-Context.json
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Job-Context.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Job-Summary.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Proposal-Santa-Rosa.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/SDG.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Sandia-Labs-Action-Plan.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Sybil-History.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/Warp-Ready-AI-Arch-Plan.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/history-summary.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/output.json
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/skills.md
+A	mirrored_brain/@inbox/history/rob-specific/Job-Context/user.json
+A	mirrored_brain/@inbox/history/rob-specific/Robert-Balch-II-Resume.md
+A	mirrored_brain/@inbox/history/rob-specific/convert_md_to_docx.py
+A	mirrored_brain/@inbox/history/rob-specific/jade-context.md
+A	packages/anchor-ui/eslint.config.js
+A	packages/anchor-ui/index.html
+A	packages/anchor-ui/package.json
+A	packages/anchor-ui/postcss.config.js
+A	packages/anchor-ui/src/App.css
+A	packages/anchor-ui/src/App.tsx
+A	packages/anchor-ui/src/components/Agent/ContextGraph.tsx
+A	packages/anchor-ui/src/components/Agent/SourceViewer.tsx
+A	packages/anchor-ui/src/components/Agent/Terminal.tsx
+A	packages/anchor-ui/src/components/Agent/ThoughtLog.tsx
+A	packages/anchor-ui/src/components/Chat/AgentInterface.tsx
+A	packages/anchor-ui/src/components/Chat/ChatHub.tsx
+A	packages/anchor-ui/src/components/Chat/ChatInterface.tsx
+A	packages/anchor-ui/src/components/Chat/ModelSelector.tsx
+A	packages/anchor-ui/src/components/Chat/SessionSidebar.tsx
+A	packages/anchor-ui/src/components/Chat/TelegramView.tsx
+A	packages/anchor-ui/src/components/PerformanceMonitor.tsx
+A	packages/anchor-ui/src/components/features/PathManager.tsx
+A	packages/anchor-ui/src/components/features/QuarantinePage.tsx
+A	packages/anchor-ui/src/components/features/ResearchModal.tsx
+A	packages/anchor-ui/src/components/features/SearchColumn-original.tsx
+A	packages/anchor-ui/src/components/features/SearchColumn.tsx
+A	packages/anchor-ui/src/components/monitoring/MonitoringDashboard.tsx
+A	packages/anchor-ui/src/components/taxonomy/DiscoveryPanel.tsx
+A	packages/anchor-ui/src/components/taxonomy/PresetManager.tsx
+A	packages/anchor-ui/src/components/taxonomy/RuleCard.tsx
+A	packages/anchor-ui/src/components/ui/Badge.tsx
+A	packages/anchor-ui/src/components/ui/Button.tsx
+A	packages/anchor-ui/src/components/ui/GlassPanel.tsx
+A	packages/anchor-ui/src/components/ui/Input.tsx
+A	packages/anchor-ui/src/config/web-llm-models.ts
+A	packages/anchor-ui/src/contexts/ThreeColumnContext.tsx
+A	packages/anchor-ui/src/services/api.ts
+A	packages/anchor-ui/src/services/chat.ts
+A	packages/anchor-ui/src/services/model-verifier.ts
+A	packages/anchor-ui/src/services/monitoring-api.ts
+A	packages/anchor-ui/src/services/nanobot.ts
+A	packages/anchor-ui/src/services/tools.ts
+A	packages/anchor-ui/src/services/web-llm.ts
+A	packages/anchor-ui/src/types/chat.ts
+A	packages/anchor-ui/src/types/taxonomy.ts
+A	packages/anchor-ui/tailwind.config.js
+A	packages/anchor-ui/tsconfig.app.json
+A	packages/anchor-ui/tsconfig.json
+A	packages/anchor-ui/tsconfig.node.json
+A	packages/anchor-ui/vite.config.ts
+R100	desktop-overlay/package.json	packages/desktop-overlay/package.json
+R100	desktop-overlay/src/main.ts	packages/desktop-overlay/src/main.ts
+R100	desktop-overlay/src/preload.ts	packages/desktop-overlay/src/preload.ts
+R100	desktop-overlay/tsconfig.json	packages/desktop-overlay/tsconfig.json
+A	packages/shared/package.json
+R100	shared/types/index.ts	packages/shared/types/index.ts
+A	pnpm-lock.yaml
+D	read_all.js
+A	shared/README.md
+M	shared/package.json
+D	test_log_inflation.txt
+D	test_log_inflation_4.txt
+D	test_log_inflation_5.txt
+
+commit df3897e02181da48282cd8f33c30fdc30e22a0f0
+Author: RSBalchII <128771311+RSBalchII@users.noreply.github.com>
+Date:   Sat Feb 21 15:22:42 2026 -0700
+
+    Finalize whitepaper by removing review notes
+    
+    Removed notes for final review and summarized changes made to the document.
+    
+    Signed-off-by: RSBalchII <128771311+RSBalchII@users.noreply.github.com>
+
+M	docs/whitepaper.md
+
+commit bf5578c22b89ad3ecb6c905b8e6b67418c4836b4
+Author: RSBalchII <128771311+RSBalchII@users.noreply.github.com>
+Date:   Sat Feb 21 14:35:57 2026 -0700
+
+    Fix punctuation and enhance clarity in README
+    
+    Corrected punctuation and improved clarity in the README.
+    
+    Signed-off-by: RSBalchII <128771311+RSBalchII@users.noreply.github.com>
+
+M	README.md
+
+commit 234fbc2f169e280b44c0d84352b28d3c24c7ef36
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Sat Feb 21 14:32:42 2026 -0700
+
+    Production v4.0 - Monday Release Prep
+
+M	.gitignore
+M	CHANGELOG.md
+M	README.md
+M	docs/whitepaper.md
+M	engine/package.json
+M	engine/public/index.html
+M	engine/src/config/paths.ts
+M	engine/src/core/db.ts
+M	engine/src/index.ts
+M	engine/src/routes/api.ts
+M	engine/src/services/ingest/atomizer-service.ts
+A	engine/src/services/ingest/github-ingest-service.ts
+M	engine/src/services/research/researcher.ts
+M	engine/src/services/search/graph-context-serializer.ts
+M	engine/src/services/search/search.ts
+M	engine/src/services/tags/discovery.ts
+M	engine/src/services/tags/infector.ts
+M	inbox/Personal/Chat-Sessions.yaml
+A	scripts/build-universal.bat
+A	scripts/build-universal.sh
+A	scripts/read_all.js
+R100	specs/TROUBLESHOOTING.md	specs/archive-legacy/TROUBLESHOOTING.md
+R100	specs/architecture-diagrams.md	specs/archive-legacy/architecture-diagrams.md
+R100	specs/atomizer_native.md	specs/archive-legacy/atomizer_native.md
+R100	specs/context_assembly_findings.md	specs/archive-legacy/context_assembly_findings.md
+R100	specs/doc_policy.md	specs/archive-legacy/doc_policy.md
+R100	specs/findings_2026_01_19_cozodb_parser_instability.md	specs/archive-legacy/findings_2026_01_19_cozodb_parser_instability.md
+R100	specs/llama_servers.md	specs/archive-legacy/llama_servers.md
+R100	specs/search_patterns.md	specs/archive-legacy/search_patterns.md
+R100	specs/troubleshooting_cozo_windows.md	specs/archive-legacy/troubleshooting_cozo_windows.md
+R100	specs/troubleshooting_typescript_esmodules.md	specs/archive-legacy/troubleshooting_typescript_esmodules.md
+R100	specs/vscode_integration.md	specs/archive-legacy/vscode_integration.md
+M	specs/plan.md
+M	specs/spec.md
+D	specs/standards/00-CORE/002-cache-api-security-policy.md
+D	specs/standards/00-CORE/012-context-utility-manifest.md
+D	specs/standards/00-CORE/027-no-resurrection-mode.md
+D	specs/standards/00-CORE/028-default-no-resurrection-mode.md
+D	specs/standards/00-CORE/074-native-module-acceleration.md
+D	specs/standards/00-CORE/075-macos-native-build-configuration.md
+D	specs/standards/001-windows-console-encoding.md
+D	specs/standards/002-cache-api-security-policy.md
+D	specs/standards/003-webgpu-initialization-stability.md
+D	specs/standards/004-wasm-memory-management.md
+D	specs/standards/005-model-loading-configuration.md
+D	specs/standards/006-model-url-construction.md
+D	specs/standards/007-model-loading-transition.md
+D	specs/standards/008-model-loading-online-only.md
+D	specs/standards/009-model-loading-configuration.md
+D	specs/standards/012-context-utility-manifest.md
+D	specs/standards/014-async-await-best-practices.md
+D	specs/standards/017-file-ingestion-debounce-hash-checking.md
+D	specs/standards/019-code-file-ingestion-comprehensive-context.md
+D	specs/standards/021-chat-session-persistence-context-continuity.md
+D	specs/standards/022-text-file-source-of-truth-cross-machine-sync.md
+D	specs/standards/024-context-ingestion-pipeline-fix.md
+D	specs/standards/027-no-resurrection-mode.md
+D	specs/standards/028-default-no-resurrection-mode.md
+D	specs/standards/029-consolidated-data-aggregation.md
+D	specs/standards/030-multi-format-output.md
+D	specs/standards/032-ghost-engine-initialization-flow.md
+D	specs/standards/051-service-module-path-resolution.md
+D	specs/standards/053-cozodb-pain-points-reference.md
+D	specs/standards/058-universal-rag-api.md
+D	specs/standards/060-worker-system.md
+D	specs/standards/061-context-logic.md
+D	specs/standards/062_inference_stability.md
+D	specs/standards/063-cozo-db-syntax.md
+D	specs/standards/064-cozodb-query-stability.md
+D	specs/standards/066-human-readable-mirror.md
+D	specs/standards/067-cozodb-query-sanitization.md
+D	specs/standards/068_tag_infection_protocol.md
+D	specs/standards/069_functional_flow.md
+D	specs/standards/070-local-discovery.md
+D	specs/standards/072_epochal_historian.md
+D	specs/standards/073-cozodb-integration.md
+D	specs/standards/073-data-hygiene-protocol.md
+D	specs/standards/074-atomic-frontend-architecture.md
+D	specs/standards/074-native-module-acceleration.md
+D	specs/standards/075-build-system.md
+D	specs/standards/076-typescript-es-module-compatibility.md
+D	specs/standards/077-unified-visual-engine.md
+D	specs/standards/078-process-isolation-diagnostics.md
+D	specs/standards/079-three-column-ui-architecture.md
+D	specs/standards/080-application-health-lifecycle.md
+D	specs/standards/081-atomic-taxonomy.md
+D	specs/standards/082-universal-topology.md
+D	specs/standards/083-resilient-database.md
+D	specs/standards/084-semantic-shift-architecture.md
+D	specs/standards/084-stateless-contextual-chat.md
+D	specs/standards/085-context-inflation.md
+D	specs/standards/086-tag-walker-calibration.md
+D	specs/standards/086-tag-walker-search-calibration.md
+D	specs/standards/087-relationship-narrative-discovery.md
+D	specs/standards/087-relationship-narrative.md
+D	specs/standards/10-ARCH/003-webgpu-initialization-stability.md
+D	specs/standards/10-ARCH/004-wasm-memory-management.md
+D	specs/standards/10-ARCH/005-model-loading-configuration.md
+D	specs/standards/10-ARCH/006-model-url-construction-fix.md
+D	specs/standards/10-ARCH/007-model-loading-transition-standard.md
+D	specs/standards/10-ARCH/008-model-loading-online-only-approach.md
+D	specs/standards/10-ARCH/009-model-loading-configuration-bridge-vs-direct.md
+D	specs/standards/10-ARCH/014-async-best-practices.md
+D	specs/standards/10-ARCH/014-gpu-resource-availability.md
+D	specs/standards/10-ARCH/023-anchor-lite-simplification.md
+D	specs/standards/10-ARCH/031-ghost-engine-stability-fix.md
+D	specs/standards/10-ARCH/032-ghost-engine-initialization-flow.md
+D	specs/standards/10-ARCH/034-nodejs-monolith-migration.md
+D	specs/standards/10-ARCH/051-service-module-path-resolution.md
+A	specs/standards/115-github-repository-ingestion.md
+D	specs/standards/20-DATA/017-file-ingestion-debounce-hash-checking.md
+D	specs/standards/20-DATA/019-code-file-ingestion-comprehensive-context.md
+D	specs/standards/20-DATA/021-chat-session-persistence-context-continuity.md
+D	specs/standards/20-DATA/022-text-file-source-of-truth-cross-machine-sync.md
+D	specs/standards/20-DATA/024-context-ingestion-pipeline-fix.md
+D	specs/standards/20-DATA/029-consolidated-data-aggregation.md
+D	specs/standards/20-DATA/030-multi-format-output.md
+D	specs/standards/20-DATA/033-cozodb-syntax-compliance.md
+D	specs/standards/20-DATA/037-database-hydration-snapshot-portability.md
+D	specs/standards/30-OPS/001-windows-console-encoding.md
+D	specs/standards/30-OPS/011-comprehensive-testing-verification.md
+D	specs/standards/30-OPS/013-universal-log-collection.md
+D	specs/standards/30-OPS/016-process-management-auto-resurrection.md
+D	specs/standards/30-OPS/020-browser-profile-management-cleanup.md
+D	specs/standards/30-OPS/024-detached-logging-standard.md
+D	specs/standards/30-OPS/025-script-logging-protocol.md
+D	specs/standards/30-OPS/035-never-attached-mode.md
+D	specs/standards/30-OPS/036-log-file-management-protocol.md
+M	specs/standards/README.md
+M	specs/tasks.md
+
+commit 35f3fae877eab51b6a40f058ce42f503424b628c
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 15:30:01 2026 -0700
+
+    docs: add search fidelity fixes implementation summary
+
+A	SEARCH_FIDELITY_FIXES.md
+
+commit 228d7fcff38315f57a0ba231ce7106ff5c77d81b
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 15:08:08 2026 -0700
+
+    fix: disable nanobot proxy routes
+
+M	engine/src/routes/api.ts
+
+commit ed9ec1a7eef6a69f651a465f845b92a07379eb38
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 14:53:28 2026 -0700
+
+    fix: search fidelity improvements
+
+M	engine/src/core/inference/context_manager.ts
+M	engine/src/routes/api.ts
+M	engine/src/services/ingest/watchdog.ts
+M	engine/src/services/search/graph-context-serializer.ts
+M	engine/src/services/search/physics-tag-walker.ts
+M	engine/src/services/search/search.ts
+
+commit 5f2b0c7fae11edcf24c986a9aa6065a315297452
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 13:48:09 2026 -0700
+
+    feat: add max-recall strategy and anchor_stats endpoint
+
+M	engine/src/routes/api.ts
+
+commit e8d56fd4a42a521f3493a39785bd3b45262eab6d
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 13:41:35 2026 -0700
+
+    fix: simplify synonym generation to avoid SQL complexity
+
+M	engine/src/services/synonyms/auto-synonym-generator.ts
+
+commit d67a6778344fcce21ef0a35c465ae04b552c9e58
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 13:27:26 2026 -0700
+
+    fix: serve UI at /static route correctly
+
+M	engine/src/index.ts
+
+commit 6dd3e1845f0b1eec99dc6a8502100f3fcf25d669
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 13:21:32 2026 -0700
+
+    perf: optimize synonym co-occurrence query with batching
+
+M	engine/src/services/synonyms/auto-synonym-generator.ts
+
+commit 290d8eedbdd71d9f8ab1b9c33e930f3f984b817f
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 13:11:28 2026 -0700
+
+    fix: run synonym generation in background with 5min timeout
+
+M	engine/src/index.ts
+A	engine/src/services/search/context-manager.ts
+M	engine/src/services/synonyms/auto-synonym-generator.ts
+
+commit 1ac43fe1ef54bb7d6176e5ff3b4effe59abfea53
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 12:36:04 2026 -0700
+
+    docs: update whitepaper with production performance benchmarks
+
+M	docs/whitepaper.md
+
+commit 7a887d567867b5949e8a309ea748641d46ef81dc
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 11:12:25 2026 -0700
+
+    fix: PROJECT_ROOT now correctly resolves to project root (3 levels up from engine/src/config)
+
+M	engine/src/config/paths.ts
+
+commit edac5f2e5eef70425af4e16fb1eb8397cc4b1b67
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 10:58:47 2026 -0700
+
+    fix: serve anchor-ui from anchor-os/packages/anchor-ui/dist instead of nanobot UI
+
+M	engine/src/index.ts
+
+commit fe9a85719a0968a49e247fb5cdb33cd14cb01539
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 10:51:25 2026 -0700
+
+    fix: watchdog now watches project root inbox/ and external-inbox/ instead of notebook/
+
+M	engine/src/config/paths.ts
+
+commit 09250b42f69459fae0ec9c1e7f2dbbdbc501e679
+Author: RSBalchII <robertbalchii@gmail.com>
+Date:   Fri Feb 20 10:46:05 2026 -0700
+
+    docs: add git backup verification - all 465 commits preserved as prior art
+
+A	docs/GIT_BACKUP_VERIFICATION.md

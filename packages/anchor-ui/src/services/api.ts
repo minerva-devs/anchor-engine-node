@@ -33,6 +33,16 @@ const getBaseUrl = () => {
 };
 
 export const api = {
+    // Generic HTTP methods
+    get: (endpoint: string) => fetch(`${getBaseUrl()}${endpoint}`).then(r => r.json()),
+    post: (endpoint: string, data?: any) =>
+        fetch(`${getBaseUrl()}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: data ? JSON.stringify(data) : undefined
+        }).then(r => r.json()),
+
+    // Specific API methods
     getBuckets: () => fetch(`${getBaseUrl()}/v1/buckets`).then(r => r.json()),
     getTags: (buckets?: string[]) => {
         const query = buckets && buckets.length > 0 ? `?buckets=${buckets.join(',')}` : '';
@@ -104,6 +114,12 @@ export const api = {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path })
+    }).then(r => r.json()),
+
+    ingestGithubRepo: (url: string, bucket: string) => fetch(`${getBaseUrl()}/v1/github/repos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, bucket })
     }).then(r => r.json())
 } as const;
 

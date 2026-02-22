@@ -2,14 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { getAvailableModels } from '../../config/web-llm-models';
 import { verifyModel, getDeviceInfo } from '../../services/model-verifier';
+import { Button } from '../ui/Button';
 
 interface ModelInfo {
   id: string;
   name: string;
   size?: number;
   path?: string;
-  vram_required_MB?: number;
-  low_resource_required?: boolean;
 }
 
 interface ModelSelectorProps {
@@ -34,19 +33,17 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, cur
       try {
         if (!isRemote) {
           // --- LOCAL: WebLLM Models ---
-          const webModels = getAvailableModels().map(m => ({
-            id: m.model_id,
-            name: m.model_id,
-            path: m.model_id,
-            vram_required_MB: m.vram_required_MB,
-            low_resource_required: m.low_resource_required
+          const webModels: ModelInfo[] = getAvailableModels().map(m => ({
+            id: m.id,
+            name: m.name,
+            path: m.id
           }));
           setModels(webModels);
-          
+
           // Get device info for VRAM warnings
           const info = await getDeviceInfo();
           setDeviceInfo(info);
-          
+
           // If current model is not in the new list, select the first one
           if (webModels.length > 0 && !webModels.some(m => m.id === currentModel)) {
             onModelChange(webModels[0].id);
@@ -89,12 +86,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, cur
 
   const handleVerify = async (e: React.MouseEvent) => {
     e.preventDefault();
-    const model = getAvailableModels().find(m => m.model_id === currentModel);
+    const model = getAvailableModels().find(m => m.id === currentModel);
     if (!model) return;
 
     setVerifying(currentModel);
     setVerificationResult(null);
-    
+
     try {
       const result = await verifyModel(model);
       setVerificationResult(result);
@@ -141,28 +138,30 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, cur
         >
           {models.map((model) => (
             <option key={model.id} value={model.id}>
-              {model.name} {model.vram_required_MB && `(${Math.round(model.vram_required_MB / 1024)}GB VRAM)`}
+              {model.name}
             </option>
           ))}
         </select>
         {!isRemote && (
-          <button
+          <Button
+            variant="ghost"
             onClick={handleVerify}
             disabled={verifying !== null}
             className="px-3 py-2 bg-cyan-600/20 border border-cyan-500/30 rounded-md text-xs font-mono text-cyan-100 hover:bg-cyan-600/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            style={{ color: '#cffafe', border: '1px solid rgba(6, 182, 212, 0.3)' }}
           >
             {verifying === currentModel ? 'Checking...' : 'Verify'}
-          </button>
+          </Button>
         )}
       </div>
-      
+
       {/* Device Info */}
       {deviceInfo && !isRemote && (
         <div className="text-xs font-mono text-gray-400">
           GPU: {deviceInfo.gpu_name} • VRAM: ~{Math.round(deviceInfo.vram_estimate_MB / 1024)}GB {deviceInfo.is_integrated ? '(Integrated)' : '(Dedicated)'}
         </div>
       )}
-      
+
       {/* Verification Result */}
       {verificationResult && (
         <div className={`p-2 rounded-md text-xs font-mono ${verificationResult.compatible ? 'bg-green-900/20 border border-green-500/30' : 'bg-red-900/20 border border-red-500/30'}`}>
@@ -182,7 +181,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ onModelChange, cur
           </div>
         </div>
       )}
-      
+
       {error && (
         <div className="mt-1 text-xs text-red-500 font-mono">
           {error}

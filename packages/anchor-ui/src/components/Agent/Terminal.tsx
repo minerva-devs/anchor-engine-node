@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useThreeColumnContext } from '../../contexts/ThreeColumnContext';
+import { Button } from '../ui/Button';
 
 export const Terminal: React.FC = () => {
   const { terminalHistory, addTerminalLine, clearTerminal } = useThreeColumnContext();
@@ -100,7 +101,7 @@ export const Terminal: React.FC = () => {
         </div>
         <div className="flex gap-1">
           <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`}
-               title={isLoading ? "Executing..." : "Ready"} />
+            title={isLoading ? "Executing..." : "Ready"} />
         </div>
       </div>
 
@@ -112,12 +113,11 @@ export const Terminal: React.FC = () => {
         {terminalHistory.map((line) => (
           <div
             key={line.id}
-            className={`whitespace-pre-wrap ${
-              line.type === 'input' ? 'text-white font-bold' :
-              line.type === 'error' ? 'text-red-400' :
-              line.type === 'info' ? 'text-cyan-400' :
-              'text-gray-300'
-            }`}
+            className={`whitespace-pre-wrap ${line.type === 'input' ? 'text-white font-bold' :
+                line.type === 'error' ? 'text-red-400' :
+                  line.type === 'info' ? 'text-cyan-400' :
+                    'text-gray-300'
+              }`}
           >
             {line.content}
           </div>
@@ -139,17 +139,18 @@ export const Terminal: React.FC = () => {
             className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 font-mono text-sm text-cyan-100 placeholder-gray-600"
             disabled={isLoading}
           />
-          <button
+          <Button
+            variant="ghost"
             type="submit"
             disabled={isLoading || !inputValue.trim()}
-            className={`px-4 font-mono uppercase tracking-wider text-xs transition-all ${
-              !inputValue.trim() || isLoading
+            className={`px-4 font-mono uppercase tracking-wider text-xs transition-all ${!inputValue.trim() || isLoading
                 ? 'opacity-50 cursor-not-allowed'
-                : 'hover:shadow-[0_0_15px_rgba(6,182,212,0.3)] text-cyan-400'
-            }`}
+                : 'hover:shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+              }`}
+            style={{ color: '#22d3ee', border: 'none' }}
           >
             {isLoading ? 'RUNNING...' : 'EXEC'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

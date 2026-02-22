@@ -17,6 +17,7 @@ import { AtomizerService } from '../services/ingest/atomizer-service.js';
 import { AtomicIngestService } from '../services/ingest/ingest-atomic.js';
 import { getState, clearState } from '../services/scribe/scribe.js';
 import { createBackup, listBackups, restoreBackup } from '../services/backup/backup.js';
+import { restoreFromBackup, getLatestBackup, validateBackup } from '../services/backup/backup-restore.js';
 import { fetchAndProcess, searchWeb } from '../services/research/researcher.js';
 import { SearchRequest } from '../types/api.js';
 import { setupEnhancedRoutes } from './enhanced-api.js';
@@ -562,8 +563,23 @@ export function setupRoutes(app: Application) {
   // GET /v1/backups - List available backups
   app.get('/v1/backups', async (_req: Request, res: Response) => {
     try {
-      const result = await listBackups();
-      res.status(200).json(result);
+      const backups = await listBackups();
+      
+      // Get metadata for each backup
+      const backupsWithMeta = await Promise.all(
+        backups.map(async (filename: string) => {
+          const validation = await validateBackup(filename);
+          return {
+            filename,
+            valid: validation.valid,
+            error: validation.error || undefined,
+            size: (validation as any).size || 0,
+            sizeFormatted: (validation as any).sizeFormatted || 'Unknown'
+          };
+        })
+      );
+      
+      res.status(200).json(backupsWithMeta);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -577,10 +593,48 @@ export function setupRoutes(app: Application) {
         res.status(400).json({ error: "Filename required" });
         return;
       }
+      
+      // Validate first
+      const validation = await validateBackup(filename);
+      if (!validation.valid) {
+        res.status(400).json({ error: validation.error });
+        return;
+      }
+      
+      const startTime = Date.now();
       const result = await restoreBackup(filename);
-      res.status(200).json(result);
+      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+      const atomsPerSec = Math.round(result.memory_count / parseFloat(totalTime));
+      
+      res.status(200).json({
+        success: true,
+        message: 'Backup restore complete',
+        stats: result,
+        totalTime,
+        atomsPerSec
+      });
     } catch (e: any) {
-      console.error("Restore Failed", e);
+      console.error("Backup Restore Failed", e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /v1/backup/latest - Get the latest backup info
+  app.get('/v1/backup/latest', async (_req: Request, res: Response) => {
+    try {
+      const latest = await getLatestBackup();
+      if (!latest) {
+        res.status(404).json({ error: 'No backups found' });
+        return;
+      }
+      
+      const validation = await validateBackup(latest);
+      res.status(200).json({
+        filename: latest,
+        valid: validation.valid,
+        error: validation.error || undefined
+      });
+    } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });

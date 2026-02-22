@@ -3,32 +3,32 @@
 @tailwind utilities;
 
 :root {
-  /* Premium Dark Theme Palette */
-  --bg-primary: #0a0a0c;
-  --bg-secondary: #121214;
-  --bg-tertiary: #1c1c1f;
+  /* Premium Dark Theme Palette (Console Adjusted) */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-tertiary: #1e293b;
 
-  --accent-primary: #a855f7;
-  --accent-secondary: #7c3aed;
-  --accent-hover: #c084fc;
-  --accent-glow: rgba(168, 85, 247, 0.5);
+  --accent-primary: #38bdf8;
+  --accent-secondary: #0ea5e9;
+  --accent-hover: #7dd3fc;
+  --accent-glow: rgba(56, 189, 248, 0.5);
 
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  --text-dim: #52525b;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-dim: #94a3b8;
 
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-active: #3f3f46;
+  --border-subtle: #334155;
+  --border-active: #38bdf8;
 
-  --glass-bg: rgba(28, 28, 31, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-bg: #1e293b;
+  --glass-border: #334155;
+  --glass-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 
-  --font-sans: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --font-sans: system-ui, -apple-system, sans-serif;
   --radius-sm: 4px;
   --radius-md: 8px;
-  --radius-lg: 16px;
-  --radius-full: 9999px;
+  --radius-lg: 12px;
+  --radius-full: 16px;
 
   --transition-fast: 0.15s ease;
   --transition-normal: 0.3s ease;
@@ -52,11 +52,10 @@ body {
 /* Utilities */
 .glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   border-radius: var(--radius-lg);
+  padding: 20px;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -77,33 +76,35 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.6rem 1.2rem;
+  background: var(--accent-primary);
+  color: #000;
+  border: none;
+  padding: 12px;
   border-radius: var(--radius-md);
-  font-weight: 500;
+  font-weight: bold;
   cursor: pointer;
   transition: all var(--transition-fast);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--accent-hover), var(--accent-primary));
-  box-shadow: 0 0 20px var(--accent-glow);
-  transform: translateY(-2px);
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .input-glass {
-  background: rgba(0, 0, 0, 0.2);
+  background: #000000;
   border: 1px solid var(--border-subtle);
-  color: var(--text-primary);
-  padding: 0.8rem 1rem;
+  color: #ffffff;
+  padding: 12px;
   border-radius: var(--radius-md);
   outline: none;
   transition: border-color var(--transition-fast);
   width: 100%;
   font-size: 1rem;
+  box-sizing: border-box;
 }
 
 .input-glass:focus {
@@ -168,16 +169,40 @@ body {
 
 /* Components */
 .card-result {
-  background: rgba(255, 255, 255, 0.03);
+  background: #000000;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: 15px;
   transition: all var(--transition-fast);
+  color: #a5f3fc;
+  font-family: monospace;
 }
 
 .card-result:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--accent-glow);
+  border-color: var(--accent-active);
+}
+
+.bucket-chip {
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: #334155;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s;
+  display: inline-block;
+  text-align: center;
+}
+
+.bucket-chip.active {
+  background: var(--accent-primary);
+  color: #000;
+  font-weight: bold;
+}
+
+.bucket-chip:hover {
+  border-color: var(--accent-primary);
 }
 
 .badge {
@@ -197,7 +222,7 @@ body {
 }
 
 .badge-external {
-  background: rgba(255, 255, 255, 0.1);
+  background: #334155;
   color: var(--text-secondary);
 }
 

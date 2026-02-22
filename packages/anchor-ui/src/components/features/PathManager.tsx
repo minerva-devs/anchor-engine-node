@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import { GlassPanel } from '../ui/GlassPanel';
 import { Button } from '../ui/Button';
+import { navigate } from '../../utils/routing';
 
 export const PathManager = () => {
     const [paths, setPaths] = useState<string[]>([]);
@@ -66,7 +67,7 @@ export const PathManager = () => {
         <GlassPanel className="path-manager-container" style={{ margin: '1rem', padding: '1rem', height: 'calc(100% - 2rem)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h2 style={{ margin: 0 }}>Corpus Ingestion Paths</h2>
-                <Button onClick={() => window.location.hash = '#dashboard'} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
+                <Button onClick={() => navigate('/dashboard')} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
                     ⬅ Back to Dashboard
                 </Button>
             </div>

@@ -148,6 +148,13 @@ Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
 - ✅ 331 files rehydrated successfully
 - ✅ Zero data loss with ephemeral index
 
+### Phoenix Protocol (Feb 22, 2026)
+
+- ✅ **281,690 atoms** restored in 828.8s
+- ✅ **340 atoms/second** throughput
+- ✅ **Full filesystem rebuild** (inbox, external-inbox, mirrored_brain)
+- ✅ **1000-item batching** (10x faster than initial)
+
 ---
 
 ## 🛠️ Development

@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { monitoringApi } from '../../services/monitoring-api';
+import { Button } from '../ui/Button';
 
 interface SystemMetrics {
   timestamp: number;
@@ -244,10 +245,10 @@ const MonitoringDashboard: React.FC = () => {
                 </span>
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-500 h-2.5 rounded-full" 
-                  style={{ 
-                    width: `${(systemMetrics.system.diskSpace.used / systemMetrics.system.diskSpace.total) * 100}%` 
+                <div
+                  className="bg-blue-500 h-2.5 rounded-full"
+                  style={{
+                    width: `${(systemMetrics.system.diskSpace.used / systemMetrics.system.diskSpace.total) * 100}%`
                   }}
                 ></div>
               </div>
@@ -329,8 +330,8 @@ const MonitoringDashboard: React.FC = () => {
           <div className="glass-panel p-6 rounded-xl">
             <h4 className="text-md font-semibold mb-2 text-gray-200">Avg Duration</h4>
             <p className="text-3xl font-bold text-green-400">
-              {performanceMetrics.length > 0 
-                ? (performanceMetrics.reduce((sum, metric) => sum + metric.averageDuration, 0) / performanceMetrics.length).toFixed(2) 
+              {performanceMetrics.length > 0
+                ? (performanceMetrics.reduce((sum, metric) => sum + metric.averageDuration, 0) / performanceMetrics.length).toFixed(2)
                 : '0.00'} ms
             </p>
           </div>
@@ -379,7 +380,7 @@ const MonitoringDashboard: React.FC = () => {
           <div className="flex items-center space-x-4">
             <div className={`w-4 h-4 rounded-full ${systemMetrics.status === 'healthy' ? 'bg-green-500' : systemMetrics.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
             <span className="text-xl font-medium capitalize">
-              {systemMetrics.status} 
+              {systemMetrics.status}
               <span className="text-sm font-normal ml-2 text-gray-400">({new Date(systemMetrics.timestamp).toLocaleString()})</span>
             </span>
           </div>
@@ -389,7 +390,8 @@ const MonitoringDashboard: React.FC = () => {
           {/* Database Health */}
           <div className="glass-panel p-6 rounded-xl">
             <h4 className="text-md font-semibold mb-3 text-gray-200">Database Health</h4>
-            <button
+            <Button
+              variant="ghost"
               className="w-full p-4 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg border border-gray-700 transition-colors"
               onClick={async () => {
                 try {
@@ -404,13 +406,14 @@ const MonitoringDashboard: React.FC = () => {
                 <span>🔍</span>
                 <span>Check Database Health</span>
               </div>
-            </button>
+            </Button>
           </div>
 
           {/* Native Module Health */}
           <div className="glass-panel p-6 rounded-xl">
             <h4 className="text-md font-semibold mb-3 text-gray-200">Native Modules</h4>
-            <button 
+            <Button
+              variant="ghost"
               className="w-full p-4 bg-gray-800/50 hover:bg-gray-700/50 rounded-lg border border-gray-700 transition-colors"
               onClick={async () => {
                 try {
@@ -425,7 +428,7 @@ const MonitoringDashboard: React.FC = () => {
                 <span>⚙️</span>
                 <span>Check Native Modules</span>
               </div>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -465,18 +468,19 @@ const MonitoringDashboard: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-100">System Monitoring Dashboard</h2>
         <div className="flex space-x-3">
-          <button
+          <Button
+            variant="primary"
             onClick={handleRefresh}
             disabled={loading}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 rounded-lg transition-colors"
           >
             {loading ? 'Refreshing...' : 'Refresh'}
-          </button>
+          </Button>
           <select
             value={refreshInterval ? 5 : 0}
             onChange={(e) => {
               if (refreshInterval) clearInterval(refreshInterval);
-              
+
               if (parseInt(e.target.value) > 0) {
                 const newInterval = setInterval(fetchMetrics, parseInt(e.target.value) * 1000);
                 setRefreshInterval(newInterval);
@@ -495,25 +499,34 @@ const MonitoringDashboard: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-700 mb-6">
-        <button
+      <div className="flex border-b border-gray-700 mb-6 gap-2 pt-2 pb-2">
+        <Button
+          variant="ghost"
+          active={activeTab === 'system'}
           className={`px-4 py-2 font-medium ${activeTab === 'system' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
           onClick={() => setActiveTab('system')}
+          style={{ border: activeTab === 'system' ? '1px solid var(--border-subtle)' : 'none', borderBottom: 'none' }}
         >
           System Metrics
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          active={activeTab === 'performance'}
           className={`px-4 py-2 font-medium ${activeTab === 'performance' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
           onClick={() => setActiveTab('performance')}
+          style={{ border: activeTab === 'performance' ? '1px solid var(--border-subtle)' : 'none', borderBottom: 'none' }}
         >
           Performance
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
+          active={activeTab === 'health'}
           className={`px-4 py-2 font-medium ${activeTab === 'health' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
           onClick={() => setActiveTab('health')}
+          style={{ border: activeTab === 'health' ? '1px solid var(--border-subtle)' : 'none', borderBottom: 'none' }}
         >
           Health Checks
-        </button>
+        </Button>
       </div>
 
       {/* Content */}
@@ -525,12 +538,13 @@ const MonitoringDashboard: React.FC = () => {
         <div className="glass-panel p-6 rounded-xl text-center">
           <div className="text-red-400 mb-2">⚠️ Error</div>
           <div className="text-gray-300">{error}</div>
-          <button
+          <Button
+            variant="primary"
             onClick={handleRefresh}
             className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
           >
             Retry
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="flex-grow overflow-y-auto">
