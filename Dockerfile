@@ -1,28 +1,29 @@
+# Anchor Engine Docker Image
+# Simple single-stage build for development and production
+
 FROM node:20-bookworm
 
-# Install pnpm and build essentials for native modules
+# Install pnpm and runtime dependencies
 RUN npm install -g pnpm && \
     apt-get update && \
-    apt-get install -y python3 make g++ && \
+    apt-get install -y libstdc++6 curl && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy root config
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Copy all files
+COPY . .
 
-# Copy engine package config and install dependencies
-COPY packages/anchor-engine/package.json ./packages/anchor-engine/
-RUN pnpm install --frozen-lockfile --filter anchor-engine
+# Install dependencies and build
+RUN pnpm install --no-frozen-lockfile && \
+    pnpm run build
 
-# Copy engine source
-COPY packages/anchor-engine ./packages/anchor-engine
-
-WORKDIR /app/packages/anchor-engine
-
-# Build (if necessary)
-RUN pnpm run build
-
+# Expose API port
 EXPOSE 3160
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:3160/health || exit 1
+
+# Start the engine
 CMD ["node", "--expose-gc", "engine/dist/index.js"]

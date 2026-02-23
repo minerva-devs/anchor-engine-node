@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  anchor-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: anchor-engine:latest
+    container_name: anchor-engine
+    ports:
+      - "3160:3160"
+    volumes:
+      # Persistent data (database)
+      - anchor-data:/app/engine/context_data
+      # Mount inbox directories for automatic ingestion
+      - ./inbox:/app/inbox
+      - ./external-inbox:/app/external-inbox
+      # Mount mirrored_brain for source of truth
+      - ./mirrored_brain:/app/mirrored_brain
+      # Mount backups
+      - ./backups:/app/backups
+    environment:
+      - NODE_ENV=production
+      - PORT=3160
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3160/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+volumes:
+  anchor-data:
+    name: anchor-engine-data
+
+# =============================================================================
+# Usage
+# =============================================================================
+# Build and start:
+#   docker-compose up -d --build
+#
+# View logs:
+#   docker-compose logs -f
+#
+# Stop:
+#   docker-compose down
+#
+# Stop and remove data:
+#   docker-compose down -v
+#
+# Access UI:
+#   http://localhost:3160
+#
+# Health check:
+#   curl http://localhost:3160/health
+#
+# Add files to inbox (auto-ingested):
+#   cp myfile.md ./inbox/
+#
+# Backup data:
+#   docker-compose exec anchor-engine ls -la /app/backups/
+# =============================================================================
