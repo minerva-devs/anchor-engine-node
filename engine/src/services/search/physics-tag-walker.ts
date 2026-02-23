@@ -25,9 +25,9 @@ import type {
 } from '../../types/context-protocol.js';
 
 /** Maximum time (ms) any single physics walker SQL query is allowed to run */
-const QUERY_TIMEOUT_MS = 10_000;
+const QUERY_TIMEOUT_MS = 2000;  // Reduced from 10s to 2s for better UX
 /** Maximum number of anchor IDs to feed into a single SQL query */
-const MAX_ANCHOR_IDS = 50; // Increased from 20 since SQL is more efficient now
+const MAX_ANCHOR_IDS = 30; // Reduced from 50 to prevent SQL bloat
 
 /**
  * Run a DB query with a timeout. If the query takes longer than `timeoutMs`,
@@ -320,13 +320,15 @@ export class PhysicsTagWalker {
         GROUP BY c.atom_id, c.timestamp, c.simhash
       ),
       -- 3. Physics Weighting (Unified Field Equation)
+      -- LESSON LEARNED (2026-02-23): Gravity score MUST be normalized to 0.0-1.0
+      -- Previous bug: shared_tags multiplier caused scores > 1.0 (e.g., 164065%)
+      -- Fix: Divide shared_tags by expected max (10) for proper normalization
       weighted_ids AS (
         SELECT
            sc.atom_id,
            MAX(
-              -- NORMALIZED: Cap gravity score at 1.0 using GREATEST and proper scaling
               GREATEST(0.0, LEAST(1.0,
-                 ( (sc.total_shared_tags * ${this.DAMPING_FACTOR}) + (sc.physical_bonus * 0.1) ) *
+                 ( ((sc.total_shared_tags / 10.0) * ${this.DAMPING_FACTOR}) + (sc.physical_bonus * 0.1) ) *
                  EXP(-${this.TIME_DECAY_LAMBDA} * (ABS(sc.timestamp - ast.anchor_ts) / 3600000.0)) *
                  (1.0 - (bit_count(('x' || LPAD(sc.simhash, 16, '0'))::bit(64) # ('x' || LPAD(ast.anchor_sh, 16, '0'))::bit(64)) / 64.0))
               ))
@@ -337,9 +339,8 @@ export class PhysicsTagWalker {
         CROSS JOIN anchor_stats ast
         GROUP BY sc.atom_id
         HAVING MAX(
-              -- Same normalization for HAVING clause
               GREATEST(0.0, LEAST(1.0,
-                 ( (sc.total_shared_tags * ${this.DAMPING_FACTOR}) + (sc.physical_bonus * 0.1) ) *
+                 ( ((sc.total_shared_tags / 10.0) * ${this.DAMPING_FACTOR}) + (sc.physical_bonus * 0.1) ) *
                  EXP(-${this.TIME_DECAY_LAMBDA} * (ABS(sc.timestamp - ast.anchor_ts) / 3600000.0)) *
                  (1.0 - (bit_count(('x' || LPAD(sc.simhash, 16, '0'))::bit(64) # ('x' || LPAD(ast.anchor_sh, 16, '0'))::bit(64)) / 64.0))
               ))

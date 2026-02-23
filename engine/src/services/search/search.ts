@@ -105,10 +105,9 @@ export async function findAnchors(
     let anchors: SearchResult[] = [];
 
     // A. Atom Search (Radial Inflation)
-    const terms = sanitizedQuery.split(/\s+/).filter(t => t.length > 2);
+    const terms = sanitizedQuery.split(/\s+/).filter(t => t.length > 0);
     const atomResults: SearchResult[] = [];
 
-    /*
     if (terms.length > 0) {
       try {
         const inflations = await Promise.all(
@@ -116,11 +115,11 @@ export async function findAnchors(
         );
         let rawAtoms = inflations.flat();
         atomResults.push(...rawAtoms);
+        console.log(`[Search] Atom search found ${rawAtoms.length} atoms for terms: ${terms.join(', ')}`);
       } catch (e) {
         console.error(`[Search] Atom Search failed:`, e);
       }
     }
-    */
 
     // B. Molecule Search (Full-Text with BM25-style ranking)
     let moleculeQuery = `
