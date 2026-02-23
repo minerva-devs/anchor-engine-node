@@ -6,6 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.2.1] - 2026-02-23 — Documentation Synthesis & Research Landscape
+
+### Documentation Consolidation
+
+Synthesized arXiv documentation into project specs for better maintainability:
+
+#### New Documentation
+- **docs/ARCHITECTURE_DIAGRAMS.md** - Human-friendly visual architecture (Mermaid diagrams)
+- **specs/standards/STANDARD_117_ARXIV_SUBMISSION.md** - arXiv submission workflow
+- **specs/standards/RESEARCH_LANDSCAPE.md** - Related work analysis & citation guide
+- **docs/BIBLIOGRAPHY.bib** - Project-wide citation database (15 key papers)
+
+#### Research Landscape Analysis
+Analyzed and positioned STAR against related work:
+- **Vector RAG:** HNSW (Malkov 2018), FAISS (Johnson 2019)
+- **Graph-Based Memory:** T-Retriever (Wei 2026), PersonalAI (Menschikov 2025)
+- **Personal AI Memory:** Second Me (Wei 2025), Cognitive AI (Salas 2025)
+- **Foundational:** SimHash (Charikar 2002), PageRank (Brin & Page 1998)
+
+### arXiv Preparation
+
+**Whitepaper Status:** Ready for submission to arXiv cs.IR (primary), cs.AI (secondary)
+
+**Added to Whitepaper:**
+- Related Work section (6 subsections)
+- Bibliography with 15 citations
+- In-text citations (SimHash, PageRank, HNSW, etc.)
+- Implementation notes (normalization, damping, hop distance)
+
+**Helper Scripts Created:**
+- `docs/arxiv/compile.bat` - 4-pass LaTeX compilation
+- `docs/arxiv/prepare-submission.bat` - Package preparation
+
+### Competitive Positioning
+
+| Paper | STAR's Advantage |
+|-------|------------------|
+| **Second Me** | Simpler, deterministic, CPU-only |
+| **PersonalAI** | Real production validation (28M tokens) |
+| **T-Retriever** | Includes temporal decay |
+| **HNSW/FAISS** | 4GB RAM, explainable retrieval |
+
+---
+
 ## [4.2.0] - 2026-02-23 — Context Quality Improvements
 
 ### From "Data Dump" to "Sovereign Context"

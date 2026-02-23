@@ -88,6 +88,12 @@ export interface PhysicsMetadata {
 
   /** The specific link reason (e.g., "via tag: sovereignty", "hamming: 3") */
   link_reason?: string;
+
+  /** 
+   * Graph hop distance from query (0 = direct anchor, 1 = 1-hop neighbor, etc.)
+   * Used for damping: gravity decays as γ^hop_distance per the Unified Field Equation
+   */
+  hop_distance?: number;
 }
 
 // =============================================================================

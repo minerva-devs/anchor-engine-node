@@ -64,6 +64,8 @@ export interface WalkerNode {
   // Physics Metadata (Calculated in SQL)
   gravityScore: number;
   bestAnchorId?: string;
+  /** Graph hop distance from query (0 = direct, 1 = 1-hop, etc.) */
+  hopDistance?: number;
 }
 
 /** Result from the physics walk with full metadata */
@@ -94,7 +96,7 @@ export class PhysicsTagWalker {
   }) {
     // Default values (balanced production config)
     this.DAMPING_FACTOR = config?.damping ?? 0.85;
-    this.TIME_DECAY_LAMBDA = config?.temporalDecay ?? 0.00001;
+    this.TIME_DECAY_LAMBDA = config?.temporalDecay ?? 0.0001;
     this.MAX_PER_HOP = config?.maxPerHop ?? 50;
     this.WALK_RADIUS = config?.walkRadius ?? 1;
     this.GRAVITY_THRESHOLD = config?.gravityThreshold ?? 0.01;
@@ -161,14 +163,15 @@ export class PhysicsTagWalker {
       // without more complex queries, so we infer reason from properties.
 
       let connectionType: ConnectionType = 'tag_walk_neighbor';
-      let linkReason = `via ${node.sharedTags} shared tag(s)`;
+      const hopInfo = node.hopDistance !== undefined ? ` (${node.hopDistance}-hop)` : '';
+      let linkReason = `via ${node.sharedTags} shared tag(s)${hopInfo}`;
 
       // Re-calculate some factors for explanation text (cheap in JS)
       // We don't need exact anchor match here, just general properties
 
       if (node.gravityScore > 0.8 && node.sharedTags > 2) {
         connectionType = 'tag_walk_neighbor'; // Strong bond is just a high-quality tag walk
-        linkReason = `strong bond via ${node.sharedTags} shared tag(s)`;
+        linkReason = `strong bond via ${node.sharedTags} shared tag(s)${hopInfo}`;
       }
 
       // Calculate simhash distance to *best anchor* if we had it, but SQL aggregation
@@ -211,7 +214,8 @@ export class PhysicsTagWalker {
         frequency: node.frequency || 1,
         connection_type: connectionType,
         source_anchor_id: node.bestAnchorId || '',
-        link_reason: linkReason
+        link_reason: linkReason,
+        hop_distance: node.hopDistance
       };
 
       allPhysicsResults.push({ result, physics });
@@ -265,9 +269,6 @@ export class PhysicsTagWalker {
         SELECT unnest($1::text[]) as id
       ),
       -- Resolve both Atoms and Molecules to a unified set of Atom IDs
-      -- For molecules, we only resolve to atoms that overlap with the molecule's byte range (+/- 500 bytes)
-      -- Resolve both Atoms and Molecules to a unified set of Atom IDs
-      -- For molecules, we only resolve to atoms that overlap with the molecule's byte range (+/- 500 bytes)
       resolved_atoms AS (
         (SELECT id as atom_id FROM atoms WHERE id IN (SELECT id FROM anchor_ids))
         UNION
@@ -281,36 +282,89 @@ export class PhysicsTagWalker {
       ),
       anchor_stats AS (
         -- OPTIMIZATION (2026-02-23): Limit to top 10 most relevant anchors
-        -- This reduces CROSS JOIN complexity from O(n²) to O(10n)
-        -- Order by timestamp to prefer recent anchors (better temporal relevance)
         SELECT
           id as anchor_id,
           timestamp as anchor_ts,
-          simhash as anchor_sh
+          simhash as anchor_sh,
+          0 as hop_distance  -- Anchors are hop 0
         FROM atoms
         WHERE id IN (SELECT atom_id FROM resolved_atoms)
         ORDER BY timestamp DESC
-        LIMIT 10 -- Reduced from 20 for 2x speedup
+        LIMIT 10
       ),
-      -- 1. Candidate Generation
+      -- HOP TRACKING: Recursive CTE for multi-hop traversal with hop distance
+      hop_traversal AS (
+        -- Base case: anchors at hop 0
+        SELECT 
+          anchor_id as atom_id,
+          anchor_ts,
+          anchor_sh,
+          hop_distance,
+          CAST(ARRAY[anchor_id] as TEXT[]) as path
+        FROM anchor_stats
+        
+        UNION ALL
+        
+        -- Recursive case: expand via shared tags, incrementing hop
+        SELECT DISTINCT
+          t2.atom_id,
+          a2.timestamp as anchor_ts,
+          a2.simhash as anchor_sh,
+          ht.hop_distance + 1,
+          ht.path || t2.atom_id
+        FROM hop_traversal ht
+        JOIN atoms a1 ON ht.atom_id = a1.id
+        JOIN tags t1 ON a1.id = t1.atom_id
+        JOIN tags t2 ON t1.tag = t2.tag AND t1.atom_id != t2.atom_id
+        JOIN atoms a2 ON t2.atom_id = a2.id
+        WHERE ht.hop_distance < ${this.WALK_RADIUS}
+          AND NOT t2.atom_id = ANY(ht.path)  -- Prevent cycles
+          AND a2.id NOT IN (SELECT anchor_id FROM anchor_stats)
+      ),
+      -- Get the minimum hop distance for each discovered atom
+      atom_hop_distance AS (
+        SELECT 
+          atom_id,
+          anchor_ts,
+          anchor_sh,
+          MIN(hop_distance) as hop_distance
+        FROM hop_traversal
+        WHERE hop_distance > 0  -- Exclude anchors themselves
+        GROUP BY atom_id, anchor_ts, anchor_sh
+      ),
+      -- 1. Candidate Generation with hop tracking
       candidates AS (
-         -- Part A: Tag-based
-         (SELECT t.atom_id, a.timestamp, a.simhash, COUNT(DISTINCT t.tag) as shared_tags, 0.0 as physical_bonus
-          FROM tags t
-          JOIN atoms a ON t.atom_id = a.id
-          WHERE t.tag IN (SELECT DISTINCT tag FROM tags WHERE atom_id IN (SELECT anchor_id FROM anchor_stats))
-          AND t.atom_id NOT IN (SELECT anchor_id FROM anchor_stats)
-          GROUP BY t.atom_id, a.timestamp, a.simhash
-          LIMIT 50) -- Reduced from 100 for faster candidate generation
+         -- Part A: Tag-based (from hop traversal)
+         SELECT 
+           h.atom_id, 
+           a.timestamp, 
+           a.simhash, 
+           COUNT(DISTINCT t.tag) as shared_tags, 
+           0.0 as physical_bonus,
+           MIN(h.hop_distance) as hop_distance
+         FROM atom_hop_distance h
+         JOIN atoms a ON h.atom_id = a.id
+         JOIN tags t ON a.id = t.atom_id
+         JOIN anchor_stats ast ON t.tag IN (
+           SELECT tag FROM tags WHERE atom_id = ast.anchor_id
+         )
+         GROUP BY h.atom_id, a.timestamp, a.simhash
+         LIMIT 50
          UNION ALL
          -- Part B: Physical proximity
-         (SELECT a.id as atom_id, a.timestamp, a.simhash, 0 as shared_tags, 1.0 as physical_bonus
-          FROM atoms a
-          JOIN anchor_stats ast ON a.compound_id = (SELECT compound_id FROM atoms WHERE id = ast.anchor_id)
-          WHERE a.id NOT IN (SELECT anchor_id FROM anchor_stats)
-          AND a.start_byte >= ((SELECT start_byte FROM atoms WHERE id = ast.anchor_id) - 1000)
-          AND a.end_byte <= ((SELECT end_byte FROM atoms WHERE id = ast.anchor_id) + 1000)
-          LIMIT 50) -- Reduced from 100 for faster candidate generation
+         SELECT 
+           a.id as atom_id, 
+           a.timestamp, 
+           a.simhash, 
+           0 as shared_tags, 
+           1.0 as physical_bonus,
+           1 as hop_distance  -- Physical proximity treated as hop 1
+         FROM atoms a
+         JOIN anchor_stats ast ON a.compound_id = (SELECT compound_id FROM atoms WHERE id = ast.anchor_id)
+         WHERE a.id NOT IN (SELECT anchor_id FROM anchor_stats)
+         AND a.start_byte >= ((SELECT start_byte FROM atoms WHERE id = ast.anchor_id) - 1000)
+         AND a.end_byte <= ((SELECT end_byte FROM atoms WHERE id = ast.anchor_id) + 1000)
+         LIMIT 50
       ),
       -- 2. Aggregate candidate scores
       scored_candidates AS (
@@ -319,43 +373,44 @@ export class PhysicsTagWalker {
            c.timestamp,
            c.simhash,
            SUM(c.shared_tags) as total_shared_tags,
-           MAX(c.physical_bonus) as physical_bonus
+           MAX(c.physical_bonus) as physical_bonus,
+           MIN(c.hop_distance) as hop_distance  -- Use minimum hop distance
         FROM candidates c
         GROUP BY c.atom_id, c.timestamp, c.simhash
       ),
-      -- 3. Physics Weighting (Unified Field Equation)
-      -- LESSON LEARNED (2026-02-23): Gravity score MUST be normalized to 0.0-1.0
-      -- Previous bug: shared_tags multiplier caused scores > 1.0 (e.g., 164065%)
-      -- Fix: Divide shared_tags by expected max (10) for proper normalization
+      -- 3. Physics Weighting (Unified Field Equation with hop distance)
+      -- Implements: |T(q) ∩ T(a)| · γ^(d(q,a)) × e^(-λΔt) × (1 - H(h_q,h_a)/64)
       weighted_ids AS (
         SELECT
            sc.atom_id,
            MAX(
               GREATEST(0.0, LEAST(1.0,
-                 ( ((sc.total_shared_tags / 10.0) * ${this.DAMPING_FACTOR}) + (sc.physical_bonus * 0.1) ) *
-                 EXP(-${this.TIME_DECAY_LAMBDA} * (ABS(sc.timestamp - ast.anchor_ts) / 3600000.0)) *
+                 ( ((sc.total_shared_tags / 10.0) * POWER(${this.DAMPING_FACTOR}, sc.hop_distance)) + (sc.physical_bonus * 0.1) ) *
+                 EXP(-${this.TIME_DECAY_LAMBDA} * ABS(sc.timestamp - ast.anchor_ts)) *
                  (1.0 - (bit_count(('x' || LPAD(sc.simhash, 16, '0'))::bit(64) # ('x' || LPAD(ast.anchor_sh, 16, '0'))::bit(64)) / 64.0))
               ))
            ) as gravity_score,
            MAX(ast.anchor_id) as best_anchor_id,
-           MAX(sc.total_shared_tags) as shared_tags
+           MAX(sc.total_shared_tags) as shared_tags,
+           MIN(sc.hop_distance) as hop_distance
         FROM scored_candidates sc
         CROSS JOIN anchor_stats ast
         GROUP BY sc.atom_id
         HAVING MAX(
               GREATEST(0.0, LEAST(1.0,
-                 ( ((sc.total_shared_tags / 10.0) * ${this.DAMPING_FACTOR}) + (sc.physical_bonus * 0.1) ) *
-                 EXP(-${this.TIME_DECAY_LAMBDA} * (ABS(sc.timestamp - ast.anchor_ts) / 3600000.0)) *
+                 ( ((sc.total_shared_tags / 10.0) * POWER(${this.DAMPING_FACTOR}, sc.hop_distance)) + (sc.physical_bonus * 0.1) ) *
+                 EXP(-${this.TIME_DECAY_LAMBDA} * ABS(sc.timestamp - ast.anchor_ts)) *
                  (1.0 - (bit_count(('x' || LPAD(sc.simhash, 16, '0'))::bit(64) # ('x' || LPAD(ast.anchor_sh, 16, '0'))::bit(64)) / 64.0))
               ))
            ) > $${thresholdParamIdx}
         ORDER BY gravity_score DESC
         LIMIT $${limitParamIdx}
       )
-      -- 4. Final projection
+      -- 4. Final projection with hop distance
       SELECT 
          w.atom_id,
          w.shared_tags,
+         w.hop_distance,
          a.timestamp,
          a.simhash,
          a.content,
@@ -415,7 +470,8 @@ export class PhysicsTagWalker {
         startByte: (row.start_byte !== null && row.start_byte !== undefined) ? row.start_byte : undefined,
         endByte: (row.end_byte !== null && row.end_byte !== undefined) ? row.end_byte : undefined,
         gravityScore: parseFloat(row.gravity_score),
-        bestAnchorId: row.best_anchor_id
+        bestAnchorId: row.best_anchor_id,
+        hopDistance: row.hop_distance !== undefined ? parseInt(row.hop_distance) : undefined
       }));
     } catch (e) {
       console.error(`[PhysicsWalker] SQL Weighting failed after ${Date.now() - startTime} ms: `, e);

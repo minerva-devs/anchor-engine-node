@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 4.0.0 | **Status:** Production Ready | **Updated:** February 2026
+**Version:** 4.2.1 | **Status:** Production Ready | **Updated:** February 23, 2026
 
 ## Quick Reference
 
@@ -12,6 +12,16 @@
 | **Index** | Disposable, rebuildable on startup |
 | **Search** | STAR Algorithm (70/30 Planets/Moons) |
 | **Native Modules** | @rbalchii/* npm packages (C++ N-API) |
+
+---
+
+## Related Documentation
+
+- **[docs/ARCHITECTURE_DIAGRAMS.md](../docs/ARCHITECTURE_DIAGRAMS.md)** - Visual architecture (human-friendly)
+- **[docs/whitepaper.md](../docs/whitepaper.md)** - STAR Algorithm whitepaper (arXiv ready)
+- **[specs/standards/RESEARCH_LANDSCAPE.md](standards/RESEARCH_LANDSCAPE.md)** - Related work analysis
+- **[specs/standards/STANDARD_117_ARXIV_SUBMISSION.md](standards/STANDARD_117_ARXIV_SUBMISSION.md)** - arXiv workflow
+- **[specs/standards/doc_policy.md](standards/doc_policy.md)** - Documentation policy
 
 ---
 
