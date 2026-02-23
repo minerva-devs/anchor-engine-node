@@ -163,9 +163,11 @@ I tested Anchor Engine on my actual machine. Not a lab. Not a simulated workload
 
 **436 files. ~100MB. Code, chat sessions, CSVs, research papers.**
 
+**Note on Chat Sessions (91.88MB):** This is a **synthetic monolith**—a single YAML file created by recursively flattening an entire chat history project using `scripts/read_all.js`. This is a **deliberate optimization**: single large documents ingest faster than hundreds of smaller files due to reduced I/O overhead and transaction batching.
+
 | Dataset | Size | Molecules | Atoms | Ingestion Time | Molecules/sec |
 |---------|------|-----------|-------|----------------|---------------|
-| **Chat Sessions** | 91.88MB | 214,000 | 776 | **177.80s** (2m 58s) | ~1,203 |
+| **Chat Sessions** (synthetic monolith) | 91.88MB | 214,000 | 776 | **177.80s** (2m 58s) | ~1,203 |
 | **GitHub Archive** | 2.66MB | 36,793 | 497 | **22.41s** | ~1,642 |
 | **Code Repository** | 0.94MB | 20,916 | 199 | **25.01s** | ~836 |
 | **CSV Data** | 0.27MB | 6,799 | 7 | **3.41s** | ~1,994 |
@@ -173,6 +175,11 @@ I tested Anchor Engine on my actual machine. Not a lab. Not a simulated workload
 | **Total System** | ~100MB | **~280,000** | **~1,500** | **~4 minutes** | **~1,200** |
 
 That 91.88MB Chat Sessions file? It ingested in under 3 minutes. 214,000 molecules. No hangs. No crashes.
+
+**Ingestion Strategy:**
+- **Monolithic files** (single large YAML): Faster ingestion, reduced I/O overhead
+- **Hundreds of small files**: Slower ingestion, higher transaction overhead
+- **Recommendation:** Use `read_all.js` to flatten large chat/project histories before ingestion
 
 ### Memory Management
 
