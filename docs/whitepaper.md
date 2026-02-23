@@ -93,29 +93,104 @@
 
     Every atom gets a 64-bit SimHash fingerprint. This enables O(1) deduplication—constant time, no matter how big your dataset grows. Near-duplicate content gets flagged instantly. No expensive similarity comparisons.
 
-    ### The Tag-Walker Protocol & The STAR Algorithm
+    ### The STAR Algorithm: Unified Field Equation
 
-    This is where it gets interesting. Instead of vector search, Anchor Engine uses a graph-based "Tag-Walker" protocol. It navigates relationships between atoms using what I call the **STAR Algorithm** (Sovereign Temporal Associative Retrieval).
+    The STAR Algorithm (Sovereign Temporal Associative Retrieval) is built on one unified equation that combines three distinct forces into a single gravity score:
 
-    Every memory exerts a gravitational pull on your current thought. The equation calculates that pull:
+    $$ W_{M \to T} = \alpha \cdot \left(\mathbf{C} \cdot e^{-\lambda \Delta t} \cdot \left(1 - \frac{d}{64}\right)\right) $$
 
-    $$ W_{M \to T} = \alpha \cdot (\mathbf{C} \cdot e^{-\lambda \Delta t} \cdot (1 - \frac{d_{\text{hamming}}}{64})) $$
+    **Key insight:** These terms are **multiplied, not added**. If any term is zero, the whole weight is zero. If all are strong, they amplify each other. This is what makes STAR selective and explainable.
 
-    Where:
-    * **$\mathbf{C}$ (Co-occurrence)**: Shared tags between the memory and your query. Semantic overlap.
-    * **$e^{-\lambda \Delta t}$ (Time Decay)**: Recent memories have stronger gravity. Exponential decay based on time difference.
-    * **$1 - \frac{d_{\text{hamming}}}{64}$ (SimHash Gravity)**: Hamming distance of the 64-bit fingerprints. $d=0$ means identical (max gravity). $d=32$ means orthogonal (no gravity).
-    * **$\alpha$ (Damping)**: Controls the "viscosity" of the walk. Default 0.85.
+    | Term | What it represents | Mathematical form | Why it matters |
+    |------|-------------------|-------------------|----------------|
+    | **$\mathbf{C}$** | Shared tag count | Simple integer count | Explicit, human-crafted connections. If two atoms share tags, they're related. |
+    | **$e^{-\lambda \Delta t}$** | Temporal decay | Exponential decay | Recent memories weigh more. The forgetting curve is real—STAR mimics it. |
+    | **$1 - \frac{d}{64}$** | Content similarity | SimHash + Hamming distance | Even without shared tags, similar content gets a boost. $d$ = bits that differ (0-64). |
+    | **$\alpha$** | Damping factor | Constant (default 0.85) | Controls how far associations propagate. Each hop gets weaker, like gravity over distance. |
 
-    #### SQL-Native Implementation
+    ### The Bipartite Graph Structure
 
-    This equation isn't calculated in a slow Python loop. It's executed as a single, optimized SQL operation inside PGlite's relational engine.
+    STAR uses a **bipartite graph**: Atoms (content chunks) connect only through Tags—never directly to each other.
 
-    1. **Sparse Matrix Multiplication**: Co-occurrence is computed via `JOIN` operations on the tags table. It's essentially $M \times M^T$ to find candidate nodes.
-    2. **Bitwise Physics**: SimHash distance uses hardware-accelerated bitwise XOR and `bit_count` directly in the database kernel.
-    3. **Zero-Transport Overhead**: Only the final, weighted results return to the application layer.
+    - **Atoms:** The actual content (sentences, code blocks, paragraphs) with byte-offset pointers
+    - **Tags:** The labels (explicit keywords, extracted entities, metadata)
+    - **Traversal:** You walk from query → tags → atoms → tags → atoms, etc. Each "hop" is a step through a tag
+
+    **Why bipartite?** It keeps the graph sparse. You don't store every possible connection between atoms. You store only atom–tag edges, and let relationships emerge during the walk.
+
+    ### The Tag-Walker Protocol
+
+    **Hop 1:** Query tags → directly matching atoms (Planets: 70% of budget)
+
+    **Hop 2:** Those atoms' tags → new atoms (Moons: 30% of budget, first-degree associations)
+
+    **Hop 3:** Repeat (second-degree associations, max-recall mode only)
+
+    Each hop applies the damping factor $\alpha$. After 3 hops, you've captured most of the relevant graph without drowning in noise.
+
+    ### SQL-Native Implementation
+
+    The entire equation executes as a single, optimized SQL operation inside PGlite's relational engine using recursive CTEs:
+
+    ```sql
+    -- Simplified STAR implementation
+    WITH RECURSIVE walk AS (
+      -- Hop 1: direct matches
+      SELECT atom_id, 1 AS hop, 1.0 AS damping
+      FROM atom_tags WHERE tag_id IN (query_tags)
+      
+      UNION ALL
+      
+      -- Hop 2+: walk through tags
+      SELECT at2.atom_id, hop+1, damping * 0.85
+      FROM walk w
+      JOIN atom_tags at1 ON w.atom_id = at1.atom_id
+      JOIN atom_tags at2 ON at1.tag_id = at2.tag_id
+      WHERE hop < 3
+    )
+    SELECT a.*, 
+           COUNT(DISTINCT t.tag) * 
+           EXP(-0.00001 * age) * 
+           (1.0 - BIT_COUNT(q.simhash # a.simhash)/64.0) *
+           w.damping AS gravity
+    FROM walk w
+    JOIN atoms a ON w.atom_id = a.id
+    JOIN atom_tags t ON a.id = t.atom_id
+    GROUP BY a.id
+    ORDER BY gravity DESC;
+    ```
+
+    **Implementation advantages:**
+
+    1. **Sparse Matrix Multiplication:** Co-occurrence is computed via `JOIN` operations. It's essentially $M \times M^T$ to find candidate nodes.
+    2. **Bitwise Physics:** SimHash distance uses hardware-accelerated bitwise XOR (`#`) and `BIT_COUNT` directly in the database kernel.
+    3. **Zero-Transport Overhead:** Only the final, weighted results return to the application layer.
 
     The result? Millions of potential connections ranked in roughly **10ms** on consumer hardware.
+
+    ### Intellectual Lineage
+
+    STAR synthesizes ideas from multiple lineages:
+
+    | Prior Work | What STAR Borrowed | What's Different |
+    |------------|-------------------|------------------|
+    | **PageRank** (1998) | Graph traversal with damping | PageRank: node→node. STAR: atom↔tag↔atom (bipartite) |
+    | **SimHash** (2002) | 64-bit fingerprints | STAR integrates SimHash into relevance equation, not just dedup |
+    | **Ebbinghaus** (1885) | Exponential forgetting curve | Applied to retrieval weighting, not just psychology |
+    | **TF-IDF** (1950s) | Term importance weighting | Replaced with tag co-occurrence + graph structure |
+    | **Knowledge Graphs** (2012) | Entity/relationship storage | Most store direct relationships; STAR infers through tags |
+    | **Vector Databases** (2010s) | Retrieval for LLMs | STAR: deterministic, explainable tags vs. opaque vectors |
+    | **RAG** (2020) | External memory for LLMs | STAR: graph-based, local-first, sovereign |
+
+    **What's truly novel in STAR:**
+
+    | Aspect | What existed before | What STAR adds |
+    |--------|--------------------|----------------|
+    | **Unified equation** | Separate systems for tags, time, similarity | One multiplicative equation combining all three |
+    | **Graph traversal** | PageRank (node→node) | Bipartite atom↔tag↔atom walk |
+    | **Explainability** | Vector search is a black box | Trace why each result appeared (shared tags, recency, content similarity) |
+    | **Database-native** | Most retrieval is app-layer loops | All weighting happens in SQL with bitwise ops |
+    | **Sovereignty** | Cloud-dependent | Runs entirely on consumer hardware, no telemetry |
 
     ---
 
