@@ -1,12 +1,22 @@
 # Architecture Standards Index
 
-**Last Updated:** February 20, 2026 | **Total Standards:** 77
+**Last Updated:** February 23, 2026 | **Total Standards:** 80
 
 ---
 
 ## Active Standards (Current Implementation)
 
 These standards define the current production architecture:
+
+### v4.2.0 Standards (Context Quality Improvements)
+
+| # | Standard | Description | Status |
+|---|----------|-------------|--------|
+| **086** | [Dual-Strategy Search](STANDARD_086_DUAL_STRATEGY_SEARCH.md) | Standard + Max-Recall with XML metadata | ✅ v2.0 |
+| **113** | [Automatic Max-Recall](STANDARD_113_AUTOMATIC_MAX_RECALL.md) | Auto-trigger at >16k tokens | ✅ v1.0 |
+| **116** | [Phoenix Protocol](STANDARD_116_PHOENIX_PROTOCOL.md) | Backup/Restore with filesystem rebuild | ✅ v1.0 |
+
+### Core Standards (v4.x)
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|

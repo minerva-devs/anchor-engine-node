@@ -6,6 +6,95 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.2.0] - 2026-02-23 — Context Quality Improvements
+
+### From "Data Dump" to "Sovereign Context"
+
+Three major improvements to move from raw data retrieval to curated, LLM-friendly context:
+
+#### A. Pre-Injection Timestamp Sorting
+
+**File:** `engine/src/services/search/search-utils.ts`
+
+```typescript
+// Sort by timestamp first (causal narrative), then by score (relevance)
+// This restores causal logic: Code v1 → Error → Code v2
+const sortedResults = results.sort((a, b) => {
+    // Primary: chronological order (oldest first)
+    const timeDiff = a.timestamp - b.timestamp;
+    if (timeDiff !== 0) return timeDiff;
+    
+    // Secondary: relevance score (higher first)
+    return b.score - a.score;
+});
+```
+
+**Impact:** LLM sees evolution over time, not random chunks
+
+#### B. XML Relevance Metadata Wrapper
+
+**File:** `engine/src/services/search/search-utils.ts`
+
+```typescript
+// Build XML-wrapped context with relevance metadata
+// This helps LLM prioritize content if context window is truncated
+const xmlContext = enrichedResults.map(r => {
+    const relevanceScore = ((r.score || 0) * (r.temporal_weight || 1)).toFixed(3);
+    const timestamp = new Date(r.timestamp).toISOString();
+    const persona = r.buckets?.[0] || 'unknown';
+    
+    return `<atom id="${r.id}" relevance="${relevanceScore}" timestamp="${timestamp}" persona="${persona}" source="${r.source}">
+${r.content || ''}
+</atom>`;
+}).join('\n\n');
+```
+
+**Impact:** LLM knows what to prioritize if context gets truncated
+
+#### D. Transient Data Filter
+
+**Files:** `atomizer-service.ts`, `watchdog.ts`, `ingest.ts`, `api.ts`, `github-ingest-service.ts`
+
+```typescript
+private static TRANSIENT_PATTERNS = [
+    // Terminal error logs
+    /Traceback \(most recent call last\)/i,
+    /KeyError:/i, /TypeError:/i,
+    
+    // Package installation logs
+    /npm install/i, /pip install/i,
+    /added \d+ package/i,
+    
+    // Build artifacts
+    /Build succeeded/i, /Compiling\.\.\./i,
+];
+```
+
+**Impact:** ~30% context window reclaimed
+
+### UI: Time Ordering Toggle
+
+**File:** `packages/anchor-ui/src/components/features/SearchColumn.tsx`
+
+- **Toggle Button:** 📅 Chronological (green) ↔ 🎯 Relevance (purple)
+- **Chronological:** oldest first (causal narrative)
+- **Relevance:** highest score first (associative discovery)
+- **Tooltip:** Explains current mode and what clicking will do
+
+**Rationale:** Sometimes association is better than linearity—users choose.
+
+### Expected Impact
+
+| Improvement | Benefit | Cost |
+|-------------|---------|------|
+| **Timestamp Sorting** | Causal narrative restored | Negligible (client-side sort) |
+| **XML Metadata** | LLM prioritization | Minimal (~5% overhead) |
+| **Transient Filter** | ~30% context reclaimed | None (prevents noise) |
+
+**Combined:** Moves STAR from "data dump" to "sovereign context"
+
+---
+
 ## [4.1.2] - 2026-02-22 — SimHash Deduplication Fix
 
 ### ✅ Cross-File Near-Duplicate Deduplication

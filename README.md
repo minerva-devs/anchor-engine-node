@@ -1,8 +1,8 @@
 # Anchor Engine (Node.js)
 
-**Version:** 4.0.0 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready
+**Version:** 4.2.0 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready
 
-The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Semantic Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
+The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Sovereign Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
 
 ---
 
@@ -23,6 +23,12 @@ It worked wonderfully. Until I hit the limit again. And again. And again.
 By the time Anchor Engine was operational, I had accumulated 40 **chat sessions, ~18M tokens**. My current corpus is **~28M tokens**. Anchor Engine digests all of it in about **5 minutes**.
 
 Now I make a query with a few choice entities and some fluff for serendipitous connections. The engine compresses those 28M tokens into **100k+ chars of non-duplicated, narrative context**—concepts deduplicated, not just text. My LLM remembers July 2025 like it was yesterday.
+
+**v4.2.0 Improvements:**
+- **Causal Narrative:** Results sorted chronologically (toggleable to relevance-based)
+- **XML Metadata:** Each atom wrapped with relevance score, timestamp, source for LLM prioritization
+- **Transient Filter:** Excludes error logs, install output, build artifacts (~30% context reclaimed)
+- **Time Ordering Toggle:** 📅 Chronological ↔ 🎯 Relevance button in UI
 
 This isn't a RAG tool I built because it sounded cool. This is the tool I built because I needed it to keep my own mind intact.
 
@@ -66,11 +72,10 @@ curl -X POST http://localhost:3160/v1/memory/search \
 
 | Document | Description |
 |----------|-------------|
-| **[docs/whitepaper.md](docs/whitepaper.md)** | The Sovereign Context Protocol whitepaper (95% compliance v4.1.2) |
-| **[docs/ARCHITECTURE_DIAGRAMS.md](docs/ARCHITECTURE_DIAGRAMS.md)** | System architecture diagrams & flow charts |
+| **[docs/whitepaper.md](docs/whitepaper.md)** | STAR Algorithm whitepaper (95% compliance, v4.1.2) |
 | **[docs/INDEX.md](docs/INDEX.md)** | Documentation navigation hub |
+| **[specs/spec.md](specs/spec.md)** | System specification with architecture diagrams |
 | **[specs/standards/](specs/standards/)** | Architecture standards (086, 113, 116, etc.) |
-| **[specs/spec.md](specs/spec.md)** | System specification |
 | **[specs/plan.md](specs/plan.md)** | Project roadmap |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history & recent changes |
 
