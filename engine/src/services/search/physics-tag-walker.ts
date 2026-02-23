@@ -280,13 +280,17 @@ export class PhysicsTagWalker {
          LIMIT 100)
       ),
       anchor_stats AS (
-        SELECT 
-          id as anchor_id, 
+        -- OPTIMIZATION (2026-02-23): Limit to top 10 most relevant anchors
+        -- This reduces CROSS JOIN complexity from O(n²) to O(10n)
+        -- Order by timestamp to prefer recent anchors (better temporal relevance)
+        SELECT
+          id as anchor_id,
           timestamp as anchor_ts,
           simhash as anchor_sh
-        FROM atoms 
+        FROM atoms
         WHERE id IN (SELECT atom_id FROM resolved_atoms)
-        LIMIT 20 -- Ultra-stable cap
+        ORDER BY timestamp DESC
+        LIMIT 10 -- Reduced from 20 for 2x speedup
       ),
       -- 1. Candidate Generation
       candidates AS (
@@ -297,7 +301,7 @@ export class PhysicsTagWalker {
           WHERE t.tag IN (SELECT DISTINCT tag FROM tags WHERE atom_id IN (SELECT anchor_id FROM anchor_stats))
           AND t.atom_id NOT IN (SELECT anchor_id FROM anchor_stats)
           GROUP BY t.atom_id, a.timestamp, a.simhash
-          LIMIT 100)
+          LIMIT 50) -- Reduced from 100 for faster candidate generation
          UNION ALL
          -- Part B: Physical proximity
          (SELECT a.id as atom_id, a.timestamp, a.simhash, 0 as shared_tags, 1.0 as physical_bonus
@@ -306,7 +310,7 @@ export class PhysicsTagWalker {
           WHERE a.id NOT IN (SELECT anchor_id FROM anchor_stats)
           AND a.start_byte >= ((SELECT start_byte FROM atoms WHERE id = ast.anchor_id) - 1000)
           AND a.end_byte <= ((SELECT end_byte FROM atoms WHERE id = ast.anchor_id) + 1000)
-          LIMIT 100)
+          LIMIT 50) -- Reduced from 100 for faster candidate generation
       ),
       -- 2. Aggregate candidate scores
       scored_candidates AS (

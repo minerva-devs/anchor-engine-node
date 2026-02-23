@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
-import { api } from '../api';
+import { api } from './api';
 
 // Mock data
 const mockBuckets = ['inbox', 'code', 'personal', 'dd-data', 'agents', 'news', 'rag'];
@@ -109,7 +109,7 @@ describe('API Service', () => {
       server.use(
         http.post('/v1/memory/search', async ({ request }) => {
           const body = await request.json() as any;
-          
+
           expect(body).toEqual({
             query: 'test query',
             max_chars: 8192,
@@ -159,6 +159,80 @@ describe('API Service', () => {
       });
 
       expect(response.metadata.strategy).toBe('max-recall');
+    });
+
+    it('parses search results with correct formatting', async () => {
+      const formattedResponse = {
+        results: [
+          {
+            id: 'atom-1',
+            content: 'Result with special chars: <>&"\'\n\t',
+            source: 'inbox/test.md',
+            timestamp: Date.now(),
+            provenance: 'internal',
+            score: 0.95,
+            tags: ['test'],
+            compound_id: 'mem_1',
+            start_byte: 0,
+            end_byte: 100,
+          },
+          {
+            id: 'atom-2',
+            content: 'Code block:\n```\nconst x = 42;\n```',
+            source: 'external-inbox/code.html',
+            provenance: 'external',
+            score: 0.85,
+          },
+        ],
+        context: 'Formatted context string',
+        metadata: {
+          atomCount: 2,
+          filledPercent: 50,
+          budget: 8192,
+          tokens_used: 4096,
+        },
+      };
+
+      server.use(
+        http.post('/v1/memory/search', () => HttpResponse.json(formattedResponse))
+      );
+
+      const response = await api.search({
+        query: 'test',
+        max_chars: 8192,
+        token_budget: 2048,
+        provenance: 'all',
+      });
+
+      expect(response.results).toHaveLength(2);
+      expect(response.results[0].content).toContain('special chars');
+      expect(response.results[1].content).toContain('Code block');
+      expect(response.metadata.atomCount).toBe(2);
+    });
+
+    it('handles search with empty results', async () => {
+      server.use(
+        http.post('/v1/memory/search', () => HttpResponse.json({
+          results: [],
+          context: '',
+          metadata: {
+            atomCount: 0,
+            filledPercent: 0,
+            budget: 8192,
+            tokens_used: 0,
+          },
+        }))
+      );
+
+      const response = await api.search({
+        query: 'nonexistent',
+        max_chars: 4096,
+        token_budget: 1024,
+        provenance: 'internal',
+      });
+
+      expect(response.results).toHaveLength(0);
+      expect(response.metadata.atomCount).toBe(0);
     });
 
     it('handles search errors', async () => {

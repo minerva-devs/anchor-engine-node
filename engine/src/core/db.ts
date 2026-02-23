@@ -169,7 +169,7 @@ export class Database {
         );
       `);
 
-      // Create indexes - simplified for PGlite
+      // Create indexes - optimized for PhysicsWalker queries
       try {
         await this.run('CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);');
       } catch (indexErr: any) {
@@ -179,6 +179,12 @@ export class Database {
         await this.run('CREATE INDEX IF NOT EXISTS idx_tags_bucket ON tags(bucket);');
       } catch (indexErr: any) {
         console.warn("[DB] Could not create bucket index:", indexErr.message);
+      }
+      // NEW INDEX (2026-02-23): For fast atom_id lookups in PhysicsWalker
+      try {
+        await this.run('CREATE INDEX IF NOT EXISTS idx_tags_atom_id ON tags(atom_id);');
+      } catch (indexErr: any) {
+        console.warn("[DB] Could not create atom_id index:", indexErr.message);
       }
 
       console.log("[DB] 'tags' table initialized.");

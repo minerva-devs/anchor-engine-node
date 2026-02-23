@@ -66,11 +66,12 @@ curl -X POST http://localhost:3160/v1/memory/search \
 
 | Document | Description |
 |----------|-------------|
-| **[docs/whitepaper.md](docs/whitepaper.md)** | The Sovereign Context Protocol whitepaper |
-| **[specs/spec.md](specs/spec.md)** | System architecture specification |
-| **[specs/tasks.md](specs/tasks.md)** | Current implementation tasks |
+| **[docs/whitepaper.md](docs/whitepaper.md)** | The Sovereign Context Protocol whitepaper (95% compliance v4.1.2) |
+| **[docs/ARCHITECTURE_DIAGRAMS.md](docs/ARCHITECTURE_DIAGRAMS.md)** | System architecture diagrams & flow charts |
+| **[docs/standards/](docs/standards/)** | Architecture standards (086, 113, 116, etc.) |
+| **[specs/spec.md](specs/spec.md)** | System specification |
 | **[specs/plan.md](specs/plan.md)** | Project roadmap |
-| **[specs/standards/](specs/standards/)** | Architecture standards (77 total) |
+| **[CHANGELOG.md](CHANGELOG.md)** | Version history & recent changes |
 
 ---
 

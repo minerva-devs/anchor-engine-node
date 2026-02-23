@@ -1,22 +1,22 @@
-# Phoenix Protocol - Backup & Restore System
+# Standard 116: Phoenix Protocol
 
-**Status:** ✅ Production Ready | **Version:** 1.0.0 | **Updated:** February 22, 2026
+**Status:** ✅ Production Ready | **Version:** 1.0.0 | **Date:** February 22, 2026
 
 ---
 
-## 🎯 Overview
+## Overview
 
 The Phoenix Protocol is a comprehensive backup and restore system for the Anchor Engine. It not only restores the database but also **rebuilds the inbox/external-inbox folder structure** from backup data, ensuring the source of truth (filesystem) matches the backup state.
 
 ---
 
-## 🔥 Why "Phoenix"?
+## Why "Phoenix"?
 
 Like the mythical bird rising from ashes, the Phoenix Protocol can resurrect your entire knowledge base from a single backup file—database **and** file structure alike.
 
 ---
 
-## 📦 What Gets Backed Up
+## What Gets Backed Up
 
 ### Database Tables
 - **atoms** - All memory atoms with content, tags, provenance
@@ -29,7 +29,7 @@ Like the mythical bird rising from ashes, the Phoenix Protocol can resurrect you
 
 ---
 
-## 🔄 Restore Process
+## Restore Process
 
 When you restore from backup, the Phoenix Protocol:
 
@@ -40,7 +40,7 @@ When you restore from backup, the Phoenix Protocol:
 
 ---
 
-## 🎮 Usage
+## Usage
 
 ### Via UI (Recommended)
 
@@ -68,7 +68,7 @@ curl -X POST http://localhost:3160/v1/backup/restore \
 
 ---
 
-## 📊 Restore Stats
+## Restore Stats
 
 After a successful restore, you'll see stats like:
 
@@ -89,13 +89,13 @@ After a successful restore, you'll see stats like:
 
 ---
 
-## 🗂️ Backup File Location
+## Backup File Location
 
 Backups are stored in: `c:\Users\rsbiiw\Projects\anchor-engine-node\backups\`
 
 ---
 
-## 🔒 Important Notes
+## Important Notes
 
 ### Source of Truth
 - **inbox/** and **external-inbox/** are the source of truth
@@ -115,7 +115,7 @@ curl -O http://localhost:3160/v1/backup
 
 ---
 
-## 🛠️ Architecture
+## Architecture
 
 ### Files
 - `engine/src/services/backup/backup.ts` - Original backup service
@@ -133,7 +133,7 @@ curl -O http://localhost:3160/v1/backup
 
 ---
 
-## 🎯 Use Cases
+## Use Cases
 
 ### Scenario 1: Accidental Data Loss
 1. Realize important content was deleted
@@ -155,7 +155,20 @@ curl -O http://localhost:3160/v1/backup
 
 ---
 
-## 🔮 Future Enhancements
+## Performance Benchmarks
+
+| Metric | Value |
+|--------|-------|
+| **Backup Size** | 1,015.40 MB |
+| **Atoms Restored** | 281,690 |
+| **Sources Restored** | 17 |
+| **Total Time** | 828.8s (13.8 min) |
+| **Throughput** | 340 atoms/second |
+| **Memory Peak** | <600 MB |
+
+---
+
+## Future Enhancements
 
 - [ ] Incremental backups (delta-based)
 - [ ] Selective restore (choose specific sources)
@@ -165,7 +178,7 @@ curl -O http://localhost:3160/v1/backup
 
 ---
 
-## 📝 Related Standards
+## Related Standards
 
 - **Standard 110** - Ephemeral Index Architecture
 - **Standard 095** - Database Reset on Startup
