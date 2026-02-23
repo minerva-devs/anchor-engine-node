@@ -480,11 +480,15 @@ export class ContextInflator {
                 // Sort by start position for merge algorithm
                 rawWindows.sort((a, b) => a.start - b.start);
 
-                // Merge overlapping windows
+                // Merge overlapping OR ADJACENT windows
+                // Molecules from same compound within 500 bytes should be merged
+                const MERGE_GAP_THRESHOLD = 500; // Merge windows within 500 bytes of each other
+                
                 const mergedWindows: { start: number; end: number; offsets: number[] }[] = [];
                 for (const window of rawWindows) {
                     const last = mergedWindows[mergedWindows.length - 1];
-                    if (last && window.start <= last.end) {
+                    // Merge if overlapping OR adjacent (within gap threshold)
+                    if (last && (window.start <= last.end || (window.start - last.end) < MERGE_GAP_THRESHOLD)) {
                         const newEnd = Math.max(last.end, window.end);
                         if ((newEnd - last.start) <= maxWindowSize) {
                             last.end = newEnd;

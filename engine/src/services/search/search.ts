@@ -283,15 +283,33 @@ export async function findAnchors(
       // 1. Cross-Compound Duplicates (different IDs/provenance, same text)
       // 2. Near-Exact Duplicates (whitespace diffs, timestamp diffs)
       // 3. Containment (one result is a subset of another)
+      // 4. Overlapping Windows from same compound (NEW FIX)
 
       const distinctAnchors: SearchResult[] = [];
-      // Sort by length desc first (preserve largest context), then score? 
-      // Actually score is more important. Let's keep input order (assumed sorted by score/relevance)
-      // anchored by 'anchors' which is mixed. Let's sort anchors by score desc to prioritize best matches.
+      // Sort by score desc to prioritize best matches
       anchors.sort((a, b) => (b.score || 0) - (a.score || 0));
 
-      // Helper for normalization: lowercase + remove non-alphanumeric chars
-      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+      // Helper for normalization: lowercase + remove non-alphanumeric + unescape JSON
+      const normalize = (s: string) => {
+        // First unescape JSON strings (\\\" → ", \\n → newline, etc.)
+        let unescaped = s;
+        try {
+          // Try to unescape common JSON escape sequences
+          unescaped = s
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\')
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r')
+            .replace(/\\t/g, '\t');
+        } catch (e) {
+          // If unescaping fails, use original
+        }
+        return unescaped.toLowerCase().replace(/[^a-z0-9]/g, '');
+      };
+
+      // Helper for content fingerprinting (hash-based dedup across files)
+      const crypto = await import('crypto');
+      const contentFingerprints = new Map<string, SearchResult>(); // hash -> kept result
 
       // Track kept ranges per compound to detect sliding window duplicates
       const keptRanges = new Map<string, { start: number, end: number, content: string }[]>();
@@ -302,22 +320,42 @@ export async function findAnchors(
           continue;
         }
 
+        // C. Content Fingerprint Deduplication (ACROSS different files)
+        // Hash the normalized content to catch duplicates from different compounds
+        const candidateNorm = normalize(candidate.content);
+        const contentHash = crypto.createHash('md5').update(candidateNorm.substring(0, 500)).digest('hex');
+        
+        if (contentFingerprints.has(contentHash)) {
+          // This content already exists from another file - skip it
+          continue;
+        }
+        contentFingerprints.set(contentHash, candidate);
+
         // A. Geometric Deduplication (if compound_id is available)
         let isGeometricDuplicate = false;
         if (candidate.compound_id && candidate.start_byte !== undefined && candidate.end_byte !== undefined) {
           const ranges = keptRanges.get(candidate.compound_id) || [];
           for (const range of ranges) {
-            // Check overlap
+            // Check overlap - LOWERED threshold from 75% to 50% for aggressive dedup
             const overlapStart = Math.max(candidate.start_byte, range.start);
             const overlapEnd = Math.min(candidate.end_byte, range.end);
             const overlapLen = Math.max(0, overlapEnd - overlapStart);
 
             const candidateLen = candidate.end_byte - candidate.start_byte;
+            const rangeLen = range.end - range.start;
+            const minLen = Math.min(candidateLen, rangeLen);
 
-            // If candidate is fully contained or heavily overlaps (> 75%)
-            // OR if the overlap is absolute (same start/end)
-            if (overlapLen > 0 && (overlapLen >= candidateLen * 0.75 || (overlapStart === candidate.start_byte && overlapEnd === candidate.end_byte))) {
-              // console.log(`[Dedup] Geometric Match: dropping item ${candidate.id} (overlaps with ${candidate.compound_id} range)`);
+            // If overlap is > 50% of either window, it's a duplicate
+            if (overlapLen > 0 && (overlapLen >= minLen * 0.5)) {
+              isGeometricDuplicate = true;
+              break;
+            }
+            
+            // Check if windows are adjacent or overlapping (within 500 bytes for molecules)
+            // Molecules can be large, so use larger threshold
+            const gap = Math.max(0, overlapStart - overlapEnd);
+            const adjacencyThreshold = Math.max(500, Math.min(candidateLen, rangeLen) * 0.2);
+            if (gap >= 0 && gap < adjacencyThreshold) {
               isGeometricDuplicate = true;
               break;
             }
@@ -327,8 +365,6 @@ export async function findAnchors(
         }
 
         // B. Content Deduplication (Fallback)
-        const candidateNorm = normalize(candidate.content);
-        // Take a robust fingerprint (first 100 normalized chars)
         const candidateFingerprint = candidateNorm.substring(0, 100);
 
         let isContentDuplicate = false;
@@ -346,12 +382,22 @@ export async function findAnchors(
             break;
           }
 
-          // 2. Fuzzy Prefix Match
+          // 2. Fuzzy Prefix Match - INCREASED check length to 50 for better matching
           const keptFingerprint = keptNorm.substring(0, 100);
           const checkLen = Math.min(candidateFingerprint.length, keptFingerprint.length);
-          if (checkLen > 30 && candidateFingerprint.substring(0, checkLen) === keptFingerprint.substring(0, checkLen)) {
+          if (checkLen > 50 && candidateFingerprint.substring(0, checkLen) === keptFingerprint.substring(0, checkLen)) {
             isContentDuplicate = true;
             break;
+          }
+
+          // 3. SimHash Distance Check - Cross-file near-duplicates (NEW)
+          // Hamming distance < 5 out of 64 bits = near-duplicate content
+          if (candidate.molecular_signature && kept.molecular_signature) {
+            const simhashDistance = getHammingDistance(candidate.molecular_signature, kept.molecular_signature);
+            if (simhashDistance < 5) {
+              isContentDuplicate = true;
+              break;
+            }
           }
         }
 
@@ -363,11 +409,6 @@ export async function findAnchors(
             const ranges = keptRanges.get(candidate.compound_id) || [];
             ranges.push({ start: candidate.start_byte, end: candidate.end_byte, content: candidate.content });
             keptRanges.set(candidate.compound_id, ranges);
-          }
-        } else {
-          // Debug log on dropped items
-          if (distinctAnchors.length < 5) {
-            // console.log(`[Dedup] Dropped Content Duplicate: ${candidate.content.substring(0, 50)}...`);
           }
         }
       }

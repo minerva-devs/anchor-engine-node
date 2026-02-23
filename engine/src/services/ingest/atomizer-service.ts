@@ -118,8 +118,10 @@ export class AtomizerService {
                 }
 
                 // Update time context if this part has a specific timestamp
-                if (partTimestamp) {
-                    currentTimestamp = partTimestamp;
+                // Extract earliest timestamp from content for temporal ordering
+                const extractedTs = this.extractEarliestTimestamp(text, currentTimestamp);
+                if (extractedTs) {
+                    currentTimestamp = extractedTs;
                 }
 
                 // Check content length and truncate if necessary
@@ -171,7 +173,7 @@ export class AtomizerService {
                     numeric_value: numericVal,
                     numeric_unit: numericUnit,
                     molecular_signature: this.generateSimHash(processedText),
-                    timestamp: partTimestamp || currentTimestamp // Use part-specific timestamp if available, otherwise context-aware timestamp
+                    timestamp: currentTimestamp // Uses earliest timestamp found in chunk for temporal ordering
                 });
             }
             console.log(`[Atomizer] ⏱️ Enrichment complete: ${((Date.now() - enrichStart) / 1000).toFixed(2)}s`);
@@ -495,11 +497,11 @@ export class AtomizerService {
             return getByteLength(str.substring(0, stringIndex));
         };
 
-        // Helper to extract timestamp from a chunk
+        // Helper to extract FIRST timestamp from a chunk (legacy - used for molecule splitting)
         const extractTimestamp = (chunk: string): number | undefined => {
             // Match ISO timestamps: 2026-01-25T03:43:54.405Z or 2026-01-25 03:43:54
-            const isoRegex = /\b(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?)\b/;
-            let match = chunk.match(isoRegex);
+            const isoRegex = /\b(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?)\b/g;
+            let match = isoRegex.exec(chunk);
             if (match) {
                 const ts = Date.parse(match[1]);
                 if (!isNaN(ts)) return ts;
@@ -507,25 +509,25 @@ export class AtomizerService {
 
             // Match YYYY-MM-DD format (without time)
             const dateRegex = /\b(20[2-9]\d-\d{2}-\d{2})\b/;
-            match = chunk.match(dateRegex);
-            if (match) {
-                const ts = Date.parse(match[1]);
+            let match2 = chunk.match(dateRegex);
+            if (match2) {
+                const ts = Date.parse(match2[1]);
                 if (!isNaN(ts)) return ts;
             }
 
             // Match MM/DD/YYYY or DD/MM/YYYY format
             const usDateRegex = /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/;
-            match = chunk.match(usDateRegex);
-            if (match) {
-                const ts = Date.parse(match[1]);
+            let match3 = chunk.match(usDateRegex);
+            if (match3) {
+                const ts = Date.parse(match3[1]);
                 if (!isNaN(ts)) return ts;
             }
 
             // Match Month DD, YYYY format
             const monthDayYearRegex = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s+(\d{4})\b/;
-            match = chunk.match(monthDayYearRegex);
-            if (match) {
-                const [, month, day, year] = match;
+            let match4 = chunk.match(monthDayYearRegex);
+            if (match4) {
+                const [, month, day, year] = match4;
                 const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June',
                     'July', 'August', 'September', 'October', 'November', 'December']
                     .indexOf(month);
@@ -535,9 +537,9 @@ export class AtomizerService {
 
             // Match DD Month YYYY format
             const dayMonthYearRegex = /\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/;
-            match = chunk.match(dayMonthYearRegex);
-            if (match) {
-                const [, day, month, year] = match;
+            let match5 = chunk.match(dayMonthYearRegex);
+            if (match5) {
+                const [, day, month, year] = match5;
                 const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June',
                     'July', 'August', 'September', 'October', 'November', 'December']
                     .indexOf(month);
@@ -766,6 +768,44 @@ export class AtomizerService {
         if (text.includes('```') || text.includes('function ') || text.includes('const ') || text.includes('import ')) return 'code';
 
         return 'prose';
+    }
+
+    /**
+     * Extract earliest timestamp from content for temporal ordering
+     * Scans for multiple timestamp formats and returns the earliest found
+     */
+    private extractEarliestTimestamp(chunk: string, fallbackTimestamp?: number): number {
+        const timestamps: number[] = [];
+
+        // ISO timestamps: 2026-01-25T03:43:54.405Z or 2026-01-25 03:43:54
+        const isoRegex = /\b(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?)\b/g;
+        let isoMatch;
+        while ((isoMatch = isoRegex.exec(chunk)) !== null) {
+            const ts = Date.parse(isoMatch[1]);
+            if (!isNaN(ts)) timestamps.push(ts);
+        }
+
+        // YYYY-MM-DD
+        const dateRegex = /\b(20[2-9]\d-\d{2}-\d{2})\b/g;
+        let dateMatch;
+        while ((dateMatch = dateRegex.exec(chunk)) !== null) {
+            const ts = Date.parse(dateMatch[1]);
+            if (!isNaN(ts)) timestamps.push(ts);
+        }
+
+        // MM/DD/YYYY or DD/MM/YYYY
+        const usDateRegex = /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/g;
+        let usMatch;
+        while ((usMatch = usDateRegex.exec(chunk)) !== null) {
+            const ts = Date.parse(usMatch[1]);
+            if (!isNaN(ts)) timestamps.push(ts);
+        }
+
+        // Return earliest timestamp found, or fallback
+        if (timestamps.length > 0) {
+            return Math.min(...timestamps);
+        }
+        return fallbackTimestamp || Date.now();
     }
 
     private extractNumericData(text: string): { value: number, unit?: string } | null {
