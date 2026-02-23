@@ -17,13 +17,15 @@ export class ContextInflator {
 
     /**
      * Inflate search results into expanded Context Windows.
-     * 
+     *
      * Architecture: Atoms are POINTERS — the DB stores entity labels + byte coordinates.
      * Content lives in the original files on disk (mirrored). This method:
      *   1. Skips results already inflated by inflateFromAtomPositions (read from disk)
      *   2. For results with compound coordinates: resolves file path → reads from disk with radial expansion
      *   3. Falls back to compound_body in DB only if the disk file doesn't exist
-     * 
+     *
+     * Progressive Inflation: Top results get larger radius for better budget allocation.
+     *
      * The DB is a lightweight routing layer. Actual content comes from the filesystem.
      */
     static async inflate(results: SearchResult[], totalBudget?: number, radius: number = 0): Promise<SearchResult[]> {
@@ -53,13 +55,24 @@ export class ContextInflator {
         let skippedAlready = 0;
         let skippedNoCoords = 0;
 
+        // Progressive inflation: allocate more budget to top results
+        // Top 10% get 2x radius, next 40% get 1.5x, rest get 1x
+        const topTenPercent = Math.max(1, Math.floor(results.length * 0.1));
+        const nextFortyPercent = Math.floor(results.length * 0.4);
+
         for (let i = 0; i < results.length; i++) {
             const res = results[i];
 
-            // Smart Radius Allocation:
-            // Top 3 results get full radius.
-            // Rest get 50% radius to save budget while maintaining breadth.
-            const effectiveRadius = (i < 3) ? baseRadius : Math.floor(baseRadius * 0.5);
+            // Progressive radius allocation based on rank
+            let radiusMultiplier = 1.0;
+            if (i < topTenPercent) {
+                radiusMultiplier = 2.0;  // Top 10% get 2x radius
+            } else if (i < topTenPercent + nextFortyPercent) {
+                radiusMultiplier = 1.5;  // Next 40% get 1.5x
+            }
+            // Rest get 1.0x (base)
+
+            const effectiveRadius = Math.floor(baseRadius * radiusMultiplier);
 
             // 1. Skip results already inflated from disk (e.g., by inflateFromAtomPositions)
             if (res.is_inflated) {

@@ -529,7 +529,7 @@ export async function executeSearch(
     temperature: useMaxRecall ? MAX_RECALL_CONFIG.walker.temperature : 0.2,
     max_per_hop: useMaxRecall ? MAX_RECALL_CONFIG.walker.max_per_hop : 50,
     walk_radius: useMaxRecall ? MAX_RECALL_CONFIG.walker.walk_radius : 1
-  });
+  }, maxChars);  // NEW: Pass budget hint for auto-tuning
 
   console.log(`[Search] Physics Walker found ${walkerResults.length} associations.`);
 
@@ -571,8 +571,17 @@ export async function executeSearch(
     })) as any[]
   ];
 
-  // Apply context provenance formatting (Standard 108)
-  const formatted = await formatResults(combinedResults, maxChars);
+  // Apply context provenance formatting with coalescing (Standard 108)
+  // Enable coalescing for high-budget queries to improve coherence
+  const enableCoalescing = maxChars > 16000; // Only coalesce for budgets > 16k chars
+  const proximityThreshold = maxChars > 100000 ? 800 : 500; // Larger threshold for max-recall
+
+  console.log(`[Search] Coalescing: ${enableCoalescing ? 'enabled' : 'disabled'} (threshold: ${proximityThreshold}px)`);
+
+  const formatted = await formatResults(combinedResults, maxChars, {
+    enableCoalescing,
+    proximityThreshold
+  });
 
   return {
     context: serializedContext,

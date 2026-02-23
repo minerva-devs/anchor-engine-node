@@ -10,7 +10,7 @@
 
     This paper shows a different way. Anchor Engine implements what I call the "Browser Paradigm" for AI memory. Just like your browser can render any website on any machine by loading only what it needs, Anchor Engine lets any device—from a $200 laptop to a supercomputer—navigate massive context by retrieving only the atoms required for the current thought.
 
-    This isn't theory. The benchmarks in this paper are from my actual machine, running actual workloads. 91MB of chat history ingested in under 3 minutes. 280,000 molecules indexed. Zero data loss.
+    This isn't theory. The benchmarks in this paper are from my actual machine, running actual workloads. 91MB of chat history ingested in under 3 minutes. 280,000 textual molecules indexed. Zero data loss.
 
     The future of AI memory isn't bigger silos. It's universal, sharded utility. And it runs on the hardware you already have.
 
@@ -42,13 +42,11 @@
 
     ## 2. The Architecture of Universality
 
-    Why does Anchor Engine run on Windows, macOS, and Linux without modification? Because I designed it like a browser.
-
     ### The Hybrid Monolith Design
 
-    **Node.js** acts as the "Browser Shell." It handles the UI, network requests, OS signaling—all the high-level stuff that changes frequently.
+    **Node.js** acts as the "Browser Shell." It handles the UI, network requests, OS signaling—all the high-level work that changes frequently.
 
-    **C++ (N-API)** acts as the "Rendering Engine." It does the heavy lifting: text processing, SimHash fingerprinting, atomization. The stuff that needs to be fast.
+    **C++ (N-API)** acts as the "Rendering Engine." It does the heavy lifting: text processing, SimHash fingerprinting, atomization. The work that needs to be fast.
 
     **The Result:** N-API provides a standard ABI (Application Binary Interface). The C++ code doesn't care if it's on Windows or Linux—as long as it compiles, it works. This is "Write Once, Run Everywhere," and it's the same principle that lets Electron apps run anywhere.
 
@@ -90,12 +88,12 @@
 
     Every memory exerts a gravitational pull on your current thought. The equation calculates that pull:
 
-    $$ W_{M \to T} = \alpha \cdot (\mathbf{C} \cdot e^{-\lambda \Delta t} \cdot (1 - \frac{d_{\text{hamming}}}{64})) $$
+    $$ W_{M \to T} = \alpha \cdot (\mathbf{C} \cdot e^{-\lambda \Delta t} \cdot (1 - \frac{d_{\text{Hamming}}}{64})) $$
 
     Where:
     * **$\mathbf{C}$ (Co-occurrence)**: Shared tags between the memory and your query. Semantic overlap.
     * **$e^{-\lambda \Delta t}$ (Time Decay)**: Recent memories have stronger gravity. Exponential decay based on time difference.
-    * **$1 - \frac{d_{\text{hamming}}}{64}$ (SimHash Gravity)**: Hamming distance of the 64-bit fingerprints. $d=0$ means identical (max gravity). $d=32$ means orthogonal (no gravity).
+    * **$1 - \frac{d_{\text{Hamming}}}{64}$ (SimHash Gravity)**: Hamming distance of the 64-bit fingerprints. $d=0$ means identical (max gravity). $d=32$ means orthogonal (no gravity).
     * **$\alpha$ (Damping)**: Controls the "viscosity" of the walk. Default 0.85.
 
     #### SQL-Native Implementation
@@ -311,7 +309,7 @@
 
     - **A. Pre-Injection Sorting:** Sort retrieved atoms by timestamp before LLM injection. Restores causal logic (Code v1 → Error → Code v2). Cost: negligible (client-side sort).
     - **B. Relevance Scoring Metadata:** Wrap each atom in XML metadata header (`<atom id="123" relevance="0.92" timestamp="2025-07-30">`). Helps LLM prioritize content if context window is truncated.
-    - **C. Persona Tagging & Filtering:** Tag atoms by persona (Sybil, Coda, Architect, System). Filter by session type to prevent identity oscillation (e.g., technical work vs. personal sessions).
+    - **C. Persona Tagging & Filtering:** Tag atoms by persona (Dom, Bob, Architect, System). Filter by session type to prevent identity oscillation (e.g., technical work vs. personal sessions).
     - **D. Transient Data Filter:** Exclude terminal error logs, package installation output, and build artifacts from ingestion. Reclaims ~30% of context window for actual knowledge.
 
     These enhancements move STAR from "working prototype" to "production system" by improving signal-to-noise ratio in retrieved context.
