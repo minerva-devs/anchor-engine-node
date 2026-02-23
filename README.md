@@ -2,7 +2,7 @@
 
 **Version:** 4.2.0 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready
 
-The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Sovereign Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
+The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Semantic Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
 
 ---
 
