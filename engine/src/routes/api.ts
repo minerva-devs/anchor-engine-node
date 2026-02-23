@@ -366,6 +366,45 @@ export function setupRoutes(app: Application) {
     res.status(400).json({ error: "Use POST /v1/memory/search for complex queries." });
   });
 
+  // DEBUG: Get tag statistics
+  app.get('/v1/debug/tags', async (_req: Request, res: Response) => {
+    try {
+      // Get total atom count
+      const atomCount = await db.run('SELECT COUNT(*) as count FROM atoms');
+      
+      // Get total tag count
+      const tagCount = await db.run('SELECT COUNT(*) as count FROM tags');
+      
+      // Get sample tags
+      const sampleTags = await db.run('SELECT name, atom_count FROM tags ORDER BY atom_count DESC LIMIT 20');
+      
+      // Get tags with low atom counts
+      const lowCountTags = await db.run('SELECT COUNT(*) as count FROM tags WHERE atom_count < 3');
+      
+      res.status(200).json({
+        atoms: atomCount.rows?.[0]?.count || 0,
+        tags: tagCount.rows?.[0]?.count || 0,
+        sampleTags: sampleTags.rows || [],
+        tagsWithLowCount: lowCountTags.rows?.[0]?.count || 0
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // DEBUG: Get synonym ring info
+  app.get('/v1/debug/synonyms', async (_req: Request, res: Response) => {
+    try {
+      const synonyms = await db.run('SELECT key, value FROM engrams WHERE key LIKE \'synonym:%\'');
+      res.status(200).json({
+        count: synonyms.rows?.length || 0,
+        synonyms: synonyms.rows || []
+      });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // POST Molecule Search endpoint - splits query into sentence-like chunks
   app.post('/v1/memory/molecule-search', async (req: Request, res: Response) => {
     try {
