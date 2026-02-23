@@ -1,6 +1,8 @@
-# The Sovereign Context Protocol: Decoupling Intelligence from Infrastructure via Data Atomization and Cross-Platform Sharding
+# STAR: Sovereign Temporal Associative Retrieval
 
-## Abstract
+## The Browser Paradigm for AI Memory
+
+### Abstract
 
 AI memory is broken. Right now, if you want serious context retrieval, you need a server rack, a GPU budget, and a subscription to someone's cloud. The intelligence is locked in black boxes—massive vector indices that eat gigabytes of RAM and tie you to proprietary systems.
 
@@ -13,6 +15,10 @@ The result? A 4GB RAM laptop can handle a 10TB dataset. Search happens in 150ms.
 This isn't theory. The benchmarks in this paper are from my actual machine, running actual workloads. 91MB of chat history ingested in under 3 minutes. 280,000 molecules indexed. Zero data loss.
 
 The future of AI memory isn't bigger silos. It's universal, sharded utility. And it runs on the hardware you already have.
+
+---
+
+**STAR Algorithm:** Semantic Temporal Associative Retrieval — A physics-based search algorithm using tag-walker graph traversal with temporal decay and SimHash fingerprinting.
 
 ---
 
@@ -80,9 +86,9 @@ For prose, it identifies paragraphs, sentences, semantic boundaries. The context
 
 Every atom gets a 64-bit SimHash fingerprint. This enables O(1) deduplication—constant time, no matter how big your dataset grows. Near-duplicate content gets flagged instantly. No expensive similarity comparisons.
 
-### The Tag-Walker Protocol & The Unified Field Equation
+### The Tag-Walker Protocol & The STAR Algorithm
 
-This is where it gets interesting. Instead of vector search, Anchor Engine uses a graph-based "Tag-Walker" protocol. It navigates relationships between atoms using what I call the Unified Field Equation.
+This is where it gets interesting. Instead of vector search, Anchor Engine uses a graph-based "Tag-Walker" protocol. It navigates relationships between atoms using what I call the **STAR Algorithm** (Sovereign Temporal Associative Retrieval).
 
 Every memory exerts a gravitational pull on your current thought. The equation calculates that pull:
 
@@ -268,10 +274,12 @@ You get a new category: Universal Context Infrastructure.
 
 Sophisticated AI memory on any hardware. From smartphones to servers. No performance sacrifice. No functionality loss. Intelligence becomes a utility, not a scarce resource controlled by a few organizations.
 
+**The STAR Algorithm** (Sovereign Temporal Associative Retrieval) is the core innovation: a physics-based, graph-traversal search protocol that replaces vector indices with deterministic, sovereign context retrieval.
+
 **Production Verification:** All performance claims in this paper are from real workloads. ~100MB. ~280,000 molecules. My machine. My data.
 
 - **1,200-1,600 molecules/second** ingestion throughput
-- **<200ms** search latency (p95)
+- **<200ms** search latency (p95) at 1.5k atoms scale
 - **60% memory reduction** after idle cleanup
 - **Zero data loss** with ephemeral index architecture
 
