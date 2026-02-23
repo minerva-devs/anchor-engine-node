@@ -72,10 +72,14 @@ curl -X POST http://localhost:3160/v1/memory/search \
 
 | Document | Description |
 |----------|-------------|
-| **[docs/whitepaper.md](docs/whitepaper.md)** | STAR Algorithm whitepaper (95% compliance, v4.1.2) |
+| **[docs/whitepaper.md](docs/whitepaper.md)** | STAR Algorithm whitepaper (arXiv submission ready) |
+| **[docs/ARCHITECTURE_DIAGRAMS.md](docs/ARCHITECTURE_DIAGRAMS.md)** | Visual system architecture (human-friendly) |
 | **[docs/INDEX.md](docs/INDEX.md)** | Documentation navigation hub |
-| **[specs/spec.md](specs/spec.md)** | System specification with architecture diagrams |
-| **[specs/standards/](specs/standards/)** | Architecture standards (086, 113, 116, etc.) |
+| **[docs/BIBLIOGRAPHY.bib](docs/BIBLIOGRAPHY.bib)** | Citation database (15 key papers) |
+| **[specs/spec.md](specs/spec.md)** | System specification (LLM-optimized) |
+| **[specs/standards/](specs/standards/)** | Architecture standards (086, 113, 116, 117) |
+| **[specs/standards/RESEARCH_LANDSCAPE.md](specs/standards/RESEARCH_LANDSCAPE.md)** | Related work analysis |
+| **[specs/standards/STANDARD_117_ARXIV_SUBMISSION.md](specs/standards/STANDARD_117_ARXIV_SUBMISSION.md)** | arXiv submission workflow |
 | **[specs/plan.md](specs/plan.md)** | Project roadmap |
 | **[CHANGELOG.md](CHANGELOG.md)** | Version history & recent changes |
 
