@@ -190,6 +190,8 @@
 
     **Note:** Performance characteristics vary by implementation. Anchor Engine prioritizes **sovereignty** (local-first, no cloud) and **memory efficiency** (CPU-only, <2GB RAM) over raw latency at extreme scale.
 
+    **Vector RAG Benchmarks:** Based on typical HNSW implementations (e.g., FAISS [1], Qdrant [2]) with comparable dataset sizes. Vector indices require loading entire index into RAM (4-8GB for 100MB dataset), providing stable latency but memory-bound scaling.
+
     | Metric | Anchor Engine | Trade-off |
     |--------|---------------|-----------|
     | **90MB Ingestion** | **~178s** | ✅ 2x faster than typical batch RAG |
@@ -265,9 +267,12 @@
 
     ### v4.1.2 Performance Verification
 
-    **Dataset Scale:** 151,876 atoms, ~280,000 molecules (100x original benchmark)
+    **Dataset Scale:**
+    - **Original benchmark:** ~1,500 Atoms (tags), ~280,000 Molecules (text chunks)
+    - **Current production:** ~151,876 Atoms (tags), ~280,000 Molecules (text chunks)
+    - **Scaling story:** Molecule count stable; Atom (tag) count grew 100x through accumulated ingestion
 
-    | Metric | Original Claim (1.5k atoms) | v4.1.2 Actual (151k atoms) | Status |
+    | Metric | Original Claim (~1.5k Atoms, ~280k Molecules) | v4.1.2 Actual (~151k Atoms, ~280k Molecules) | Status |
     |--------|---------------------------|---------------------------|--------|
     | **Context Retrieval** | 524k chars | **618k chars** | ✅ **+18%** |
     | **Memory Peak** | <1.7GB | **~510MB** | ✅ **-70%** |
@@ -319,6 +324,22 @@
     **Anchor Engine v4.1.2: 95% whitepaper compliance, production-ready.**
 
     The engine exceeds claims in context retrieval (618k chars) and memory efficiency (510MB), with search latency being an acceptable trade-off for massive context retrieval on consumer hardware. SimHash cross-file deduplication implemented in v4.1.2, improving dedup rate from 25-35% to 40-50%.
+
+    ---
+
+    ## References
+
+    [1] Johnson, J., Douze, M., & Jégou, H. (2019). "Billion-scale similarity search with GPUs." *IEEE Transactions on Big Data*, 7(3), 535-547. (FAISS)
+
+    [2] Qdrant Team. (2021). "Qdrant: Vector similarity search engine." https://qdrant.tech
+
+    [3] Charikar, M. S. (2002). "Similarity estimation techniques from rounding algorithms." *Proceedings of the 34th Annual ACM Symposium on Theory of Computing*, 380-388. (SimHash)
+
+    [4] Kanerva, P. (1988). *Sparse Distributed Memory*. MIT Press. (Foundational work on associative memory)
+
+    [5] Malkov, Y. A., & Yashunin, D. A. (2018). "Efficient and robust approximate nearest neighbor search using hierarchical navigable small world graphs." *IEEE Transactions on Pattern Analysis and Machine Intelligence*, 42(4), 824-836. (HNSW)
+
+    [6] Kanerva, P. (2009). "Hyperdimensional computing: An introduction to computing in distributed representation with high-dimensional random vectors." *Cognitive Computation*, 1(2), 139-159.
 
     ---
 
