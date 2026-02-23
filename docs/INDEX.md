@@ -12,11 +12,8 @@
 
 ### Core Documentation
 - **[docs/whitepaper.md](whitepaper.md)** - The Sovereign Context Protocol (95% compliance)
-- **[docs/ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)** - System diagrams & flow charts
-- **[specs/spec.md](../specs/spec.md)** - System specification
-
-### Architecture Standards
-- **[docs/standards/](standards/)** - Core architecture standards
+- **[specs/spec.md](../specs/spec.md)** - System specification with architecture diagrams
+- **[specs/standards/](../specs/standards/)** - Architecture standards
   - **STANDARD_086** - Dual-Strategy Search (v2.0 with SimHash Dedup)
   - **STANDARD_113** - Automatic Max-Recall Trigger
   - **STANDARD_116** - Phoenix Protocol Backup/Restore
@@ -29,7 +26,7 @@
 → Start with **[README.md](../README.md)** - Quick Start section
 
 ### "I need to understand how the system works"
-→ Read **[docs/ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)** - Visual flow charts
+→ Read **[specs/spec.md](../specs/spec.md)** - System specification with visual flow charts
 
 ### "I'm researching the theory behind Anchor Engine"
 → Study **[docs/whitepaper.md](whitepaper.md)** - Academic paper
@@ -38,13 +35,13 @@
 → See **[README.md](../README.md)** - API Examples or **[specs/spec.md](../specs/spec.md)** - API Endpoints
 
 ### "I want to understand the search algorithm"
-→ Read **[docs/standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md](standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md)**
+→ Read **[specs/standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md](../specs/standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md)**
 
 ### "How does max-recall mode work?"
-→ See **[docs/standards/STANDARD_113_AUTOMATIC_MAX_RECALL.md](standards/STANDARD_113_AUTOMATIC_MAX_RECALL.md)**
+→ See **[specs/standards/STANDARD_113_AUTOMATIC_MAX_RECALL.md](../specs/standards/STANDARD_113_AUTOMATIC_MAX_RECALL.md)**
 
 ### "How do I backup and restore my data?"
-→ Follow **[docs/standards/STANDARD_116_PHOENIX_PROTOCOL.md](standards/STANDARD_116_PHOENIX_PROTOCOL.md)**
+→ Follow **[specs/standards/STANDARD_116_PHOENIX_PROTOCOL.md](../specs/standards/STANDARD_116_PHOENIX_PROTOCOL.md)**
 
 ### "What's new in the latest version?"
 → Check **[CHANGELOG.md](../CHANGELOG.md)** - Latest: v4.1.2 SimHash Dedup Fix
@@ -73,16 +70,12 @@ anchor-engine-node/
 │
 ├── docs/
 │   ├── whitepaper.md              # Academic paper
-│   ├── ARCHITECTURE_DIAGRAMS.md   # Visual diagrams
-│   └── standards/
-│       ├── STANDARD_086_DUAL_STRATEGY_SEARCH.md
-│       ├── STANDARD_113_AUTOMATIC_MAX_RECALL.md
-│       └── STANDARD_116_PHOENIX_PROTOCOL.md
+│   └── INDEX.md                   # This file - navigation hub
 │
 ├── specs/
-│   ├── spec.md                    # System spec
+│   ├── spec.md                    # System spec with diagrams
 │   ├── plan.md                    # Roadmap
-│   └── standards/                 # Legacy standards
+│   └── standards/                 # Architecture standards
 │
 └── tests/
     └── whitepaper-verification.js # Test suite
