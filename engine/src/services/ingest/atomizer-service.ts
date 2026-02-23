@@ -24,6 +24,65 @@ try {
 export class AtomizerService {
 
     /**
+     * Transient data patterns to exclude from ingestion
+     * These patterns identify temporary/noisy content that clutters context
+     */
+    private static TRANSIENT_PATTERNS = [
+        // Terminal error logs
+        /Traceback \(most recent call last\)/i,
+        /KeyError:/i,
+        /TypeError:/i,
+        /ValueError:/i,
+        /Error:.*at line \d+/i,
+        /Exception in thread/i,
+        /Fatal error:/i,
+        
+        // Package installation logs
+        /npm install/i,
+        /pip install/i,
+        /yarn add/i,
+        /pnpm add/i,
+        /Collecting [a-zA-Z0-9_-]+/i,  // pip "Collecting package"
+        /Downloading [a-zA-Z0-9_-]+/i,  // pip "Downloading package"
+        /added \d+ package/i,           // npm "added X packages"
+        /Successfully installed/i,
+        
+        // Build artifacts
+        /Build succeeded/i,
+        /Build failed/i,
+        /Compiling\.\.\./i,
+        /Linking\.\.\./i,
+        /Generating\.\.\./i,
+        
+        // Repetitive log noise
+        /^\[\d{4}-\d{2}-\d{2}.*\]$/m,  // Standalone timestamp lines
+        /^={50,}$/m,                    // Separator lines (====...)
+        /^-{50,}$/m,                    // Separator lines (----...)
+    ];
+
+    /**
+     * Check if content is transient/temporary data that should be excluded
+     */
+    private isTransientData(content: string): boolean {
+        // Check if more than 50% of content matches transient patterns
+        const lines = content.split('\n');
+        if (lines.length < 5) return false; // Too short to be log output
+        
+        let transientLines = 0;
+        for (const pattern of AtomizerService.TRANSIENT_PATTERNS) {
+            for (const line of lines) {
+                if (pattern.test(line)) {
+                    transientLines++;
+                    if (transientLines > lines.length * 0.5) {
+                        return true; // More than 50% is transient
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Deconstructs raw content into Atomic Topology.
      * Returns the Compound (Main Body) and its Constituent Particles (Atoms/Molecules).
      */
@@ -32,10 +91,16 @@ export class AtomizerService {
         sourcePath: string,
         provenance: 'internal' | 'external',
         fileTimestamp?: number
-    ): Promise<{ compound: Compound, molecules: Molecule[], atoms: Atom[] }> {
+    ): Promise<{ compound: Compound, molecules: Molecule[], atoms: Atom[] } | null> {
         const filename = sourcePath.split(/[/\\]/).pop() || sourcePath;
         const contentSizeMB = (content.length / (1024 * 1024)).toFixed(2);
         const startTime = Date.now();
+
+        // Check for transient data before processing
+        if (this.isTransientData(content)) {
+            console.log(`[Atomizer] ⚠️ SKIP: ${filename} - Transient data detected (error logs, install output, etc.)`);
+            return null; // Skip ingestion entirely
+        }
 
         console.log(`[Atomizer] ⏱️ START: ${filename} (${contentSizeMB}MB)`);
 
