@@ -119,12 +119,23 @@ export async function ingestContent(
   // Ensure provenance matches expected type for atomizer
   const atomizerProvenance = (provenance === 'system') ? 'internal' : provenance;
 
-  const { compound, molecules, atoms } = await atomizer.atomize(
+  const atomizeResult = await atomizer.atomize(
     processedContent,
     source,
     atomizerProvenance,
     timestamp
   );
+
+  // Skip ingestion if transient data was detected
+  if (!atomizeResult) {
+    console.log(`[Ingest] ⚠️ SKIP: ${source} - Transient data detected, skipping ingestion`);
+    return {
+      status: 'skipped',
+      message: 'Content skipped (transient data)'
+    };
+  }
+
+  const { compound, molecules, atoms } = atomizeResult;
 
   // Ingest result using AtomicIngestService
   await atomicIngest.ingestResult(compound, molecules, atoms, buckets);

@@ -183,7 +183,16 @@ export async function formatResults(results: SearchResult[], maxChars: number): 
         const tokenBudget = Math.floor(maxChars / 4);
         const rollingContext = composeRollingContext("query_placeholder", candidates, tokenBudget);
 
-        const sortedResults = results.sort((a, b) => b.score - a.score);
+        // Sort by timestamp first (causal narrative), then by score (relevance)
+        // This restores causal logic: Code v1 → Error → Code v2
+        const sortedResults = results.sort((a, b) => {
+            // Primary: chronological order (oldest first)
+            const timeDiff = a.timestamp - b.timestamp;
+            if (timeDiff !== 0) return timeDiff;
+            
+            // Secondary: relevance score (higher first)
+            return b.score - a.score;
+        });
 
         // Enrich results with provenance data
         const enrichedResults = sortedResults.map((r, idx) => ({
@@ -195,18 +204,31 @@ export async function formatResults(results: SearchResult[], maxChars: number): 
             retrieved_at: candidates[idx].retrieved_at
         }));
 
+        // Build XML-wrapped context with relevance metadata
+        // This helps LLM prioritize content if context window is truncated
+        const xmlContext = enrichedResults.map(r => {
+            const relevanceScore = ((r.score || 0) * (r.temporal_weight || 1)).toFixed(3);
+            const timestamp = new Date(r.timestamp).toISOString();
+            const persona = r.buckets?.[0] || 'unknown';
+            
+            return `<atom id="${r.id}" relevance="${relevanceScore}" timestamp="${timestamp}" persona="${persona}" source="${r.source}">
+${r.content || ''}
+</atom>`;
+        }).join('\n\n');
+
         return {
-            context: rollingContext.prompt || 'No results found.',
+            context: xmlContext || rollingContext.prompt || 'No results found.',
             results: enrichedResults,
             toAgentString: () => {
-                return enrichedResults.map(r => 
+                return enrichedResults.map(r =>
                     `[${r.provenance}] ${r.source} (t=${r.temporal_weight?.toFixed(3) || 'N/A'}): ${(r.content || "").substring(0, 200)}...`
                 ).join('\n');
             },
             metadata: {
                 ...rollingContext.stats,
                 provenance_enabled: true,
-                temporal_decay_lambda: lambda
+                temporal_decay_lambda: lambda,
+                xml_wrapped: true
             }
         };
     } catch (error) {

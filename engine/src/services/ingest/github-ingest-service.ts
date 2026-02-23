@@ -442,11 +442,19 @@ export class GitHubIngestService {
           console.log(`[GitHub] Ingesting: ${relativePath}`);
 
           // Atomize
-          const { compound, molecules, atoms } = await this.atomizer.atomize(
+          const atomizeResult = await this.atomizer.atomize(
             content,
             sourcePath,
             'external'
           );
+
+          // Skip if transient data detected
+          if (!atomizeResult) {
+            console.log(`[GitHub] ⚠️ SKIP: ${relativePath} - Transient data`);
+            continue;
+          }
+
+          const { compound, molecules, atoms } = atomizeResult;
 
           // Ingest
           await this.atomicIngest.ingestResult(compound, molecules, atoms, [repo.bucket]);

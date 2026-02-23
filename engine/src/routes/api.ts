@@ -47,11 +47,24 @@ export function setupRoutes(app: Application) {
 
       const provenance = (source && (source.includes('external') || source.includes('web'))) ? 'external' : 'internal';
 
-      const { compound, molecules, atoms } = await atomizer.atomize(
+      const atomizeResult = await atomizer.atomize(
         content,
         source || 'api_upload',
         provenance
       );
+
+      // Skip ingestion if transient data was detected
+      if (!atomizeResult) {
+        const result = {
+          status: 'skipped',
+          message: 'Content skipped (transient data detected)',
+          id: null,
+          duration_ms: Date.now() - startTime
+        };
+        return res.json(result);
+      }
+
+      const { compound, molecules, atoms } = atomizeResult;
 
       // Ingest result
       const targetBuckets = buckets.length > 0 ? buckets : [bucket || 'notebook'];

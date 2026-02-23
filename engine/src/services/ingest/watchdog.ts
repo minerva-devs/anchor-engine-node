@@ -281,11 +281,19 @@ async function processFile(filePath: string, event: string) {
 
         // 4. ATOMIZE (Legacy Pipeline)
         // This is the fast, regex-based splitter that respects token limits and semantics without heavy NLP
-        const { compound, molecules, atoms } = await atomizer.atomize(
+        const atomizeResult = await atomizer.atomize(
             content,
             relativePath,
             provenance
         );
+
+        // Skip ingestion if transient data was detected
+        if (!atomizeResult) {
+            console.log(`[Watchdog] ⚠️ SKIP: ${relativePath} - Transient data, skipping ingestion`);
+            return; // Exit early, no ingestion
+        }
+
+        const { compound, molecules, atoms } = atomizeResult;
 
         // 5. INGEST (Atomic)
         // Use the specialized AtomicIngestService for efficiency

@@ -1,4 +1,4 @@
-    # STAR: Sovereign Temporal Associative Retrieval
+    # STAR: Semantic Temporal Associative Retrieval
 
     ## The Browser Paradigm for AI Memory
 
@@ -64,26 +64,17 @@
 
     ### The Atomization Process
 
-    Anchor Engine uses a **physics-inspired taxonomy** to model how semantic units interact, combine, and emerge into complex structures—much like atoms forming molecules, molecules forming compounds.
+    Anchor Engine uses a three-tier data hierarchy inspired by chemical structures:
 
     | Level | Role | Content? | Example | Chat Sessions Count |
     |-------|------|----------|---------|---------------------|
-    | **Compound** | Complete document (emergent structure) | Yes (full text) | `ChatSessions.yaml` (91.88MB) | 1 |
+    | **Compound** | Complete document | Yes (full text) | `ChatSessions.yaml` (91.88MB) | 1 |
     | **Molecule** | Semantic text chunk with byte offsets | Yes (chunk text) | "The model remembered July..." (bytes 1024-2048) | 214,000 |
-    | **Atom** | Tag/Concept/Entity (fundamental unit) | **No** (metadata only) | `#gemini`, `#july-2025`, `@rob` | 776 |
+    | **Atom** | Tag/Concept/Entity | **No** (metadata only) | `#gemini`, `#july-2025`, `@rob` | 776 |
 
-    **Key Insight:** Content lives in `mirrored_brain/` filesystem. The database stores **interaction pointers only** (byte offsets + tags), making it a **disposable, rebuildable index**.
+    **Key Insight:** Content lives in `mirrored_brain/` filesystem. The database stores **pointers only** (byte offsets + tags), making it a **disposable, rebuildable index**.
 
-    **Why Physics, Not Chemistry?**
-
-    In chemistry, atoms bond into fixed structures. In **physics**, atoms interact dynamically—colliding, attracting, repelling—producing **serendipitous outcomes** from simple rules.
-
-    Our taxonomy reflects this:
-    - **Atoms (tags)** interact via shared co-occurrence → form semantic gravity wells
-    - **Molecules (text chunks)** interact via tag-walker traversal → produce emergent associations
-    - **Compounds (documents)** emerge from molecular interactions → reconstructable from atomic pointers
-
-    Just as physical atoms define matter's properties without being the matter itself, our tags define semantic properties without storing content. This enables O(1) deduplication and graph traversal with **unpredictable, creative associations**—the hallmark of physical systems, not static chemical bonds.
+    **Why "Atoms" are Tags:** Just as atoms define the properties of matter without being the matter itself, our tags define the semantic properties of content without storing the content. This enables O(1) deduplication and graph traversal.
 
     For code, the engine identifies top-level constructs (functions, classes, modules) and maintains syntactic integrity. A function stays together. A class stays together.
 
@@ -93,104 +84,29 @@
 
     Every atom gets a 64-bit SimHash fingerprint. This enables O(1) deduplication—constant time, no matter how big your dataset grows. Near-duplicate content gets flagged instantly. No expensive similarity comparisons.
 
-    ### The STAR Algorithm: Unified Field Equation
+    ### The Tag-Walker Protocol & The STAR Algorithm
 
-    The STAR Algorithm (Sovereign Temporal Associative Retrieval) is built on one unified equation that combines three distinct forces into a single gravity score:
+    This is where it gets interesting. Instead of vector search, Anchor Engine uses a graph-based "Tag-Walker" protocol. It navigates relationships between atoms using what I call the **STAR Algorithm** (Sovereign Temporal Associative Retrieval).
 
-    $$ W_{M \to T} = \alpha \cdot \left(\mathbf{C} \cdot e^{-\lambda \Delta t} \cdot \left(1 - \frac{d}{64}\right)\right) $$
+    Every memory exerts a gravitational pull on your current thought. The equation calculates that pull:
 
-    **Key insight:** These terms are **multiplied, not added**. If any term is zero, the whole weight is zero. If all are strong, they amplify each other. This is what makes STAR selective and explainable.
+    $$ W_{M \to T} = \alpha \cdot (\mathbf{C} \cdot e^{-\lambda \Delta t} \cdot (1 - \frac{d_{\text{hamming}}}{64})) $$
 
-    | Term | What it represents | Mathematical form | Why it matters |
-    |------|-------------------|-------------------|----------------|
-    | **$\mathbf{C}$** | Shared tag count | Simple integer count | Explicit, human-crafted connections. If two atoms share tags, they're related. |
-    | **$e^{-\lambda \Delta t}$** | Temporal decay | Exponential decay | Recent memories weigh more. The forgetting curve is real—STAR mimics it. |
-    | **$1 - \frac{d}{64}$** | Content similarity | SimHash + Hamming distance | Even without shared tags, similar content gets a boost. $d$ = bits that differ (0-64). |
-    | **$\alpha$** | Damping factor | Constant (default 0.85) | Controls how far associations propagate. Each hop gets weaker, like gravity over distance. |
+    Where:
+    * **$\mathbf{C}$ (Co-occurrence)**: Shared tags between the memory and your query. Semantic overlap.
+    * **$e^{-\lambda \Delta t}$ (Time Decay)**: Recent memories have stronger gravity. Exponential decay based on time difference.
+    * **$1 - \frac{d_{\text{hamming}}}{64}$ (SimHash Gravity)**: Hamming distance of the 64-bit fingerprints. $d=0$ means identical (max gravity). $d=32$ means orthogonal (no gravity).
+    * **$\alpha$ (Damping)**: Controls the "viscosity" of the walk. Default 0.85.
 
-    ### The Bipartite Graph Structure
+    #### SQL-Native Implementation
 
-    STAR uses a **bipartite graph**: Atoms (content chunks) connect only through Tags—never directly to each other.
+    This equation isn't calculated in a slow Python loop. It's executed as a single, optimized SQL operation inside PGlite's relational engine.
 
-    - **Atoms:** The actual content (sentences, code blocks, paragraphs) with byte-offset pointers
-    - **Tags:** The labels (explicit keywords, extracted entities, metadata)
-    - **Traversal:** You walk from query → tags → atoms → tags → atoms, etc. Each "hop" is a step through a tag
-
-    **Why bipartite?** It keeps the graph sparse. You don't store every possible connection between atoms. You store only atom–tag edges, and let relationships emerge during the walk.
-
-    ### The Tag-Walker Protocol
-
-    **Hop 1:** Query tags → directly matching atoms (Planets: 70% of budget)
-
-    **Hop 2:** Those atoms' tags → new atoms (Moons: 30% of budget, first-degree associations)
-
-    **Hop 3:** Repeat (second-degree associations, max-recall mode only)
-
-    Each hop applies the damping factor $\alpha$. After 3 hops, you've captured most of the relevant graph without drowning in noise.
-
-    ### SQL-Native Implementation
-
-    The entire equation executes as a single, optimized SQL operation inside PGlite's relational engine using recursive CTEs:
-
-    ```sql
-    -- Simplified STAR implementation
-    WITH RECURSIVE walk AS (
-      -- Hop 1: direct matches
-      SELECT atom_id, 1 AS hop, 1.0 AS damping
-      FROM atom_tags WHERE tag_id IN (query_tags)
-      
-      UNION ALL
-      
-      -- Hop 2+: walk through tags
-      SELECT at2.atom_id, hop+1, damping * 0.85
-      FROM walk w
-      JOIN atom_tags at1 ON w.atom_id = at1.atom_id
-      JOIN atom_tags at2 ON at1.tag_id = at2.tag_id
-      WHERE hop < 3
-    )
-    SELECT a.*, 
-           COUNT(DISTINCT t.tag) * 
-           EXP(-0.00001 * age) * 
-           (1.0 - BIT_COUNT(q.simhash # a.simhash)/64.0) *
-           w.damping AS gravity
-    FROM walk w
-    JOIN atoms a ON w.atom_id = a.id
-    JOIN atom_tags t ON a.id = t.atom_id
-    GROUP BY a.id
-    ORDER BY gravity DESC;
-    ```
-
-    **Implementation advantages:**
-
-    1. **Sparse Matrix Multiplication:** Co-occurrence is computed via `JOIN` operations. It's essentially $M \times M^T$ to find candidate nodes.
-    2. **Bitwise Physics:** SimHash distance uses hardware-accelerated bitwise XOR (`#`) and `BIT_COUNT` directly in the database kernel.
-    3. **Zero-Transport Overhead:** Only the final, weighted results return to the application layer.
+    1. **Sparse Matrix Multiplication**: Co-occurrence is computed via `JOIN` operations on the tags table. It's essentially $M \times M^T$ to find candidate nodes.
+    2. **Bitwise Physics**: SimHash distance uses hardware-accelerated bitwise XOR and `bit_count` directly in the database kernel.
+    3. **Zero-Transport Overhead**: Only the final, weighted results return to the application layer.
 
     The result? Millions of potential connections ranked in roughly **10ms** on consumer hardware.
-
-    ### Intellectual Lineage
-
-    STAR synthesizes ideas from multiple lineages:
-
-    | Prior Work | What STAR Borrowed | What's Different |
-    |------------|-------------------|------------------|
-    | **PageRank** (1998) | Graph traversal with damping | PageRank: node→node. STAR: atom↔tag↔atom (bipartite) |
-    | **SimHash** (2002) | 64-bit fingerprints | STAR integrates SimHash into relevance equation, not just dedup |
-    | **Ebbinghaus** (1885) | Exponential forgetting curve | Applied to retrieval weighting, not just psychology |
-    | **TF-IDF** (1950s) | Term importance weighting | Replaced with tag co-occurrence + graph structure |
-    | **Knowledge Graphs** (2012) | Entity/relationship storage | Most store direct relationships; STAR infers through tags |
-    | **Vector Databases** (2010s) | Retrieval for LLMs | STAR: deterministic, explainable tags vs. opaque vectors |
-    | **RAG** (2020) | External memory for LLMs | STAR: graph-based, local-first, sovereign |
-
-    **What's truly novel in STAR:**
-
-    | Aspect | What existed before | What STAR adds |
-    |--------|--------------------|----------------|
-    | **Unified equation** | Separate systems for tags, time, similarity | One multiplicative equation combining all three |
-    | **Graph traversal** | PageRank (node→node) | Bipartite atom↔tag↔atom walk |
-    | **Explainability** | Vector search is a black box | Trace why each result appeared (shared tags, recency, content similarity) |
-    | **Database-native** | Most retrieval is app-layer loops | All weighting happens in SQL with bitwise ops |
-    | **Sovereignty** | Cloud-dependent | Runs entirely on consumer hardware, no telemetry |
 
     ---
 
@@ -264,8 +180,6 @@
     ### Comparison with Vector-Based RAG
 
     **Note:** Performance characteristics vary by implementation. Anchor Engine prioritizes **sovereignty** (local-first, no cloud) and **memory efficiency** (CPU-only, <2GB RAM) over raw latency at extreme scale.
-
-    **Vector RAG Benchmarks:** Based on typical HNSW implementations (e.g., FAISS [1], Qdrant [2]) with comparable dataset sizes. Vector indices require loading entire index into RAM (4-8GB for 100MB dataset), providing stable latency but memory-bound scaling.
 
     | Metric | Anchor Engine | Trade-off |
     |--------|---------------|-----------|
@@ -342,12 +256,9 @@
 
     ### v4.1.2 Performance Verification
 
-    **Dataset Scale:**
-    - **Original benchmark:** ~1,500 Atoms (tags), ~280,000 Molecules (text chunks)
-    - **Current production:** ~151,876 Atoms (tags), ~280,000 Molecules (text chunks)
-    - **Scaling story:** Molecule count stable; Atom (tag) count grew 100x through accumulated ingestion
+    **Dataset Scale:** 151,876 atoms, ~280,000 molecules (100x original benchmark)
 
-    | Metric | Original Claim (~1.5k Atoms, ~280k Molecules) | v4.1.2 Actual (~151k Atoms, ~280k Molecules) | Status |
+    | Metric | Original Claim (1.5k atoms) | v4.1.2 Actual (151k atoms) | Status |
     |--------|---------------------------|---------------------------|--------|
     | **Context Retrieval** | 524k chars | **618k chars** | ✅ **+18%** |
     | **Memory Peak** | <1.7GB | **~510MB** | ✅ **-70%** |
@@ -390,31 +301,26 @@
 
     ### Known Optimization Opportunities
 
+    The following engineering enhancements are planned for v4.2.0:
+
     1. **Search Latency** - 50x target due to 100x dataset scale (acceptable trade-off)
     2. ~~**Cross-File Deduplication** - SimHash distance not implemented (25-35% → 40-50% potential)~~ ✅ **FIXED in v4.1.2**
     3. **Caching Layer** - Frequent query result caching recommended
+
+    **Context Injection Improvements (v4.2.0):**
+
+    - **A. Pre-Injection Sorting:** Sort retrieved atoms by timestamp before LLM injection. Restores causal logic (Code v1 → Error → Code v2). Cost: negligible (client-side sort).
+    - **B. Relevance Scoring Metadata:** Wrap each atom in XML metadata header (`<atom id="123" relevance="0.92" timestamp="2025-07-30">`). Helps LLM prioritize content if context window is truncated.
+    - **C. Persona Tagging & Filtering:** Tag atoms by persona (Sybil, Coda, Architect, System). Filter by session type to prevent identity oscillation (e.g., technical work vs. personal sessions).
+    - **D. Transient Data Filter:** Exclude terminal error logs, package installation output, and build artifacts from ingestion. Reclaims ~30% of context window for actual knowledge.
+
+    These enhancements move STAR from "working prototype" to "production system" by improving signal-to-noise ratio in retrieved context.
 
     ### Conclusion
 
     **Anchor Engine v4.1.2: 95% whitepaper compliance, production-ready.**
 
     The engine exceeds claims in context retrieval (618k chars) and memory efficiency (510MB), with search latency being an acceptable trade-off for massive context retrieval on consumer hardware. SimHash cross-file deduplication implemented in v4.1.2, improving dedup rate from 25-35% to 40-50%.
-
-    ---
-
-    ## References
-
-    [1] Johnson, J., Douze, M., & Jégou, H. (2019). "Billion-scale similarity search with GPUs." *IEEE Transactions on Big Data*, 7(3), 535-547. (FAISS)
-
-    [2] Qdrant Team. (2021). "Qdrant: Vector similarity search engine." https://qdrant.tech
-
-    [3] Charikar, M. S. (2002). "Similarity estimation techniques from rounding algorithms." *Proceedings of the 34th Annual ACM Symposium on Theory of Computing*, 380-388. (SimHash)
-
-    [4] Kanerva, P. (1988). *Sparse Distributed Memory*. MIT Press. (Foundational work on associative memory)
-
-    [5] Malkov, Y. A., & Yashunin, D. A. (2018). "Efficient and robust approximate nearest neighbor search using hierarchical navigable small world graphs." *IEEE Transactions on Pattern Analysis and Machine Intelligence*, 42(4), 824-836. (HNSW)
-
-    [6] Kanerva, P. (2009). "Hyperdimensional computing: An introduction to computing in distributed representation with high-dimensional random vectors." *Cognitive Computation*, 1(2), 139-159.
 
     ---
 
