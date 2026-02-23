@@ -49,22 +49,61 @@ pnpm start
 
 **Access UI:** http://localhost:3160 (or configured port in `user_settings.json`)
 
-### API Examples
+---
+
+## 🐳 Docker Deployment
+
+### Quick Start with Docker
 
 ```bash
-# Health check
-curl http://localhost:3160/health
+# Build the Docker image
+docker build -t anchor-engine:latest .
 
-# Ingest content
-curl -X POST http://localhost:3160/v1/ingest \
-  -H "Content-Type: application/json" \
-  -d '{"content": "Your content here", "buckets": ["inbox"]}'
+# Run the container
+docker run -d -p 3160:3160 --name anchor anchor-engine:latest
 
-# Search memory
-curl -X POST http://localhost:3160/v1/memory/search \
-  -H "Content-Type: application/json" \
-  -d '{"query": "your query", "max_results": 50}'
+# Or use docker-compose (recommended)
+docker-compose up -d
 ```
+
+### Docker Compose (Recommended)
+
+```bash
+# Start with persistent storage and inbox mounted
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+
+# Stop and remove data volume
+docker-compose down -v
+```
+
+### Docker Volumes
+
+The docker-compose.yml mounts these volumes:
+- `anchor-data`: Persistent database storage
+- `./inbox`: Auto-ingested files
+- `./external-inbox`: External source files
+- `./mirrored_brain`: Source of truth filesystem
+- `./backups`: Backup files
+
+### Health Check
+
+```bash
+# Check container health
+docker ps --filter name=anchor
+
+# Test health endpoint
+curl http://localhost:3160/health
+```
+
+### Access UI
+
+**http://localhost:3160**
 
 ---
 
