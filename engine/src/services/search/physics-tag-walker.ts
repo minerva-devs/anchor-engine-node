@@ -335,11 +335,11 @@ export class PhysicsTagWalker {
       -- 1. Candidate Generation with hop tracking
       candidates AS (
          -- Part A: Tag-based (from hop traversal)
-         SELECT 
-           h.atom_id, 
-           a.timestamp, 
-           a.simhash, 
-           COUNT(DISTINCT t.tag) as shared_tags, 
+         SELECT
+           h.atom_id,
+           a.timestamp,
+           a.simhash,
+           COUNT(DISTINCT t.tag) as shared_tags,
            0.0 as physical_bonus,
            MIN(h.hop_distance) as hop_distance
          FROM atom_hop_distance h
@@ -349,14 +349,19 @@ export class PhysicsTagWalker {
            SELECT tag FROM tags WHERE atom_id = ast.anchor_id
          )
          GROUP BY h.atom_id, a.timestamp, a.simhash
-         LIMIT 50
-         UNION ALL
+      ),
+      candidates_limited AS (
+        SELECT * FROM candidates
+        ORDER BY shared_tags DESC
+        LIMIT 50
+      ),
+      candidates_physical AS (
          -- Part B: Physical proximity
-         SELECT 
-           a.id as atom_id, 
-           a.timestamp, 
-           a.simhash, 
-           0 as shared_tags, 
+         SELECT
+           a.id as atom_id,
+           a.timestamp,
+           a.simhash,
+           0 as shared_tags,
            1.0 as physical_bonus,
            1 as hop_distance  -- Physical proximity treated as hop 1
          FROM atoms a
@@ -366,16 +371,21 @@ export class PhysicsTagWalker {
          AND a.end_byte <= ((SELECT end_byte FROM atoms WHERE id = ast.anchor_id) + 1000)
          LIMIT 50
       ),
+      candidates_combined AS (
+        SELECT * FROM candidates_limited
+        UNION ALL
+        SELECT * FROM candidates_physical
+      ),
       -- 2. Aggregate candidate scores
       scored_candidates AS (
-        SELECT 
+        SELECT
            c.atom_id,
            c.timestamp,
            c.simhash,
            SUM(c.shared_tags) as total_shared_tags,
            MAX(c.physical_bonus) as physical_bonus,
            MIN(c.hop_distance) as hop_distance  -- Use minimum hop distance
-        FROM candidates c
+        FROM candidates_combined c
         GROUP BY c.atom_id, c.timestamp, c.simhash
       ),
       -- 3. Physics Weighting (Unified Field Equation with hop distance)
