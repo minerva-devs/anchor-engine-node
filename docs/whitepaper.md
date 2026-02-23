@@ -60,11 +60,21 @@ It's not a new idea. Games have been doing this for decades. But applying it to 
 
 ### The Atomization Process
 
-Anchor Engine doesn't just chunk text. It identifies semantic boundaries—coherent thought units that preserve meaning.
+Anchor Engine uses a three-tier data hierarchy inspired by chemical structures:
 
-**Code Atomization:** For source code, the engine identifies top-level constructs (functions, classes, modules) and maintains syntactic integrity. A function stays together. A class stays together.
+| Level | Role | Content? | Example | Chat Sessions Count |
+|-------|------|----------|---------|---------------------|
+| **Compound** | Complete document | Yes (full text) | `ChatSessions.yaml` (91.88MB) | 1 |
+| **Molecule** | Semantic text chunk with byte offsets | Yes (chunk text) | "The model remembered July..." (bytes 1024-2048) | 214,000 |
+| **Atom** | Tag/Concept/Entity | **No** (metadata only) | `#gemini`, `#july-2025`, `@rob` | 776 |
 
-**Prose Atomization:** For natural language, it identifies paragraphs, sentences, semantic boundaries. The context stays coherent.
+**Key Insight:** Content lives in `mirrored_brain/` filesystem. The database stores **pointers only** (byte offsets + tags), making it a **disposable, rebuildable index**.
+
+**Why "Atoms" are Tags:** Just as atoms define the properties of matter without being the matter itself, our tags define the semantic properties of content without storing the content. This enables O(1) deduplication and graph traversal.
+
+For code, the engine identifies top-level constructs (functions, classes, modules) and maintains syntactic integrity. A function stays together. A class stays together.
+
+For prose, it identifies paragraphs, sentences, semantic boundaries. The context stays coherent.
 
 ### SimHash Deduplication
 
@@ -193,13 +203,25 @@ That 91.88MB Chat Sessions file? It ingested in under 3 minutes. 214,000 molecul
 
 ### Comparison with Vector-Based RAG
 
-| Metric | Vector RAG (HNSW) | Anchor Engine | Improvement |
-|--------|------------------|---------------|-------------|
-| **90MB Ingestion** | ~356s (with hangs) | **~178s** | **2x faster** |
-| **Memory Peak** | 4-8GB | **<1.7GB** | **60-80% less** |
-| **Search Latency** | ~200ms | **~150ms** | **25% faster** |
-| **Explainability** | 1.8/5.0 | **4.6/5.0** | **155% better** |
-| **Hardware** | GPU recommended | **CPU-only** | **Lower cost** |
+**Note:** Performance characteristics vary by implementation. Anchor Engine prioritizes **sovereignty** (local-first, no cloud) and **memory efficiency** (CPU-only, <2GB RAM) over raw latency at extreme scale.
+
+| Metric | Anchor Engine | Trade-off |
+|--------|---------------|-----------|
+| **90MB Ingestion** | **~178s** | ✅ 2x faster than typical batch RAG |
+| **Memory Peak** | **<1.7GB** | ✅ 60-80% less than vector indices |
+| **Search Latency (1.5k atoms)** | **~150ms** | ✅ Comparable to vector search |
+| **Search Latency (151k atoms)** | **~7.7s** | ⚠️ Linear scaling with graph depth |
+| **Hardware** | **CPU-only** | ✅ No GPU required |
+
+**Scaling Characteristics:**
+
+- **Vector RAG (HNSW):** Requires loading entire index into RAM (4-8GB for 100MB dataset). Latency stable but memory-bound.
+- **Anchor Engine:** Database is disposable index (<2GB RAM). Latency scales linearly with graph depth, but memory footprint remains constant.
+
+**Use Case Fit:**
+
+- **Vector RAG:** High-throughput cloud deployments with dedicated GPU infrastructure
+- **Anchor Engine:** Sovereign, local-first deployments on consumer hardware (4GB RAM laptops)
 
 ### Key Achievements
 
@@ -256,19 +278,33 @@ This is sovereign context. And it's yours.
 
 ## 9. Production Verification Update (February 2026)
 
-### v3.0.0 Performance Verification
+### v4.1.2 Performance Verification
 
-**Dataset Scale:** 151,876 atoms, ~280,000 molecules (100x whitepaper benchmark)
+**Dataset Scale:** 151,876 atoms, ~280,000 molecules (100x original benchmark)
 
-| Metric | Whitepaper Claim | v3.0.0 Actual | Status |
-|--------|-----------------|---------------|--------|
+| Metric | Original Claim (1.5k atoms) | v4.1.2 Actual (151k atoms) | Status |
+|--------|---------------------------|---------------------------|--------|
 | **Context Retrieval** | 524k chars | **618k chars** | ✅ **+18%** |
 | **Memory Peak** | <1.7GB | **~510MB** | ✅ **-70%** |
 | **Memory Idle** | 650MB | **~510MB** | ✅ **-22%** |
-| **Search Latency (Standard)** | ~150ms | **7.7s** | ⚠️ **100x dataset** |
+| **Search Latency (Standard)** | ~150ms | **7.7s** | ⚠️ **Linear scaling** |
 | **Search Latency (Max-Recall)** | ~690ms | **25-50s** | ⚠️ **Trade-off** |
 | **Ingestion Throughput** | 1,200-1,600 mol/sec | **~1,200 mol/sec** | ✅ **VERIFIED** |
-| **Deduplication Rate** | N/A | **25-35%** | ✅ **FUNCTIONAL** |
+| **Deduplication Rate** | N/A | **40-50%** (v4.1.2) | ✅ **FUNCTIONAL** |
+
+**Search Latency Scaling Note:**
+
+Original benchmarks (~150ms standard, ~690ms max-recall) were measured on a dataset of ~1,500 atoms. Current production dataset (151,876 atoms) shows:
+
+- **Standard Search:** 7.7s average (50x increase for 100x data growth)
+- **Max-Recall:** 25-50s (acceptable trade-off for 618k chars retrieved)
+
+**Why Linear Scaling is Acceptable:**
+
+- **Vector RAG (HNSW):** Requires loading entire index into RAM (4-8GB for 100MB dataset). Latency stable but memory-bound.
+- **Anchor Engine:** Database is disposable index (<2GB RAM). Latency scales linearly with graph depth, but memory footprint remains constant.
+
+This is an **acceptable trade-off** for sovereign, local-first operation on consumer hardware.
 
 ### Key Enhancements
 
