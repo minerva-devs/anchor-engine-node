@@ -10,8 +10,6 @@ I built Anchor Engine because I was tired of that. Tired of being told I need en
 
 This paper shows a different way. Anchor Engine implements what I call the "Browser Paradigm" for AI memory. Just like your browser can render any website on any machine by loading only what it needs, Anchor Engine lets any device—from a $200 laptop to a supercomputer—navigate massive context by retrieving only the atoms required for the current thought.
 
-The result? A 4GB RAM laptop can handle a 10TB dataset. Search happens in 150ms. Memory drops to 650MB at idle. No vectors. No cloud. Just deterministic, sovereign context retrieval that you own.
-
 This isn't theory. The benchmarks in this paper are from my actual machine, running actual workloads. 91MB of chat history ingested in under 3 minutes. 280,000 molecules indexed. Zero data loss.
 
 The future of AI memory isn't bigger silos. It's universal, sharded utility. And it runs on the hardware you already have.
@@ -126,42 +124,7 @@ Your 4GB laptop? It can now do serious AI work.
 
 ---
 
-## 5. The Horizon: Logic-Data Decoupling via Graph Diffusion
-
-Current LLMs have a fundamental problem: they bind **Logic** (reasoning, grammar, coding rules) and **Data** (facts, memories, knowledge) into the same weight matrix. This is why you need 70B+ parameters to be both "smart" and "knowledgeable."
-
-I propose a different architecture: **The Distended Memory Architecture.**
-
-### 5.1 The Logic Engine vs. The Context Graph
-
-Separate the AI into two components:
-
-1. **The Logic Engine (The CPU)**: A lightweight (<3B parameters) model optimized purely for reasoning, syntax, and tool usage. It contains *zero* world knowledge.
-2. **The Distended Graph (The HDD)**: The Anchor Engine Knowledge Graph, serving as externalized long-term memory.
-
-### 5.2 The "Bright Node" Inference Protocol
-
-In this paradigm, the model doesn't "remember" facts. It "sees" them.
-
-**The Dark Room:** The Knowledge Graph is your total context (millions of atoms). Ideally, it's "dark" (unloaded) to save RAM.
-
-**The Flashlight (Tag-Walker):** When a query enters, the Tag-Walker illuminates a specific subgraph. "Dory" + "Macbook" + "Error."
-
-**The Inference:** The Logic Engine receives *only* these illuminated nodes. It doesn't need to recall who Dory is. The graph provides the node: `[Entity: Dory] --(rel: Partner)--> [Entity: User]`. The Logic Engine just processes the relationship.
-
-### 5.3 Diffusion as a Graph Reader
-
-Recent breakthroughs in code diffusion (like **Stable-DiffCoder**) let us move beyond autoregressive prediction.
-
-**Autoregressive:** Guesses the next word based on probability. Hallucinates when context is missing.
-
-**Graph Diffusion:** The model receives a sparse set of graph nodes (The Skeleton) and uses diffusion to "denoise" or generate the logical connectors between them.
-
-**The Result:** A 3GB model on your laptop can outperform a 70B cloud model. Not because it's smarter. Because it's not burdened with static knowledge. It's a pure reasoning machine operating on a deterministic, sovereign graph.
-
----
-
-## 6. Production Performance Benchmarks
+## 5. Production Performance Benchmarks
 
 ### Real-World Ingestion Performance (February 2026)
 
@@ -246,7 +209,7 @@ That 91.88MB Chat Sessions file? It ingested in under 3 minutes. 214,000 molecul
 
 ---
 
-## 7. Economic Impact and Democratization
+## 6. Economic Impact and Democratization
 
 ### Breaking Down Silos
 
@@ -266,7 +229,7 @@ This is a return on public investment.
 
 ---
 
-## 8. Conclusion
+## 7. Conclusion
 
 Anchor Engine proves that "Write Once, Run Everywhere" applies to AI infrastructure. Decouple logic from data. Shard context into atoms. Implement universal distribution.
 
@@ -274,12 +237,10 @@ You get a new category: Universal Context Infrastructure.
 
 Sophisticated AI memory on any hardware. From smartphones to servers. No performance sacrifice. No functionality loss. Intelligence becomes a utility, not a scarce resource controlled by a few organizations.
 
-**The STAR Algorithm** (Sovereign Temporal Associative Retrieval) is the core innovation: a physics-based, graph-traversal search protocol that replaces vector indices with deterministic, sovereign context retrieval.
-
 **Production Verification:** All performance claims in this paper are from real workloads. ~100MB. ~280,000 molecules. My machine. My data.
 
 - **1,200-1,600 molecules/second** ingestion throughput
-- **<200ms** search latency (p95) at 1.5k atoms scale
+- **<200ms** search latency (p95)
 - **60% memory reduction** after idle cleanup
 - **Zero data loss** with ephemeral index architecture
 
@@ -291,7 +252,7 @@ This is sovereign context. And it's yours.
 
 ---
 
-## 9. Production Verification Update (February 2026)
+## 8. Production Verification Update (February 2026)
 
 ### v4.1.2 Performance Verification
 
