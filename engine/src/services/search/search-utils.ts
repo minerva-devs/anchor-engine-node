@@ -10,6 +10,27 @@ import { config } from '../../config/index.js';
 import { composeRollingContext } from '../../core/inference/context_manager.js';
 import { nativeModuleManager } from '../../utils/native-module-manager.js';
 import { SemanticCategory } from '../../types/taxonomy.js';
+import { ContextInflator } from './context-inflator.js';
+import * as fs from 'fs';
+import * as path from 'path';
+import { getMirrorPath, MIRRORED_BRAIN_PATH } from '../mirror/mirror.js';
+import { NOTEBOOK_DIR } from '../../config/paths.js';
+
+/**
+ * Coalesced Snippet - Merged atoms from same file within proximity threshold
+ */
+export interface CoalescedSnippet {
+  source: string;
+  compoundId: string;
+  startByte: number;
+  endByte: number;
+  timestamp: number;
+  content: string;
+  sourceAtoms: SearchResult[];  // Track which atoms were merged
+  relevanceScore: number;
+  provenance: string;
+  tags: string[];
+}
 
 export interface SearchResult {
     id: string;
@@ -127,120 +148,328 @@ export function getItems(input: string[] | undefined): string[] {
 }
 
 /**
+ * Coalesce atoms by proximity - merges nearby atoms from same source file
+ * into coherent snippets for better LLM consumption
+ *
+ * @param results - Search results to coalesce
+ * @param proximityThreshold - Bytes within which to merge atoms (default 500)
+ * @returns Coalesced snippets with expanded content
+ */
+export async function coalesceByProximity(
+  results: SearchResult[],
+  proximityThreshold: number = 500
+): Promise<CoalescedSnippet[]> {
+  // Group by compound_id (source file)
+  const byCompound = new Map<string, SearchResult[]>();
+  results.forEach(r => {
+    if (!r.compound_id || !r.source) return;
+    if (!byCompound.has(r.compound_id)) byCompound.set(r.compound_id, []);
+    byCompound.get(r.compound_id)!.push(r);
+  });
+
+  const coalesced: CoalescedSnippet[] = [];
+  let mergedCount = 0;
+
+  for (const [compoundId, atoms] of byCompound.entries()) {
+    if (atoms.length === 0) continue;
+
+    // Sort by byte offset
+    atoms.sort((a, b) => (a.start_byte || 0) - (b.start_byte || 0));
+
+    // Merge atoms within proximity threshold
+    const merged: CoalescedSnippet[] = [];
+    let current: CoalescedSnippet | null = null;
+
+    for (const atom of atoms) {
+      const atomStart = atom.start_byte || 0;
+      const atomEnd = atom.end_byte || 0;
+
+      if (!current) {
+        current = {
+          source: atom.source!,
+          compoundId,
+          startByte: atomStart,
+          endByte: atomEnd,
+          timestamp: atom.timestamp,
+          content: atom.content,
+          sourceAtoms: [atom],
+          relevanceScore: atom.score,
+          provenance: atom.provenance || 'internal',
+          tags: atom.tags || []
+        };
+      } else {
+        const gap = atomStart - current.endByte;
+
+        // Merge if overlapping or within proximity threshold
+        if (gap <= proximityThreshold) {
+          // Extend window
+          current.endByte = Math.max(current.endByte, atomEnd);
+          current.sourceAtoms.push(atom);
+          current.relevanceScore = Math.max(current.relevanceScore, atom.score);
+          current.timestamp = Math.min(current.timestamp, atom.timestamp); // Use earliest timestamp
+          current.tags = Array.from(new Set([...current.tags, ...(atom.tags || [])]));
+          mergedCount++;
+        } else {
+          // Push current and start new
+          merged.push(current);
+          current = {
+            source: atom.source!,
+            compoundId,
+            startByte: atomStart,
+            endByte: atomEnd,
+            timestamp: atom.timestamp,
+            content: atom.content,
+            sourceAtoms: [atom],
+            relevanceScore: atom.score,
+            provenance: atom.provenance || 'internal',
+            tags: atom.tags || []
+          };
+        }
+      }
+    }
+    if (current) merged.push(current);
+
+    // Re-inflate content from disk with expanded windows
+    for (const snippet of merged) {
+      try {
+        const inflatedContent = await inflateSnippetFromDisk(snippet);
+        if (inflatedContent) {
+          snippet.content = inflatedContent;
+        }
+      } catch (e) {
+        console.warn(`[Coalesce] Failed to inflate snippet from ${snippet.source}`, e);
+      }
+    }
+
+    coalesced.push(...merged);
+  }
+
+  console.log(`[Coalesce] Merged ${results.length} atoms -> ${coalesced.length} snippets (${mergedCount} merges)`);
+  return coalesced;
+}
+
+/**
+ * Inflate a coalesced snippet from disk
+ */
+async function inflateSnippetFromDisk(snippet: CoalescedSnippet): Promise<string | null> {
+  try {
+    // Resolve file path - try mirrored first
+    const mirrorPath = getMirrorPath(snippet.source, snippet.provenance);
+    let absolutePath = mirrorPath;
+
+    if (!fs.existsSync(mirrorPath)) {
+      absolutePath = path.isAbsolute(snippet.source)
+        ? snippet.source
+        : path.join(NOTEBOOK_DIR, snippet.source);
+    }
+
+    if (!fs.existsSync(absolutePath)) return null;
+
+    const stats = fs.statSync(absolutePath);
+    const fileSize = stats.size;
+
+    // Clamp to file bounds
+    const start = Math.max(0, snippet.startByte);
+    const end = Math.min(fileSize, snippet.endByte);
+
+    if (start >= end) return null;
+
+    // Read content
+    const buffer = Buffer.alloc(end - start);
+    const fd = fs.openSync(absolutePath, 'r');
+    try {
+      fs.readSync(fd, buffer, 0, end - start, start);
+    } finally {
+      fs.closeSync(fd);
+    }
+
+    let content = buffer.toString('utf-8');
+
+    // Snap to sentence boundaries for coherence
+    content = snapToSentenceBoundaries(content, 0, content.length).text;
+
+    // Add ellipsis to indicate truncation
+    if (start > 0) content = '...' + content;
+    if (end < fileSize) content = content + '...';
+
+    return content.trim();
+  } catch (e) {
+    console.warn(`[Coalesce] inflateSnippetFromDisk failed:`, e);
+    return null;
+  }
+}
+
+/**
+ * Snap to sentence boundaries for cleaner snippets
+ */
+function snapToSentenceBoundaries(content: string, targetStart: number, targetEnd: number): { start: number, end: number, text: string } {
+  // Snap start: find previous sentence end
+  const preceding = content.substring(0, targetStart);
+  const matchStart = preceding.match(/([.!?]\s|\n\s*\n)(?=[^.!?\n]*$)/);
+  const snappedStart = matchStart && matchStart.index !== undefined
+    ? matchStart.index + matchStart[0].length
+    : 0;
+
+  // Snap end: find next sentence end
+  const succeeding = content.substring(targetEnd);
+  const matchEnd = succeeding.match(/([.!?]\s|\n\s*\n)/);
+  const snappedEnd = matchEnd && matchEnd.index !== undefined
+    ? targetEnd + matchEnd.index + 1
+    : content.length;
+
+  return {
+    start: snappedStart,
+    end: snappedEnd,
+    text: content.substring(snappedStart, snappedEnd).trim()
+  };
+}
+
+/**
  * Format search results within character budget
  * Uses molecular coordinates (start_byte/end_byte) for precise content slicing
+ *
+ * Features:
+ * - Coalesces nearby atoms into coherent snippets (500-1000 chars)
+ * - Adds metadata headers with file, range, timestamp, atom count
+ * - Sorts chronologically for causal narrative
+ * - Wraps in XML with relevance scores for LLM prioritization
  */
-export async function formatResults(results: SearchResult[], maxChars: number): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
-    try {
-        const now = Date.now();
-        const lambda = 0.0001; // Decay constant (half-life ~115 minutes)
+export async function formatResults(
+  results: SearchResult[],
+  maxChars: number,
+  options?: { enableCoalescing?: boolean; proximityThreshold?: number; }
+): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
+  try {
+    const enableCoalescing = options?.enableCoalescing ?? true;
+    const proximityThreshold = options?.proximityThreshold ?? 500;
 
-        // By this point, ContextInflator.inflate() has already resolved compound coordinates
-        // into real content from disk files. Results with is_inflated=true have content ready.
-        const candidates = results.map(r => {
-            let content = r.content || '';
+    // Step 1: Coalesce atoms into coherent snippets
+    let snippets: CoalescedSnippet[];
+    let coalescingStats = { 
+      original_atoms: results.length, 
+      coalesced_snippets: results.length, 
+      compression_ratio: 1.0 
+    };
 
-            // Include frequency information in the content if available
-            if (r.frequency && r.frequency > 1) {
-                content = `[Found ${r.frequency} times] ${content}`;
-            }
-
-            // Calculate temporal provenance
-            const ageMs = now - r.timestamp;
-            const ageSeconds = ageMs / 1000;
-            const decayFactor = lambda * ageSeconds;
-            const temporalWeight = Math.exp(-decayFactor);
-
-            // Calculate structural similarity if molecular signature available
-            let simhashDistance = 0;
-            let structuralSimilarity = 1.0;
-            if (r.molecular_signature) {
-                // Query hash would need to be passed in; for now use placeholder
-                simhashDistance = 0; // Would calculate from query hash
-                structuralSimilarity = 1.0 - (simhashDistance / 64);
-            }
-
-            return {
-                id: r.id,
-                content,
-                source: r.source,
-                timestamp: r.timestamp,
-                score: r.score,
-                type: r.type,
-                tags: r.tags || [],
-                buckets: r.buckets || [],
-                provenance: r.provenance || 'internal',
-                connections: [],
-                // Context Provenance
-                temporal_weight: temporalWeight,
-                decay_factor: decayFactor,
-                simhash_distance: simhashDistance,
-                structural_similarity: structuralSimilarity,
-                retrieved_at: now
-            };
-        });
-
-        const tokenBudget = Math.floor(maxChars / 4);
-        const rollingContext = composeRollingContext("query_placeholder", candidates, tokenBudget);
-
-        // Sort by timestamp first (causal narrative), then by score (relevance)
-        // This restores causal logic: Code v1 → Error → Code v2
-        const sortedResults = results.sort((a, b) => {
-            // Primary: chronological order (oldest first)
-            const timeDiff = a.timestamp - b.timestamp;
-            if (timeDiff !== 0) return timeDiff;
-            
-            // Secondary: relevance score (higher first)
-            return b.score - a.score;
-        });
-
-        // Enrich results with provenance data
-        const enrichedResults = sortedResults.map((r, idx) => ({
-            ...r,
-            temporal_weight: candidates[idx].temporal_weight,
-            decay_factor: candidates[idx].decay_factor,
-            simhash_distance: candidates[idx].simhash_distance,
-            structural_similarity: candidates[idx].structural_similarity,
-            retrieved_at: candidates[idx].retrieved_at
-        }));
-
-        // Build XML-wrapped context with relevance metadata
-        // This helps LLM prioritize content if context window is truncated
-        const xmlContext = enrichedResults.map(r => {
-            const relevanceScore = ((r.score || 0) * (r.temporal_weight || 1)).toFixed(3);
-            const timestamp = new Date(r.timestamp).toISOString();
-            const persona = r.buckets?.[0] || 'unknown';
-            
-            return `<atom id="${r.id}" relevance="${relevanceScore}" timestamp="${timestamp}" persona="${persona}" source="${r.source}">
-${r.content || ''}
-</atom>`;
-        }).join('\n\n');
-
-        return {
-            context: xmlContext || rollingContext.prompt || 'No results found.',
-            results: enrichedResults,
-            toAgentString: () => {
-                return enrichedResults.map(r =>
-                    `[${r.provenance}] ${r.source} (t=${r.temporal_weight?.toFixed(3) || 'N/A'}): ${(r.content || "").substring(0, 200)}...`
-                ).join('\n');
-            },
-            metadata: {
-                ...rollingContext.stats,
-                provenance_enabled: true,
-                temporal_decay_lambda: lambda,
-                xml_wrapped: true
-            }
-        };
-    } catch (error) {
-        console.error('[Search] formatResults failed:', error);
-        // Return a safe fallback result to prevent crashes
-        return {
-            context: 'Error occurred during result formatting.',
-            results: [],
-            toAgentString: () => 'Error occurred during result formatting.',
-            metadata: { error: true, message: 'Failed to format search results' }
-        };
+    if (enableCoalescing) {
+      snippets = await coalesceByProximity(results, proximityThreshold);
+      coalescingStats = {
+        original_atoms: results.length,
+        coalesced_snippets: snippets.length,
+        compression_ratio: results.length > 0 ? (results.length / snippets.length) : 1.0
+      };
+    } else {
+      // Convert SearchResult[] to CoalescedSnippet[] for uniform handling
+      snippets = results.map(r => ({
+        source: r.source,
+        compoundId: r.compound_id || '',
+        startByte: r.start_byte || 0,
+        endByte: r.end_byte || 0,
+        timestamp: r.timestamp,
+        content: r.content,
+        sourceAtoms: [r],
+        relevanceScore: r.score,
+        provenance: r.provenance || 'internal',
+        tags: r.tags || []
+      }));
     }
+
+    // Step 2: Sort chronologically (causal narrative)
+    snippets.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Step 3: Calculate temporal weights
+    const now = Date.now();
+    const lambda = 0.0001;
+
+    const enrichedSnippets = snippets.map(s => {
+      const ageMs = now - s.timestamp;
+      const ageSeconds = ageMs / 1000;
+      const decayFactor = lambda * ageSeconds;
+      const temporalWeight = Math.exp(-decayFactor);
+      const relevanceScore = (s.relevanceScore * temporalWeight).toFixed(3);
+
+      return {
+        ...s,
+        temporal_weight: temporalWeight,
+        decay_factor: decayFactor,
+        weighted_score: relevanceScore
+      };
+    });
+
+    // Step 4: Build XML-wrapped context with metadata headers
+    const xmlContext = enrichedSnippets.map((s, idx) => {
+      const timestamp = new Date(s.timestamp).toISOString();
+      const persona = s.tags[0] || s.provenance || 'unknown';
+      const atomCount = s.sourceAtoms.length;
+      const charCount = s.content.length;
+      const startHex = s.startByte.toString(16).toUpperCase().padStart(4, '0');
+      const endHex = s.endByte.toString(16).toUpperCase().padStart(4, '0');
+      const fileName = path.basename(s.source);
+
+      // Metadata header for each snippet
+      const header = `[GROUP:${idx + 1}] [File:${fileName}] [Range: 0x${startHex}-0x${endHex}] [Time: ${timestamp}] [Atoms: ${atomCount}] [Chars: ${charCount}]`;
+
+      return `${header}
+<atom id="${s.sourceAtoms.map(a => a.id.substring(0, 8)).join(',')}" relevance="${s.weighted_score}" timestamp="${timestamp}" persona="${persona}" source="${s.source}">
+${s.content}
+</atom>`;
+    }).join('\n\n');
+
+    // Step 5: Calculate budget allocation
+    const totalContentChars = enrichedSnippets.reduce((sum, s) => sum + s.content.length, 0);
+    const overheadChars = xmlContext.length - totalContentChars;
+    const budgetUtilization = maxChars > 0 ? ((totalContentChars + overheadChars) / maxChars * 100).toFixed(1) : 'N/A';
+
+    // Step 6: Convert snippets back to SearchResult[] for API compatibility
+    const enrichedResults: SearchResult[] = enrichedSnippets.map(s => ({
+      id: s.sourceAtoms.map(a => a.id).join('+'),
+      content: s.content,
+      source: s.source,
+      timestamp: s.timestamp,
+      buckets: [],
+      tags: s.tags,
+      epochs: '',
+      provenance: s.provenance,
+      score: s.relevanceScore,
+      compound_id: s.compoundId,
+      start_byte: s.startByte,
+      end_byte: s.endByte,
+      temporal_weight: s.temporal_weight,
+      decay_factor: s.decay_factor,
+      is_inflated: true
+    }));
+
+    return {
+      context: xmlContext || 'No results found.',
+      results: enrichedResults,
+      toAgentString: () => {
+        return enrichedSnippets.map(s =>
+          `[${s.provenance}] ${s.source} (t=${s.temporal_weight.toFixed(3)}, atoms=${s.sourceAtoms.length}): ${s.content.substring(0, 200)}...`
+        ).join('\n');
+      },
+      metadata: {
+        coalescing: coalescingStats,
+        budget_allocation: {
+          total_chars: totalContentChars + overheadChars,
+          content_chars: totalContentChars,
+          overhead_chars: overheadChars,
+          utilization_percent: parseFloat(budgetUtilization)
+        },
+        provenance_enabled: true,
+        temporal_decay_lambda: lambda,
+        xml_wrapped: true,
+        chronological_sort: true
+      }
+    };
+  } catch (error) {
+    console.error('[Search] formatResults failed:', error);
+    return {
+      context: 'Error occurred during result formatting.',
+      results: [],
+      toAgentString: () => 'Error occurred during result formatting.',
+      metadata: { error: true, message: 'Failed to format search results' }
+    };
+  }
 }
 
 /**

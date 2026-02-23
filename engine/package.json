@@ -16,6 +16,8 @@
         "test:quick": "node tests/suite.js",
         "test:benchmark": "node tests/benchmark.js",
         "test:context": "node tests/context_experiments.js",
+        "test:context-quality": "ts-node ../tests/unit/test_context_quality_improvements.ts",
+        "test:unit": "ts-node ../tests/unit/test_context_quality_improvements.ts",
         "benchmark": "node tests/benchmark.js",
         "build": "tsc",
         "build:npm-native": "echo \"Native modules now handled via npm packages\"",

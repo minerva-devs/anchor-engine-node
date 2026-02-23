@@ -375,6 +375,12 @@ export class PhysicsTagWalker {
     const params = [cappedIds, threshold, limit];
 
     try {
+      // Debug logging for high-budget queries
+      if (anchorIds.length > 10 || limit > 100) {
+        console.log(`[PhysicsWalker] SQL params: anchorIds=${cappedIds.length}, threshold=${threshold}, limit=${limit}`);
+        console.log(`[PhysicsWalker] Anchor IDs: ${cappedIds.slice(0, 5).join(', ')}...`);
+      }
+
       const result = await sqlWithTimeout<any>(refinedQuery, params, QUERY_TIMEOUT_MS);
       const elapsed = Date.now() - startTime;
 
@@ -382,6 +388,15 @@ export class PhysicsTagWalker {
         console.warn(`[PhysicsWalker] SQL Weighting took ${elapsed}ms for ${anchorIds.length} anchors`);
       } else {
         console.log(`[PhysicsWalker] SQL Weighting: ${result.rows?.length || 0} results in ${elapsed} ms`);
+      }
+
+      // Debug: Log why we might have 0 results
+      if (!result.rows || result.rows.length === 0) {
+        console.warn(`[PhysicsWalker] Zero results - checking potential causes:`);
+        console.warn(`[PhysicsWalker]  - Anchor count: ${anchorIds.length}`);
+        console.warn(`[PhysicsWalker]  - Threshold: ${threshold}`);
+        console.warn(`[PhysicsWalker]  - Limit: ${limit}`);
+        console.warn(`[PhysicsWalker]  - Damping: ${this.DAMPING_FACTOR}, Decay: ${this.TIME_DECAY_LAMBDA}`);
       }
 
       if (!result.rows) return [];
@@ -557,21 +572,39 @@ export class PhysicsTagWalker {
   /**
    * Main Entry Point
    * Applies physics weighting to search results.
+   *
+   * @param anchorResults - Search results to apply physics weighting to
+   * @param threshold - Gravity threshold (default 0.1, lower for high-budget)
+   * @param config - Search configuration
+   * @param maxChars - Optional budget hint for auto-tuning parameters
    */
   async applyPhysicsWeighting(
     anchorResults: SearchResult[],
     threshold: number = 0.1,
-    config?: Partial<SearchConfig>
+    config?: Partial<SearchConfig>,
+    maxChars?: number  // NEW: Budget hint for auto-tuning
   ): Promise<PhysicsResult[]> {
     if (anchorResults.length === 0) return [];
+
+    // Auto-tune parameters based on budget for high-recall queries
+    let tunedThreshold = threshold;
+    let tunedConfig = { ...config };
+
+    if (maxChars && maxChars > 50000) {
+      // High-budget query: lower threshold, more candidates
+      tunedThreshold = 0.05;  // Lower threshold to catch more associations
+      tunedConfig.max_per_hop = Math.max(tunedConfig.max_per_hop || 50, 150);
+      tunedConfig.walk_radius = Math.max(tunedConfig.walk_radius || 1, 2);
+      console.log(`[PhysicsWalker] High-budget mode (${maxChars} chars): threshold=${tunedThreshold}, max_per_hop=${tunedConfig.max_per_hop}`);
+    }
 
     // Pass everything to the SQL engine
     return this.performRadialInflation(
       anchorResults.map(r => r.id),
-      config?.walk_radius || 1,
-      config?.max_per_hop || 50,
-      config?.temperature || 0.2, // Temperature unused in pure SQL sort currently
-      threshold
+      tunedConfig.walk_radius || 1,
+      tunedConfig.max_per_hop || 50,
+      tunedConfig.temperature || 0.2,
+      tunedThreshold
     );
   }
 

@@ -234,7 +234,7 @@ export class AutoSynonymGenerator {
 
       // Group atoms by simhash proximity
       const atoms = result.rows as any[];
-      const termClusters = new Map<string, Set<string>>();
+      const termClusters = new Map<string, Map<string, number>>(); // term -> (related_term -> co_occurrence_count)
 
       for (let i = 0; i < atoms.length; i++) {
         for (let j = i + 1; j < atoms.length; j++) {
@@ -248,14 +248,15 @@ export class AutoSynonymGenerator {
             const terms1 = extractTerms(atom1.content);
             const terms2 = extractTerms(atom2.content);
 
-            // Add cross-cluster term pairs
+            // Add cross-cluster term pairs with co-occurrence counting
             for (const t1 of terms1) {
               for (const t2 of terms2) {
                 if (t1 !== t2) {
                   if (!termClusters.has(t1)) {
-                    termClusters.set(t1, new Set());
+                    termClusters.set(t1, new Map());
                   }
-                  termClusters.get(t1)!.add(t2);
+                  const related = termClusters.get(t1)!;
+                  related.set(t2, (related.get(t2) || 0) + 1);
                 }
               }
             }
@@ -263,7 +264,7 @@ export class AutoSynonymGenerator {
         }
       }
 
-      // Convert clusters to pairs
+      // Convert clusters to pairs with frequency-based scoring
       const pairs = new Map<string, TermPair[]>();
 
       for (const [term1, relatedTerms] of termClusters.entries()) {
@@ -271,11 +272,16 @@ export class AutoSynonymGenerator {
           pairs.set(term1, []);
         }
 
-        for (const term2 of relatedTerms) {
+        // Convert to array and sort by co-occurrence frequency
+        const sortedRelated = Array.from(relatedTerms.entries())
+          .sort((a, b) => b[1] - a[1]) // Sort by frequency desc
+          .slice(0, 20); // Top 20 related terms
+
+        for (const [term2, frequency] of sortedRelated) {
           pairs.get(term1)!.push({
             term1,
             term2,
-            score: 1.0 / relatedTerms.size, // Inverse of cluster size
+            score: frequency, // Use frequency as score (higher = more reliable)
             strategy: 'simhash_proximity'
           });
         }
@@ -303,71 +309,59 @@ export class AutoSynonymGenerator {
       this.mineSimHashSynonyms()
     ]);
 
-    // Merge with voting
-    const pairVotes = new Map<string, { score: number; strategies: Set<string> }>();
-
-    for (const [term, pairs] of cooccurrence.entries()) {
-      for (const pair of pairs) {
-        const key = `${pair.term1}<->${pair.term2}`;
-        if (!pairVotes.has(key)) {
-          pairVotes.set(key, { score: 0, strategies: new Set() });
-        }
-        const vote = pairVotes.get(key)!;
-        vote.score += pair.score;
-        vote.strategies.add(pair.strategy);
-      }
-    }
-
-    for (const [term, pairs] of neighborhood.entries()) {
-      for (const pair of pairs) {
-        const key = `${pair.term1}<->${pair.term2}`;
-        if (!pairVotes.has(key)) {
-          pairVotes.set(key, { score: 0, strategies: new Set() });
-        }
-        const vote = pairVotes.get(key)!;
-        vote.score += pair.score * 1.5; // Weight tag neighborhood higher
-        vote.strategies.add(pair.strategy);
-      }
-    }
-
-    for (const [term, pairs] of simhash.entries()) {
-      for (const pair of pairs) {
-        const key = `${pair.term1}<->${pair.term2}`;
-        if (!pairVotes.has(key)) {
-          pairVotes.set(key, { score: 0, strategies: new Set() });
-        }
-        const vote = pairVotes.get(key)!;
-        vote.score += pair.score;
-        vote.strategies.add(pair.strategy);
-      }
-    }
-
-    // Build final synonym rings
+    // Build synonym rings directly from each strategy
+    // No need for multi-strategy voting - each strategy has its own quality filters
     const synonymRings: Record<string, string[]> = {};
-    const processedPairs = new Set<string>();
 
-    for (const [key, vote] of pairVotes.entries()) {
-      // Require at least 2 strategies or very high score
-      if (vote.strategies.size < 2 && vote.score < 3.0) {
-        continue;
-      }
-
-      const [term1, term2] = key.split('<->>');
-
-      // Add to both directions
-      if (!synonymRings[term1]) {
-        synonymRings[term1] = [];
-      }
-      if (!synonymRings[term2]) {
-        synonymRings[term2] = [];
-      }
-
+    // Helper to add synonyms
+    const addSynonym = (term1: string, term2: string) => {
+      if (!synonymRings[term1]) synonymRings[term1] = [];
+      if (!synonymRings[term2]) synonymRings[term2] = [];
+      
       if (!synonymRings[term1].includes(term2) && synonymRings[term1].length < this.TOP_SYNONYMS_PER_TERM) {
         synonymRings[term1].push(term2);
       }
       if (!synonymRings[term2].includes(term1) && synonymRings[term2].length < this.TOP_SYNONYMS_PER_TERM) {
         synonymRings[term2].push(term1);
       }
+    };
+
+    // 1. Tag neighborhood pairs (high precision - Jaccard >= 0.5)
+    let tagPairsAdded = 0;
+    for (const [term, pairs] of neighborhood.entries()) {
+      for (const pair of pairs) {
+        // Jaccard score already >= 0.5 threshold
+        addSynonym(pair.term1, pair.term2);
+        tagPairsAdded++;
+      }
+    }
+    console.log(`[SynonymGenerator] Added ${tagPairsAdded} tag neighborhood pairs`);
+
+    // 2. SimHash proximity pairs (cluster-based)
+    // Score by cluster cohesion, not inverse size
+    let simhashPairsAdded = 0;
+    for (const [term, pairs] of simhash.entries()) {
+      // Sort pairs by score (higher = more cohesive cluster)
+      const sortedPairs = pairs.sort((a, b) => b.score - a.score);
+      
+      // Take top pairs from each term's perspective
+      for (const pair of sortedPairs.slice(0, 5)) {
+        addSynonym(pair.term1, pair.term2);
+        simhashPairsAdded++;
+      }
+    }
+    console.log(`[SynonymGenerator] Added ${simhashPairsAdded} simhash proximity pairs`);
+
+    // 3. Co-occurrence pairs (if available)
+    let coocPairsAdded = 0;
+    for (const [term, pairs] of cooccurrence.entries()) {
+      for (const pair of pairs) {
+        addSynonym(pair.term1, pair.term2);
+        coocPairsAdded++;
+      }
+    }
+    if (coocPairsAdded > 0) {
+      console.log(`[SynonymGenerator] Added ${coocPairsAdded} co-occurrence pairs`);
     }
 
     console.log(`[SynonymGenerator] Generated ${Object.keys(synonymRings).length} synonym rings`);
