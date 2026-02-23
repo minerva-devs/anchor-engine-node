@@ -43,6 +43,7 @@ export const SearchColumn = memo(({
     const [autoSplit, setAutoSplit] = useState(false);
     const [includeCode, setIncludeCode] = useState(true);
     const [showTags, setShowTags] = useState(false); // Tag Drawer Toggle
+    const [chronologicalOrder, setChronologicalOrder] = useState(true); // Toggle time ordering
 
     // Backup Restore State
     const [backups, setBackups] = useState<Array<{ filename: string; valid: boolean; error?: string; sizeFormatted?: string }>>([]);
@@ -129,9 +130,15 @@ export const SearchColumn = memo(({
             });
 
             if (data.results) {
-                // [Consistency] Sort by Date (Oldest to Newest) to match Agent RAG logic
+                // Sort results based on toggle: chronological (causal) or relevance (associative)
                 const sortedResults = data.results.sort((a: any, b: any) => {
-                    return (a.timestamp || 0) - (b.timestamp || 0);
+                    if (chronologicalOrder) {
+                        // Chronological: oldest first (causal narrative: Code v1 → Error → Code v2)
+                        return (a.timestamp || 0) - (b.timestamp || 0);
+                    } else {
+                        // Relevance: highest score first (associative discovery)
+                        return (b.score || 0) - (a.score || 0);
+                    }
                 });
 
                 // [Consistency] Re-generate Context String to match Agent's view (~500 chars/item, ~8000 chars total)
@@ -352,9 +359,34 @@ export const SearchColumn = memo(({
                                 fontFamily: 'inherit'
                             }}
                         />
-                        <Button variant="primary" onClick={handleSearch} disabled={loading} style={{ width: '100%', padding: '12px 24px' }}>
-                            Fetch Context
-                        </Button>
+                        <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                            <Button 
+                                variant="primary" 
+                                onClick={handleSearch} 
+                                disabled={loading} 
+                                style={{ flex: 1, padding: '12px 24px' }}
+                            >
+                                {loading ? '⏳ Searching...' : '🔍 Fetch Context'}
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={() => setChronologicalOrder(!chronologicalOrder)}
+                                disabled={loading}
+                                title={chronologicalOrder 
+                                    ? 'Currently: Chronological (causal narrative). Click to switch to Relevance (associative discovery).'
+                                    : 'Currently: Relevance (associative discovery). Click to switch to Chronological (causal narrative).'
+                                }
+                                style={{
+                                    padding: '12px 16px',
+                                    background: chronologicalOrder ? '#059669' : '#7c3aed',
+                                    color: '#fff',
+                                    border: '1px solid #475569',
+                                    minWidth: '140px'
+                                }}
+                            >
+                                {chronologicalOrder ? '📅 Chronological' : '🎯 Relevance'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
