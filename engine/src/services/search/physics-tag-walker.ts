@@ -265,7 +265,7 @@ export class PhysicsTagWalker {
     const limitParamIdx = 3;
 
     const refinedQuery = `
-      WITH anchor_ids AS (
+      WITH RECURSIVE anchor_ids AS (
         SELECT unnest($1::text[]) as id
       ),
       -- Resolve both Atoms and Molecules to a unified set of Atom IDs
@@ -295,16 +295,16 @@ export class PhysicsTagWalker {
       -- HOP TRACKING: Recursive CTE for multi-hop traversal with hop distance
       hop_traversal AS (
         -- Base case: anchors at hop 0
-        SELECT 
+        SELECT
           anchor_id as atom_id,
           anchor_ts,
           anchor_sh,
           hop_distance,
           CAST(ARRAY[anchor_id] as TEXT[]) as path
         FROM anchor_stats
-        
+
         UNION ALL
-        
+
         -- Recursive case: expand via shared tags, incrementing hop
         SELECT DISTINCT
           t2.atom_id,

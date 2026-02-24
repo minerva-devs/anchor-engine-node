@@ -285,17 +285,93 @@ This containerization enables researchers to reproduce all benchmarks with ident
 
 # AI Usage Disclosure
 
-AI tools were used in the development of this software and paper as follows:
+Generative AI tools were extensively used in the development of this software and paper. The following details the specific tools, their applications, and human oversight:
 
-1. **Code Development:** GitHub Copilot assisted with boilerplate TypeScript code and SQL query patterns. All algorithmic implementations (Unified Field Equation, recursive CTEs, SimHash integration) were designed and verified by the author.
+## Tool Identification
 
-2. **Documentation:** Grammarly and LanguageTool assisted with proofreading. Technical content was authored by the human researcher.
+### Code Development and Architecture
+- **GitHub Copilot** (VS Code extension): Used for TypeScript boilerplate, SQL query patterns, and API scaffolding
+- **Gemini 2.5 Pro** (Google AI): Used for algorithm design discussions, optimization suggestions, and code review
+- **Gemini 3 Pro** (Google AI): Used for complex SQL query generation and recursive CTE refinement
+- **Qwen Coder**: Used for native module integration patterns and performance optimization suggestions
+- **Kimi AI**: Used for documentation generation and README drafting
+- **Deepseek Coder**: Used for debugging assistance and test case generation
 
-3. **Mathematical Verification:** Symbolic algebra was verified using Python/SymPy scripts executed by the author.
+### Paper Authoring and Documentation
+- **Gemini 2.5 Pro / 3 Pro**: Used for paper structure suggestions, citation formatting, and LaTeX/Markdown syntax
+- **Kimi AI**: Used for grammar checking, style consistency, and readability improvements
+- **Grammarly**: Used for proofreading and language polishing
 
-4. **Paper Review:** This paper was reviewed using AI-assisted grammar checking. All scientific claims, design decisions, and impact statements were authored by the human researcher.
+### Mathematical and Conceptual Work
+- **Gemini 2.5 Pro**: Used for temporal decay calculations, complexity analysis verification, and equation formatting
+- **Deepseek**: Used for symbolic algebra verification and benchmark calculation checking
 
-All AI-generated content was verified for correctness by the author. The core scientific contributions (browser paradigm, unified field equation, sparse graph architecture) represent original human research.
+## Scope of Assistance
+
+### What AI Tools Provided
+- **Code scaffolding**: Boilerplate TypeScript classes, function signatures, and module structures
+- **SQL query patterns**: Initial CTE structures, JOIN optimizations, and index recommendations
+- **Algorithm discussion**: Suggestions for hop-distance tracking and damping factor calculations
+- **Debugging**: Error diagnosis and fix suggestions for native module integration
+- **Documentation**: Draft README sections, API documentation templates, and inline code comments
+- **Paper structure**: Suggested section ordering, transition paragraphs, and formatting compliance
+- **Grammar and style**: Sentence restructuring, citation formatting, and technical writing improvements
+
+### What AI Tools Did NOT Provide
+- **Core algorithm design**: The Unified Field Equation, browser paradigm concept, and sparse graph architecture were conceived and validated by the human author
+- **Mathematical derivations**: All temporal decay calculations, complexity proofs, and SimHash integration logic were designed and verified by the human author
+- **Research direction**: All scientific claims, design trade-offs, and architectural decisions were made by the human author
+- **Benchmark methodology**: All performance testing approaches and metric selection were determined by the human author
+- **Production validation**: All real-world testing on 28M tokens was conducted by the human author
+
+## Human Verification and Oversight
+
+The human author (R.S. Balch II):
+
+1. **Reviewed all AI-generated code**: Every line of TypeScript, SQL, and Python was read, understood, and validated for correctness before inclusion
+2. **Modified AI suggestions**: Boilerplate code was adapted to fit the specific architecture; SQL queries were optimized for PGlite compatibility; algorithmic suggestions were tested against production data
+3. **Made all architectural decisions**: The browser paradigm, three-tier data hierarchy (Compound→Molecule→Atom), and physics-inspired scoring model were human-designed concepts
+4. **Verified mathematical correctness**: All temporal decay calculations were independently verified using Python/SymPy; complexity analysis was manually derived
+5. **Conducted all benchmarks**: The 28M token production validation, latency measurements, and memory profiling were performed by the human author on actual hardware
+6. **Edited all documentation**: AI-generated README sections and paper drafts were substantially rewritten to ensure technical accuracy and consistent voice
+
+**Specific Examples of Human Oversight:**
+- The recursive CTE for hop-distance tracking was initially suggested by AI but completely restructured by the author to handle cycle prevention and proper damping application
+- The SimHash integration pattern was AI-suggested but required human debugging to handle 64-bit BigInt operations correctly in PostgreSQL
+- The paper's complexity analysis table was AI-formatted but populated with human-calculated values
+- The Docker containerization was AI-suggested but configured by the author to match tested resource constraints (2GB RAM, 2 CPU)
+
+## Original Human Contributions
+
+The following represent the primary scholarly and creative contributions of the human author, conceived without AI assistance:
+
+- **Browser Paradigm Metaphor**: The central conceptual framework treating AI memory like web browsers
+- **Unified Field Equation**: The multiplicative scoring model combining semantic, temporal, and structural factors
+- **Planets and Moons Protocol**: The three-phase retrieval architecture
+- **Ephemeral Index Design**: The disposable database pattern with filesystem source-of-truth
+- **Production Benchmarking**: Real-world validation on 28M tokens of chat history
+- **Open Source Strategy**: AGPL-3.0 licensing and community-focused development approach
+
+## Author Accountability
+
+The submitting author (R.S. Balch II) bears complete responsibility for:
+
+- **Accuracy**: All technical claims, benchmarks, and mathematical derivations have been verified by the author
+- **Originality**: The core contributions (browser paradigm, unified field equation) represent original research
+- **Licensing Compliance**: All code is original or properly licensed; AGPL-3.0 terms are correctly applied
+- **Ethical Standards**: No deceptive practices; all AI assistance is fully disclosed
+- **Reproducibility**: The software functions as described; benchmarks are reproducible using included Docker configuration
+
+**Verification of Claims:**
+- All performance benchmarks (1,203 mol/s ingestion, 150ms query latency, 510MB idle memory) were measured by the author on production hardware
+- All mathematical claims (O(k·d̄) complexity, 115-minute half-life) were independently calculated and verified
+- All software functionality (v4.2.0) is available for inspection at https://github.com/RSBalchII/anchor-engine-node
+
+**No AI tools were used for:**
+- Peer review simulation
+- Editor/reviewer communication (beyond translation support, which was not needed)
+- Plagiarism or circumvention of academic standards
+- Generating fake data or benchmarks
 
 # Acknowledgments
 
