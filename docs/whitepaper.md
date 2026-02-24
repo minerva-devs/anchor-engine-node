@@ -116,7 +116,7 @@ LIMIT 200;
 
 **Implementation Notes:**
 - **Normalization:** The `shared_tags / 10.0` term normalizes tag counts, assuming ~10 shared tags maximum
-- **Damping:** The 0.85 factor applies per-hop; multi-hop traversal compounds this decay
+- **Damping:** The 0.85 factor applies per-hop; multi-hop traversal compounds this decay via exponentiation (γ^hop_distance). This simplified query shows the single-hop case; the full recursive CTE (shown in the paper) includes hop-distance exponentiation.
 - **Physical Bonus:** Production implementations may add proximity-based bonuses for co-located atoms
 - **Bitwise Operations:** SimHash distance uses XOR (`#`) and `bit_count` for O(1) computation
 

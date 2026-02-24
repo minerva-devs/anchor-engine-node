@@ -27,8 +27,20 @@ extern "C" {
  */
 __declspec(dllexport) void* database_create(const char* path) {
     try {
-        return new anchor::Database(path ? path : ":memory:");
+        const char* dbPath = path ? path : ":memory:";
+        printf("[anchor_core_ffi] Creating database at: %s\n", dbPath);
+        fflush(stdout);
+        auto* db = new anchor::Database(dbPath);
+        printf("[anchor_core_ffi] Database created successfully: %p\n", db);
+        fflush(stdout);
+        return db;
+    } catch (const std::exception& e) {
+        printf("[anchor_core_ffi] Database creation failed: %s\n", e.what());
+        fflush(stdout);
+        return nullptr;
     } catch (...) {
+        printf("[anchor_core_ffi] Database creation failed: unknown exception\n");
+        fflush(stdout);
         return nullptr;
     }
 }
