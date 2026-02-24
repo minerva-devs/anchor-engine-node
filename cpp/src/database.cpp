@@ -329,10 +329,17 @@ void Database::rebuildFtsIndex() {
 
 void Database::upsertSource(const Source& source) {
     std::lock_guard<std::mutex> lock(mutex_);
-    
+
     std::string metadata_str = "NULL";
     if (source.metadata.has_value()) {
-        metadata_str = "'" + source.metadata.value().dump() + "'";
+        // Escape single quotes in metadata string
+        std::string escaped = source.metadata.value();
+        size_t pos = 0;
+        while ((pos = escaped.find("'", pos)) != std::string::npos) {
+            escaped.replace(pos, 1, "''");
+            pos += 2;
+        }
+        metadata_str = "'" + escaped + "'";
     }
     
     std::string bucket_str = source.bucket.has_value() ? "'" + *source.bucket + "'" : "NULL";

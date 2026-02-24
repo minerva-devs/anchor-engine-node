@@ -10,6 +10,9 @@
 #include "deduplicator.h"
 #include "transient_filter.h"
 
+// Node.js N-API header
+#include "node.h"
+
 using namespace anchor;
 
 // ==================== Database Binding ====================
