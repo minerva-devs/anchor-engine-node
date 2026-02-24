@@ -193,6 +193,10 @@ ORDER BY gravity_score DESC;
 
 **Trade-off:** Recursive CTEs add query complexity but enable precise hop-distance tracking for proper damping application. The O(k·d̄·r) complexity remains tractable for personal-scale corpora.
 
+## Quality Assurance
+
+STAR includes a comprehensive test suite to ensure correctness and reproducibility. The `tests/` directory contains unit tests for core components (atomizer, fingerprinting, graph traversal) and integration tests that verify end-to-end search behavior. A benchmarking framework (`benchmarks/`) provides reproducible performance measurements for ingestion throughput, search latency, and memory usage under varying corpus sizes. Tests can be run manually using `pnpm test`, and all benchmarks reported in this paper can be reproduced using the provided scripts, ensuring transparent validation of the performance claims.
+
 # Research Impact Statement
 
 ## Production Validation
@@ -273,6 +277,10 @@ The human author (R.S. Balch II) reviewed all AI-generated code, made all archit
 AI tools did not provide: core algorithm design, mathematical derivations, research direction, benchmark methodology, or production validation. The Browser Paradigm, Unified Field Equation, Planets and Moons protocol, and ephemeral index design are original human contributions.
 
 The author bears complete responsibility for accuracy, originality, licensing compliance, and reproducibility. All benchmarks were measured on production hardware (Omen 17 with RTX 4090, 64GB RAM, Intel i9-13980HX). No AI tools were used for peer review simulation, editor communication, or generating fake data.
+
+# Competing interests
+
+The author declares no competing interests.
 
 # Acknowledgments
 
