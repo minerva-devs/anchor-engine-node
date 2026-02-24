@@ -113,6 +113,7 @@ curl http://localhost:3160/health
 |----------|-------------|
 | **[docs/whitepaper.md](docs/whitepaper.md)** | STAR Algorithm whitepaper (arXiv submission ready) |
 | **[docs/ARCHITECTURE_DIAGRAMS.md](docs/ARCHITECTURE_DIAGRAMS.md)** | Visual system architecture (human-friendly) |
+| **[docs/CPP_OPTIMIZATION.md](docs/CPP_OPTIMIZATION.md)** | C++ optimization project (50% complete) |
 | **[docs/INDEX.md](docs/INDEX.md)** | Documentation navigation hub |
 | **[docs/BIBLIOGRAPHY.bib](docs/BIBLIOGRAPHY.bib)** | Citation database (15 key papers) |
 | **[specs/spec.md](specs/spec.md)** | System specification (LLM-optimized) |

@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [4.2.1] - 2026-02-24 — Documentation Synthesis & SQL Fixes
+## [4.2.1] - 2026-02-24 — Documentation Synthesis, Docker & C++ Optimization
 
 ### Documentation Consolidation
 
@@ -14,6 +14,7 @@ Synthesized arXiv documentation into project specs for better maintainability:
 
 #### New Documentation
 - **docs/ARCHITECTURE_DIAGRAMS.md** - Human-friendly visual architecture (Mermaid diagrams)
+- **docs/CPP_OPTIMIZATION.md** - C++ optimization project overview
 - **specs/standards/STANDARD_117_ARXIV_SUBMISSION.md** - arXiv submission workflow
 - **specs/standards/RESEARCH_LANDSCAPE.md** - Related work analysis & citation guide
 - **specs/standards/doc_policy.md** - Documentation policy and workflow
@@ -56,6 +57,48 @@ Analyzed and positioned STAR against related work:
 - Seamless migration between Docker and native
 - Phoenix Protocol backups accessible at ./backups/
 - Synonym rings saved to ./notebook/
+
+### C++ Optimization Project
+
+**New Branch:** `cpp-optimization` (50% complete - 4/8 phases)
+
+**Phase 0: Foundation ✅**
+- CMake build system with C++17 standard
+- Core type definitions (Atom, Tag, Source, Candidate, etc.)
+- API headers for all components
+- Build scripts for Linux/macOS/Windows
+
+**Phase 1: Database Layer ✅**
+- Full SQLite3 wrapper with RAII pattern
+- Schema ported from Rust implementation
+- Tables: sources, atoms, tags, molecules, edges, atoms_fts
+- FTS5 full-text search with auto-sync triggers
+- WAL mode for concurrent reads
+- All CRUD operations implemented
+
+**Phase 2: Context Inflation ✅**
+- n-1, n+1 expansion from file coordinates
+- Paragraph boundary detection
+- Configurable base_radius (default 205 chars)
+- max_chars clamping to prevent overflow
+- File I/O utilities (read, write, range read)
+
+**Phase 3: Deduplication ✅**
+- 5-layer deduplication strategy:
+  1. Geometric overlap (50% threshold)
+  2. MD5 fingerprint (first 500 chars)
+  3. Containment check (substring match)
+  4. Fuzzy prefix matching (90% similarity)
+  5. SimHash distance (Hamming < 5)
+- Optimized Hamming distance with popcount instruction
+- Configurable thresholds for all layers
+
+**Performance Targets:**
+- Memory: <200MB RSS (vs 900MB current) - 4.5x improvement
+- Search: <50ms p95 (vs 150-200ms current) - 3-4x improvement
+- Ingestion: 2x throughput
+
+**Total C++ Code:** 3,757 lines across 20+ files
 
 ### SQL Fixes (Physics Walker)
 
