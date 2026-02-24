@@ -87,7 +87,11 @@ export function shutdownCppBackend(): void {
 }
 
 // Auto-initialize when imported (lazy)
-const dbPath = process.env.CONTEXT_DB_PATH || './context_data/context.db';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const dbPath = process.env.CONTEXT_DB_PATH || path.join(__dirname, '../../context_data/context.db');
 initCppBackend(dbPath).catch(err => {
   console.log('[CppBackend] Not available, using PGlite');
 });

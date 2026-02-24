@@ -134,9 +134,10 @@ LIMIT 200;
 
 | Level | Role | Content Stored | Example |
 |-------|------|----------------|---------|
-| **Compound** | Document reference | Full text (temporary) | `ChatSessions.yaml` (91.88MB) |
+| **Compound** | Document reference | File path + metadata | `ChatSessions.yaml` (91.88MB) |
 | **Molecule** | Semantic chunk | Chunk text + byte offsets | Bytes 1024–2048 |
-| **Atom** | Tag/concept | **Metadata only** | `#authentication`, `#session` |
+| **Atom** | Content unit | Byte-offset pointer + tags | Text chunk with `#auth` tag |
+| **Tag** | Concept/label | Semantic label only | `#authentication`, `#session` |
 
 **Key Design Decision:** Content lives in `mirrored_brain/` filesystem. Database stores pointers only (byte offsets + tags), creating a **disposable, rebuildable index**.
 
@@ -144,7 +145,7 @@ LIMIT 200;
 
 | Component | Browser Equivalent | Anchor Engine Implementation |
 |-----------|-------------------|------------------------------|
-| **HTML/CSS/JS shards** | Web page components | Atoms (tags + byte offsets) |
+| **HTML/CSS/JS shards** | Web page components | Atoms (content with tags + byte offsets) |
 | **DOM tree** | Document structure | Tag graph $G = (A, T, E)$ |
 | **Lazy loading** | On-demand resource fetch | Radial inflation from disk |
 | **Cache** | Browser cache | Ephemeral PGlite index |

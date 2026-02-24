@@ -52,6 +52,7 @@
     "dependencies": {
         "@anchor/shared": "file:../shared",
         "@electric-sql/pglite": "^0.2.0",
+        "@rbalchii/anchor-core": "file:../../packages/anchor-core",
         "@rbalchii/dse": "^1.0.0",
         "@rbalchii/native-atomizer": "^1.0.0",
         "@rbalchii/native-fingerprint": "^1.0.0",
