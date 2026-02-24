@@ -10,6 +10,7 @@
  */
 
 import { db } from '../../core/db.js';
+import cppBackend from '../../core/cpp-backend.js';  // C++ backend integration
 import { createHash } from 'crypto';
 import { config } from '../../config/index.js';
 import { MAX_RECALL_CONFIG } from '../../config/max-recall-config.js';
@@ -94,6 +95,17 @@ export async function findAnchors(
     console.log(`[Search] Dynamic Scaling: Budget=${tokenBudget}t -> Target=${targetAtomCount} atoms`);
 
     console.log(`[Search] Constructing TS Query...`);
+    
+    // Try C++ backend for faster FTS search
+    let cppResults: any[] = [];
+    try {
+      const backend = cppBackend.getBackend();
+      cppResults = backend.search(sanitizedQuery, targetAtomCount);
+      console.log(`[Search] C++ FTS found ${cppResults.length} results`);
+    } catch (e: any) {
+      console.log(`[Search] C++ backend not available, using PGlite: ${e.message}`);
+    }
+    
     // Construct Query String for FTS
     let tsQueryString = sanitizedQuery.trim();
     if (fuzzy) {
@@ -104,21 +116,47 @@ export async function findAnchors(
 
     let anchors: SearchResult[] = [];
 
-    // A. Atom Search (Radial Inflation)
-    const terms = sanitizedQuery.split(/\s+/).filter(t => t.length > 0);
-    const atomResults: SearchResult[] = [];
+    // A. Atom Search (Radial Inflation) - Use C++ results if available
+    if (cppResults.length > 0) {
+      // Transform C++ results to SearchResult format
+      anchors = cppResults.map((r: any) => ({
+        id: String(r.id),
+        content: r.content,
+        source: r.source_id,
+        timestamp: r.timestamp,
+        buckets: r.buckets || [],
+        tags: r.tags || [],
+        epochs: [],
+        provenance: 'internal',
+        score: r.simhash ? 1.0 : 0.5,
+        sequence: 0,
+        molecular_signature: r.simhash,
+        start_byte: r.start_byte,
+        end_byte: r.end_byte,
+        type: 'atom',
+        numeric_value: null,
+        numeric_unit: null,
+        compound_id: r.compound_id
+      }));
+      console.log(`[Search] Using C++ backend results: ${anchors.length} atoms`);
+    } else {
+      // Fallback to PGlite
+      const terms = sanitizedQuery.split(/\s+/).filter(t => t.length > 0);
+      const atomResults: SearchResult[] = [];
 
-    if (terms.length > 0) {
-      try {
-        const inflations = await Promise.all(
-          terms.map(term => ContextInflator.inflateFromAtomPositions(term, 150, 20, undefined, { buckets, provenance }))
-        );
-        let rawAtoms = inflations.flat();
-        atomResults.push(...rawAtoms);
-        console.log(`[Search] Atom search found ${rawAtoms.length} atoms for terms: ${terms.join(', ')}`);
-      } catch (e) {
-        console.error(`[Search] Atom Search failed:`, e);
+      if (terms.length > 0) {
+        try {
+          const inflations = await Promise.all(
+            terms.map(term => ContextInflator.inflateFromAtomPositions(term, 150, 20, undefined, { buckets, provenance }))
+          );
+          let rawAtoms = inflations.flat();
+          atomResults.push(...rawAtoms);
+          console.log(`[Search] Atom search found ${rawAtoms.length} atoms for terms: ${terms.join(', ')}`);
+        } catch (e) {
+          console.error(`[Search] Atom Search failed:`, e);
+        }
       }
+      anchors = atomResults;
     }
 
     // B. Molecule Search (Full-Text with BM25-style ranking)
