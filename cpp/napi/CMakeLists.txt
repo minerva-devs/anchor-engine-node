@@ -5,14 +5,11 @@ cmake_minimum_required(VERSION 3.16)
 find_package(NodeJS REQUIRED)
 
 include_directories(${NODE_INCLUDE_DIRS})
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
 # Create N-API module
 add_library(anchor_core_napi SHARED
     src/anchor_core_napi.cpp
-    src/physics_walker_napi.cpp
-    src/context_inflator_napi.cpp
-    src/deduplicator_napi.cpp
-    src/transient_filter_napi.cpp
 )
 
 target_link_libraries(anchor_core_napi
