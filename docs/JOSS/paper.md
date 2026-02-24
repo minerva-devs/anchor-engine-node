@@ -300,10 +300,9 @@ Generative AI tools were extensively used in the development of this software an
 ### Paper Authoring and Documentation
 - **Gemini 2.5 Pro / 3 Pro**: Used for paper structure suggestions, citation formatting, and LaTeX/Markdown syntax
 - **Kimi AI**: Used for grammar checking, style consistency, and readability improvements
-- **Grammarly**: Used for proofreading and language polishing
 
 ### Mathematical and Conceptual Work
-- **Gemini 2.5 Pro**: Used for temporal decay calculations, complexity analysis verification, and equation formatting
+- **Gemini 3.1 Pro**: Used for temporal decay calculations, complexity analysis verification, and equation formatting
 - **Deepseek**: Used for symbolic algebra verification and benchmark calculation checking
 
 ## Scope of Assistance
@@ -363,7 +362,7 @@ The submitting author (R.S. Balch II) bears complete responsibility for:
 - **Reproducibility**: The software functions as described; benchmarks are reproducible using included Docker configuration
 
 **Verification of Claims:**
-- All performance benchmarks (1,203 mol/s ingestion, 150ms query latency, 510MB idle memory) were measured by the author on production hardware
+- All performance benchmarks (1,203 mol/s ingestion, 150ms query latency, 510MB idle memory) were measured by the author on production hardware Omen 17 laptop with RTX 4090 16GB VRAM, 64GB RAM, and Intel i9-13980HX CPU
 - All mathematical claims (O(k·d̄) complexity, 115-minute half-life) were independently calculated and verified
 - All software functionality (v4.2.0) is available for inspection at https://github.com/RSBalchII/anchor-engine-node
 
@@ -375,7 +374,7 @@ The submitting author (R.S. Balch II) bears complete responsibility for:
 
 # Acknowledgments
 
-This research was conducted as independent work without external funding. The author acknowledges the New Mexico Institute of Mining and Technology (New Mexico Tech) for affiliation support.
+This research was conducted as independent work without external funding.
 
 The STAR algorithm builds upon foundational work in similarity estimation (Charikar's SimHash), graph-based search (PageRank), and information retrieval (sparse vector models). The implementation uses PGlite by ElectricSQL and open-source tools from the Node.js ecosystem.
 

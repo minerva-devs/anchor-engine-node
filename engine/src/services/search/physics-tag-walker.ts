@@ -395,9 +395,9 @@ export class PhysicsTagWalker {
            sc.atom_id,
            MAX(
               GREATEST(0.0, LEAST(1.0,
-                 ( ((sc.total_shared_tags / 10.0) * POWER(${this.DAMPING_FACTOR}, sc.hop_distance)) + (sc.physical_bonus * 0.1) ) *
-                 EXP(-${this.TIME_DECAY_LAMBDA} * ABS(sc.timestamp - ast.anchor_ts)) *
-                 (1.0 - (bit_count(('x' || LPAD(sc.simhash, 16, '0'))::bit(64) # ('x' || LPAD(ast.anchor_sh, 16, '0'))::bit(64)) / 64.0))
+                 ( ((COALESCE(sc.total_shared_tags, 0) / 10.0) * POWER(${this.DAMPING_FACTOR}, COALESCE(sc.hop_distance, 1))) + (COALESCE(sc.physical_bonus, 0) * 0.1) ) *
+                 EXP(-${this.TIME_DECAY_LAMBDA} * ABS(COALESCE(sc.timestamp - ast.anchor_ts, 0))) *
+                 (1.0 - (bit_count(('x' || LPAD(COALESCE(sc.simhash, '0'), 16, '0'))::bit(64) # ('x' || LPAD(COALESCE(ast.anchor_sh, '0'), 16, '0'))::bit(64)) / 64.0))
               ))
            ) as gravity_score,
            MAX(ast.anchor_id) as best_anchor_id,
@@ -408,9 +408,9 @@ export class PhysicsTagWalker {
         GROUP BY sc.atom_id
         HAVING MAX(
               GREATEST(0.0, LEAST(1.0,
-                 ( ((sc.total_shared_tags / 10.0) * POWER(${this.DAMPING_FACTOR}, sc.hop_distance)) + (sc.physical_bonus * 0.1) ) *
-                 EXP(-${this.TIME_DECAY_LAMBDA} * ABS(sc.timestamp - ast.anchor_ts)) *
-                 (1.0 - (bit_count(('x' || LPAD(sc.simhash, 16, '0'))::bit(64) # ('x' || LPAD(ast.anchor_sh, 16, '0'))::bit(64)) / 64.0))
+                 ( ((COALESCE(sc.total_shared_tags, 0) / 10.0) * POWER(${this.DAMPING_FACTOR}, COALESCE(sc.hop_distance, 1))) + (COALESCE(sc.physical_bonus, 0) * 0.1) ) *
+                 EXP(-${this.TIME_DECAY_LAMBDA} * ABS(COALESCE(sc.timestamp - ast.anchor_ts, 0))) *
+                 (1.0 - (bit_count(('x' || LPAD(COALESCE(sc.simhash, '0'), 16, '0'))::bit(64) # ('x' || LPAD(COALESCE(ast.anchor_sh, '0'), 16, '0'))::bit(64)) / 64.0))
               ))
            ) > $${thresholdParamIdx}
         ORDER BY gravity_score DESC
