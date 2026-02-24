@@ -260,7 +260,28 @@ All benchmarks are reproducible using the included `benchmarks/` directory:
 - **License:** AGPL-3.0 (open source, copyleft)
 - **Version:** 4.2.0 (stable production release)
 - **Documentation:** Comprehensive specs, standards (77 architecture standards), and API documentation
+- **Containerization:** Docker and docker-compose support for easy deployment
 - **Repository:** https://github.com/RSBalchII/anchor-engine-node
+
+## Reproducibility and Deployment
+
+STAR includes comprehensive containerization support ensuring reproducible deployment:
+
+```bash
+# One-command deployment
+docker-compose up -d
+
+# Health check
+curl http://localhost:3160/health
+```
+
+**Docker Features:**
+- Single-stage build based on Node.js 20 LTS
+- Persistent volumes for database and user data
+- Health checks with automatic restart
+- Resource limits (2 CPU, 2GB RAM) matching tested constraints
+
+This containerization enables researchers to reproduce all benchmarks with identical environments, addressing a key concern in software evaluation.
 
 # AI Usage Disclosure
 
