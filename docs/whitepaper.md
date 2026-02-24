@@ -2,7 +2,7 @@
 ## The Browser Paradigm for AI Memory
 
 ### Authors 
-Robert S Balch II - Indpendent Researcher
+Robert S Balch II - Independent Researcher
 
 ### Abstract
 

@@ -28,6 +28,40 @@
 
 ## Recent Changes (v4.2.1)
 
+### C++ Optimization Project (50% Complete)
+
+**Branch:** `cpp-optimization`
+
+**Phase 0: Foundation ✅**
+- CMake build system with C++17
+- Core type definitions
+- API headers for all components
+
+**Phase 1: Database Layer ✅**
+- Full SQLite3 wrapper (843 lines)
+- Schema from Rust implementation
+- FTS5 with auto-sync triggers
+- All CRUD operations
+
+**Phase 2: Context Inflation ✅**
+- n-1, n+1 expansion
+- Paragraph boundary detection
+- File I/O utilities
+
+**Phase 3: Deduplication ✅**
+- 5-layer strategy implemented
+- MD5 fingerprinting
+- SimHash with popcount optimization
+
+**Performance Targets:**
+- Memory: <200MB RSS (vs 900MB)
+- Search: <50ms p95 (vs 150-200ms)
+- Ingestion: 2x throughput
+
+**Total Code:** 3,757 lines across 20+ files
+
+**Documentation:** [docs/CPP_OPTIMIZATION.md](../docs/CPP_OPTIMIZATION.md)
+
 ### SQL Fixes (Physics Walker)
 
 **Issue:** Hop distance tracking caused SQL errors in production
