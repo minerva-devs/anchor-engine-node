@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <optional>
 #include <chrono>
+#include <nlohmann/json_fwd.hpp>
 
 namespace anchor {
 
@@ -47,7 +48,7 @@ struct Atom {
     SimHash simhash;
     std::vector<std::string> tags;
     std::optional<std::string> metadata;
-    
+
     // For context inflation
     std::optional<std::string> compound_id;
     std::optional<size_t> start_byte;
