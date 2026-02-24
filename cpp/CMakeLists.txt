@@ -40,6 +40,8 @@ set(CORE_SOURCES
     src/simhash.cpp
     src/graph_traversal.cpp
     src/unified_field_equation.cpp
+    src/database.cpp
+    src/file_utils.cpp
 )
 
 # Core library headers
@@ -53,6 +55,7 @@ set(CORE_HEADERS
     include/unified_field_equation.h
     include/types.h
     include/database.h
+    include/file_utils.h
 )
 
 # Create core library
