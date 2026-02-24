@@ -3,17 +3,33 @@
  * 
  * Replaces PGlite with high-performance SQLite3 backend
  * 3-4x faster search, 4.5x less memory
+ * 
+ * Lazy-loaded to avoid startup issues
  */
 
-import { AnchorCore } from '../native/index.js';
+let AnchorCore: any = null;
+let anchorInstance: any = null;
 
-// Singleton instance
-let anchorInstance: AnchorCore | null = null;
+/**
+ * Load C++ backend dynamically
+ */
+async function loadCppBackend(): Promise<any> {
+  if (AnchorCore) return AnchorCore;
+  
+  try {
+    const module = await import('../native/index.js');
+    AnchorCore = module.AnchorCore;
+    return AnchorCore;
+  } catch (error: any) {
+    console.error('[CppBackend] Failed to load:', error.message);
+    throw error;
+  }
+}
 
 /**
  * Initialize C++ backend
  */
-export async function initCppBackend(dbPath: string): Promise<AnchorCore> {
+export async function initCppBackend(dbPath: string): Promise<any> {
   if (anchorInstance) {
     console.log('[CppBackend] Already initialized');
     return anchorInstance;
@@ -21,7 +37,8 @@ export async function initCppBackend(dbPath: string): Promise<AnchorCore> {
   
   try {
     console.log('[CppBackend] Initializing...', dbPath);
-    anchorInstance = new AnchorCore();
+    const CoreClass = await loadCppBackend();
+    anchorInstance = new CoreClass();
     anchorInstance.init(dbPath);
     console.log('[CppBackend] ✅ Initialized successfully');
     return anchorInstance;
@@ -69,10 +86,8 @@ export function shutdownCppBackend(): void {
   }
 }
 
-// Auto-initialize when imported
+// Auto-initialize when imported (lazy)
 const dbPath = process.env.CONTEXT_DB_PATH || './context_data/context.db';
 initCppBackend(dbPath).catch(err => {
-  console.error('[CppBackend] Auto-init failed, falling back to PGlite:', err.message);
+  console.log('[CppBackend] Not available, using PGlite');
 });
-
-export { AnchorCore };

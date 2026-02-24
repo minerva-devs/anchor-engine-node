@@ -380,6 +380,10 @@ GET /monitoring/metrics  # Performance metrics
 
 ---
 
+## Citing
+
+If you use STAR in your research, please cite the software using the provided CITATION.cff file or the JOSS paper (once available). A DOI will be available upon archiving on Zenodo. The repository includes a whitepaper describing the algorithm in detail.
+
 **Repository:** https://github.com/RSBalchII/anchor-engine-node  
 **Whitepaper:** [docs/whitepaper.md](docs/whitepaper.md)  
 **Production Status:** ✅ Ready (February 20, 2026)

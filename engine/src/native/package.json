@@ -1,0 +1,40 @@
+{
+  "name": "@anchor-engine/native",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Native C++ bindings for Anchor Engine using Koffi FFI",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./AnchorCore": "./index.js"
+  },
+  "files": [
+    "index.js",
+    "types.js",
+    "lib/**/*"
+  ],
+  "scripts": {
+    "build": "cd ../cpp && ./build.sh --with-napi"
+  },
+  "keywords": [
+    "anchor",
+    "native",
+    "cpp",
+    "ffi",
+    "koffi"
+  ],
+  "author": "Anchor Engine Team",
+  "license": "AGPL-3.0",
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "dependencies": {
+    "koffi": "^2.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
