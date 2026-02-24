@@ -10,13 +10,13 @@
  */
 
 import { db } from '../../core/db.js';
-import cppBackend from '../../core/cpp-backend.js';  // C++ backend integration
 import { createHash } from 'crypto';
 import { config } from '../../config/index.js';
 import { MAX_RECALL_CONFIG } from '../../config/max-recall-config.js';
 import { SemanticCategory } from '../../types/taxonomy.js';
 import { ContextInflator } from './context-inflator.js';
 import { Timer } from '../../utils/timer.js';
+import { cppSearch, getBackend } from '../../core/cpp-backend.js';  // C++ backend integration
 
 // --- Imports from extracted modules ---
 import {
@@ -99,8 +99,7 @@ export async function findAnchors(
     // Try C++ backend for faster FTS search
     let cppResults: any[] = [];
     try {
-      const backend = cppBackend.getBackend();
-      cppResults = backend.search(sanitizedQuery, targetAtomCount);
+      cppResults = cppSearch(sanitizedQuery, targetAtomCount);
       console.log(`[Search] C++ FTS found ${cppResults.length} results`);
     } catch (e: any) {
       console.log(`[Search] C++ backend not available, using PGlite: ${e.message}`);
