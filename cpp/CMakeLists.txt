@@ -42,6 +42,7 @@ set(CORE_SOURCES
     src/unified_field_equation.cpp
     src/database.cpp
     src/file_utils.cpp
+    src/md5.cpp
 )
 
 # Core library headers
@@ -56,6 +57,7 @@ set(CORE_HEADERS
     include/types.h
     include/database.h
     include/file_utils.h
+    include/md5.h
 )
 
 # Create core library
