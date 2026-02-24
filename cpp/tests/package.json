@@ -1,0 +1,18 @@
+{
+  "name": "@rbalchii/anchor-core-tests",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Tests for Anchor Core C++ backend",
+  "scripts": {
+    "test": "node comprehensive.test.js",
+    "test:simple": "node simple.test.js",
+    "test:context": "node context-size.test.js",
+    "test:all": "node *.test.js"
+  },
+  "keywords": ["anchor", "test", "cpp", "ffi"],
+  "author": "Anchor Engine Team",
+  "license": "MIT",
+  "dependencies": {
+    "@rbalchii/anchor-core": "file:.."
+  }
+}

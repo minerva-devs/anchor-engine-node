@@ -98,6 +98,7 @@ export async function findAnchors(
     
     // Try C++ backend for faster FTS search
     let cppResults: any[] = [];
+    let atomResults: SearchResult[] = [];  // Declare for use in molecule merge
     try {
       cppResults = cppSearch(sanitizedQuery, targetAtomCount);
       console.log(`[Search] C++ FTS found ${cppResults.length} results`);
@@ -234,13 +235,15 @@ export async function findAnchors(
         compound_id: row.compound_id
       }));
 
-      anchors = [...atomResults, ...molecules];
+      // Use anchors from C++ backend or PGlite fallback
+      const atomResultsForMerge = cppResults.length > 0 ? anchors : atomResults;
+      anchors = [...atomResultsForMerge, ...molecules];
 
       // Deduplicate anchors using Range Merging
       // Group by compound_id to find overlaps
       const anchorsByCompound = new Map<string, SearchResult[]>();
 
-      [...atomResults, ...molecules].forEach(a => {
+      [...atomResultsForMerge, ...molecules].forEach(a => {
         if (!a.compound_id) return;
         if (!anchorsByCompound.has(a.compound_id)) {
           anchorsByCompound.set(a.compound_id, []);
@@ -635,7 +638,7 @@ export async function executeMoleculeSearch(
   query: string,
   bucket?: string,
   buckets?: string[],
-  maxChars: number = 2400, // 2400 tokens as specified
+  maxChars: number = config.SEARCH.max_chars_default, // Use config default (512KB)
   deep: boolean = false,
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   explicitTags: string[] = []
@@ -762,7 +765,7 @@ async function hydrateFromMirror(results: SearchResult[]) {
 export async function iterativeSearch(
   query: string,
   buckets: string[] = [],
-  maxChars: number = 20000,
+  maxChars: number = config.SEARCH.max_chars_default, // Use config default (512KB)
   tags: string[] = [],
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   useMaxRecall: boolean = false
