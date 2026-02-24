@@ -2,7 +2,7 @@
 # High-performance core algorithms for Anchor Engine
 
 cmake_minimum_required(VERSION 3.16)
-project(anchor_core VERSION 0.1.0 LANGUAGES CXX)
+project(anchor_core VERSION 0.1.0 LANGUAGES CXX C)
 
 # C++17 standard
 set(CMAKE_CXX_STANDARD 17)
@@ -22,13 +22,26 @@ else()
 endif()
 
 # Find dependencies
-find_package(SQLite3 REQUIRED)
-find_package(nlohmann_json REQUIRED)
+# Use FetchContent for automatic dependency management
+include(FetchContent)
+
+# Fetch nlohmann_json
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
+# SQLite3 - use bundled amalgamation
+set(SQLite3_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/deps/sqlite-amalgamation-3510200)
+set(SQLite3_LIBRARIES ${CMAKE_SOURCE_DIR}/deps/sqlite-amalgamation-3510200/sqlite3.c)
 
 # Include directories
 include_directories(
     ${CMAKE_SOURCE_DIR}/include
-    ${SQLite3_INCLUDE_DIRS}
+    ${SQLite3_INCLUDE_DIR}
+    ${nlohmann_json_SOURCE_DIR}/include
 )
 
 # Core library sources
@@ -63,8 +76,19 @@ set(CORE_HEADERS
 # Create core library
 add_library(anchor_core ${CORE_SOURCES} ${CORE_HEADERS})
 
-target_link_libraries(anchor_core
+# Compile SQLite3 amalgamation
+add_library(sqlite3_amalgamation STATIC
     ${SQLite3_LIBRARIES}
+)
+target_include_directories(sqlite3_amalgamation PUBLIC ${SQLite3_INCLUDE_DIR})
+target_compile_definitions(sqlite3_amalgamation PUBLIC SQLITE_THREADSAFE=1)
+set_target_properties(sqlite3_amalgamation PROPERTIES
+    LANGUAGE C
+    C_STANDARD 99
+)
+
+target_link_libraries(anchor_core
+    sqlite3_amalgamation
     nlohmann_json::nlohmann_json
 )
 
