@@ -56,6 +56,7 @@ set(CORE_SOURCES
     src/database.cpp
     src/file_utils.cpp
     src/md5.cpp
+    src/anchor_core_ffi.cpp
 )
 
 # Core library headers
