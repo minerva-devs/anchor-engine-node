@@ -1,0 +1,33 @@
+{
+  "name": "@anchor-engine/native",
+  "version": "1.0.0",
+  "description": "Native C++ core for Anchor Engine - High-performance SQLite3 backend",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "type": "module",
+  "os": ["win32"],
+  "cpu": ["x64"],
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "lib/**/*"
+  ],
+  "scripts": {
+    "test": "node tests/test.js"
+  },
+  "keywords": [
+    "anchor",
+    "native",
+    "sqlite",
+    "ffi",
+    "cpp"
+  ],
+  "author": "Anchor Engine Team",
+  "license": "AGPL-3.0",
+  "dependencies": {
+    "koffi": "^2.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
