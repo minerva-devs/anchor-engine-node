@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   anchor-engine:
     build:
@@ -10,18 +8,26 @@ services:
     ports:
       - "3160:3160"
     volumes:
-      # Persistent data (database)
+      # Persistent data (database) - same as native engine/context_data
       - anchor-data:/app/engine/context_data
-      # Mount inbox directories for automatic ingestion
-      - ./inbox:/app/inbox
-      - ./external-inbox:/app/external-inbox
-      # Mount mirrored_brain for source of truth
-      - ./mirrored_brain:/app/mirrored_brain
-      # Mount backups
-      - ./backups:/app/backups
+      
+      # User data directories - match native deployment structure
+      - ./inbox:/app/inbox                    # Auto-ingested files
+      - ./external-inbox:/app/external-inbox  # External source files
+      - ./mirrored_brain:/app/mirrored_brain  # Source of truth filesystem
+      - ./backups:/app/backups                # Phoenix Protocol backups
+      - ./notebook:/app/notebook              # Synonym rings, notes, outputs
+      
+      # Optional: Mount user settings
+      - ./user_settings.json:/app/user_settings.json:ro
+      
     environment:
       - NODE_ENV=production
       - PORT=3160
+      # These environment variables ensure paths match native deployment
+      - PROJECT_ROOT=/app
+      - CONTEXT_DIR=/app/engine/context_data
+      - NOTEBOOK_DIR=/app/notebook
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3160/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
@@ -29,7 +35,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    # Resource limits
+    # Resource limits - tested on 4GB RAM laptops
     deploy:
       resources:
         limits:
@@ -67,6 +73,14 @@ volumes:
 # Add files to inbox (auto-ingested):
 #   cp myfile.md ./inbox/
 #
-# Backup data:
-#   docker-compose exec anchor-engine ls -la /app/backups/
+# Backup data (Phoenix Protocol):
+#   # Backups are automatically saved to ./backups/
+#   ls -la ./backups/
+#
+# Access synonym rings:
+#   ls -la ./notebook/
+#
+# Restore from backup:
+#   # Use UI or API to restore from ./backups/backup_TIMESTAMP.json
+#
 # =============================================================================
