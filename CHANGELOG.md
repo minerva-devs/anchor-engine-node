@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [4.2.1] - 2026-02-23 — Documentation Synthesis & Research Landscape
+## [4.2.1] - 2026-02-24 — Documentation Synthesis & SQL Fixes
 
 ### Documentation Consolidation
 
@@ -16,6 +16,7 @@ Synthesized arXiv documentation into project specs for better maintainability:
 - **docs/ARCHITECTURE_DIAGRAMS.md** - Human-friendly visual architecture (Mermaid diagrams)
 - **specs/standards/STANDARD_117_ARXIV_SUBMISSION.md** - arXiv submission workflow
 - **specs/standards/RESEARCH_LANDSCAPE.md** - Related work analysis & citation guide
+- **specs/standards/doc_policy.md** - Documentation policy and workflow
 - **docs/BIBLIOGRAPHY.bib** - Project-wide citation database (15 key papers)
 
 #### Research Landscape Analysis
@@ -38,6 +39,43 @@ Analyzed and positioned STAR against related work:
 **Helper Scripts Created:**
 - `docs/arxiv/compile.bat` - 4-pass LaTeX compilation
 - `docs/arxiv/prepare-submission.bat` - Package preparation
+
+### Docker Support
+
+**Containerization:**
+- **Dockerfile** - Single-stage build based on Node.js 20 LTS
+- **docker-compose.yml** - Full orchestration with volumes and health checks
+- **.dockerignore** - Build context optimization
+- **Volume Mounts:** inbox, external-inbox, mirrored_brain, backups, notebook
+- **Environment Variables:** PROJECT_ROOT, CONTEXT_DIR, NOTEBOOK_DIR
+- **Health Check:** HTTP endpoint monitoring
+- **Resource Limits:** 2 CPU, 2GB RAM (tested on 4GB laptops)
+
+**Path Alignment:**
+- Docker paths match native deployment structure
+- Seamless migration between Docker and native
+- Phoenix Protocol backups accessible at ./backups/
+- Synonym rings saved to ./notebook/
+
+### SQL Fixes (Physics Walker)
+
+**Bug Fixes:**
+1. **WITH RECURSIVE** - Added for recursive CTE support (PostgreSQL requirement)
+2. **COALESCE** - NULL handling for all fields (hop_distance, shared_tags, simhash, timestamps)
+3. **Hop Distance Clamping** - LEAST(GREATEST(hop, 0), 3) prevents POWER underflow
+4. **UNION ALL Restructuring** - Split candidates into separate CTEs for PGlite compatibility
+
+**Fixed Errors:**
+- `syntax error at or near UNION` → Fixed with CTE restructuring
+- `relation hop_traversal does not exist` → Fixed with WITH RECURSIVE
+- `value out of range: underflow` → Fixed with COALESCE + hop clamping
+
+**SQL Improvements:**
+```sql
+-- Before: POWER(0.85, hop_distance) - fails on NULL or large values
+-- After: POWER(0.85, LEAST(GREATEST(COALESCE(hop, 1), 0), 3))
+-- Result: hop 0=1.0, hop 1=0.85, hop 2=0.72, hop 3=0.61
+```
 
 ### Competitive Positioning
 

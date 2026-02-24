@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 4.2.1 | **Status:** Production Ready | **Updated:** February 23, 2026
+**Version:** 4.2.1 | **Status:** Production Ready | **Updated:** February 24, 2026
 
 ## Quick Reference
 
@@ -12,6 +12,7 @@
 | **Index** | Disposable, rebuildable on startup |
 | **Search** | STAR Algorithm (70/30 Planets/Moons) |
 | **Native Modules** | @rbalchii/* npm packages (C++ N-API) |
+| **Docker** | `docker-compose up -d` (2 CPU, 2GB RAM) |
 
 ---
 
@@ -22,6 +23,46 @@
 - **[specs/standards/RESEARCH_LANDSCAPE.md](standards/RESEARCH_LANDSCAPE.md)** - Related work analysis
 - **[specs/standards/STANDARD_117_ARXIV_SUBMISSION.md](standards/STANDARD_117_ARXIV_SUBMISSION.md)** - arXiv workflow
 - **[specs/standards/doc_policy.md](standards/doc_policy.md)** - Documentation policy
+
+---
+
+## Recent Changes (v4.2.1)
+
+### SQL Fixes (Physics Walker)
+
+**Issue:** Hop distance tracking caused SQL errors in production
+
+**Fixes Applied:**
+1. **WITH RECURSIVE** - Required for recursive CTEs in PostgreSQL
+2. **COALESCE** - NULL handling for hop_distance, shared_tags, simhash, timestamps
+3. **Hop Clamping** - `LEAST(GREATEST(hop, 0), 3)` prevents POWER underflow
+4. **UNION ALL Restructuring** - Split into candidates_limited + candidates_physical + candidates_combined
+
+**Result:** Hop distance damping now works correctly:
+- Hop 0: 0.85⁰ = 1.00 (anchors)
+- Hop 1: 0.85¹ = 0.85 (direct neighbors)
+- Hop 2: 0.85² = 0.72 (2-hop associations)
+- Hop 3: 0.85³ = 0.61 (distant associations)
+
+### Docker Support
+
+**Deployment:**
+```bash
+docker-compose up -d
+```
+
+**Volumes:**
+- `./inbox` → `/app/inbox` (auto-ingested files)
+- `./external-inbox` → `/app/external-inbox` (external sources)
+- `./mirrored_brain` → `/app/mirrored_brain` (source of truth)
+- `./backups` → `/app/backups` (Phoenix Protocol backups)
+- `./notebook` → `/app/notebook` (synonym rings)
+- `anchor-data` → `/app/engine/context_data` (persistent database)
+
+**Environment:**
+- `PROJECT_ROOT=/app`
+- `CONTEXT_DIR=/app/engine/context_data`
+- `NOTEBOOK_DIR=/app/notebook`
 
 ---
 

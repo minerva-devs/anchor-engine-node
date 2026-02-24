@@ -390,12 +390,13 @@ export class PhysicsTagWalker {
       ),
       -- 3. Physics Weighting (Unified Field Equation with hop distance)
       -- Implements: |T(q) ∩ T(a)| · γ^(d(q,a)) × e^(-λΔt) × (1 - H(h_q,h_a)/64)
+      -- Note: LEAST(GREATEST(..., 0), 3) clamps hop_distance to prevent POWER underflow
       weighted_ids AS (
         SELECT
            sc.atom_id,
            MAX(
               GREATEST(0.0, LEAST(1.0,
-                 ( ((COALESCE(sc.total_shared_tags, 0) / 10.0) * POWER(${this.DAMPING_FACTOR}, COALESCE(sc.hop_distance, 1))) + (COALESCE(sc.physical_bonus, 0) * 0.1) ) *
+                 ( ((COALESCE(sc.total_shared_tags, 0) / 10.0) * POWER(${this.DAMPING_FACTOR}, LEAST(GREATEST(COALESCE(sc.hop_distance, 1), 0), 3))) + (COALESCE(sc.physical_bonus, 0) * 0.1) ) *
                  EXP(-${this.TIME_DECAY_LAMBDA} * ABS(COALESCE(sc.timestamp - ast.anchor_ts, 0))) *
                  (1.0 - (bit_count(('x' || LPAD(COALESCE(sc.simhash, '0'), 16, '0'))::bit(64) # ('x' || LPAD(COALESCE(ast.anchor_sh, '0'), 16, '0'))::bit(64)) / 64.0))
               ))
@@ -408,7 +409,7 @@ export class PhysicsTagWalker {
         GROUP BY sc.atom_id
         HAVING MAX(
               GREATEST(0.0, LEAST(1.0,
-                 ( ((COALESCE(sc.total_shared_tags, 0) / 10.0) * POWER(${this.DAMPING_FACTOR}, COALESCE(sc.hop_distance, 1))) + (COALESCE(sc.physical_bonus, 0) * 0.1) ) *
+                 ( ((COALESCE(sc.total_shared_tags, 0) / 10.0) * POWER(${this.DAMPING_FACTOR}, LEAST(GREATEST(COALESCE(sc.hop_distance, 1), 0), 3))) + (COALESCE(sc.physical_bonus, 0) * 0.1) ) *
                  EXP(-${this.TIME_DECAY_LAMBDA} * ABS(COALESCE(sc.timestamp - ast.anchor_ts, 0))) *
                  (1.0 - (bit_count(('x' || LPAD(COALESCE(sc.simhash, '0'), 16, '0'))::bit(64) # ('x' || LPAD(COALESCE(ast.anchor_sh, '0'), 16, '0'))::bit(64)) / 64.0))
               ))
