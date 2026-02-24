@@ -5,8 +5,12 @@
   "main": "index.js",
   "types": "index.d.ts",
   "type": "module",
-  "os": ["win32"],
-  "cpu": ["x64"],
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64"
+  ],
   "files": [
     "index.js",
     "index.d.ts",
@@ -25,7 +29,7 @@
   "author": "Anchor Engine Team",
   "license": "AGPL-3.0",
   "dependencies": {
-    "koffi": "^2.9.0"
+    "koffi": "^2.15.1"
   },
   "engines": {
     "node": ">=18.0.0"

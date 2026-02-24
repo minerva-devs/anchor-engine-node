@@ -2,7 +2,7 @@
  * Test for @anchor-engine/native
  */
 
-import { anchor } from './index.js';
+import { anchor } from '../index.js';
 
 console.log('Testing @anchor-engine/native...\n');
 
