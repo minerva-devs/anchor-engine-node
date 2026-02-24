@@ -3,20 +3,28 @@ cmake_minimum_required(VERSION 3.16)
 
 # Find Node.js headers
 # Use bundled headers in deps/nodejs/include
-set(NODE_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/deps/nodejs/include)
+if(NOT NODE_INCLUDE_DIR)
+    set(NODE_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/deps/nodejs/include)
+endif()
 
 # Check if Node.js headers exist
 if(NOT EXISTS "${NODE_INCLUDE_DIR}/node.h")
     message(FATAL_ERROR "Node.js headers not found at ${NODE_INCLUDE_DIR}. Please download Node.js headers.")
 endif()
 
-include_directories(${NODE_INCLUDE_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
 # Create N-API module
 add_library(anchor_core_napi SHARED
     src/anchor_core_napi.cpp
 )
+
+# Add include directories
+target_include_directories(anchor_core_napi PRIVATE
+    ${NODE_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+# Add N-API compile definitions
+target_compile_definitions(anchor_core_napi PRIVATE NAPI_VERSION=6)
 
 target_link_libraries(anchor_core_napi
     anchor_core

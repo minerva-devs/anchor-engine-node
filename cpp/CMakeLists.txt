@@ -100,6 +100,8 @@ target_include_directories(anchor_core
 
 # N-API bindings (optional, for Node.js integration)
 if(BUILD_NAPI_BINDINGS)
+    # Pass Node.js include directory to N-API bindings
+    set(NODE_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/deps/nodejs/include CACHE PATH "Node.js include directory")
     add_subdirectory(napi)
 endif()
 

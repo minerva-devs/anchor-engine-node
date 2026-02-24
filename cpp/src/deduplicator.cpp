@@ -134,8 +134,8 @@ bool Deduplicator::checkFuzzyPrefix(
     if (min_len < config_.fuzzy_prefix_min) {
         return false;  // Too short for fuzzy matching
     }
-    
-    size_t compare_len = std::min(min_len, config_.fuzzy_prefix_max);
+
+    size_t compare_len = std::min<size_t>(min_len, static_cast<size_t>(config_.fuzzy_prefix_max));
     
     // Count matching characters
     size_t matches = 0;
