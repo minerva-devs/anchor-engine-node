@@ -253,7 +253,7 @@ All benchmarks are reproducible using the included `benchmarks/` directory:
 ## Community Readiness
 
 - **License:** AGPL-3.0 (open source, copyleft)
-- **Version:** 4.2.1 (stable production release)
+- **Version:** 4.2.2 (stable production release)
 - **Documentation:** Comprehensive specs, standards (77 architecture standards), and API documentation
 - **Containerization:** Docker and docker-compose support for easy deployment
 - **Repository:** https://github.com/RSBalchII/anchor-engine-node
