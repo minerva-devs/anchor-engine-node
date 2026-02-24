@@ -9,7 +9,7 @@ tags:
 authors:
   - name: R.S. Balch II
     affiliation: '1'
-    orcid: 0000-0000-0000-0000
+    orcid: 0009-0001-0476-1689
 affiliations:
   - name: Independent Researcher, New Mexico Tech Affiliated
     index: 1
@@ -29,9 +29,9 @@ STAR has been production-validated on a 28-million-token corpus of chat history 
 
 ## The Problem
 
-Current Retrieval-Augmented Generation (RAG) systems for AI memory face a critical accessibility problem: they require high-specification servers with GPUs and substantial RAM. This creates artificial scarcity, locking personal AI memory behind cloud subscriptions and enterprise infrastructure.
+Current Retrieval-Augmented Generation (RAG) systems for AI memory require high-specification servers with GPUs and substantial RAM, locking personal AI memory behind cloud subscriptions and enterprise infrastructure.
 
-The author encountered this problem directly when accumulating 40 chat sessions (~18M tokens) with large language models. When forced to start new sessions due to context limits, summaries proved insufficient—the models needed access to the full conversational history, shared context, and developed methodologies. Existing solutions required either:
+The author encountered this when accumulating 40 chat sessions (~18M tokens). When forced to start new sessions due to context limits, summaries proved insufficient—models needed full conversational history. Existing solutions required either:
 - Cloud dependencies (privacy concerns, recurring costs)
 - Local vector databases requiring 4-8GB RAM just for the index
 - Enterprise hardware inaccessible to individual researchers
@@ -44,11 +44,7 @@ STAR addresses this gap by implementing sparse graph retrieval that:
 3. **Provides explainable results** (tag paths show why each result was retrieved)
 4. **Scales linearly** (O(k·d̄) complexity vs. O(n) for dense vectors)
 
-Target users include:
-- Researchers managing large literature corpora
-- Developers maintaining long-term AI-assisted projects
-- Privacy-conscious users avoiding cloud services
-- Resource-constrained environments (edge devices, developing regions)
+Target users include researchers managing large literature corpora, developers maintaining AI-assisted projects, privacy-conscious users, and resource-constrained environments.
 
 # State of the Field
 
@@ -72,23 +68,17 @@ For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR asymptotical
 
 ## Graph-Based Memory Systems
 
-Recent work explores graph structures as alternatives to dense vectors. T-Retriever [@wei2026tretriever] introduces tree-based hierarchical retrieval using semantic-structural entropy. While effective for hierarchical document structures, T-Retriever does not incorporate temporal decay—a key requirement for personal memory systems where recency matters. PersonalAI [@menschikov2025personalai] proposes a knowledge graph framework with hyper-edges for personalized LLM agents. However, PersonalAI focuses on framework design rather than production implementation.
+Recent work explores graph structures as alternatives to dense vectors. T-Retriever [@wei2026tretriever] introduces tree-based hierarchical retrieval using semantic-structural entropy but does not incorporate temporal decay. PersonalAI [@menschikov2025personalai] proposes a knowledge graph framework with hyper-edges for personalized LLM agents but focuses on framework design rather than production implementation.
 
 STAR contributes a complete, deployed system with validated performance on 28M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) deduplication via SimHash [@charikar2002similar] and disposable index architectures.
 
 ## Personal AI Memory
 
-Second Me [@wei2025second] proposes LLM-based memory parameterization. While powerful, this requires significant computational resources and offers limited explainability. STAR achieves similar associative retrieval goals through deterministic physics-based scoring, enabling deployment on minimal hardware.
+Second Me [@wei2025second] proposes LLM-based memory parameterization requiring significant computational resources. STAR achieves similar associative retrieval goals through deterministic physics-based scoring, enabling deployment on minimal hardware.
 
 ## Build vs. Contribute
 
-Existing sparse retrieval libraries (Lucene, Terrier) focus on traditional keyword search without:
-- Temporal decay modeling
-- Graph-based associative traversal
-- SimHash deduplication
-- Byte-offset lazy loading
-
-STAR's unified field equation combining semantic, temporal, and structural factors in a multiplicative scoring model represents a novel scholarly contribution not present in existing packages.
+Existing sparse retrieval libraries (Lucene, Terrier) focus on traditional keyword search without temporal decay modeling, graph-based associative traversal, SimHash deduplication, or byte-offset lazy loading. STAR's unified field equation combining semantic, temporal, and structural factors in a multiplicative scoring model represents a novel contribution not present in existing packages.
 
 # Software Design
 
@@ -265,112 +255,24 @@ All benchmarks are reproducible using the included `benchmarks/` directory:
 
 ## Reproducibility and Deployment
 
-STAR includes comprehensive containerization support ensuring reproducible deployment:
+STAR includes comprehensive containerization support:
 
 ```bash
-# One-command deployment
 docker-compose up -d
-
-# Health check
 curl http://localhost:3160/health
 ```
 
-**Docker Features:**
-- Single-stage build based on Node.js 20 LTS
-- Persistent volumes for database and user data
-- Health checks with automatic restart
-- Resource limits (2 CPU, 2GB RAM) matching tested constraints
-
-This containerization enables researchers to reproduce all benchmarks with identical environments, addressing a key concern in software evaluation.
+The single-stage Docker build based on Node.js 20 LTS includes persistent volumes, health checks, and resource limits (2 CPU, 2GB RAM) matching tested constraints, enabling researchers to reproduce benchmarks with identical environments.
 
 # AI Usage Disclosure
 
-Generative AI tools were extensively used in the development of this software and paper. The following details the specific tools, their applications, and human oversight:
+Generative AI tools were used in the development of this software and paper. GitHub Copilot, Gemini, Qwen Coder, Kimi AI, and Deepseek Coder assisted with code scaffolding, SQL query patterns, documentation drafts, and grammar checking.
 
-## Tool Identification
+The human author (R.S. Balch II) reviewed all AI-generated code, made all architectural decisions (browser paradigm, Unified Field Equation, three-tier data hierarchy), verified mathematical correctness, conducted all benchmarks on production hardware, and edited all documentation for technical accuracy.
 
-### Code Development and Architecture
-- **GitHub Copilot** (VS Code extension): Used for TypeScript boilerplate, SQL query patterns, and API scaffolding
-- **Gemini 2.5 Pro** (Google AI): Used for algorithm design discussions, optimization suggestions, and code review
-- **Gemini 3 Pro** (Google AI): Used for complex SQL query generation and recursive CTE refinement
-- **Qwen Coder**: Used for native module integration patterns and performance optimization suggestions
-- **Kimi AI**: Used for documentation generation and README drafting
-- **Deepseek Coder**: Used for debugging assistance and test case generation
+AI tools did not provide: core algorithm design, mathematical derivations, research direction, benchmark methodology, or production validation. The Browser Paradigm, Unified Field Equation, Planets and Moons protocol, and ephemeral index design are original human contributions.
 
-### Paper Authoring and Documentation
-- **Gemini 2.5 Pro / 3 Pro**: Used for paper structure suggestions, citation formatting, and LaTeX/Markdown syntax
-- **Kimi AI**: Used for grammar checking, style consistency, and readability improvements
-
-### Mathematical and Conceptual Work
-- **Gemini 3.1 Pro**: Used for temporal decay calculations, complexity analysis verification, and equation formatting
-- **Deepseek**: Used for symbolic algebra verification and benchmark calculation checking
-
-## Scope of Assistance
-
-### What AI Tools Provided
-- **Code scaffolding**: Boilerplate TypeScript classes, function signatures, and module structures
-- **SQL query patterns**: Initial CTE structures, JOIN optimizations, and index recommendations
-- **Algorithm discussion**: Suggestions for hop-distance tracking and damping factor calculations
-- **Debugging**: Error diagnosis and fix suggestions for native module integration
-- **Documentation**: Draft README sections, API documentation templates, and inline code comments
-- **Paper structure**: Suggested section ordering, transition paragraphs, and formatting compliance
-- **Grammar and style**: Sentence restructuring, citation formatting, and technical writing improvements
-
-### What AI Tools Did NOT Provide
-- **Core algorithm design**: The Unified Field Equation, browser paradigm concept, and sparse graph architecture were conceived and validated by the human author
-- **Mathematical derivations**: All temporal decay calculations, complexity proofs, and SimHash integration logic were designed and verified by the human author
-- **Research direction**: All scientific claims, design trade-offs, and architectural decisions were made by the human author
-- **Benchmark methodology**: All performance testing approaches and metric selection were determined by the human author
-- **Production validation**: All real-world testing on 28M tokens was conducted by the human author
-
-## Human Verification and Oversight
-
-The human author (R.S. Balch II):
-
-1. **Reviewed all AI-generated code**: Every line of TypeScript, SQL, and Python was read, understood, and validated for correctness before inclusion
-2. **Modified AI suggestions**: Boilerplate code was adapted to fit the specific architecture; SQL queries were optimized for PGlite compatibility; algorithmic suggestions were tested against production data
-3. **Made all architectural decisions**: The browser paradigm, three-tier data hierarchy (Compound→Molecule→Atom), and physics-inspired scoring model were human-designed concepts
-4. **Verified mathematical correctness**: All temporal decay calculations were independently verified using Python/SymPy; complexity analysis was manually derived
-5. **Conducted all benchmarks**: The 28M token production validation, latency measurements, and memory profiling were performed by the human author on actual hardware
-6. **Edited all documentation**: AI-generated README sections and paper drafts were substantially rewritten to ensure technical accuracy and consistent voice
-
-**Specific Examples of Human Oversight:**
-- The recursive CTE for hop-distance tracking was initially suggested by AI but completely restructured by the author to handle cycle prevention and proper damping application
-- The SimHash integration pattern was AI-suggested but required human debugging to handle 64-bit BigInt operations correctly in PostgreSQL
-- The paper's complexity analysis table was AI-formatted but populated with human-calculated values
-- The Docker containerization was AI-suggested but configured by the author to match tested resource constraints (2GB RAM, 2 CPU)
-
-## Original Human Contributions
-
-The following represent the primary scholarly and creative contributions of the human author, conceived without AI assistance:
-
-- **Browser Paradigm Metaphor**: The central conceptual framework treating AI memory like web browsers
-- **Unified Field Equation**: The multiplicative scoring model combining semantic, temporal, and structural factors
-- **Planets and Moons Protocol**: The three-phase retrieval architecture
-- **Ephemeral Index Design**: The disposable database pattern with filesystem source-of-truth
-- **Production Benchmarking**: Real-world validation on 28M tokens of chat history
-- **Open Source Strategy**: AGPL-3.0 licensing and community-focused development approach
-
-## Author Accountability
-
-The submitting author (R.S. Balch II) bears complete responsibility for:
-
-- **Accuracy**: All technical claims, benchmarks, and mathematical derivations have been verified by the author
-- **Originality**: The core contributions (browser paradigm, unified field equation) represent original research
-- **Licensing Compliance**: All code is original or properly licensed; AGPL-3.0 terms are correctly applied
-- **Ethical Standards**: No deceptive practices; all AI assistance is fully disclosed
-- **Reproducibility**: The software functions as described; benchmarks are reproducible using included Docker configuration
-
-**Verification of Claims:**
-- All performance benchmarks (1,203 mol/s ingestion, 150ms query latency, 510MB idle memory) were measured by the author on production hardware Omen 17 laptop with RTX 4090 16GB VRAM, 64GB RAM, and Intel i9-13980HX CPU
-- All mathematical claims (O(k·d̄) complexity, 115-minute half-life) were independently calculated and verified
-- All software functionality (v4.2.0) is available for inspection at https://github.com/RSBalchII/anchor-engine-node
-
-**No AI tools were used for:**
-- Peer review simulation
-- Editor/reviewer communication (beyond translation support, which was not needed)
-- Plagiarism or circumvention of academic standards
-- Generating fake data or benchmarks
+The author bears complete responsibility for accuracy, originality, licensing compliance, and reproducibility. All benchmarks were measured on production hardware (Omen 17 with RTX 4090, 64GB RAM, Intel i9-13980HX). No AI tools were used for peer review simulation, editor communication, or generating fake data.
 
 # Acknowledgments
 
