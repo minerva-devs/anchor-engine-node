@@ -1,0 +1,28 @@
+{
+  "name": "@anchor-engine/github-ingester",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "GitHub repository ingester for Anchor Engine",
+  "main": "github-ingester.js",
+  "bin": {
+    "github-ingester": "./github-ingester.js"
+  },
+  "scripts": {
+    "ingest": "node github-ingester.js",
+    "ingest:anchor": "node github-ingester.js --repo RSBalchII/anchor-engine-node",
+    "ingest:update": "node github-ingester.js --repo RSBalchII/anchor-engine-node --incremental"
+  },
+  "dependencies": {
+    "@octokit/rest": "^21.0.0",
+    "tar-stream": "^3.1.6"
+  },
+  "keywords": [
+    "github",
+    "ingester",
+    "anchor-engine",
+    "rag",
+    "context"
+  ],
+  "author": "Anchor Engine Team",
+  "license": "MIT"
+}
