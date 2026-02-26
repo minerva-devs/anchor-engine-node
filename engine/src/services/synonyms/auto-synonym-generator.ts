@@ -44,6 +44,19 @@ export class AutoSynonymGenerator {
   private TOP_SYNONYMS_PER_TERM = 10;   // Maximum synonyms to suggest per term
 
   /**
+   * Specialized hamming distance for precomputed BigInts
+   */
+  private fastHammingDistance(big1: bigint, big2: bigint): number {
+    let xor = big1 ^ big2;
+    let distance = 0;
+    while (xor > 0n) {
+      distance += Number(xor & 1n);
+      xor >>= 1n;
+    }
+    return distance;
+  }
+
+  /**
    * Strategy 1: Co-occurrence Mining
    * Find terms that frequently appear together in the same atoms/documents.
    *
@@ -207,23 +220,6 @@ export class AutoSynonymGenerator {
         return new Map<string, TermPair[]>();
       }
 
-      // Helper to compute Hamming distance
-      const hammingDistance = (hash1: string, hash2: string): number => {
-        try {
-          const big1 = BigInt(hash1.startsWith('0x') ? hash1 : `0x${hash1}`);
-          const big2 = BigInt(hash2.startsWith('0x') ? hash2 : `0x${hash2}`);
-          let xor = big1 ^ big2;
-          let distance = 0;
-          while (xor > 0n) {
-            distance += Number(xor & 1n);
-            xor >>= 1n;
-          }
-          return distance;
-        } catch {
-          return 64; // Max distance on error
-        }
-      };
-
       // Helper to extract terms from content
       const extractTerms = (content: string): string[] => {
         return content.toLowerCase()
@@ -234,19 +230,41 @@ export class AutoSynonymGenerator {
 
       // Group atoms by simhash proximity
       const atoms = result.rows as any[];
+
+      // Precompute terms and simhash BigInts to avoid redundant work in O(N^2) loop
+      const atomsWithMetadata = atoms.map(atom => {
+        let hashBigInt: bigint | undefined;
+        try {
+          const hash = atom.simhash;
+          hashBigInt = BigInt(hash.startsWith('0x') ? hash : `0x${hash}`);
+        } catch (e) {
+          // Fallback handled in distance calculation
+        }
+
+        return {
+          ...atom,
+          terms: extractTerms(atom.content),
+          hashBigInt
+        };
+      });
+
       const termClusters = new Map<string, Map<string, number>>(); // term -> (related_term -> co_occurrence_count)
 
-      for (let i = 0; i < atoms.length; i++) {
-        for (let j = i + 1; j < atoms.length; j++) {
-          const atom1 = atoms[i];
-          const atom2 = atoms[j];
+      for (let i = 0; i < atomsWithMetadata.length; i++) {
+        const atom1 = atomsWithMetadata[i];
+        for (let j = i + 1; j < atomsWithMetadata.length; j++) {
+          const atom2 = atomsWithMetadata[j];
 
-          const distance = hammingDistance(atom1.simhash, atom2.simhash);
+          // Use precomputed BigInts for faster distance calculation
+          let distance = 64;
+          if (atom1.hashBigInt !== undefined && atom2.hashBigInt !== undefined) {
+            distance = this.fastHammingDistance(atom1.hashBigInt, atom2.hashBigInt);
+          }
 
           if (distance <= this.MAX_SIMHASH_DISTANCE) {
-            // These atoms are similar - extract and cluster their terms
-            const terms1 = extractTerms(atom1.content);
-            const terms2 = extractTerms(atom2.content);
+            // Use precomputed terms
+            const terms1 = atom1.terms;
+            const terms2 = atom2.terms;
 
             // Add cross-cluster term pairs with co-occurrence counting
             for (const t1 of terms1) {
