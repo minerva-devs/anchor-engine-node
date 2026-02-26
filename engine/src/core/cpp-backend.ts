@@ -17,6 +17,7 @@ async function loadCppBackend(): Promise<any> {
   if (AnchorCore) return AnchorCore;
 
   try {
+    // @ts-ignore - anchor-core is linked locally, types might not be available during Docker build
     const module = await import('@rbalchii/anchor-core');
     AnchorCore = module.AnchorCore;
     return AnchorCore;
