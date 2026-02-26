@@ -10,6 +10,7 @@
 #include "context_inflator.h"
 #include "deduplicator.h"
 #include "transient_filter.h"
+#include "simhash.h"
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -411,6 +412,22 @@ ANCHOR_EXPORT const char* transient_filter_apply(void* filter, const char* atoms
     } catch (...) {
         static std::string empty = "[]";
         return empty.c_str();
+    }
+}
+
+// ==================== SimHash FFI ====================
+
+/**
+ * Compute SimHash for text
+ * @param text Input text
+ * @return SimHash 64-bit fingerprint
+ */
+ANCHOR_EXPORT unsigned long long simhash_compute(const char* text) {
+    try {
+        if (!text) return 0;
+        return static_cast<unsigned long long>(anchor::computeSimHash(text));
+    } catch (...) {
+        return 0;
     }
 }
 
