@@ -1,6 +1,6 @@
 {
   "name": "anchor-engine",
-  "version": "1.0.0",
+  "version": "4.2.2",
   "description": "Anchor - Knowledge Database Engine (Pure Node/C++ DB API on Port 3160)",
   "main": "index.js",
   "type": "module",
