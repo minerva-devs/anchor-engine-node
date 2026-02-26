@@ -55,7 +55,7 @@ function findDynamicImports(content, filePath) {
 describe('Dynamic Import Validation', () => {
     it('should ensure all dynamic imports use .js extension for ESM compatibility', () => {
         // Get all source files from the src directory
-        const srcDir = path.join(__dirname, '../src');
+        const srcDir = path.join(__dirname, '../../engine/src');
         const sourceFiles = getAllSourceFiles(srcDir);
         
         const errors = [];

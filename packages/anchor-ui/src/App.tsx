@@ -102,61 +102,110 @@ const SearchPage = () => {
   };
 
   return (
-    <div className="search-page-container" style={{ padding: '0.5rem 0.5rem 0.5rem 0.5rem', height: 'calc(100% - 2rem)', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-primary)' }}>
+    <div className="search-page-container" style={{ padding: 0, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)' }}>
 
       {/* GLOBAL HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h2 style={{ margin: 0 }}>Memory Command</h2>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.2rem 2rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', zIndex: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--glass-shadow)' }}>
+            <span className="material-symbols-outlined" style={{ color: 'var(--bg-primary)' }}>anchor</span>
+          </div>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600, letterSpacing: '-0.02em', background: 'linear-gradient(to right, #fff, var(--accent-primary))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Anchor Engine
+            </h1>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.2rem', fontFamily: 'var(--font-mono)' }}>v1.0.0-rc</div>
+          </div>
+        </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Button onClick={() => navigate('/dashboard')} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
-            🏠 Home
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <Button onClick={() => addColumn()} disabled={columns.length >= 8} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', background: 'rgba(59, 187, 247, 0.1)', color: 'var(--accent-primary)', border: '1px solid rgba(59, 187, 247, 0.2)', borderRadius: 'var(--radius-full)', fontWeight: 500, transition: 'all 0.2s' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>add</span>
+            <span>Add Column</span>
           </Button>
-          <Button onClick={() => navigate('/quarantine')} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
-            ☣️ Infection
-          </Button>
-
-          <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)', margin: '0 0.5rem' }} />
-
-          <Button onClick={handleBackup} style={{ fontSize: '0.8rem', padding: '0.4rem' }}>
-            💾 {backupStatus || 'Backup'}
-          </Button>
-          <Button onClick={() => setShowResearch(true)} style={{ fontSize: '0.8rem', padding: '0.4rem' }}>
-            🕵️ Research
-          </Button>
-          <Button onClick={() => setShowGithub(true)} style={{ fontSize: '0.8rem', padding: '0.4rem' }}>
-            🐙 GitHub
-          </Button>
-          <Button onClick={() => setShowGitCommands(true)} style={{ fontSize: '0.8rem', padding: '0.4rem' }}>
-            📜 Git Commands
-          </Button>
-
-          <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)', margin: '0 0.5rem' }} />
-
-          {/* Removed redundant copy buttons: Copy Limit and Copy All */}
-
-          <Button onClick={() => addColumn()} disabled={columns.length >= 8} style={{ fontSize: '1rem', padding: '0.2rem 0.8rem', background: 'var(--accent-primary)', color: 'white' }}>
-            +
+          <Button onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', transition: 'all 0.2s' }}>
+            <span className="material-symbols-outlined">home</span>
           </Button>
         </div>
-      </div>
+      </header>
 
-      {/* COLUMNS CONTAINER */}
-      <div className="search-grid">
-        {columns.map(col => (
-          <SearchColumn
-            key={col.id}
-            id={col.id}
-            availableBuckets={availableBuckets}
-            availableTags={availableTags}
-            onContextUpdate={handleContextUpdate}
-            onFullUpdate={handleFullUpdate}
-            onRemove={removeColumn}
-            onAddColumn={addColumn}
-            columnCount={columns.length}
-            initialQuery={col.query}
-          />
-        ))}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* Instrument Panel (Sidebar) */}
+        <aside style={{ width: '280px', background: 'rgba(15, 23, 42, 0.6)', borderRight: '1px solid rgba(255,255,255,0.05)', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', overflowY: 'auto' }}>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h3 style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-secondary)', margin: 0 }}>System Controls</h3>
+
+            <button onClick={handleBackup} className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', cursor: 'pointer', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', width: '100%', color: 'var(--text-primary)' }}>
+              <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)' }}>save</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>{backupStatus || 'Backup Output'}</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>State preservation</div>
+              </div>
+            </button>
+
+            <button onClick={() => setShowResearch(true)} className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', cursor: 'pointer', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', width: '100%', color: 'var(--text-primary)' }}>
+              <span className="material-symbols-outlined" style={{ color: '#a78bfa' }}>travel_explore</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>Web Research</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Scrape & Ingest</div>
+              </div>
+            </button>
+
+            <button onClick={() => setShowGithub(true)} className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', cursor: 'pointer', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', width: '100%', color: 'var(--text-primary)' }}>
+              <span className="material-symbols-outlined" style={{ color: '#34d399' }}>code_blocks</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>GitHub Ingestion</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Pull repository code</div>
+              </div>
+            </button>
+
+            <button onClick={() => setShowGitCommands(true)} className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', cursor: 'pointer', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', width: '100%', color: 'var(--text-primary)' }}>
+              <span className="material-symbols-outlined" style={{ color: '#fbbf24' }}>terminal</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>Git Commands</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Manage git repos</div>
+              </div>
+            </button>
+
+            <button onClick={() => navigate('/quarantine')} className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', cursor: 'pointer', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', width: '100%', color: 'var(--text-primary)' }}>
+              <span className="material-symbols-outlined" style={{ color: '#f87171' }}>coronavirus</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>Infection Center</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Quarantine atoms</div>
+              </div>
+            </button>
+
+            <button onClick={() => navigate('/paths')} className="glass-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', cursor: 'pointer', textAlign: 'left', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', width: '100%', color: 'var(--text-primary)' }}>
+              <span className="material-symbols-outlined" style={{ color: '#60a5fa' }}>folder_managed</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>Manage Paths</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Corpus directories</div>
+              </div>
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <main style={{ flex: 1, padding: '1.5rem', overflowY: 'hidden', background: 'radial-gradient(circle at top right, rgba(59, 187, 247, 0.05), transparent 50%)', position: 'relative' }}>
+          {/* COLUMNS CONTAINER */}
+          <div className="search-grid custom-scrollbar">
+            {columns.map(col => (
+              <SearchColumn
+                key={col.id}
+                id={col.id}
+                availableBuckets={availableBuckets}
+                availableTags={availableTags}
+                onContextUpdate={handleContextUpdate}
+                onFullUpdate={handleFullUpdate}
+                onRemove={removeColumn}
+                onAddColumn={addColumn}
+                columnCount={columns.length}
+                initialQuery={col.query}
+              />
+            ))}
+          </div>
+        </main>
       </div>
 
       {/* Research Modal */}
