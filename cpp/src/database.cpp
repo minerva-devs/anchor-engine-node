@@ -794,7 +794,40 @@ void Database::insertMolecule(const Atom& molecule) {
         throw DatabaseError("Failed to prepare statement");
     }
     
-    // TODO: Implement molecule insertion
+    sqlite3_bind_text(stmt, 1, molecule.source_id.c_str(), -1, SQLITE_STATIC);
+
+    if (molecule.compound_id.has_value()) {
+        sqlite3_bind_text(stmt, 2, molecule.compound_id.value().c_str(), -1, SQLITE_STATIC);
+    } else {
+        sqlite3_finalize(stmt);
+        throw DatabaseError("Molecule must have a compound_id");
+    }
+
+    sqlite3_bind_text(stmt, 3, molecule.content.c_str(), -1, SQLITE_STATIC);
+
+    if (molecule.start_byte.has_value()) {
+        sqlite3_bind_int64(stmt, 4, static_cast<sqlite3_int64>(molecule.start_byte.value()));
+    } else {
+        sqlite3_bind_null(stmt, 4);
+    }
+
+    if (molecule.end_byte.has_value()) {
+        sqlite3_bind_int64(stmt, 5, static_cast<sqlite3_int64>(molecule.end_byte.value()));
+    } else {
+        sqlite3_bind_null(stmt, 5);
+    }
+
+    sqlite3_bind_double(stmt, 6, molecule.timestamp);
+
+    std::stringstream ss;
+    ss << "0x" << std::hex << molecule.simhash;
+    std::string simhash_hex = ss.str();
+    sqlite3_bind_text(stmt, 7, simhash_hex.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        throw DatabaseError("Failed to insert molecule");
+    }
     
     sqlite3_finalize(stmt);
 }
@@ -803,8 +836,51 @@ std::vector<Atom> Database::getMoleculesByCompound(const std::string& compound_i
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<Atom> molecules;
     
-    // TODO: Implement
+    sqlite3_stmt* stmt;
+    const char* sql = "SELECT id, compound_id, content, start_byte, end_byte, timestamp, simhash "
+                      "FROM molecules WHERE compound_id = ?";
+
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        throw DatabaseError("Failed to prepare statement");
+    }
     
+    sqlite3_bind_text(stmt, 1, compound_id.c_str(), -1, SQLITE_STATIC);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        Atom atom;
+        atom.id = 0; // Not used for molecules
+
+        // Map molecules.id to Atom.source_id
+        atom.source_id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+
+        // Map molecules.compound_id to Atom.compound_id
+        atom.compound_id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 1));
+
+        atom.content = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+
+        if (sqlite3_column_type(stmt, 3) != SQLITE_NULL) {
+            atom.start_byte = static_cast<size_t>(sqlite3_column_int64(stmt, 3));
+            atom.char_start = atom.start_byte.value();
+        }
+
+        if (sqlite3_column_type(stmt, 4) != SQLITE_NULL) {
+            atom.end_byte = static_cast<size_t>(sqlite3_column_int64(stmt, 4));
+            atom.char_end = atom.end_byte.value();
+        }
+
+        atom.timestamp = sqlite3_column_double(stmt, 5);
+
+        std::string simhash_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
+        try {
+            atom.simhash = std::stoull(simhash_str, nullptr, 16);
+        } catch (...) {
+            atom.simhash = 0;
+        }
+
+        molecules.push_back(atom);
+    }
+
+    sqlite3_finalize(stmt);
     return molecules;
 }
 
