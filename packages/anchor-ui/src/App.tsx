@@ -12,6 +12,7 @@ import { ChatInterface } from './components/Chat/ChatInterface';
 import { ModelSelector } from './components/Chat/ModelSelector';
 import { PathManager } from './components/features/PathManager';
 import { GithubModal } from './components/features/GithubModal';
+import { GitCommandsModal } from './components/features/GitCommandsModal';
 import { navigate } from './utils/routing';
 
 // ...
@@ -56,6 +57,7 @@ const SearchPage = () => {
   const [backupStatus, setBackupStatus] = useState('');
   const [showResearch, setShowResearch] = useState(false);
   const [showGithub, setShowGithub] = useState(false);
+  const [showGitCommands, setShowGitCommands] = useState(false);
   const [availableBuckets, setAvailableBuckets] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
@@ -125,6 +127,9 @@ const SearchPage = () => {
           <Button onClick={() => setShowGithub(true)} style={{ fontSize: '0.8rem', padding: '0.4rem' }}>
             🐙 GitHub
           </Button>
+          <Button onClick={() => setShowGitCommands(true)} style={{ fontSize: '0.8rem', padding: '0.4rem' }}>
+            📜 Git Commands
+          </Button>
 
           <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)', margin: '0 0.5rem' }} />
 
@@ -159,6 +164,9 @@ const SearchPage = () => {
 
       {/* Github Modal */}
       {showGithub && <GithubModal onClose={() => setShowGithub(false)} />}
+
+      {/* Git Commands Modal */}
+      {showGitCommands && <GitCommandsModal onClose={() => setShowGitCommands(false)} />}
     </div>
   );
 };

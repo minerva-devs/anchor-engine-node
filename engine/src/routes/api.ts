@@ -539,6 +539,75 @@ export function setupRoutes(app: Application) {
     }
   });
 
+  // POST /v1/buckets - Create a new bucket
+  app.post('/v1/buckets', async (req: Request, res: Response) => {
+    try {
+      const { name, location } = req.body;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: 'Bucket name is required' });
+      }
+
+      const bucketName = name.trim();
+
+      // Validate location if provided
+      const validLocations = ['inbox', 'external-inbox'];
+      if (location && !validLocations.includes(location)) {
+        return res.status(400).json({ 
+          error: `Invalid location. Must be one of: ${validLocations.join(', ')}` 
+        });
+      }
+
+      // Check if bucket already exists
+      const existingResult = await db.run(
+        'SELECT DISTINCT bucket FROM tags WHERE bucket = $1',
+        [bucketName]
+      );
+
+      if (existingResult.rows && existingResult.rows.length > 0) {
+        return res.status(409).json({ 
+          error: 'Bucket already exists',
+          exists: true,
+          bucket: bucketName
+        });
+      }
+
+      // Create a placeholder tag entry to register the bucket
+      // This makes the bucket visible in the list
+      const placeholderTag = `_bucket_${bucketName}`;
+      await db.run(
+        `INSERT INTO tags (tag, bucket) VALUES ($1, $2) 
+         ON CONFLICT (tag, bucket) DO NOTHING`,
+        [placeholderTag, bucketName]
+      );
+
+      // Store bucket metadata in engrams
+      const bucketMetadata = {
+        name: bucketName,
+        location: location || 'inbox',
+        created_at: new Date().toISOString(),
+        source: 'manual'
+      };
+
+      await db.run(
+        `INSERT INTO engrams (key, value) VALUES ($1, $2)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [`bucket_meta_${bucketName}`, JSON.stringify(bucketMetadata)]
+      );
+
+      console.log(`[API] Created bucket: ${bucketName} at location: ${location || 'inbox'}`);
+
+      res.status(201).json({
+        success: true,
+        bucket: bucketName,
+        location: location || 'inbox'
+      });
+    } catch (error: any) {
+      console.error('[API] Bucket creation error:', error);
+      res.status(500).json({ error: `Failed to create bucket: ${error.message}` });
+    }
+  });
+
   // Get all tags (Faceted by Bucket)
   app.get('/v1/tags', async (req: Request, res: Response) => {
     try {
@@ -1270,6 +1339,94 @@ export function setupRoutes(app: Application) {
       res.status(200).json(rateLimit);
     } catch (error: any) {
       console.error('[API] GitHub rate limit check error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /v1/git/repos - List available git repositories
+  app.get('/v1/git/repos', async (_req: Request, res: Response) => {
+    try {
+      const path = await import('path');
+      const fs = await import('fs');
+      const { pathManager } = await import('../utils/path-manager.js');
+      const { PROJECT_ROOT } = await import('../config/paths.js');
+
+      // Check common directories for git repos
+      const potentialRepos: string[] = [];
+      const basePath = pathManager.getBasePath();
+      const checkDirs = [
+        basePath,
+        path.join(basePath, '..'),
+        path.join(basePath, '..', '..'),
+        PROJECT_ROOT
+      ];
+
+      for (const dir of checkDirs) {
+        if (!dir) continue;
+        try {
+          const entries = fs.readdirSync(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            if (entry.isDirectory()) {
+              const repoPath = path.join(dir, entry.name);
+              const gitPath = path.join(repoPath, '.git');
+              if (fs.existsSync(gitPath) && !potentialRepos.includes(repoPath)) {
+                potentialRepos.push(repoPath);
+              }
+            }
+          }
+        } catch {
+          // Skip if directory doesn't exist or can't be read
+        }
+      }
+
+      res.status(200).json(potentialRepos);
+    } catch (error: any) {
+      console.error('[API] Git repos list error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /v1/git/run - Execute git command
+  app.post('/v1/git/run', async (req: Request, res: Response) => {
+    try {
+      const { command, working_dir } = req.body;
+
+      if (!command || !working_dir) {
+        return res.status(400).json({ error: 'command and working_dir are required' });
+      }
+
+      const { exec } = await import('child_process');
+      const util = await import('util');
+      const execPromise = util.promisify(exec);
+
+      // Security: Only allow git commands
+      const gitCommand = `git ${command}`;
+
+      console.log(`[Git] Running: ${gitCommand} in ${working_dir}`);
+
+      try {
+        const { stdout, stderr } = await execPromise(gitCommand, {
+          cwd: working_dir,
+          encoding: 'utf8',
+          timeout: 30000 // 30 second timeout
+        });
+
+        res.status(200).json({
+          command,
+          output: stdout || stderr,
+          success: true
+        });
+      } catch (execError: any) {
+        // Git command failed - return error output
+        res.status(200).json({
+          command,
+          output: execError.stdout || '',
+          error: execError.stderr || execError.message,
+          success: false
+        });
+      }
+    } catch (error: any) {
+      console.error('[API] Git command execution error:', error);
       res.status(500).json({ error: error.message });
     }
   });

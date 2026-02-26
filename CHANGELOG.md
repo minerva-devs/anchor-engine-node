@@ -125,7 +125,7 @@ Analyzed and positioned STAR against related work:
 | Paper | STAR's Advantage |
 |-------|------------------|
 | **Second Me** | Simpler, deterministic, CPU-only |
-| **PersonalAI** | Real production validation (28M tokens) |
+| **PersonalAI** | Real production validation (25M tokens) |
 | **T-Retriever** | Includes temporal decay |
 | **HNSW/FAISS** | 4GB RAM, explainable retrieval |
 

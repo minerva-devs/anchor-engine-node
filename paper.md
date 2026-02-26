@@ -13,7 +13,7 @@ authors:
 affiliations:
   - name: Independent Researcher, New Mexico Tech Affiliated
     index: 1
-date: 23 February 2026
+date: 24 February 2026
 bibliography: paper.bib
 ---
 
@@ -70,7 +70,7 @@ For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR asymptotical
 
 Recent work explores graph structures as alternatives to dense vectors. T-Retriever [@wei2026tretriever] introduces tree-based hierarchical retrieval using semantic-structural entropy but does not incorporate temporal decay. PersonalAI [@menschikov2025personalai] proposes a knowledge graph framework with hyper-edges for personalized LLM agents but focuses on framework design rather than production implementation.
 
-STAR contributes a complete, deployed system with validated performance on 28M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) deduplication via SimHash [@charikar2002similar] and disposable index architectures.
+STAR contributes a complete, deployed system with validated performance on 25M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) deduplication via SimHash [@charikar2002similar] and disposable index architectures.
 
 ## Personal AI Memory
 
@@ -88,7 +88,7 @@ STAR implements the "Browser Paradigm" for AI memory: just as browsers render we
 
 | Component | Browser Equivalent | Anchor Engine Implementation |
 |-----------|-------------------|------------------------------|
-| **HTML/CSS/JS shards** | Web page components | Atoms (tags + byte offsets) |
+| **HTML/CSS/JS shards** | Web page components | Atoms (content with tags + byte offsets) |
 | **DOM tree** | Document structure | Tag graph $G = (A, T, E)$ |
 | **Lazy loading** | On-demand resource fetch | Radial inflation from disk |
 | **Cache** | Browser cache | Ephemeral PGlite index |
@@ -103,9 +103,10 @@ The hybrid architecture uses:
 
 | Level | Role | Content Stored | Example |
 |-------|------|----------------|---------|
-| **Compound** | Document reference | Full text (temporary) | `ChatSessions.yaml` (91.88MB) |
+| **Compound** | Document reference | File path + metadata | `ChatSessions.yaml` (91.88MB) |
 | **Molecule** | Semantic chunk | Chunk text + byte offsets | Bytes 1024–2048 |
-| **Atom** | Tag/concept | **Metadata only** | `#authentication`, `#session` |
+| **Atom** | Content unit | Byte-offset pointer + tags | Text chunk with `#auth` tag |
+| **Tag** | Concept/label | Semantic label only | `#authentication`, `#session` |
 
 Content lives in the filesystem; the database stores only pointers (byte offsets + tags). This separation enables:
 - O(1) deduplication via 64-bit SimHash fingerprints
@@ -252,7 +253,7 @@ All benchmarks are reproducible using the included `benchmarks/` directory:
 ## Community Readiness
 
 - **License:** AGPL-3.0 (open source, copyleft)
-- **Version:** 4.2.0 (stable production release)
+- **Version:** 4.2.2 (stable production release)
 - **Documentation:** Comprehensive specs, standards (77 architecture standards), and API documentation
 - **Containerization:** Docker and docker-compose support for easy deployment
 - **Repository:** https://github.com/RSBalchII/anchor-engine-node
