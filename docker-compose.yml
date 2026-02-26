@@ -25,7 +25,6 @@ services:
       - PORT=3160
       - PROJECT_ROOT=/app
       - CONTEXT_DIR=/app/engine/context_data
-      - NOTEBOOK_DIR=/app/notebook
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:3160/health" ]
