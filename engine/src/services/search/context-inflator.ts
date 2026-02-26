@@ -46,8 +46,9 @@ export class ContextInflator {
         // Absolute minimum radius so we don't get zero-width slices
         baseRadius = Math.max(baseRadius, 200);
 
-        // Cache: compound_id → { filePath, provenance } so we only look up paths once
-        const compoundPathCache = new Map<string, { filePath: string, provenance: string } | null>();
+        // Cache: compound_id → Promise<{ filePath, provenance } | null>
+        // Use promises to deduplicate concurrent requests for the same compound
+        const compoundPathCache = new Map<string, Promise<{ filePath: string, provenance: string } | null>>();
 
         const processedResults: SearchResult[] = [];
         let inflatedFromDisk = 0;
@@ -60,72 +61,79 @@ export class ContextInflator {
         const topTenPercent = Math.max(1, Math.floor(results.length * 0.1));
         const nextFortyPercent = Math.floor(results.length * 0.4);
 
-        for (let i = 0; i < results.length; i++) {
-            const res = results[i];
+        // Process in batches to limit concurrency (file handles/DB connections)
+        const BATCH_SIZE = 20;
 
-            // Progressive radius allocation based on rank
-            let radiusMultiplier = 1.0;
-            if (i < topTenPercent) {
-                radiusMultiplier = 2.0;  // Top 10% get 2x radius
-            } else if (i < topTenPercent + nextFortyPercent) {
-                radiusMultiplier = 1.5;  // Next 40% get 1.5x
-            }
-            // Rest get 1.0x (base)
+        for (let i = 0; i < results.length; i += BATCH_SIZE) {
+            const batch = results.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(batch.map(async (res, indexInBatch) => {
+                const globalIndex = i + indexInBatch;
+                // Progressive radius allocation based on rank
+                let radiusMultiplier = 1.0;
+                if (globalIndex < topTenPercent) {
+                    radiusMultiplier = 2.0;  // Top 10% get 2x radius
+                } else if (globalIndex < topTenPercent + nextFortyPercent) {
+                    radiusMultiplier = 1.5;  // Next 40% get 1.5x
+                }
+                // Rest get 1.0x (base)
 
-            const effectiveRadius = Math.floor(baseRadius * radiusMultiplier);
+                const effectiveRadius = Math.floor(baseRadius * radiusMultiplier);
 
-            // 1. Skip results already inflated from disk (e.g., by inflateFromAtomPositions)
-            if (res.is_inflated) {
-                processedResults.push(res);
-                skippedAlready++;
-                continue;
-            }
-
-            // 2. Skip if no compound coordinates — use as-is (entity label)
-            if (!res.compound_id || res.start_byte === undefined || res.end_byte === undefined) {
-                processedResults.push(res);
-                skippedNoCoords++;
-                continue;
-            }
-
-            try {
-                // 3. Try to inflate from DISK (mirrored file)
-                const diskContent = await this.inflateFromDisk(res, effectiveRadius, compoundPathCache);
-
-                if (diskContent !== null) {
-                    processedResults.push({
-                        ...res,
-                        content: `...${diskContent}...`,
-                        is_inflated: true
-                    });
-                    inflatedFromDisk++;
-                    continue;
+                // 1. Skip results already inflated from disk (e.g., by inflateFromAtomPositions)
+                if (res.is_inflated) {
+                    skippedAlready++; // Not atomic but JS is single threaded event loop so OK
+                    return res;
                 }
 
-                // 4. Fallback: inflate from compound_body in DB (file may not exist yet)
-                const dbContent = await this.inflateFromCompoundBody(res, effectiveRadius);
-
-                if (dbContent !== null) {
-                    processedResults.push({
-                        ...res,
-                        content: `...${dbContent}...`,
-                        is_inflated: true
-                    });
-                    inflatedFromDb++;
-                    continue;
+                // 2. Skip if no compound coordinates — use as-is (entity label)
+                if (!res.compound_id || res.start_byte === undefined || res.end_byte === undefined) {
+                    skippedNoCoords++;
+                    return res;
                 }
 
-                // 5. Nothing worked — use raw result as-is
-                processedResults.push(res);
-            } catch (e) {
-                console.error(`[ContextInflator] Failed to inflate result for ${res.source}`, e);
-                processedResults.push(res);
-            }
+                try {
+                    // 3. Try to inflate from DISK (mirrored file)
+                    const diskContent = await this.inflateFromDisk(res, effectiveRadius, compoundPathCache);
+
+                    if (diskContent !== null) {
+                        inflatedFromDisk++;
+                        return {
+                            ...res,
+                            content: `...${diskContent}...`,
+                            is_inflated: true
+                        };
+                    }
+
+                    // 4. Fallback: inflate from compound_body in DB (file may not exist yet)
+                    const dbContent = await this.inflateFromCompoundBody(res, effectiveRadius);
+
+                    if (dbContent !== null) {
+                        inflatedFromDb++;
+                        return {
+                            ...res,
+                            content: `...${dbContent}...`,
+                            is_inflated: true
+                        };
+                    }
+
+                    // 5. Nothing worked — use raw result as-is
+                    return res;
+                } catch (e) {
+                    console.error(`[ContextInflator] Failed to inflate result for ${res.source}`, e);
+                    return res;
+                }
+            }));
+
+            processedResults.push(...batchResults);
         }
 
         console.log(`[ContextInflator] inflate(): ${inflatedFromDisk} from disk, ${inflatedFromDb} from DB fallback, ${skippedAlready} already inflated, ${skippedNoCoords} no coordinates. Base Radius: ${baseRadius}`);
 
-        return processedResults; // Already sorted
+        // The processedResults array might not be in original sort order because promises resolve out of order within batch
+        // But since we sort results at start, we should re-sort or just assume score is king.
+        processedResults.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+        return processedResults;
     }
 
     /**
@@ -188,43 +196,61 @@ export class ContextInflator {
     private static async inflateFromDisk(
         res: SearchResult,
         radius: number,
-        pathCache: Map<string, { filePath: string, provenance: string } | null>
+        pathCache: Map<string, Promise<{ filePath: string, provenance: string } | null>>
     ): Promise<string | null> {
         if (!res.compound_id) return null;
 
-        // Look up the compound's file path (cached)
-        let pathInfo = pathCache.get(res.compound_id);
-        if (pathInfo === undefined) {
-            // First time seeing this compound — look up in DB
-            try {
-                const result = await db.run(`SELECT path, provenance FROM compounds WHERE id = $1`, [res.compound_id]);
-                if (result.rows && result.rows.length > 0) {
-                    pathInfo = { filePath: result.rows[0].path as string, provenance: result.rows[0].provenance as string };
-                } else {
-                    pathInfo = null;
+        // Look up the compound's file path (cached via promise to dedup)
+        let pathPromise = pathCache.get(res.compound_id);
+        if (!pathPromise) {
+            pathPromise = (async () => {
+                try {
+                    const result = await db.run(`SELECT path, provenance FROM compounds WHERE id = $1`, [res.compound_id]);
+                    if (result.rows && result.rows.length > 0) {
+                        return { filePath: result.rows[0].path as string, provenance: result.rows[0].provenance as string };
+                    }
+                    return null;
+                } catch {
+                    return null;
                 }
-            } catch {
-                pathInfo = null;
-            }
-            pathCache.set(res.compound_id, pathInfo);
+            })();
+            pathCache.set(res.compound_id, pathPromise);
         }
 
+        const pathInfo = await pathPromise;
         if (!pathInfo) return null;
 
         // Resolve to absolute path: try mirrored file first, then original
         const mirrorPath = getMirrorPath(pathInfo.filePath, pathInfo.provenance);
         let absolutePath = mirrorPath;
 
-        if (!fs.existsSync(mirrorPath)) {
-            absolutePath = path.isAbsolute(pathInfo.filePath)
-                ? pathInfo.filePath
-                : path.join(NOTEBOOK_DIR, pathInfo.filePath);
+        // Using fs.promises to avoid blocking the event loop
+        let fileExists = false;
+        try {
+            await fs.promises.access(mirrorPath, fs.constants.F_OK);
+            fileExists = true;
+        } catch {
+            fileExists = false;
         }
 
-        if (!fs.existsSync(absolutePath)) return null;
+        if (!fileExists) {
+             absolutePath = path.isAbsolute(pathInfo.filePath)
+                ? pathInfo.filePath
+                : path.join(NOTEBOOK_DIR, pathInfo.filePath);
 
+             try {
+                await fs.promises.access(absolutePath, fs.constants.F_OK);
+                fileExists = true;
+            } catch {
+                fileExists = false;
+            }
+        }
+
+        if (!fileExists) return null;
+
+        let fd: fs.promises.FileHandle | null = null;
         try {
-            const stats = fs.statSync(absolutePath);
+            const stats = await fs.promises.stat(absolutePath);
             const fileSize = stats.size;
 
             // Over-read by 1000 bytes on each side to find boundaries
@@ -236,12 +262,10 @@ export class ContextInflator {
             if (chunkLength <= 0) return null;
 
             const buffer = Buffer.alloc(chunkLength);
-            const fd = fs.openSync(absolutePath, 'r');
-            try {
-                fs.readSync(fd, buffer, 0, chunkLength, rawStart);
-            } finally {
-                fs.closeSync(fd);
-            }
+            fd = await fs.promises.open(absolutePath, 'r');
+
+            // fs.promises.read returns { bytesRead, buffer }
+            await fd.read(buffer, 0, chunkLength, rawStart);
 
             const rawContent = buffer.toString('utf-8');
 
@@ -266,6 +290,8 @@ export class ContextInflator {
 
         } catch {
             return null;
+        } finally {
+            if (fd) await fd.close();
         }
     }
 
