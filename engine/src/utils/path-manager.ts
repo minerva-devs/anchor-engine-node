@@ -47,6 +47,13 @@ export class PathManager {
   }
 
   /**
+   * Get the base path (public accessor)
+   */
+  public getBasePath(): string {
+    return this.basePath;
+  }
+
+  /**
    * Resolve native binary paths based on environment and platform
    */
   public getNativePath(filename: string): string {
@@ -92,10 +99,17 @@ export class PathManager {
   }
 
   /**
-   * Get database path
+   * Get database path (PGlite directory)
    */
   public getDatabasePath(): string {
     return path.resolve(this.basePath, 'context_data');
+  }
+
+  /**
+   * Get database directory (for SQLite3 context.db location)
+   */
+  public getDatabaseDir(): string {
+    return this.getDatabasePath();
   }
 
   /**

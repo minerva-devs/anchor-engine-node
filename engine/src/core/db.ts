@@ -31,6 +31,7 @@ export class Database {
 
   /**
    * Initialize the database with required schemas
+   * Wipes existing database on startup to prevent corruption
    */
   async init(): Promise<void> {
     // 0. Initialize the database connection
@@ -38,7 +39,7 @@ export class Database {
       // Use pathManager for consistent absolute path (Standard 051)
       const dbPath = process.env.PGLITE_DB_PATH || pathManager.getDatabasePath();
 
-      // Wipe and recreate the database directory NOT performed for persistence (Standard 051)
+      // Wipe and recreate the database directory on every startup (Standard 051 - Ephemeral Index)
       try {
         console.log(`[DB] Using database directory: ${dbPath}`);
 
@@ -48,20 +49,23 @@ export class Database {
           this.dbInstance = null;
         }
 
-        /* 
-        // DO NOT REMOVE the database directory if we want persistence
+        // Remove existing database directory to prevent corruption from unclean shutdowns
         if (fs.existsSync(dbPath)) {
-          console.log(`[DB] Removing existing database directory: ${dbPath}`);
-          fs.rmSync(dbPath, { recursive: true, force: true });
+          console.log(`[DB] Removing existing database directory (preventing corruption): ${dbPath}`);
+          try {
+            fs.rmSync(dbPath, { recursive: true, force: true });
+            console.log(`[DB] Old database directory removed successfully`);
+          } catch (rmError: any) {
+            console.warn(`[DB] Warning: Could not remove old database directory: ${rmError.message}`);
+            console.warn(`[DB] Will attempt to overwrite on init`);
+          }
         }
-        */
 
         console.log(`[DB] Database directory ready: ${dbPath}`);
       } catch (cleanupError: any) {
         console.error(`[DB] Error during database directory preparation:`, cleanupError);
-        // throw cleanupError; // Don't crash if wipe fails, just try to continue
+        // Don't crash if wipe fails, just try to continue
       }
-      // }
 
       try {
         console.log(`[DB] Initializing PGlite at: ${dbPath}`);
