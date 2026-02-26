@@ -38,6 +38,10 @@ export interface Molecule {
 
     // Temporal Context
     timestamp: number;
+
+    // Rich Metadata for Knowledge Schema extraction
+    tags?: string[];
+    entities?: any;
 }
 
 export interface Compound {

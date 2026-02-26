@@ -60,9 +60,9 @@ export function setupTagsRoutes(app: Application) {
       // This makes the bucket visible in the list
       const placeholderTag = `_bucket_${bucketName}`;
       await db.run(
-        `INSERT INTO tags (tag, bucket) VALUES ($1, $2)
-         ON CONFLICT (tag, bucket) DO NOTHING`,
-        [placeholderTag, bucketName]
+        `INSERT INTO tags (atom_id, tag, bucket) VALUES ($1, $2, $3)
+         ON CONFLICT (atom_id, tag, bucket) DO NOTHING`,
+        ['__system__', placeholderTag, bucketName]
       );
 
       // Store bucket metadata in engrams

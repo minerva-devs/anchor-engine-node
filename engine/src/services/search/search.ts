@@ -32,6 +32,8 @@ import {
   getHammingDistance, getItems, formatResults, filterDisplayTags
 } from './search-utils.js';
 
+import { KnowledgeCluster, KnowledgeMolecule } from '../../types/api.js';
+
 // Re-export everything that external consumers need
 export { getGlobalTags, filterDisplayTags, parseQuery, splitQueryIntoMolecules };
 export type { SearchResult };
@@ -130,7 +132,7 @@ export async function findAnchors(
     console.log(`[Search] Dynamic Scaling: Budget=${tokenBudget}t -> Target=${targetAtomCount} atoms`);
 
     console.log(`[Search] Constructing TS Query...`);
-    
+
     // Try C++ backend for faster FTS search
     let cppResults: any[] = [];
     let atomResults: SearchResult[] = [];  // Declare for use in molecule merge
@@ -140,7 +142,7 @@ export async function findAnchors(
     } catch (e: any) {
       console.log(`[Search] C++ backend not available, using PGlite: ${e.message}`);
     }
-    
+
     // Construct Query String for FTS
     let tsQueryString = sanitizedQuery.trim();
     if (fuzzy) {
@@ -400,7 +402,7 @@ export async function findAnchors(
         // Hash the normalized content to catch duplicates from different compounds
         const candidateNorm = normalize(candidate.content);
         const contentHash = crypto.createHash('md5').update(candidateNorm.substring(0, 500)).digest('hex');
-        
+
         if (contentFingerprints.has(contentHash)) {
           // This content already exists from another file - skip it
           continue;
@@ -426,7 +428,7 @@ export async function findAnchors(
               isGeometricDuplicate = true;
               break;
             }
-            
+
             // Check if windows are adjacent or overlapping (within 500 bytes for molecules)
             // Molecules can be large, so use larger threshold
             const gap = Math.max(0, overlapStart - overlapEnd);
@@ -502,7 +504,7 @@ export async function findAnchors(
 
     // Intercept: Read content from Mirror (if source_path exists)
     // For atoms without source files (chat history), keep DB content
-    
+
     const { getMirrorPath } = await import('../mirror/mirror.js');
     const fs = await import('fs');
 
@@ -512,7 +514,7 @@ export async function findAnchors(
       if (!anchor.source || anchor.source.trim() === '') {
         return; // Keep DB content
       }
-      
+
       try {
         // Calculate Mirror Path
         const mirrorPath = getMirrorPath(anchor.source, anchor.provenance);
@@ -576,7 +578,52 @@ export async function executeSearch(
   // Combine Engram Lookup + FTS + Molecule Search
   const engramIds = await lookupByEngram(cleanQuery);
   const engramResults = await hydrateEngrams(engramIds);
-  const primaryAnchors = await findAnchors(cleanQuery, Array.from(realBuckets), explicitTags, maxChars, provenance, filters);
+  let primaryAnchors = await findAnchors(cleanQuery, Array.from(realBuckets), explicitTags, maxChars, provenance, filters);
+
+  // Tag-Aware Fallback (if low precision/recall on initial anchors)
+  if (primaryAnchors.length < 5) {
+    console.log(`[Search] Low recall (${primaryAnchors.length} anchors). Attempting Tag-Aware Fallback.`);
+    const words = cleanQuery.split(/[\s,]+/);
+    // Very naive tag extraction: words > 4 chars, capitalize or check if exists in a tag format.
+    // Usually, users type things like "graph nodes consciousness". We can try to use these as tags via LIKE query.
+    const fallbackTags = words.filter(w => w.length > 3).map(w => w.toLowerCase());
+    if (fallbackTags.length > 0) {
+      // Simple programmatic fallback to explicitly look for these terms in the DB tags
+      const db = require('../../core/db.js').db;
+      try {
+        for (const fbTag of fallbackTags) {
+          // SQLite JSON array search for tags
+          const tagRes = await db.run(`
+                      SELECT id, content, source_path, timestamp, buckets, tags, provenance, simhash, embedding, compound_id, start_byte, end_byte
+                      FROM atoms 
+                      WHERE tags LIKE $1
+                      LIMIT 20
+                  `, [`%${fbTag}%`]);
+          if (tagRes.rows && tagRes.rows.length > 0) {
+            tagRes.rows.forEach((row: any) => {
+              primaryAnchors.push({
+                id: String(row.id),
+                content: row.content,
+                source: row.source_path,
+                timestamp: row.timestamp || Date.now(),
+                buckets: typeof row.buckets === 'string' ? JSON.parse(row.buckets) : (row.buckets || []),
+                tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []),
+                epochs: '',
+                provenance: row.provenance,
+                score: 0.8, // fallback constant score
+                compound_id: row.compound_id,
+                start_byte: row.start_byte,
+                end_byte: row.end_byte,
+                molecular_signature: String(row.simhash)
+              });
+            });
+          }
+        }
+      } catch (e: any) {
+        console.warn('[Search] Tag-aware fallback failed', e);
+      }
+    }
+  }
 
   const allAnchors = [...engramResults, ...primaryAnchors];
 
@@ -593,7 +640,7 @@ export async function executeSearch(
   try {
     const cppBackend = await getBackend();
     const anchorIds = uniqueAnchors.map(a => parseInt(a.id) || 0).filter(id => id > 0);
-    
+
     if (anchorIds.length > 0) {
       // Use C++ radial inflation - much faster than SQL!
       walkerResults = cppBackend.radialInflation(
@@ -1018,3 +1065,113 @@ export async function smartChatSearch(
   };
 }
 
+/**
+ * Cluster SearchResults into KnowledgeClusters for high-density JSON.
+ * Groups by source file and sorts by chronological timestamp.
+ */
+export function clusterMolecules(results: SearchResult[]): KnowledgeCluster[] {
+  const bySource = new Map<string, SearchResult[]>();
+  for (const res of results) {
+    const source = res.source || 'unknown';
+    if (!bySource.has(source)) bySource.set(source, []);
+    bySource.get(source)!.push(res);
+  }
+
+  const clusters: KnowledgeCluster[] = [];
+
+  for (const [source, mols] of bySource) {
+    // Sort chronologically
+    mols.sort((a, b) => a.timestamp - b.timestamp);
+
+    let currentGroup: SearchResult[] = [];
+
+    for (let i = 0; i < mols.length; i++) {
+      if (i === 0) {
+        currentGroup.push(mols[i]);
+      } else {
+        const gapMs = Math.abs(mols[i].timestamp - mols[i - 1].timestamp);
+        // If > 1 hour gap, split cluster
+        if (gapMs > 60 * 60 * 1000) {
+          clusters.push(createCluster(currentGroup, source));
+          currentGroup = [mols[i]];
+        } else {
+          currentGroup.push(mols[i]);
+        }
+      }
+    }
+
+    if (currentGroup.length > 0) {
+      clusters.push(createCluster(currentGroup, source));
+    }
+  }
+
+  return clusters;
+}
+
+function createCluster(mols: SearchResult[], source: string): KnowledgeCluster {
+  const startTs = new Date(mols[0].timestamp).toISOString();
+  const endTs = new Date(mols[mols.length - 1].timestamp).toISOString();
+
+  // Topic extraction based on tag frequency
+  const tagCounts = new Map<string, number>();
+  mols.forEach(m => {
+    (m.tags || []).forEach(t => tagCounts.set(t, (tagCounts.get(t) || 0) + 1));
+  });
+
+  const topTags = Array.from(tagCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(e => e[0]);
+
+  const topic = topTags.join(' ');
+
+  // Transform SearchResult to KnowledgeMolecule
+  const mappedMolecules: KnowledgeMolecule[] = mols.map(m => {
+    const people: string[] = [];
+    const concepts: string[] = [];
+    const projects: string[] = [];
+
+    if (m.tags) {
+      m.tags.forEach(t => {
+        const lower = t.toLowerCase();
+        if (lower.includes('rob') || lower.includes('coda') || lower.includes('oliver')) {
+          people.push(t);
+        } else if (lower.includes('agent') || lower.includes('engine') || lower.includes('project') || lower.includes('anchor')) {
+          projects.push(t);
+        } else if (t.startsWith('#')) {
+          concepts.push(t);
+        }
+      });
+    }
+
+    return {
+      id: m.id,
+      timestamp: new Date(m.timestamp).toISOString(),
+      speaker: m.provenance || 'unknown',
+      tags: m.tags || [],
+      entities: {
+        people,
+        concepts,
+        projects
+      },
+      content: m.content || '',
+      byte_range: {
+        start: m.start_byte || 0,
+        end: m.end_byte || 0,
+        source: m.source || 'unknown'
+      }
+    };
+  });
+
+  const safeId = startTs.replace(/[^0-9]/g, '');
+  const basename = source.split(/[/\\]/).pop() || 'unknown';
+  const clusterId = `cluster_${basename}_${safeId}`;
+
+  return {
+    id: clusterId,
+    start_time: startTs,
+    end_time: endTs,
+    topic: topic,
+    molecules: mappedMolecules
+  };
+}

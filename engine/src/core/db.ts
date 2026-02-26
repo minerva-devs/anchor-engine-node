@@ -132,6 +132,8 @@ export class Database {
         { name: 'numeric_value', type: 'REAL' },
         { name: 'numeric_unit', type: 'TEXT' },
         { name: 'source_id', type: 'TEXT' },
+        { name: 'tags', type: 'JSONB' },
+        { name: 'entities', type: 'JSONB' },
         { name: 'payload', type: 'JSONB' } // Crystal Atom Structure (Hybrid Architecture)
       ];
 
@@ -225,24 +227,47 @@ export class Database {
       throw e;
     }
 
-    // Create Molecules table (Atomic Architecture)
+    // Create molecules table (The Document Sentences)
     try {
       await this.run(`
-        CREATE TABLE IF NOT EXISTS molecules (
-          id TEXT PRIMARY KEY,
-          content TEXT,
-          compound_id TEXT,
-          sequence INTEGER,
-          start_byte INTEGER,
-          end_byte INTEGER,
-          type TEXT,
-          numeric_value REAL,
-          numeric_unit TEXT,
-          molecular_signature TEXT,
-          embedding TEXT,
-          timestamp REAL
-        );
-      `);
+          CREATE TABLE IF NOT EXISTS molecules (
+            id TEXT PRIMARY KEY,
+            content TEXT,
+            compound_id TEXT,
+            sequence INTEGER,
+            start_byte INTEGER,
+            end_byte INTEGER,
+            type TEXT,
+            numeric_value REAL,
+            numeric_unit TEXT,
+            molecular_signature TEXT,
+            embedding TEXT,
+            timestamp REAL,
+            tags JSONB,
+            entities JSONB
+          );
+        `);
+
+      // Add indices for molecules
+      try {
+        await this.run('CREATE INDEX IF NOT EXISTS idx_molecules_compound ON molecules(compound_id);');
+      } catch (idxErr: any) {
+        console.warn("[DB] Could not create molecule compound index:", idxErr.message);
+      }
+
+      // Ensure new columns exist for existing databases
+      const molColumnsToAdd = [
+        { name: 'tags', type: 'JSONB' },
+        { name: 'entities', type: 'JSONB' }
+      ];
+
+      for (const col of molColumnsToAdd) {
+        try {
+          await this.run(`ALTER TABLE molecules ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};`);
+        } catch (alterErr: any) {
+          // Column might already exist
+        }
+      }
 
       console.log("[DB] 'molecules' table initialized.");
     } catch (e: any) {

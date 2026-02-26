@@ -36,7 +36,7 @@ export class AtomizerService {
         /Error:.*at line \d+/i,
         /Exception in thread/i,
         /Fatal error:/i,
-        
+
         // Package installation logs
         /npm install/i,
         /pip install/i,
@@ -46,14 +46,14 @@ export class AtomizerService {
         /Downloading [a-zA-Z0-9_-]+/i,  // pip "Downloading package"
         /added \d+ package/i,           // npm "added X packages"
         /Successfully installed/i,
-        
+
         // Build artifacts
         /Build succeeded/i,
         /Build failed/i,
         /Compiling\.\.\./i,
         /Linking\.\.\./i,
         /Generating\.\.\./i,
-        
+
         // Repetitive log noise
         /^\[\d{4}-\d{2}-\d{2}.*\]$/m,  // Standalone timestamp lines
         /^={50,}$/m,                    // Separator lines (====...)
@@ -67,7 +67,7 @@ export class AtomizerService {
         // Check if more than 50% of content matches transient patterns
         const lines = content.split('\n');
         if (lines.length < 5) return false; // Too short to be log output
-        
+
         let transientLines = 0;
         for (const pattern of AtomizerService.TRANSIENT_PATTERNS) {
             for (const line of lines) {
@@ -238,7 +238,13 @@ export class AtomizerService {
                     numeric_value: numericVal,
                     numeric_unit: numericUnit,
                     molecular_signature: this.generateSimHash(processedText),
-                    timestamp: currentTimestamp // Uses earliest timestamp found in chunk for temporal ordering
+                    timestamp: currentTimestamp, // Uses earliest timestamp found in chunk for temporal ordering
+                    tags: moleculeAtoms.map(a => a.label),
+                    entities: {
+                        people: moleculeAtoms.filter(a => ['#coda', '#rob', '#oliver'].includes(a.label.toLowerCase())).map(a => a.label),
+                        concepts: moleculeAtoms.filter(a => a.type === 'concept').map(a => a.label),
+                        projects: moleculeAtoms.filter(a => ['#project', '#engine', '#agent'].some(kw => a.label.toLowerCase().includes(kw))).map(a => a.label)
+                    }
                 });
             }
             console.log(`[Atomizer] ⏱️ Enrichment complete: ${((Date.now() - enrichStart) / 1000).toFixed(2)}s`);
