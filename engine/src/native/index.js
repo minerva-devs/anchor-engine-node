@@ -43,7 +43,9 @@ const ffi = {
   database_destroy: lib.func('database_destroy', 'void', ['void *']),
   database_search_atoms: lib.func('database_search_atoms', 'string', ['void *', 'string', 'int64']),
   database_get_stats: lib.func('database_get_stats', 'string', ['void *']),
+  database_upsert_source: lib.func('database_upsert_source', 'bool', ['void *', 'string', 'string']),
   database_insert_atom: lib.func('database_insert_atom', 'int64', ['void *', 'string', 'string', 'int64', 'int64', 'double', 'uint64']),
+  database_insert_edge: lib.func('database_insert_edge', 'bool', ['void *', 'int64', 'int64', 'double', 'string']),
   
   // Physics Walker
   physics_walker_create: lib.func('physics_walker_create', 'void *', ['double', 'double', 'int64']),
@@ -63,7 +65,10 @@ const ffi = {
   // Transient Filter
   transient_filter_create: lib.func('transient_filter_create', 'void *', ['int64', 'bool']),
   transient_filter_destroy: lib.func('transient_filter_destroy', 'void', ['void *']),
-  transient_filter_apply: lib.func('transient_filter_apply', 'string', ['void *', 'string'])
+  transient_filter_apply: lib.func('transient_filter_apply', 'string', ['void *', 'string']),
+
+  // SimHash
+  simhash_compute: lib.func('simhash_compute', 'uint64', ['string'])
 };
 
 console.log('[anchor-core] Native library loaded successfully');
@@ -149,6 +154,11 @@ export class AnchorCore {
    * @param {bigint} simhash - SimHash value
    * @returns {number} Atom ID
    */
+  upsertSource(id, path) {
+    if (!this.#db) throw new Error('Database not initialized');
+    return ffi.database_upsert_source(this.#db, id, path);
+  }
+
   insertAtom(sourceId, content, charStart, charEnd, timestamp, simhash) {
     if (!this.#db) throw new Error('Database not initialized');
     return ffi.database_insert_atom(
@@ -159,6 +169,25 @@ export class AnchorCore {
       BigInt(charEnd),
       timestamp,
       BigInt(simhash)
+    );
+  }
+
+  /**
+   * Insert edge
+   * @param {number} from - From atom ID
+   * @param {number} to - To atom ID
+   * @param {number} weight - Edge weight
+   * @param {string} type - Edge type
+   * @returns {boolean} Success
+   */
+  insertEdge(from, to, weight, type) {
+    if (!this.#db) throw new Error('Database not initialized');
+    return ffi.database_insert_edge(
+      this.#db,
+      BigInt(from),
+      BigInt(to),
+      weight,
+      type
     );
   }
 
@@ -218,6 +247,15 @@ export class AnchorCore {
     if (!this.#filter) throw new Error('Not initialized');
     const json = ffi.transient_filter_apply(this.#filter, JSON.stringify(atoms));
     return JSON.parse(json);
+  }
+
+  /**
+   * Compute SimHash for text
+   * @param {string} text - Input text
+   * @returns {bigint} SimHash value
+   */
+  computeSimHash(text) {
+    return ffi.simhash_compute(text);
   }
 }
 

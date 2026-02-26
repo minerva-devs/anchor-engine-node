@@ -7,13 +7,23 @@
     "test": "node comprehensive.test.js",
     "test:simple": "node simple.test.js",
     "test:context": "node context-size.test.js",
+    "test:dedup": "node deduplicate.test.js",
     "test:all": "node *.test.js",
     "bench": "node benchmarks/run-benchmarks.js all",
     "bench:memory": "node benchmarks/run-benchmarks.js memory",
     "bench:search": "node benchmarks/run-benchmarks.js search",
     "bench:ingestion": "node benchmarks/run-benchmarks.js ingestion"
   },
-  "keywords": ["anchor", "test", "cpp", "ffi", "benchmark"],
+  "keywords": [
+    "anchor",
+    "test",
+    "cpp",
+    "ffi",
+    "benchmark"
+  ],
   "author": "Anchor Engine Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "koffi": "^2.15.1"
+  }
 }

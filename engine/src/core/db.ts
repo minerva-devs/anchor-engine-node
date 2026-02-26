@@ -11,7 +11,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { PGlite } from "@electric-sql/pglite";
-// import { vector } from "@electric-sql/pglite/extensions/vector"; // Commenting out since it may not be available
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -42,12 +41,6 @@ export class Database {
       // Wipe and recreate the database directory on every startup (Standard 051 - Ephemeral Index)
       try {
         console.log(`[DB] Using database directory: ${dbPath}`);
-
-        // Close any existing database connection first
-        if (this.dbInstance) {
-          await this.dbInstance.close();
-          this.dbInstance = null;
-        }
 
         // Remove existing database directory to prevent corruption from unclean shutdowns
         if (fs.existsSync(dbPath)) {

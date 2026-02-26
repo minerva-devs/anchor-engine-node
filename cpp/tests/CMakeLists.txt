@@ -1,8 +1,5 @@
-# Add test executable
-add_executable(test_graph_traversal test_graph_traversal.cpp)
+cmake_minimum_required(VERSION 3.16)
 
-# Link against anchor_core
-target_link_libraries(test_graph_traversal PRIVATE anchor_core)
-
-# Register test
-add_test(NAME test_graph_traversal COMMAND test_graph_traversal)
+add_executable(test_atom_metadata test_atom_metadata.cpp)
+target_link_libraries(test_atom_metadata PRIVATE anchor_core)
+add_test(NAME test_atom_metadata COMMAND test_atom_metadata)

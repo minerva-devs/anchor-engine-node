@@ -10,6 +10,7 @@
 #include "context_inflator.h"
 #include "deduplicator.h"
 #include "transient_filter.h"
+#include "simhash.h"
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -107,7 +108,8 @@ ANCHOR_EXPORT const char* database_search_atoms(void* db, const char* query, lon
             });
         }
         
-        static std::string result = j.dump();
+        thread_local std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
@@ -131,11 +133,39 @@ ANCHOR_EXPORT const char* database_get_stats(void* db) {
             {"tag_count", stats.tag_count}
         };
         
-        static std::string result = j.dump();
+        thread_local std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "{}";
         return empty.c_str();
+    }
+}
+
+/**
+ * Upsert a source
+ * @param db Database pointer
+ * @param id Source ID
+ * @param path Source path
+ * @return true on success
+ */
+ANCHOR_EXPORT bool database_upsert_source(
+    void* db,
+    const char* id,
+    const char* path
+) {
+    try {
+        auto* database = static_cast<anchor::Database*>(db);
+        anchor::Source source;
+        source.id = id ? id : "";
+        source.path = path ? path : "";
+        source.created_at = 0.0;
+        source.updated_at = 0.0;
+
+        database->upsertSource(source);
+        return true;
+    } catch (...) {
+        return false;
     }
 }
 
@@ -170,9 +200,52 @@ ANCHOR_EXPORT long long database_insert_atom(
         atom.timestamp = timestamp;
         atom.simhash = static_cast<uint64_t>(simhash);
         
+        // Ensure source exists (workaround for missing source management FFI)
+        anchor::Source source;
+        source.id = atom.source_id;
+        source.path = "dummy_path_" + atom.source_id;
+        source.created_at = atom.timestamp;
+        source.updated_at = atom.timestamp;
+        database->upsertSource(source);
+
         return static_cast<long long>(database->insertAtom(atom));
-    } catch (...) {
+    } catch (const std::exception& e) {
+        printf("[anchor_core_ffi] insertAtom failed: %s\n", e.what());
         return -1;
+    } catch (...) {
+        printf("[anchor_core_ffi] insertAtom failed: unknown error\n");
+        return -1;
+    }
+}
+
+/**
+ * Insert an edge
+ * @param db Database pointer
+ * @param from From atom ID
+ * @param to To atom ID
+ * @param weight Edge weight
+ * @param type Edge type
+ * @return true on success
+ */
+ANCHOR_EXPORT bool database_insert_edge(
+    void* db,
+    long long from,
+    long long to,
+    double weight,
+    const char* type
+) {
+    try {
+        auto* database = static_cast<anchor::Database*>(db);
+        anchor::Edge edge;
+        edge.from = static_cast<anchor::AtomId>(from);
+        edge.to = static_cast<anchor::AtomId>(to);
+        edge.weight = weight;
+        edge.edge_type = type ? type : "";
+
+        database->insertEdge(edge);
+        return true;
+    } catch (...) {
+        return false;
     }
 }
 
@@ -233,10 +306,23 @@ ANCHOR_EXPORT const char* physics_walker_radial_inflation(
             anchor_ids.push_back(id.get<anchor::AtomId>());
         }
         
-        // TODO: Implement actual radial inflation
-        // For now, return empty array
-        static std::string empty = "[]";
-        return empty.c_str();
+        auto candidates = w->performRadialInflation(*database, anchor_ids, static_cast<size_t>(limit), threshold);
+
+        json j = json::array();
+        for (const auto& candidate : candidates) {
+            j.push_back({
+                {"atom_id", candidate.atom_id},
+                {"hop_distance", candidate.hop_distance},
+                {"shared_tags", candidate.shared_tags},
+                {"gravity_score", candidate.gravity_score},
+                {"timestamp", candidate.timestamp},
+                {"simhash", candidate.simhash}
+            });
+        }
+
+        static std::string result;
+        result = j.dump();
+        return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
         return empty.c_str();
@@ -308,7 +394,8 @@ ANCHOR_EXPORT const char* context_inflator_inflate(
             });
         }
         
-        static std::string result = j.dump();
+        thread_local std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
@@ -355,10 +442,43 @@ ANCHOR_EXPORT const char* deduplicator_deduplicate(void* dedup, const char* cand
     try {
         auto* d = static_cast<anchor::Deduplicator*>(dedup);
         json j_candidates = json::parse(candidates_json);
-        
-        // TODO: Convert JSON to Candidate objects and deduplicate
-        // For now, return input
-        static std::string result = j_candidates.dump();
+
+        std::vector<anchor::Candidate> candidates;
+        for (const auto& j : j_candidates) {
+            anchor::Candidate c;
+            c.atom_id = j.value("atom_id", 0ULL);
+            c.hop_distance = j.value("hop_distance", 0);
+            c.shared_tags = j.value("shared_tags", 0);
+            c.physical_bonus = j.value("physical_bonus", 0.0);
+            c.timestamp = j.value("timestamp", 0.0);
+            c.simhash = j.value("simhash", 0ULL);
+            c.gravity_score = j.value("gravity_score", 0.0);
+
+            if (j.contains("content_fingerprints") && j["content_fingerprints"].is_array()) {
+                 c.content_fingerprints = j["content_fingerprints"].get<std::vector<std::string>>();
+            }
+
+            candidates.push_back(c);
+        }
+
+        auto unique_candidates = d->deduplicate(candidates);
+
+        json j_result = json::array();
+        for (const auto& c : unique_candidates) {
+            j_result.push_back({
+                {"atom_id", c.atom_id},
+                {"hop_distance", c.hop_distance},
+                {"shared_tags", c.shared_tags},
+                {"physical_bonus", c.physical_bonus},
+                {"timestamp", c.timestamp},
+                {"simhash", c.simhash},
+                {"gravity_score", c.gravity_score},
+                {"content_fingerprints", c.content_fingerprints}
+            });
+        }
+
+        thread_local std::string result;
+        result = j_result.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
@@ -403,14 +523,77 @@ ANCHOR_EXPORT const char* transient_filter_apply(void* filter, const char* atoms
     try {
         auto* f = static_cast<anchor::TransientFilter*>(filter);
         json j_atoms = json::parse(atoms_json);
-        
-        // TODO: Convert JSON to Atom objects and filter
-        // For now, return input
-        static std::string result = j_atoms.dump();
+
+        std::vector<anchor::Atom> atoms;
+        for (const auto& item : j_atoms) {
+            anchor::Atom atom{};
+
+            if (item.contains("id")) atom.id = item["id"].get<anchor::AtomId>();
+            if (item.contains("source_id")) atom.source_id = item["source_id"].get<std::string>();
+            if (item.contains("content")) atom.content = item["content"].get<std::string>();
+            if (item.contains("char_start")) atom.char_start = item["char_start"].get<size_t>();
+            if (item.contains("char_end")) atom.char_end = item["char_end"].get<size_t>();
+            if (item.contains("timestamp")) atom.timestamp = item["timestamp"].get<anchor::Timestamp>();
+            if (item.contains("simhash")) atom.simhash = item["simhash"].get<anchor::SimHash>();
+
+            if (item.contains("tags") && !item["tags"].is_null()) {
+                atom.tags = item["tags"].get<std::vector<std::string>>();
+            }
+            if (item.contains("metadata") && !item["metadata"].is_null()) {
+                if (item["metadata"].is_string()) {
+                    atom.metadata = item["metadata"].get<std::string>();
+                } else {
+                    atom.metadata = item["metadata"].dump();
+                }
+            }
+
+            atoms.push_back(atom);
+        }
+
+        auto filtered_atoms = f->apply(atoms);
+
+        json j_result = json::array();
+        for (const auto& atom : filtered_atoms) {
+            json item = {
+                {"id", atom.id},
+                {"source_id", atom.source_id},
+                {"content", atom.content},
+                {"char_start", atom.char_start},
+                {"char_end", atom.char_end},
+                {"timestamp", atom.timestamp},
+                {"simhash", atom.simhash},
+                {"tags", atom.tags}
+            };
+            if (atom.metadata) {
+                item["metadata"] = *atom.metadata;
+            } else {
+                item["metadata"] = nullptr;
+            }
+            j_result.push_back(item);
+        }
+
+        thread_local std::string result;
+        result = j_result.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
         return empty.c_str();
+    }
+}
+
+// ==================== SimHash FFI ====================
+
+/**
+ * Compute SimHash for text
+ * @param text Input text
+ * @return SimHash 64-bit fingerprint
+ */
+ANCHOR_EXPORT unsigned long long simhash_compute(const char* text) {
+    try {
+        if (!text) return 0;
+        return static_cast<unsigned long long>(anchor::computeSimHash(text));
+    } catch (...) {
+        return 0;
     }
 }
 
