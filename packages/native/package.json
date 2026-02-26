@@ -6,7 +6,9 @@
   "types": "index.d.ts",
   "type": "module",
   "os": [
-    "win32"
+    "win32",
+    "linux",
+    "darwin"
   ],
   "cpu": [
     "x64"
