@@ -332,8 +332,9 @@ void Database::upsertSource(const Source& source) {
 
     std::string metadata_str = "NULL";
     if (source.metadata.has_value()) {
+        // Serialize JSON to string
+        std::string escaped = source.metadata.value().dump();
         // Escape single quotes in metadata string
-        std::string escaped = source.metadata.value();
         size_t pos = 0;
         while ((pos = escaped.find("'", pos)) != std::string::npos) {
             escaped.replace(pos, 1, "''");
@@ -384,7 +385,11 @@ Source Database::getSource(const SourceId& id) const {
         
         if (sqlite3_column_type(stmt, 5) != SQLITE_NULL) {
             std::string metadata_json = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
-            // TODO: Parse JSON metadata
+            try {
+                source.metadata = nlohmann::json::parse(metadata_json);
+            } catch (const nlohmann::json::parse_error&) {
+                // Ignore parse error
+            }
         }
     } else {
         sqlite3_finalize(stmt);
@@ -418,6 +423,15 @@ std::vector<Source> Database::listSources() const {
         source.created_at = sqlite3_column_double(stmt, 3);
         source.updated_at = sqlite3_column_double(stmt, 4);
         
+        if (sqlite3_column_type(stmt, 5) != SQLITE_NULL) {
+            std::string metadata_json = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
+            try {
+                source.metadata = nlohmann::json::parse(metadata_json);
+            } catch (const nlohmann::json::parse_error&) {
+                // Ignore parse error
+            }
+        }
+
         sources.push_back(source);
     }
     
