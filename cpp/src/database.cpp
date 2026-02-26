@@ -305,6 +305,26 @@ DbStats Database::getStats() const {
     return stats;
 }
 
+void Database::beginTransaction() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    char* errMsg = nullptr;
+    if (sqlite3_exec(db_, "BEGIN TRANSACTION", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        std::string error = errMsg ? errMsg : "Unknown error";
+        if (errMsg) sqlite3_free(errMsg);
+        throw DatabaseError("Failed to begin transaction: " + error);
+    }
+}
+
+void Database::commitTransaction() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    char* errMsg = nullptr;
+    if (sqlite3_exec(db_, "COMMIT", nullptr, nullptr, &errMsg) != SQLITE_OK) {
+        std::string error = errMsg ? errMsg : "Unknown error";
+        if (errMsg) sqlite3_free(errMsg);
+        throw DatabaseError("Failed to commit transaction: " + error);
+    }
+}
+
 void Database::wipeAllData() {
     std::lock_guard<std::mutex> lock(mutex_);
     
@@ -355,31 +375,31 @@ void Database::rebuildFtsIndex() {
 void Database::upsertSource(const Source& source) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    std::string metadata_str = "NULL";
-    if (source.metadata.has_value()) {
-        // Serialize JSON to string and escape single quotes
-        std::string escaped = source.metadata.value().dump();
-        size_t pos = 0;
-        while ((pos = escaped.find("'", pos)) != std::string::npos) {
-            escaped.replace(pos, 1, "''");
-            pos += 2;
-        }
-        metadata_str = "'" + escaped + "'";
+    const std::string sql = "INSERT OR REPLACE INTO sources (id, path, bucket, created_at, updated_at, metadata) "
+                            "VALUES (?, ?, ?, ?, ?, ?)";
+    sqlite3_stmt* stmt = getPreparedStatement(sql);
+
+    sqlite3_bind_text(stmt, 1, source.id.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, source.path.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (source.bucket.has_value()) {
+        sqlite3_bind_text(stmt, 3, source.bucket.value().c_str(), -1, SQLITE_TRANSIENT);
+    } else {
+        sqlite3_bind_null(stmt, 3);
     }
-    
-    std::string bucket_str = source.bucket.has_value() ? "'" + *source.bucket + "'" : "NULL";
-    
-    std::stringstream sql;
-    sql << "INSERT OR REPLACE INTO sources (id, path, bucket, created_at, updated_at, metadata) "
-        << "VALUES ('" << source.id << "', '" << source.path << "', "
-        << bucket_str << ", " << source.created_at << ", " << source.updated_at << ", "
-        << metadata_str << ")";
-    
-    char* errMsg = nullptr;
-    if (sqlite3_exec(db_, sql.str().c_str(), nullptr, nullptr, &errMsg) != SQLITE_OK) {
-        std::string error = errMsg;
-        sqlite3_free(errMsg);
-        throw DatabaseError("Failed to upsert source: " + error);
+
+    sqlite3_bind_double(stmt, 4, source.created_at);
+    sqlite3_bind_double(stmt, 5, source.updated_at);
+
+    if (source.metadata.has_value()) {
+        std::string metadata_json = source.metadata.value().dump();
+        sqlite3_bind_text(stmt, 6, metadata_json.c_str(), -1, SQLITE_TRANSIENT);
+    } else {
+        sqlite3_bind_null(stmt, 6);
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        throw DatabaseError("Failed to upsert source: " + std::string(sqlite3_errmsg(db_)));
     }
 }
 
@@ -485,17 +505,15 @@ void Database::deleteSource(const SourceId& id) {
 
 // ==================== Atom Operations ====================
 
-AtomId Database::insertAtom(const Atom& atom) {
-    std::lock_guard<std::mutex> lock(mutex_);
+// Private helper: inserts atom without acquiring mutex (caller must hold lock)
+AtomId Database::insertAtomNoLock(const Atom& atom) {
+    const std::string sql = "INSERT INTO atoms (source_id, content, char_start, char_end, timestamp, simhash, metadata, compound_id, start_byte, end_byte) "
+                            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
-    std::stringstream sql;
-    sql << "INSERT INTO atoms (source_id, content, char_start, char_end, timestamp, simhash, metadata, compound_id, start_byte, end_byte) "
-        << "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    sqlite3_stmt* stmt = getPreparedStatement(sql);
     
-    sqlite3_stmt* stmt = getPreparedStatement(sql.str());
-    
-    sqlite3_bind_text(stmt, 1, atom.source_id.c_str(), -1, SQLITE_STATIC);
-    sqlite3_bind_text(stmt, 2, atom.content.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, atom.source_id.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, atom.content.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, static_cast<int>(atom.char_start));
     sqlite3_bind_int(stmt, 4, static_cast<int>(atom.char_end));
     sqlite3_bind_double(stmt, 5, atom.timestamp);
@@ -503,13 +521,13 @@ AtomId Database::insertAtom(const Atom& atom) {
     sqlite3_bind_int64(stmt, 6, static_cast<sqlite3_int64>(atom.simhash));
     
     if (atom.metadata.has_value()) {
-        sqlite3_bind_text(stmt, 7, atom.metadata.value().c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 7, atom.metadata.value().c_str(), -1, SQLITE_TRANSIENT);
     } else {
         sqlite3_bind_null(stmt, 7);
     }
 
     if (atom.compound_id.has_value()) {
-        sqlite3_bind_text(stmt, 8, atom.compound_id.value().c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(stmt, 8, atom.compound_id.value().c_str(), -1, SQLITE_TRANSIENT);
     } else {
         sqlite3_bind_null(stmt, 8);
     }
@@ -527,13 +545,16 @@ AtomId Database::insertAtom(const Atom& atom) {
     }
     
     if (sqlite3_step(stmt) != SQLITE_DONE) {
-        sqlite3_finalize(stmt);
-        throw DatabaseError("Failed to insert atom");
+        // Do NOT sqlite3_finalize — stmt is cached by getPreparedStatement
+        throw DatabaseError("Failed to insert atom: " + std::string(sqlite3_errmsg(db_)));
     }
     
-    AtomId id = static_cast<AtomId>(sqlite3_last_insert_rowid(db_));
-    sqlite3_finalize(stmt);
-    return id;
+    return static_cast<AtomId>(sqlite3_last_insert_rowid(db_));
+}
+
+AtomId Database::insertAtom(const Atom& atom) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return insertAtomNoLock(atom);
 }
 
 std::vector<AtomId> Database::insertAtomsBatch(const std::vector<Atom>& atoms) {
@@ -545,7 +566,7 @@ std::vector<AtomId> Database::insertAtomsBatch(const std::vector<Atom>& atoms) {
     ids.reserve(atoms.size());
     
     for (const auto& atom : atoms) {
-        ids.push_back(insertAtom(atom));
+        ids.push_back(insertAtomNoLock(atom));  // No re-lock
     }
     
     sqlite3_exec(db_, "COMMIT", nullptr, nullptr, nullptr);

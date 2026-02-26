@@ -55,6 +55,10 @@ class Database {
     std::vector<Atom> getAtomsBySource(const SourceId& source_id) const;
     std::vector<Atom> searchAtoms(const std::string& query, size_t limit = 100) const;
     std::vector<Atom> getAllAtoms() const;
+    
+    void beginTransaction();
+    void commitTransaction();
+    
     void deleteAtom(AtomId id);
     void addTags(AtomId atom_id, const std::vector<Tag>& tags);
     std::vector<Tag> getTagsForAtom(AtomId atom_id) const;
@@ -78,6 +82,7 @@ class Database {
     void migrate();
     void enableForeignKeys();
     void enableWALMode();
+    AtomId insertAtomNoLock(const Atom& atom);  // helper: caller must hold mutex_
     class StatementGuard {
         sqlite3_stmt* stmt_;
     public:

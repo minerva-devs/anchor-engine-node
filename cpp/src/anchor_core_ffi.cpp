@@ -146,6 +146,36 @@ ANCHOR_EXPORT const char* database_get_stats(void* db) {
 }
 
 /**
+ * Begin a database transaction
+ * @param db Database pointer
+ * @return true on success
+ */
+ANCHOR_EXPORT bool database_begin_transaction(void* db) {
+    try {
+        auto* database = static_cast<anchor::Database*>(db);
+        database->beginTransaction();
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+/**
+ * Commit a database transaction
+ * @param db Database pointer
+ * @return true on success
+ */
+ANCHOR_EXPORT bool database_commit_transaction(void* db) {
+    try {
+        auto* database = static_cast<anchor::Database*>(db);
+        database->commitTransaction();
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+/**
  * Upsert a source
  * @param db Database pointer
  * @param id Source ID
