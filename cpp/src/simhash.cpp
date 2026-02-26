@@ -1,7 +1,10 @@
 #include "simhash.h"
+#include "md5.h"
 #include <functional>
 #include <sstream>
 #include <vector>
+#include <cstring>
+#include <algorithm>
 #include <string>
 #include <cctype>
 
@@ -24,31 +27,33 @@ SimHash computeSimHash(const std::string& text) {
         return 0;
     }
 
-    // Weight vector for 64 bits
-    std::vector<int> weights(64, 0);
-
-    // Simple tokenizer: split by whitespace
-    std::stringstream ss(text);
+    std::vector<int> v(64, 0);
     std::string token;
+    std::istringstream tokenStream(text);
 
-    while (ss >> token) {
-        // Compute hash for the token
-        uint64_t hash = fnv1a_64(token);
+    while (tokenStream >> token) {
+        // Hash the token using MD5
+        MD5Hash md5 = computeMD5(token);
 
-        // Update weights based on hash bits
+        // Use first 8 bytes (64 bits) of MD5 as the token hash
+        uint64_t hash = 0;
+        for (int i = 0; i < 8; ++i) {
+            hash |= (static_cast<uint64_t>(md5[i]) << (i * 8));
+        }
+
+        // Update vector
         for (int i = 0; i < 64; ++i) {
             if ((hash >> i) & 1) {
-                weights[i]++;
+                v[i]++;
             } else {
-                weights[i]--;
+                v[i]--;
             }
         }
     }
 
-    // Construct fingerprint from weights
     SimHash fingerprint = 0;
     for (int i = 0; i < 64; ++i) {
-        if (weights[i] > 0) {
+        if (v[i] > 0) {
             fingerprint |= (1ULL << i);
         }
     }
