@@ -794,7 +794,42 @@ void Database::insertMolecule(const Atom& molecule) {
         throw DatabaseError("Failed to prepare statement");
     }
     
-    // TODO: Implement molecule insertion
+    sqlite3_bind_text(stmt, 1, molecule.source_id.c_str(), -1, SQLITE_STATIC);
+
+    if (molecule.compound_id.has_value()) {
+        sqlite3_bind_text(stmt, 2, molecule.compound_id.value().c_str(), -1, SQLITE_STATIC);
+    } else {
+        sqlite3_finalize(stmt);
+        throw DatabaseError("Molecule compound_id is required");
+    }
+
+    sqlite3_bind_text(stmt, 3, molecule.content.c_str(), -1, SQLITE_STATIC);
+
+    if (molecule.start_byte.has_value()) {
+        sqlite3_bind_int(stmt, 4, static_cast<int>(molecule.start_byte.value()));
+    } else {
+        sqlite3_finalize(stmt);
+        throw DatabaseError("Molecule start_byte is required");
+    }
+
+    if (molecule.end_byte.has_value()) {
+        sqlite3_bind_int(stmt, 5, static_cast<int>(molecule.end_byte.value()));
+    } else {
+        sqlite3_finalize(stmt);
+        throw DatabaseError("Molecule end_byte is required");
+    }
+
+    sqlite3_bind_double(stmt, 6, molecule.timestamp);
+
+    std::stringstream ss;
+    ss << "0x" << std::hex << molecule.simhash;
+    std::string simhash_hex = ss.str();
+    sqlite3_bind_text(stmt, 7, simhash_hex.c_str(), -1, SQLITE_TRANSIENT);
+
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        sqlite3_finalize(stmt);
+        throw DatabaseError("Failed to insert molecule");
+    }
     
     sqlite3_finalize(stmt);
 }
