@@ -164,6 +164,9 @@ void PhysicsWalker::traverseGraph(Database& db,
                     auto atom = db.getAtom(edge.to);
                     candidate.timestamp = atom.timestamp;
                     candidate.simhash = atom.simhash;
+                    candidate.source_id = atom.source_id;
+                    candidate.start_byte = atom.start_byte;
+                    candidate.end_byte = atom.end_byte;
                 } catch (...) {
                     continue;
                 }
