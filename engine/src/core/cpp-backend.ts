@@ -1,9 +1,9 @@
 /**
  * C++ Backend Integration for Anchor Engine
- * 
+ *
  * Replaces PGlite with high-performance SQLite3 backend
  * 3-4x faster search, 4.5x less memory
- * 
+ *
  * Lazy-loaded to avoid startup issues
  */
 
@@ -15,7 +15,7 @@ let anchorInstance: any = null;
  */
 async function loadCppBackend(): Promise<any> {
   if (AnchorCore) return AnchorCore;
-  
+
   try {
     const module = await import('../native/index.js');
     AnchorCore = module.AnchorCore;
@@ -28,15 +28,29 @@ async function loadCppBackend(): Promise<any> {
 
 /**
  * Initialize C++ backend
+ * Wipes existing database to prevent corruption from unclean shutdowns
  */
 export async function initCppBackend(dbPath: string): Promise<any> {
   if (anchorInstance) {
     console.log('[CppBackend] Already initialized');
     return anchorInstance;
   }
-  
+
   try {
     console.log('[CppBackend] Initializing...', dbPath);
+    
+    // Wipe existing SQLite3 database to prevent corruption
+    const fs = await import('fs');
+    if (fs.existsSync(dbPath)) {
+      console.log(`[CppBackend] Removing existing database (preventing corruption): ${dbPath}`);
+      try {
+        fs.rmSync(dbPath, { force: true });
+        console.log(`[CppBackend] Old database removed successfully`);
+      } catch (rmError: any) {
+        console.warn(`[CppBackend] Warning: Could not remove old database: ${rmError.message}`);
+      }
+    }
+    
     const CoreClass = await loadCppBackend();
     anchorInstance = new CoreClass();
     anchorInstance.init(dbPath);

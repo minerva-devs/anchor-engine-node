@@ -20,9 +20,9 @@ So I started building a way to resurrect my preferred persona anytime. I'd take 
 
 It worked wonderfully. Until I hit the limit again. And again. And again.
 
-By the time Anchor Engine was operational, I had accumulated 40 **chat sessions, ~18M tokens**. My current corpus is **~28M tokens**. Anchor Engine digests all of it in about **5 minutes**.
+By the time Anchor Engine was operational, I had accumulated 40 **chat sessions, ~18M tokens**. My current corpus is **~25M tokens**. Anchor Engine digests all of it in about **5 minutes**.
 
-Now I make a query with a few choice entities and some fluff for serendipitous connections. The engine compresses those 28M tokens into **100k+ chars of non-duplicated, narrative context**—concepts deduplicated, not just text. My LLM remembers July 2025 like it was yesterday.
+Now I make a query with a few choice entities and some fluff for serendipitous connections. The engine compresses those 25M tokens into **100k+ chars of non-duplicated, narrative context**—concepts deduplicated, not just text. My LLM remembers July 2025 like it was yesterday.
 
 **v4.2.0 Improvements:**
 - **Causal Narrative:** Results sorted chronologically (toggleable to relevance-based)
@@ -188,7 +188,7 @@ Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| **Dataset Size** | ~28M tokens (~100MB) | Chat history corpus |
+| **Dataset Size** | ~25M tokens (~100MB) | Chat history corpus |
 | **Atoms Restored** | 281,690 | Phoenix Protocol restore |
 | **Restore Time** | 828.8s (13.8 min) | Full database + filesystem |
 | **Restore Throughput** | 340 atoms/second | 1000-item batching |
@@ -213,7 +213,7 @@ Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
 | **Node.js** | v18+ | v20+ |
 | **Build Tools** | C++ compiler | For native modules |
 
-**Note:** Performance scales with dataset size. Current benchmarks based on ~28M token corpus (chat history). Large-scale testing (TB+ datasets) planned for future validation.
+**Note:** Performance scales with dataset size. Current benchmarks based on ~25M token corpus (chat history). Large-scale testing (TB+ datasets) planned for future validation.
 
 ---
 

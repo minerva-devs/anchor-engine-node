@@ -99,7 +99,7 @@ Categories:
 - Primary: cs.IR (Information Retrieval)
 - Secondary: cs.AI (Artificial Intelligence)
 
-Comments: 28M token production deployment validated; 10 pages; 5 figures
+Comments: 25M token production deployment validated; 10 pages; 5 figures
 ACM Classification: 
 - H.3.3 [Information Storage and Retrieval]: Information Search and Retrieval
 - I.2.7 [Artificial Intelligence]: Natural Language Processing

@@ -70,7 +70,7 @@ For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR asymptotical
 
 Recent work explores graph structures as alternatives to dense vectors. T-Retriever [@wei2026tretriever] introduces tree-based hierarchical retrieval using semantic-structural entropy but does not incorporate temporal decay. PersonalAI [@menschikov2025personalai] proposes a knowledge graph framework with hyper-edges for personalized LLM agents but focuses on framework design rather than production implementation.
 
-STAR contributes a complete, deployed system with validated performance on 28M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) deduplication via SimHash [@charikar2002similar] and disposable index architectures.
+STAR contributes a complete, deployed system with validated performance on 25M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) deduplication via SimHash [@charikar2002similar] and disposable index architectures.
 
 ## Personal AI Memory
 
