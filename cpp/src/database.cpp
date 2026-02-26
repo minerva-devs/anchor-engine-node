@@ -332,7 +332,7 @@ void Database::upsertSource(const Source& source) {
 
     std::string metadata_str = "NULL";
     if (source.metadata.has_value()) {
-        // Escape single quotes in metadata string
+        // Serialize JSON to string and escape single quotes
         std::string escaped = source.metadata.value().dump();
         size_t pos = 0;
         while ((pos = escaped.find("'", pos)) != std::string::npos) {

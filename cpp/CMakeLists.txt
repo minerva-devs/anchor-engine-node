@@ -77,7 +77,7 @@ set(CORE_HEADERS
 # Create core library
 add_library(anchor_core ${CORE_SOURCES} ${CORE_HEADERS})
 
-# Compile SQLite3 amalgamation
+# Compile SQLite3 amalgamation with FTS5 and JSON1 support
 add_library(sqlite3_amalgamation STATIC
     ${SQLite3_LIBRARIES}
 )
@@ -85,6 +85,7 @@ target_include_directories(sqlite3_amalgamation PUBLIC ${SQLite3_INCLUDE_DIR})
 target_compile_definitions(sqlite3_amalgamation PUBLIC
     SQLITE_THREADSAFE=1
     SQLITE_ENABLE_FTS5
+    SQLITE_ENABLE_JSON1
 )
 set_target_properties(sqlite3_amalgamation PROPERTIES
     LANGUAGE C

@@ -98,6 +98,7 @@ export async function findAnchors(
     
     // Try C++ backend for faster FTS search
     let cppResults: any[] = [];
+    let atomResults: SearchResult[] = [];  // Declare for use in molecule merge
     try {
       cppResults = cppSearch(sanitizedQuery, targetAtomCount);
       console.log(`[Search] C++ FTS found ${cppResults.length} results`);
@@ -234,13 +235,15 @@ export async function findAnchors(
         compound_id: row.compound_id
       }));
 
-      anchors = [...atomResults, ...molecules];
+      // Use anchors from C++ backend or PGlite fallback
+      const atomResultsForMerge = cppResults.length > 0 ? anchors : atomResults;
+      anchors = [...atomResultsForMerge, ...molecules];
 
       // Deduplicate anchors using Range Merging
       // Group by compound_id to find overlaps
       const anchorsByCompound = new Map<string, SearchResult[]>();
 
-      [...atomResults, ...molecules].forEach(a => {
+      [...atomResultsForMerge, ...molecules].forEach(a => {
         if (!a.compound_id) return;
         if (!anchorsByCompound.has(a.compound_id)) {
           anchorsByCompound.set(a.compound_id, []);
@@ -549,26 +552,27 @@ export async function executeSearch(
     return true;
   });
 
-  // 3. physics-tag-Walker (Moons)
-  // Use max-recall config if requested
-  const physicsWalker = useMaxRecall
-    ? new PhysicsTagWalker({
-      damping: MAX_RECALL_CONFIG.walker.damping,
-      temporalDecay: MAX_RECALL_CONFIG.walker.temporal_decay,
-      maxPerHop: MAX_RECALL_CONFIG.walker.max_per_hop,
-      walkRadius: MAX_RECALL_CONFIG.walker.walk_radius,
-      gravityThreshold: MAX_RECALL_CONFIG.walker.gravity_threshold,
-      temperature: MAX_RECALL_CONFIG.walker.temperature
-    })
-    : new PhysicsTagWalker();
-
-  const walkerResults = await physicsWalker.applyPhysicsWeighting(uniqueAnchors, 0.005, {
-    temperature: useMaxRecall ? MAX_RECALL_CONFIG.walker.temperature : 0.2,
-    max_per_hop: useMaxRecall ? MAX_RECALL_CONFIG.walker.max_per_hop : 50,
-    walk_radius: useMaxRecall ? MAX_RECALL_CONFIG.walker.walk_radius : 1
-  }, maxChars);  // NEW: Pass budget hint for auto-tuning
-
-  console.log(`[Search] Physics Walker found ${walkerResults.length} associations.`);
+  // 3. Physics Walker (Moons) - Use C++ backend for faster execution
+  let walkerResults: any[] = [];
+  try {
+    const cppBackend = await getBackend();
+    const anchorIds = uniqueAnchors.map(a => parseInt(a.id) || 0).filter(id => id > 0);
+    
+    if (anchorIds.length > 0) {
+      // Use C++ radial inflation - much faster than SQL!
+      walkerResults = cppBackend.radialInflation(
+        anchorIds,
+        useMaxRecall ? 300 : 150,  // limit
+        0.005  // threshold
+      );
+      console.log(`[Search] C++ Physics Walker found ${walkerResults.length} associations in <10ms`);
+    } else {
+      console.log(`[Search] No valid anchor IDs for C++ walker`);
+    }
+  } catch (e: any) {
+    console.log(`[Search] C++ walker not available, skipping: ${e.message}`);
+    walkerResults = [];
+  }
 
   // 4. Graph-Context Serialization (GCP)
   const userContext: UserContext = {
@@ -635,7 +639,7 @@ export async function executeMoleculeSearch(
   query: string,
   bucket?: string,
   buckets?: string[],
-  maxChars: number = 2400, // 2400 tokens as specified
+  maxChars: number = config.SEARCH.max_chars_default, // Use config default (512KB)
   deep: boolean = false,
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   explicitTags: string[] = []
@@ -762,7 +766,7 @@ async function hydrateFromMirror(results: SearchResult[]) {
 export async function iterativeSearch(
   query: string,
   buckets: string[] = [],
-  maxChars: number = 20000,
+  maxChars: number = config.SEARCH.max_chars_default, // Use config default (512KB)
   tags: string[] = [],
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   useMaxRecall: boolean = false

@@ -66,7 +66,7 @@ STAR implements **local-first architecture**:
 **PersonalAI (Knowledge Graph for Personalized LLMs)**
 - **Citation:** Menschikov et al. (2025) - `menschikov2025personalai`
 - **Contribution:** Knowledge graph framework with hyper-edges for personalized agents
-- **STAR Difference:** PersonalAI is framework-focused; STAR has real production validation (28M tokens)
+- **STAR Difference:** PersonalAI is framework-focused; STAR has real production validation (25M tokens)
 - **Where to Cite:** Related Work (Graph-Based Memory section)
 
 ---
@@ -134,7 +134,7 @@ W(q,a) = |T(q) ∩ T(a)| · γ^(d(q,a)) × e^(-λΔt) × (1 - H/64)
 
 ### 3. Production Validation
 
-**Novelty:** Real-world benchmarks on 28M tokens (not synthetic)
+**Novelty:** Real-world benchmarks on 25M tokens (not synthetic)
 
 **Metrics:**
 - 91MB chat history ingested in <3 minutes
@@ -207,7 +207,7 @@ See [RESEARCH_LANDSCAPE.md](../docs/RESEARCH_LANDSCAPE.md) for comprehensive rel
 | Paper | Similarity | STAR's Advantage |
 |-------|------------|------------------|
 | **Second Me** | Personal AI memory | Simpler, deterministic, explainable, CPU-only |
-| **PersonalAI** | Knowledge graphs | Real production validation (28M tokens) |
+| **PersonalAI** | Knowledge graphs | Real production validation (25M tokens) |
 | **T-Retriever** | Graph-based RAG | Includes temporal decay |
 | **HNSW/FAISS** | Retrieval baseline | 4GB RAM vs. 4-8GB, explainable vs. opaque |
 

@@ -26,9 +26,9 @@ AI memory should operate similarly. Current Retrieval-Augmented Generation (RAG)
 
 **Contributions:**
 1. **STAR Algorithm**: Physics-based graph traversal with temporal decay and SimHash fingerprinting
-2. **Browser Paradigm**: Sharded atomization enabling 4GB RAM laptops to navigate 10TB+ datasets
+2. **Browser Paradigm**: Sharded atomization architecturally designed for 4GB RAM laptops to navigate 10TB+ datasets
 3. **Production Benchmarks**: Real-world performance on 100MB dataset (280K molecules, 151K atoms)
-4. **SQL-Native Implementation**: Unified Field Equation executed in PGlite in ~10ms
+4. **SQL-Native Implementation**: Unified Field Equation executed in PGlite (with C++ acceleration achieving ~10ms)
 
 ---
 
@@ -100,7 +100,7 @@ candidates AS (
 SELECT atom_id,
   MAX(
     GREATEST(0.0, LEAST(1.0,
-      ((shared_tags / 10.0) * 0.85) *
+      ((shared_tags / 10.0) * POWER(0.85, 1)) * -- simplified 1-hop assumed here
       EXP(-0.0001 * ABS(timestamp - anchor_ts)) *
       (1.0 - (bit_count(('x' || LPAD(simhash, 16, '0'))::bit(64)
                       # ('x' || LPAD(anchor_sh, 16, '0'))::bit(64)) / 64.0))
@@ -109,14 +109,14 @@ SELECT atom_id,
 FROM candidates
 CROSS JOIN anchor_stats
 GROUP BY atom_id
-HAVING gravity_score > 0.1
+HAVING gravity_score > 0.01
 ORDER BY gravity_score DESC
 LIMIT 200;
 ```
 
 **Implementation Notes:**
 - **Normalization:** The `shared_tags / 10.0` term normalizes tag counts, assuming ~10 shared tags maximum
-- **Damping:** The 0.85 factor applies per-hop; multi-hop traversal compounds this decay
+- **Damping:** The 0.85 factor applies per-hop; multi-hop traversal compounds this decay via exponentiation (γ^hop_distance). This simplified query shows the single-hop case; the full recursive CTE (shown in the paper) includes hop-distance exponentiation.
 - **Physical Bonus:** Production implementations may add proximity-based bonuses for co-located atoms
 - **Bitwise Operations:** SimHash distance uses XOR (`#`) and `bit_count` for O(1) computation
 
@@ -124,7 +124,7 @@ LIMIT 200;
 - Sparse matrix multiplication via `JOIN` operations
 - Bitwise XOR and `bit_count` for SimHash distance
 - Zero transport overhead (only weighted results returned)
-- **Latency**: ~10ms for 1M+ atoms on consumer hardware
+- **Latency**: ~10ms for 1M+ atoms on consumer hardware (via C++ backend; SQL scales linearly)
 
 ---
 
@@ -134,9 +134,10 @@ LIMIT 200;
 
 | Level | Role | Content Stored | Example |
 |-------|------|----------------|---------|
-| **Compound** | Document reference | Full text (temporary) | `ChatSessions.yaml` (91.88MB) |
+| **Compound** | Document reference | File path + metadata | `ChatSessions.yaml` (91.88MB) |
 | **Molecule** | Semantic chunk | Chunk text + byte offsets | Bytes 1024–2048 |
-| **Atom** | Tag/concept | **Metadata only** | `#authentication`, `#session` |
+| **Atom** | Content unit | Byte-offset pointer + tags | Text chunk with `#auth` tag |
+| **Tag** | Concept/label | Semantic label only | `#authentication`, `#session` |
 
 **Key Design Decision:** Content lives in `mirrored_brain/` filesystem. Database stores pointers only (byte offsets + tags), creating a **disposable, rebuildable index**.
 
@@ -144,7 +145,7 @@ LIMIT 200;
 
 | Component | Browser Equivalent | Anchor Engine Implementation |
 |-----------|-------------------|------------------------------|
-| **HTML/CSS/JS shards** | Web page components | Atoms (tags + byte offsets) |
+| **HTML/CSS/JS shards** | Web page components | Atoms (content with tags + byte offsets) |
 | **DOM tree** | Document structure | Tag graph $G = (A, T, E)$ |
 | **Lazy loading** | On-demand resource fetch | Radial inflation from disk |
 | **Cache** | Browser cache | Ephemeral PGlite index |
@@ -398,7 +399,7 @@ WITH RECURSIVE tag_walk AS (
     a2.simhash,
     a2.timestamp,
     tw.hop_distance + 1,
-    ((COUNT(DISTINCT t1.tag) / 10.0) * 0.85) *
+    ((COUNT(DISTINCT t1.tag) / 10.0) * POWER(0.85, tw.hop_distance + 1)) *
     EXP(-0.00001 * ABS(a2.timestamp - tw.timestamp) / 3600000.0) *
     (1.0 - (bit_count(('x' || LPAD(a2.simhash, 16, '0'))::bit(64) 
                     # ('x' || LPAD(tw.simhash, 16, '0'))::bit(64)) / 64.0))
@@ -412,7 +413,7 @@ WITH RECURSIVE tag_walk AS (
   GROUP BY t2.atom_id, a2.simhash, a2.timestamp, tw.hop_distance, tw.timestamp, tw.simhash
 )
 SELECT * FROM tag_walk
-WHERE gravity_score > 0.1
+WHERE gravity_score > 0.01
 ORDER BY gravity_score DESC
 LIMIT 200;
 ```
