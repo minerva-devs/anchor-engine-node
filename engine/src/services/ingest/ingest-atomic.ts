@@ -171,13 +171,28 @@ export class AtomicIngestService {
         const batchSize = 50; // Rows per INSERT statement
         const total = molecules.length;
         const logInterval = Math.max(1000, Math.floor(total / 10));
+        const molStart = Date.now();
+        let cppInsertCount = 0;
+        let cppErrorCount = 0;
+
+        // Start a C++ transaction for the entire molecule batch to avoid per-row fsync
+        let hasCppTx = false;
+        try {
+            const be = getBackend();
+            if (be && typeof be.beginTransaction === 'function') {
+                be.beginTransaction();
+                hasCppTx = true;
+            }
+        } catch (e) { /* no-op */ }
 
         for (let i = 0; i < molecules.length; i += batchSize) {
             const batch = molecules.slice(i, Math.min(i + batchSize, molecules.length));
 
             // Progress logging for large batches
             if (total > 1000 && i % logInterval === 0 && i > 0) {
-                console.log(`[AtomicIngest] ⏱️ Molecules: ${((i / total) * 100).toFixed(0)}% (${i}/${total})`);
+                const elapsed = ((Date.now() - molStart) / 1000).toFixed(1);
+                const rate = Math.round(i / ((Date.now() - molStart) / 1000));
+                console.log(`[AtomicIngest] ⏱️ Molecules: ${((i / total) * 100).toFixed(0)}% (${i}/${total}) - ${elapsed}s elapsed, ${rate} mol/s, C++: ${cppInsertCount} ok / ${cppErrorCount} err`);
             }
 
             // Yield to event loop every 500 rows
@@ -232,8 +247,9 @@ export class AtomicIngestService {
                         m.start_byte || 0,
                         m.end_byte || 0
                     );
+                    cppInsertCount++;
                 } catch (e) {
-                    // Ignore gracefully if backend missing
+                    cppErrorCount++;
                 }
             }
 
@@ -257,6 +273,16 @@ export class AtomicIngestService {
                 values
             );
         }
+
+        // Commit C++ transaction
+        if (hasCppTx) {
+            try {
+                getBackend().commitTransaction();
+            } catch (e) { /* no-op */ }
+        }
+
+        const molElapsed = ((Date.now() - molStart) / 1000).toFixed(1);
+        console.log(`[AtomicIngest] ⏱️ Molecules batch complete: ${total} molecules, C++ FTS: ${cppInsertCount} inserted / ${cppErrorCount} errors, ${molElapsed}s`);
     }
 
     private async batchWriteEdges(compoundId: string, atomIds: string[]) {

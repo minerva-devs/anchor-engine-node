@@ -375,7 +375,7 @@ void Database::rebuildFtsIndex() {
 void Database::upsertSource(const Source& source) {
     std::lock_guard<std::mutex> lock(mutex_);
 
-    const std::string sql = "INSERT OR REPLACE INTO sources (id, path, bucket, created_at, updated_at, metadata) "
+    const std::string sql = "INSERT OR IGNORE INTO sources (id, path, bucket, created_at, updated_at, metadata) "
                             "VALUES (?, ?, ?, ?, ?, ?)";
     sqlite3_stmt* stmt = getPreparedStatement(sql);
 
