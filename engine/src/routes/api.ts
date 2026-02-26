@@ -828,7 +828,10 @@ export function setupRoutes(app: Application) {
       const targetDir = path.join(ENGINE_PLUGINS, 'articles');
       if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true });
 
-      const filePath = path.join(targetDir, filename);
+      // Fix for Arbitrary File Write via Path Traversal
+      // Ensure filename does not contain directory traversal characters
+      const safeFilename = path.basename(filename);
+      const filePath = path.join(targetDir, safeFilename);
       await fs.promises.writeFile(filePath, content, 'utf8');
 
       console.log(`[Research] Manual upload saved: ${filePath}`);
