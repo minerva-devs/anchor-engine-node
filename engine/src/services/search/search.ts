@@ -471,27 +471,30 @@ export async function findAnchors(
     const { getMirrorPath } = await import('../mirror/mirror.js');
     const fs = await import('fs');
 
-    for (const anchor of anchors) {
+    // Parallelize mirror reads for performance (non-blocking I/O)
+    await Promise.all(anchors.map(async (anchor) => {
       // Skip mirror read if no source_path (chat history atoms)
       if (!anchor.source || anchor.source.trim() === '') {
-        continue; // Keep DB content
+        return; // Keep DB content
       }
       
       try {
         // Calculate Mirror Path
         const mirrorPath = getMirrorPath(anchor.source, anchor.provenance);
 
-        // Check if exists and read
-        if (fs.existsSync(mirrorPath)) {
-          const liveContent = fs.readFileSync(mirrorPath, 'utf-8');
+        // Check if exists and read async
+        try {
+          const liveContent = await fs.promises.readFile(mirrorPath, 'utf-8');
           if (liveContent && liveContent.length > 0) {
             anchor.content = liveContent;
           }
+        } catch (err) {
+          // Ignore ENOENT (file missing) or other read errors
         }
       } catch (e: any) {
         // Fail silently -> Keep DB content
       }
-    }
+    }));
 
     return anchors;
 
@@ -746,15 +749,17 @@ async function hydrateFromMirror(results: SearchResult[]) {
     const { getMirrorPath } = await import('../mirror/mirror.js');
     const fs = await import('fs');
 
-    for (const res of results) {
+    await Promise.all(results.map(async (res) => {
       try {
         const mirrorPath = getMirrorPath(res.source, res.provenance);
-        if (fs.existsSync(mirrorPath)) {
-          const content = fs.readFileSync(mirrorPath, 'utf-8');
+        try {
+          const content = await fs.promises.readFile(mirrorPath, 'utf-8');
           if (content) res.content = content;
+        } catch (err) {
+          // ignore file not found
         }
       } catch (e) { /* ignore */ }
-    }
+    }));
   } catch (e) { /* ignore */ }
 }
 
