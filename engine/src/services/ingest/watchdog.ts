@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { db } from '../../core/db.js';
-import { NOTEBOOK_DIR } from '../../config/paths.js';
+import { NOTEBOOK_DIR, PROJECT_ROOT } from '../../config/paths.js';
 import { ingestAtoms } from './ingest.js';
 import { config } from '../../config/index.js';
 import { pathManager } from '../../utils/path-manager.js';
@@ -56,8 +56,8 @@ export async function startWatchdog() {
         return;
     }
 
-    const inbox = path.join(NOTEBOOK_DIR, 'inbox');
-    const externalInbox = path.join(NOTEBOOK_DIR, 'external-inbox');
+    const inbox = path.join(PROJECT_ROOT, 'inbox');
+    const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
 
     console.log(`[Watchdog] Starting watch on: ${inbox} and ${externalInbox}`);
 
@@ -107,8 +107,8 @@ export function getWatchedPaths(): string[] {
     // For simplicity, we can return the configured roots + static roots.
 
     // Better approach: Return the paths explicitly tracked
-    const inbox = path.join(NOTEBOOK_DIR, 'inbox');
-    const externalInbox = path.join(NOTEBOOK_DIR, 'external-inbox');
+    const inbox = path.join(PROJECT_ROOT, 'inbox');
+    const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
     const extraPaths = config.WATCHER_EXTRA_PATHS || [];
 
     return [inbox, externalInbox, ...extraPaths];
@@ -204,8 +204,8 @@ const atomicIngest = new AtomicIngestService();
 
 async function processFile(filePath: string, event: string) {
     // Accept markdown, text, YAML, CSV, JSON, and HTML files
-    if (!filePath.endsWith('.md') && !filePath.endsWith('.txt') && !filePath.endsWith('.yaml') && 
-        !filePath.endsWith('.csv') && !filePath.endsWith('.json') && 
+    if (!filePath.endsWith('.md') && !filePath.endsWith('.txt') && !filePath.endsWith('.yaml') &&
+        !filePath.endsWith('.csv') && !filePath.endsWith('.json') &&
         !filePath.endsWith('.html') && !filePath.endsWith('.htm')) return;
     if (filePath.includes('mirrored_brain')) return;
 
@@ -267,7 +267,7 @@ async function processFile(filePath: string, event: string) {
         // Determine type (auto-detect HTML for cleaning)
         const ext = path.extname(filePath).replace('.', '');
         let type = ext || 'text';
-        
+
         // Auto-detect HTML content for cleaning pipeline
         if (ext === 'html' || ext === 'htm') {
             type = 'web_page';  // Triggers full HTML cleaning

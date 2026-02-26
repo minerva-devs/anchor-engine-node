@@ -17,7 +17,6 @@ WORKDIR /app
 # Set environment variables
 ENV PROJECT_ROOT=/app
 ENV CONTEXT_DIR=/app/engine/context_data
-ENV NOTEBOOK_DIR=/app/notebook
 ENV NODE_ENV=production
 
 # Copy project files
