@@ -142,23 +142,33 @@ void PhysicsWalker::traverseGraph(Database& db,
             continue;
         }
         
-        // Get neighbors with data (Optimized)
-        auto neighbors = db.getNeighbors(current_id);
+        // Get edges from current atom
+        auto edges = db.getEdgesFrom(current_id);
         
-        for (const auto& neighbor : neighbors) {
-            if (visited.find(neighbor.id) == visited.end()) {
-                visited.insert(neighbor.id);
-                queue.push({neighbor.id, hop + 1});
+        for (const auto& edge : edges) {
+            if (visited.find(edge.to) == visited.end()) {
+                visited.insert(edge.to);
+                queue.push({edge.to, hop + 1});
                 
                 // Create candidate
                 Candidate candidate;
-                candidate.atom_id = neighbor.id;
+                candidate.atom_id = edge.to;
                 candidate.hop_distance = hop + 1;
                 candidate.shared_tags = 1;  // At least one shared tag
                 candidate.physical_bonus = 0.0;
                 candidate.gravity_score = 0.0;
-                candidate.timestamp = neighbor.timestamp;
-                candidate.simhash = neighbor.simhash;
+                
+                // Load only necessary atom data (timestamp and simhash)
+                try {
+                    auto atom = db.getAtomTimestampAndSimhash(edge.to);
+                    candidate.timestamp = atom.timestamp;
+                    candidate.simhash = atom.simhash;
+                    candidate.source_id = atom.source_id;
+                    candidate.start_byte = atom.start_byte;
+                    candidate.end_byte = atom.end_byte;
+                } catch (...) {
+                    continue;
+                }
                 
                 candidates.push_back(candidate);
             }
