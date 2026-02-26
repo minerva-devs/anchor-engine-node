@@ -346,6 +346,7 @@ export function setupRoutes(app: Application) {
         res.status(200).json({
           query: body.query,
           strategy: strategy || 'enhanced_tag_walker',
+          results: result.results,   // Frontend SearchColumn expects this
           clusters: clusters,
 
           // Preserved for legacy debugging/transitional clients
