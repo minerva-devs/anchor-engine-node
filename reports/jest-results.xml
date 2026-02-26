@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="10" failures="0" errors="0" time="0.633">
+  <testsuite name="engine/tests/unit/sqlite-database.test.ts" errors="0" failures="0" skipped="0" timestamp="2026-02-26T03:04:14" time="0.286" tests="10">
+    <testcase classname="SQLite Database Adapter" name="should initialize with default config (in-memory)" time="0.034">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should initialize with file path and create directory" time="0.003">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should handle SELECT queries via searchAtoms" time="0.002">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should throw error for INSERT/UPDATE/DELETE queries via run" time="0.024">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should handle DDL queries gracefully (no-op)" time="0.003">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should delegate insertAtom to native DB" time="0.003">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should delegate searchAtoms to native DB" time="0.002">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should delegate getStats to native DB" time="0.002">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should delegate wipeAllData to native DB" time="0.002">
+    </testcase>
+    <testcase classname="SQLite Database Adapter" name="should delegate close to native DB" time="0.002">
+    </testcase>
+  </testsuite>
+</testsuites>

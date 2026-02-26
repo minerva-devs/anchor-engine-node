@@ -34,15 +34,61 @@ export interface ResourceLimits {
   gcThreshold: number; // Percentage at which to force GC
 }
 
+/**
+ * Interface for system resource access to facilitate testing
+ */
+export interface SystemResources {
+  getTotalMemory(): number;
+  getMemoryUsage(): NodeJS.MemoryUsage;
+  getHeapStatistics(): v8.HeapInfo;
+  getHeapSpaceStatistics(): v8.HeapSpaceInfo[];
+  gc(): void;
+  hasGc(): boolean;
+}
+
+/**
+ * Default implementation using real system resources
+ */
+class DefaultSystemResources implements SystemResources {
+  getTotalMemory(): number {
+    return os.totalmem();
+  }
+
+  getMemoryUsage(): NodeJS.MemoryUsage {
+    return process.memoryUsage();
+  }
+
+  getHeapStatistics(): v8.HeapInfo {
+    return v8.getHeapStatistics();
+  }
+
+  getHeapSpaceStatistics(): v8.HeapSpaceInfo[] {
+    return v8.getHeapSpaceStatistics();
+  }
+
+  gc(): void {
+    if (global.gc) {
+      global.gc();
+    }
+  }
+
+  hasGc(): boolean {
+    return !!global.gc;
+  }
+}
+
 export class ResourceManager {
   private static instance: ResourceManager;
   private limits: ResourceLimits;
   private lastGCTime: number = 0;
   private gcCooldown: number = config.GC_COOLDOWN_MS; // Configurable cooldown between forced GC
+  private resources: SystemResources;
 
-  private constructor() {
+  private constructor(resources?: SystemResources) {
+    this.resources = resources || new DefaultSystemResources();
+
     // Set default resource limits based on system capabilities
-    const totalMemory = os.totalmem();
+    const totalMemory = this.resources.getTotalMemory();
     this.limits = {
       maxHeapSize: totalMemory * 0.6, // Use up to 60% of total memory
       memoryThreshold: 0.7, // Optimize when 70% of heap is used
@@ -59,11 +105,27 @@ export class ResourceManager {
   }
 
   /**
+   * Reset the singleton instance (for testing only)
+   */
+  public static resetInstance(): void {
+    // @ts-ignore
+    ResourceManager.instance = undefined;
+  }
+
+  /**
+   * Create an instance with specific resources (for testing only)
+   */
+  public static createInstanceForTesting(resources: SystemResources): ResourceManager {
+    ResourceManager.instance = new ResourceManager(resources);
+    return ResourceManager.instance;
+  }
+
+  /**
    * Get current memory statistics
    */
   public getMemoryStats(): MemoryStats {
-    const usage = process.memoryUsage();
-    const heapStats = v8.getHeapStatistics();
+    const usage = this.resources.getMemoryUsage();
+    const heapStats = this.resources.getHeapStatistics();
     const heapSpaces = this.getHeapSpaceInfo();
 
     return {
@@ -82,7 +144,7 @@ export class ResourceManager {
    */
   private getHeapSpaceInfo(): HeapSpaceInfo[] {
     try {
-      const spaces = v8.getHeapSpaceStatistics();
+      const spaces = this.resources.getHeapSpaceStatistics();
       return spaces.map(space => ({
         name: space.space_name,
         size: space.space_size,
@@ -137,9 +199,9 @@ export class ResourceManager {
     this.lastGCTime = Date.now();
 
     try {
-      if (global.gc) {
+      if (this.resources.hasGc()) {
         console.log('[ResourceManager] Performing forced garbage collection...');
-        global.gc();
+        this.resources.gc();
         console.log('[ResourceManager] Garbage collection completed.');
       } else {
         console.warn('[ResourceManager] Garbage collection not available. Run with --expose-gc flag for manual GC.');
