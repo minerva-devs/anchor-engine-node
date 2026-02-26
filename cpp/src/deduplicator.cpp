@@ -83,13 +83,47 @@ double Deduplicator::computeGeometricOverlap(
     // For atoms with byte coordinates
     // Overlap = intersection / union
     
-    // Note: In real implementation, would use start_byte and end_byte
-    // For now, return 0 (no overlap detected)
+    // Check if source IDs match
+    if (a.source_id != b.source_id) {
+        return 0.0;
+    }
+
+    // Check if byte coordinates are available
+    if (!a.start_byte.has_value() || !a.end_byte.has_value() ||
+        !b.start_byte.has_value() || !b.end_byte.has_value()) {
+        return 0.0;
+    }
+
+    size_t start_a = a.start_byte.value();
+    size_t end_a = a.end_byte.value();
+    size_t start_b = b.start_byte.value();
+    size_t end_b = b.end_byte.value();
+
+    // Ensure valid intervals
+    if (start_a >= end_a || start_b >= end_b) {
+        return 0.0;
+    }
     
-    // Placeholder implementation
-    // TODO: Load atom coordinates and compute actual overlap
+    // Compute intersection
+    size_t inter_start = std::max(start_a, start_b);
+    size_t inter_end = std::min(end_a, end_b);
+
+    if (inter_start >= inter_end) {
+        return 0.0; // No overlap
+    }
+
+    double intersection = static_cast<double>(inter_end - inter_start);
+
+    // Compute union
+    size_t union_start = std::min(start_a, start_b);
+    size_t union_end = std::max(end_a, end_b);
+    double union_val = static_cast<double>(union_end - union_start);
+
+    if (union_val <= 0.0) {
+        return 0.0;
+    }
     
-    return 0.0;
+    return intersection / union_val;
 }
 
 bool Deduplicator::checkMD5Fingerprint(
