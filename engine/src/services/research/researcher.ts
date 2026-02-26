@@ -5,7 +5,9 @@ import TurndownService from 'turndown';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import * as net from 'net';
 import { ENGINE_PLUGINS } from '../../config/paths.js';
+import { safeLookup, isPrivateIP } from '../../utils/safe-dns.js';
 
 const PLUGINS_DIR = ENGINE_PLUGINS;
 
@@ -38,7 +40,19 @@ export async function fetchAndProcess(url: string, category: 'article' | 'paper'
     try {
         console.log(`[Research] Fetching: ${url}`);
 
-        const response = await gotScraping(url, { timeout: { request: 10000 } });
+        const urlObj = new URL(url);
+        if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+            throw new Error(`Invalid protocol: ${urlObj.protocol}. Only http and https are allowed.`);
+        }
+
+        if (net.isIP(urlObj.hostname) !== 0 && isPrivateIP(urlObj.hostname)) {
+            throw new Error(`Invalid IP address: ${urlObj.hostname}. Private IPs are not allowed.`);
+        }
+
+        const response = await gotScraping(url, {
+            timeout: { request: 10000 },
+            dnsLookup: safeLookup
+        });
 
         const html = response.body;
         const $ = cheerio.load(html);
