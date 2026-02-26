@@ -37,14 +37,14 @@ export const ResearchModal: React.FC<ResearchModalProps> = ({ onClose }) => {
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100,
             display: 'flex', justifyContent: 'center', alignItems: 'center'
         }}>
-            <GlassPanel style={{ width: '600px', height: '600px', padding: '1.5rem', background: '#1a1a1a', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <GlassPanel className="glass-card" style={{ width: '600px', height: '600px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <h3>Research Station</h3>
                     <Button variant="icon" onClick={onClose} style={{ fontSize: '1.2rem', color: 'white' }}>✕</Button>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid #333' }}>
-                    <Button variant="ghost" onClick={() => setTab('search')} style={{ borderBottom: tab === 'search' ? '2px solid white' : 'none', borderRadius: 0, color: 'white' }}>Web Search</Button>
-                    <Button variant="ghost" onClick={() => setTab('direct')} style={{ borderBottom: tab === 'direct' ? '2px solid white' : 'none', borderRadius: 0, color: 'white' }}>Direct URL</Button>
+                <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+                    <Button variant="ghost" onClick={() => setTab('search')} style={{ borderBottom: tab === 'search' ? '2px solid var(--accent-primary)' : 'none', borderRadius: 0, color: tab === 'search' ? 'var(--accent-primary)' : 'var(--text-primary)' }}>Web Search</Button>
+                    <Button variant="ghost" onClick={() => setTab('direct')} style={{ borderBottom: tab === 'direct' ? '2px solid var(--accent-primary)' : 'none', borderRadius: 0, color: tab === 'direct' ? 'var(--accent-primary)' : 'var(--text-primary)' }}>Direct URL</Button>
                 </div>
 
                 {tab === 'search' && (
