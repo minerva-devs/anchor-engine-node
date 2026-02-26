@@ -1,6 +1,7 @@
 # Git
 .git
 .gitignore
+.gitattributes
 
 # Node modules (will be installed in container)
 node_modules/
@@ -40,11 +41,6 @@ coverage/
 *.test.js
 tests/
 
-# Documentation (not needed for runtime)
-docs/
-*.md
-!README.md
-
 # Development configs
 .env
 .env.local
@@ -54,3 +50,6 @@ docs/
 tmp/
 temp/
 *.tmp
+
+# C++ build artifacts (will be rebuilt in container)
+cpp/build/
