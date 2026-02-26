@@ -17,6 +17,7 @@
         "test:benchmark": "node tests/benchmark.js",
         "test:context": "node tests/context_experiments.js",
         "test:context-quality": "ts-node ../tests/unit/test_context_quality_improvements.ts",
+        "test:date-extractor": "node --loader ts-node/esm tests/unit/test_date_extractor.ts",
         "test:unit": "ts-node ../tests/unit/test_context_quality_improvements.ts",
         "benchmark": "node tests/benchmark.js",
         "build": "tsc",
