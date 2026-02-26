@@ -356,9 +356,42 @@ ANCHOR_EXPORT const char* deduplicator_deduplicate(void* dedup, const char* cand
         auto* d = static_cast<anchor::Deduplicator*>(dedup);
         json j_candidates = json::parse(candidates_json);
         
-        // TODO: Convert JSON to Candidate objects and deduplicate
-        // For now, return input
-        static std::string result = j_candidates.dump();
+        std::vector<anchor::Candidate> candidates;
+        for (const auto& j : j_candidates) {
+            anchor::Candidate c;
+            c.atom_id = j.value("atom_id", 0ULL);
+            c.hop_distance = j.value("hop_distance", 0);
+            c.shared_tags = j.value("shared_tags", 0);
+            c.physical_bonus = j.value("physical_bonus", 0.0);
+            c.timestamp = j.value("timestamp", 0.0);
+            c.simhash = j.value("simhash", 0ULL);
+            c.gravity_score = j.value("gravity_score", 0.0);
+
+            if (j.contains("content_fingerprints") && j["content_fingerprints"].is_array()) {
+                 c.content_fingerprints = j["content_fingerprints"].get<std::vector<std::string>>();
+            }
+
+            candidates.push_back(c);
+        }
+
+        auto unique_candidates = d->deduplicate(candidates);
+
+        json j_result = json::array();
+        for (const auto& c : unique_candidates) {
+            j_result.push_back({
+                {"atom_id", c.atom_id},
+                {"hop_distance", c.hop_distance},
+                {"shared_tags", c.shared_tags},
+                {"physical_bonus", c.physical_bonus},
+                {"timestamp", c.timestamp},
+                {"simhash", c.simhash},
+                {"gravity_score", c.gravity_score},
+                {"content_fingerprints", c.content_fingerprints}
+            });
+        }
+
+        static std::string result;
+        result = j_result.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
