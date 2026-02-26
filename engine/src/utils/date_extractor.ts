@@ -22,7 +22,9 @@ export function extractDateFromContent(text: string): number | null {
         const match = scanText.match(pattern);
         if (match) {
             // Validate date
-            const parsed = Date.parse(match[0]);
+            // Remove ordinal suffixes (st, nd, rd, th) before parsing to support "January 1st, 2025"
+            const cleanDateStr = match[0].replace(/(\d+)(st|nd|rd|th)/i, '$1');
+            const parsed = Date.parse(cleanDateStr);
             if (!isNaN(parsed)) {
                 return parsed;
             }
