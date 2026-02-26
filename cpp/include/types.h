@@ -7,6 +7,7 @@
 #define ANCHOR_CORE_TYPES_H
 
 #include "common.h"
+#include <nlohmann/json.hpp>
 
 namespace anchor {
 
@@ -69,7 +70,7 @@ struct Source {
     std::optional<std::string> bucket;
     Timestamp created_at;
     Timestamp updated_at;
-    std::optional<std::string> metadata;  // JSON as string for now
+    std::optional<nlohmann::json> metadata;
 };
 
 /**
