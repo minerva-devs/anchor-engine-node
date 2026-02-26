@@ -405,9 +405,56 @@ ANCHOR_EXPORT const char* transient_filter_apply(void* filter, const char* atoms
         auto* f = static_cast<anchor::TransientFilter*>(filter);
         json j_atoms = json::parse(atoms_json);
         
-        // TODO: Convert JSON to Atom objects and filter
-        // For now, return input
-        static std::string result = j_atoms.dump();
+        std::vector<anchor::Atom> atoms;
+        for (const auto& item : j_atoms) {
+            anchor::Atom atom{};
+
+            if (item.contains("id")) atom.id = item["id"].get<anchor::AtomId>();
+            if (item.contains("source_id")) atom.source_id = item["source_id"].get<std::string>();
+            if (item.contains("content")) atom.content = item["content"].get<std::string>();
+            if (item.contains("char_start")) atom.char_start = item["char_start"].get<size_t>();
+            if (item.contains("char_end")) atom.char_end = item["char_end"].get<size_t>();
+            if (item.contains("timestamp")) atom.timestamp = item["timestamp"].get<anchor::Timestamp>();
+            if (item.contains("simhash")) atom.simhash = item["simhash"].get<anchor::SimHash>();
+
+            if (item.contains("tags") && !item["tags"].is_null()) {
+                atom.tags = item["tags"].get<std::vector<std::string>>();
+            }
+            if (item.contains("metadata") && !item["metadata"].is_null()) {
+                if (item["metadata"].is_string()) {
+                    atom.metadata = item["metadata"].get<std::string>();
+                } else {
+                    atom.metadata = item["metadata"].dump();
+                }
+            }
+
+            atoms.push_back(atom);
+        }
+
+        auto filtered_atoms = f->apply(atoms);
+
+        json j_result = json::array();
+        for (const auto& atom : filtered_atoms) {
+            json item = {
+                {"id", atom.id},
+                {"source_id", atom.source_id},
+                {"content", atom.content},
+                {"char_start", atom.char_start},
+                {"char_end", atom.char_end},
+                {"timestamp", atom.timestamp},
+                {"simhash", atom.simhash},
+                {"tags", atom.tags}
+            };
+            if (atom.metadata) {
+                item["metadata"] = *atom.metadata;
+            } else {
+                item["metadata"] = nullptr;
+            }
+            j_result.push_back(item);
+        }
+
+        static std::string result;
+        result = j_result.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
