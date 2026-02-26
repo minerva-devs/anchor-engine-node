@@ -114,18 +114,19 @@ export async function findAnchors(
     }
 
     let anchors: SearchResult[] = [];
+    let atomResults: SearchResult[] = [];
 
     // A. Atom Search (Radial Inflation) - Use C++ results if available
     if (cppResults.length > 0) {
       // Transform C++ results to SearchResult format
-      anchors = cppResults.map((r: any) => ({
+      atomResults = cppResults.map((r: any) => ({
         id: String(r.id),
         content: r.content,
         source: r.source_id,
         timestamp: r.timestamp,
         buckets: r.buckets || [],
         tags: r.tags || [],
-        epochs: [],
+        epochs: '',
         provenance: 'internal',
         score: r.simhash ? 1.0 : 0.5,
         sequence: 0,
@@ -133,15 +134,15 @@ export async function findAnchors(
         start_byte: r.start_byte,
         end_byte: r.end_byte,
         type: 'atom',
-        numeric_value: null,
-        numeric_unit: null,
+        numeric_value: undefined,
+        numeric_unit: undefined,
         compound_id: r.compound_id
       }));
+      anchors = atomResults;
       console.log(`[Search] Using C++ backend results: ${anchors.length} atoms`);
     } else {
       // Fallback to PGlite
       const terms = sanitizedQuery.split(/\s+/).filter(t => t.length > 0);
-      const atomResults: SearchResult[] = [];
 
       if (terms.length > 0) {
         try {
