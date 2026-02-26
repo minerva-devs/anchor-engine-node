@@ -12,6 +12,7 @@ export interface PerformanceMetric {
   maxDuration: number;
   lastDuration: number;
   averageDuration: number;
+  lastUpdated: number;
 }
 
 export interface PerformanceStats {
@@ -45,7 +46,8 @@ class PerformanceMonitor {
           minDuration: Infinity,
           maxDuration: -Infinity,
           lastDuration: 0,
-          averageDuration: 0
+          averageDuration: 0,
+          lastUpdated: Date.now()
         });
       }
 
@@ -56,6 +58,7 @@ class PerformanceMonitor {
       metric.maxDuration = Math.max(metric.maxDuration, duration);
       metric.lastDuration = duration;
       metric.averageDuration = metric.totalDuration / metric.count;
+      metric.lastUpdated = Date.now();
     };
   }
 
@@ -71,7 +74,8 @@ class PerformanceMonitor {
         minDuration: Infinity,
         maxDuration: -Infinity,
         lastDuration: 0,
-        averageDuration: 0
+        averageDuration: 0,
+        lastUpdated: Date.now()
       });
     }
 
@@ -82,6 +86,7 @@ class PerformanceMonitor {
     metric.maxDuration = Math.max(metric.maxDuration, duration);
     metric.lastDuration = duration;
     metric.averageDuration = metric.totalDuration / metric.count;
+    metric.lastUpdated = Date.now();
   }
 
   /**
@@ -134,7 +139,8 @@ class PerformanceMonitor {
         minDuration: Infinity,
         maxDuration: -Infinity,
         lastDuration: 0,
-        averageDuration: 0
+        averageDuration: 0,
+        lastUpdated: Date.now()
       });
     }
 
@@ -145,6 +151,7 @@ class PerformanceMonitor {
     metric.minDuration = Math.min(metric.minDuration, duration);
     metric.maxDuration = Math.max(metric.maxDuration, duration);
     metric.lastDuration = duration;
+    metric.lastUpdated = Date.now();
   }
 
   /**
@@ -168,7 +175,7 @@ class PerformanceMonitor {
     let prunedCount = 0;
     for (const [key, metric] of this.metrics.entries()) {
       // If last operation was more than TTL ago, remove it
-      if (metric.lastDuration && (now - metric.lastDuration) > METRIC_TTL_MS) {
+      if (metric.lastUpdated && (now - metric.lastUpdated) > METRIC_TTL_MS) {
         this.metrics.delete(key);
         prunedCount++;
       }
@@ -222,7 +229,8 @@ class PerformanceMonitor {
         averageDuration: metric.count > 0 ? metric.totalDuration / metric.count : 0,
         minDuration: metric.minDuration === Infinity ? 0 : metric.minDuration,
         maxDuration: metric.maxDuration === -Infinity ? 0 : metric.maxDuration,
-        lastDuration: metric.lastDuration
+        lastDuration: metric.lastDuration,
+        lastUpdated: metric.lastUpdated
       };
     }
     return result;

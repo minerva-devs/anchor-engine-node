@@ -1,4 +1,6 @@
 
+import { UserContext } from './context.js';
+
 export interface Menu {
     id: string;
     content: string;
@@ -21,6 +23,8 @@ export interface SearchRequest {
     // The "UniversalRAG" Routing Layer
     buckets?: string[];      // e.g., ["@code", "@visual", "@memory"]
     provenance?: 'internal' | 'external' | 'quarantine' | 'all'; // Data Provenance filter
+
+    user_context?: UserContext; // Federated Sovereignty (User Context)
 }
 
 export interface SearchResponse {
