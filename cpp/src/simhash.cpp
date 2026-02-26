@@ -5,8 +5,22 @@
 #include <vector>
 #include <cstring>
 #include <algorithm>
+#include <string>
+#include <cctype>
 
 namespace anchor {
+
+namespace {
+    // FNV-1a 64-bit hash implementation
+    uint64_t fnv1a_64(const std::string& text) {
+        uint64_t hash = 14695981039346656037ULL;
+        for (char c : text) {
+            hash ^= static_cast<unsigned char>(c);
+            hash *= 1099511628211ULL;
+        }
+        return hash;
+    }
+}
 
 SimHash computeSimHash(const std::string& text) {
     if (text.empty()) {
