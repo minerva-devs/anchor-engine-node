@@ -211,8 +211,16 @@ export class AtomicIngestService {
                 );
 
                 try {
-                    // Seed C++ FTS backend
-                    const simhashVal = m.molecular_signature ? BigInt(m.molecular_signature) : 0n;
+                    // Seed C++ FTS backend (use-after-free bug fixed in database.cpp)
+                    let simhashVal = 0n;
+                    if (m.molecular_signature) {
+                        try {
+                            // MD5 is 32 hex chars = 128 bits, but simhash is uint64 (16 hex chars max)
+                            simhashVal = BigInt(`0x${m.molecular_signature.slice(0, 16)}`);
+                        } catch (err) {
+                            simhashVal = 0n;
+                        }
+                    }
                     getBackend().insertAtom(
                         m.compoundId,
                         m.content,
