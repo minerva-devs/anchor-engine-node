@@ -330,10 +330,15 @@ async function startServer() {
 // Windows graceful shutdown fix
 process.on("SIGINT", async () => {
   try {
+    console.log(`[Shutdown] Starting graceful shutdown...`);
+    
     const { ProcessManager } = await import("./utils/process-manager.js");
     ProcessManager.getInstance().stopAll();
+    
+    // Close database connection first (releases file locks)
+    console.log(`[Shutdown] Closing database connection...`);
     await db.close();
-
+    
     // Standard 110: Ephemeral Index Architecture
     // Clear ALL derived data on shutdown - only inbox/ is source of truth
 
@@ -341,35 +346,65 @@ process.on("SIGINT", async () => {
     const dbPath = process.env.PGLITE_DB_PATH || pathManager.getDatabasePath();
     if (existsSync(dbPath)) {
       console.log(`[Shutdown] Wiping PGlite database (rebuildable index)...`);
-      rmSync(dbPath, { recursive: true, force: true });
-      console.log(`[Shutdown] Database wiped.`);
+      try {
+        rmSync(dbPath, { recursive: true, force: true });
+        console.log(`[Shutdown] ✓ PGlite database wiped.`);
+      } catch (e: any) {
+        console.warn(`[Shutdown] ⚠ Could not wipe PGlite database: ${e.message}`);
+        console.warn(`[Shutdown] Will be wiped on next startup`);
+      }
     }
 
-    // 2. Clear mirrored_brain/ (extracted from inbox/, regenerated on start)
+    // 2. Wipe SQLite3 context.db (anchor-core FFI database)
+    const contextDbPath = path.join(pathManager.getDatabaseDir(), 'context.db');
+    if (existsSync(contextDbPath)) {
+      console.log(`[Shutdown] Wiping SQLite3 context.db (anchor-core FFI)...`);
+      try {
+        rmSync(contextDbPath, { force: true });
+        console.log(`[Shutdown] ✓ SQLite3 context.db wiped.`);
+      } catch (e: any) {
+        console.warn(`[Shutdown] ⚠ Could not wipe SQLite3 context.db: ${e.message}`);
+        console.warn(`[Shutdown] Will be wiped on next startup`);
+      }
+    }
+
+    // 3. Clear mirrored_brain/ (extracted from inbox/, regenerated on start)
     const { MIRRORED_BRAIN_PATH } = await import('./services/mirror/mirror.js');
     if (existsSync(MIRRORED_BRAIN_PATH)) {
       console.log(`[Shutdown] Clearing mirrored_brain/ (regenerated from inbox/ on start)...`);
-      rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
-      console.log(`[Shutdown] mirrored_brain/ cleared.`);
+      try {
+        rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
+        console.log(`[Shutdown] ✓ mirrored_brain/ cleared.`);
+      } catch (e: any) {
+        console.warn(`[Shutdown] ⚠ Could not clear mirrored_brain/: ${e.message}`);
+      }
     }
 
-    // 3. Clear Auto-Generated Synonym Rings (derived from data, regenerated on start)
+    // 4. Clear Auto-Generated Synonym Rings (derived from data, regenerated on start)
     const synonymPath = path.join(pathManager.getNotebookDir(), 'synonym-ring-auto.json');
     if (existsSync(synonymPath)) {
       console.log(`[Shutdown] Clearing auto-generated synonym rings...`);
-      rmSync(synonymPath, { force: true });
-      console.log(`[Shutdown] Synonym rings cleared.`);
+      try {
+        rmSync(synonymPath, { force: true });
+        console.log(`[Shutdown] ✓ Synonym rings cleared.`);
+      } catch (e: any) {
+        console.warn(`[Shutdown] ⚠ Could not clear synonym rings: ${e.message}`);
+      }
     }
 
-    // 4. Clear Tag Audit Cache (derived from tags, regenerated on demand)
+    // 5. Clear Tag Audit Cache (derived from tags, regenerated on demand)
     const tagAuditPath = path.join(pathManager.getNotebookDir(), 'tag-audit-cache.json');
     if (existsSync(tagAuditPath)) {
       console.log(`[Shutdown] Clearing tag audit cache...`);
-      rmSync(tagAuditPath, { force: true });
-      console.log(`[Shutdown] Tag audit cache cleared.`);
+      try {
+        rmSync(tagAuditPath, { force: true });
+        console.log(`[Shutdown] ✓ Tag audit cache cleared.`);
+      } catch (e: any) {
+        console.warn(`[Shutdown] ⚠ Could not clear tag audit cache: ${e.message}`);
+      }
     }
 
-    console.log(`[Shutdown] Cleanup complete.`);
+    console.log(`[Shutdown] ✓ Cleanup complete.`);
     console.log(`[Shutdown] Source of truth preserved: inbox/ + external-inbox/`);
     console.log(`[Shutdown] On restart: mirror + index + synonyms regenerated from inbox/`);
 

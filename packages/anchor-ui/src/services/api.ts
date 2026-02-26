@@ -44,6 +44,12 @@ export const api = {
 
     // Specific API methods
     getBuckets: () => fetch(`${getBaseUrl()}/v1/buckets`).then(r => r.json()),
+    createBucket: (name: string, location?: 'inbox' | 'external-inbox') =>
+        fetch(`${getBaseUrl()}/v1/buckets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, location })
+        }).then(r => r.json()),
     getTags: (buckets?: string[]) => {
         const query = buckets && buckets.length > 0 ? `?buckets=${buckets.join(',')}` : '';
         return fetch(`${getBaseUrl()}/v1/tags${query}`).then(r => r.json());
@@ -120,7 +126,16 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, bucket })
-    }).then(r => r.json())
+    }).then(r => r.json()),
+
+    getGitRepos: () => fetch(`${getBaseUrl()}/v1/git/repos`).then(r => r.json()),
+
+    runGitCommand: (command: string, workingDir: string) =>
+        fetch(`${getBaseUrl()}/v1/git/run`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ command, working_dir: workingDir })
+        }).then(r => r.json())
 } as const;
 
 // Define the type for the api object
