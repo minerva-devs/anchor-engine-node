@@ -93,12 +93,18 @@ export function extractTemporalContext(query: string): string[] {
     const now = new Date();
     const currentYear = now.getFullYear();
     const tags: Set<string> = new Set();
+    const MAX_TEMPORAL_AMOUNT = 100;
 
     // Regex for "last X months/years"
     const match = query.match(/last\s+(\d+)\s+(months?|years?|days?)/i);
     if (match) {
-        const amount = parseInt(match[1]);
+        let amount = parseInt(match[1]);
         const unit = match[2].toLowerCase();
+
+        // Security: Cap the amount to prevent loop exhaustion DoS
+        if (amount > MAX_TEMPORAL_AMOUNT) {
+            amount = MAX_TEMPORAL_AMOUNT;
+        }
 
         tags.add(currentYear.toString()); // Always include current year
 
