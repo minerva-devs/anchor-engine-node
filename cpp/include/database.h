@@ -106,6 +106,7 @@ public:
     
     void insertEdge(const Edge& edge);
     std::vector<Edge> getEdgesFrom(AtomId atom_id) const;
+    std::vector<Neighbor> getNeighbors(AtomId atom_id) const;
     
     // ==================== FTS Operations ====================
     

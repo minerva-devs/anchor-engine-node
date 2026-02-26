@@ -478,7 +478,9 @@ AtomId Database::insertAtom(const Atom& atom) {
     sqlite3_bind_int(stmt, 4, static_cast<int>(atom.char_end));
     sqlite3_bind_double(stmt, 5, atom.timestamp);
     
-    std::string simhash_hex = "0x" + std::to_string(atom.simhash);
+    std::stringstream ss_simhash;
+    ss_simhash << "0x" << std::hex << atom.simhash;
+    std::string simhash_hex = ss_simhash.str();
     sqlite3_bind_text(stmt, 6, simhash_hex.c_str(), -1, SQLITE_STATIC);
     
     // TODO: Bind metadata, compound_id, start_byte, end_byte
@@ -858,6 +860,39 @@ std::vector<Edge> Database::getEdgesFrom(AtomId atom_id) const {
     
     sqlite3_finalize(stmt);
     return edges;
+}
+
+std::vector<Neighbor> Database::getNeighbors(AtomId atom_id) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<Neighbor> neighbors;
+
+    sqlite3_stmt* stmt;
+    const char* sql = "SELECT e.to_atom, e.weight, e.edge_type, a.timestamp, a.simhash "
+                      "FROM edges e "
+                      "JOIN atoms a ON e.to_atom = a.id "
+                      "WHERE e.from_atom = ?";
+
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        throw DatabaseError("Failed to prepare statement");
+    }
+
+    sqlite3_bind_int(stmt, 1, static_cast<int>(atom_id));
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        Neighbor neighbor;
+        neighbor.id = sqlite3_column_int(stmt, 0);
+        neighbor.edge_weight = sqlite3_column_double(stmt, 1);
+        neighbor.edge_type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 2));
+        neighbor.timestamp = sqlite3_column_double(stmt, 3);
+
+        std::string simhash_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 4));
+        neighbor.simhash = std::stoull(simhash_str, nullptr, 16);
+
+        neighbors.push_back(neighbor);
+    }
+
+    sqlite3_finalize(stmt);
+    return neighbors;
 }
 
 } // namespace anchor
