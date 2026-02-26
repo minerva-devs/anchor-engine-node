@@ -14,7 +14,7 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
     const [availableBuckets, setAvailableBuckets] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
-    
+
     // New bucket creation state
     const [showNewBucket, setShowNewBucket] = useState(false);
     const [newBucketName, setNewBucketName] = useState('');
@@ -46,21 +46,21 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
 
         try {
             const result = await api.createBucket(newBucketName.trim(), newBucketLocation);
-            
+
             if (result.success) {
                 setStatusMessage(`Bucket "${result.bucket}" created successfully!`);
-                
+
                 // Refresh bucket list
                 const buckets = await api.getBuckets();
                 if (Array.isArray(buckets)) {
                     setAvailableBuckets(buckets);
                     setBucket(result.bucket);
                 }
-                
+
                 // Reset new bucket form
                 setShowNewBucket(false);
                 setNewBucketName('');
-                
+
                 setTimeout(() => setStatusMessage(''), 2000);
             } else {
                 setStatusMessage(`Error: ${result.error || "Failed to create bucket"}`);
@@ -106,14 +106,14 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100,
             display: 'flex', justifyContent: 'center', alignItems: 'center'
         }}>
-            <GlassPanel style={{ width: '500px', padding: '1.5rem', background: '#1a1a1a', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+            <GlassPanel className="glass-card" style={{ width: '500px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.5rem' }}>
                     <h3 style={{ margin: 0 }}>GitHub Repository Ingestion</h3>
                     <Button variant="icon" onClick={onClose} style={{ fontSize: '1.2rem', color: 'white' }}>✕</Button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label htmlFor="github-url" style={{ fontSize: '0.9rem', color: '#ccc' }}>Repository URL</label>
+                    <label htmlFor="github-url" style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Repository URL</label>
                     <Input
                         id="github-url"
                         placeholder="https://github.com/owner/repo"
@@ -136,8 +136,8 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
                                 <option key={b} value={b}>{b}</option>
                             ))}
                         </select>
-                        <Button 
-                            variant="ghost" 
+                        <Button
+                            variant="ghost"
                             onClick={() => setShowNewBucket(!showNewBucket)}
                             style={{ fontSize: '0.8rem', padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}
                         >
@@ -151,14 +151,14 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
 
                 {/* New Bucket Creation Form */}
                 {showNewBucket && (
-                    <div style={{ 
-                        padding: '1rem', 
-                        background: 'rgba(139, 92, 246, 0.1)', 
+                    <div style={{
+                        padding: '1rem',
+                        background: 'rgba(139, 92, 246, 0.1)',
                         border: '1px solid rgba(139, 92, 246, 0.3)',
                         borderRadius: '4px',
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        gap: '0.75rem' 
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem'
                     }}>
                         <div style={{ fontSize: '0.85rem', color: '#aaa', marginBottom: '0.25rem' }}>
                             Create a new bucket for organizing ingested content
@@ -213,15 +213,15 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                            <Button 
-                                variant="ghost" 
+                            <Button
+                                variant="ghost"
                                 onClick={() => { setShowNewBucket(false); setNewBucketName(''); }}
                                 disabled={creatingBucket}
                                 style={{ fontSize: '0.8rem' }}
                             >
                                 Cancel
                             </Button>
-                            <Button 
+                            <Button
                                 onClick={handleCreateBucket}
                                 disabled={creatingBucket || !newBucketName.trim()}
                                 style={{ fontSize: '0.8rem', background: 'var(--accent-primary)', color: 'white' }}
