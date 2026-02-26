@@ -74,17 +74,16 @@ export const GitCommandsModal: React.FC<GitCommandsModalProps> = ({ onClose }) =
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100,
             display: 'flex', justifyContent: 'center', alignItems: 'center'
         }}>
-            <GlassPanel style={{ 
-                width: '700px', 
+            <GlassPanel className="glass-card" style={{
+                width: '700px',
                 maxHeight: '80vh',
-                padding: '1.5rem', 
-                background: '#1a1a1a', 
-                display: 'flex', 
-                flexDirection: 'column', 
+                padding: '1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
                 gap: '1rem',
                 overflow: 'hidden'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.5rem' }}>
                     <h3 style={{ margin: 0 }}>Git Commands</h3>
                     <Button variant="icon" onClick={onClose} style={{ fontSize: '1.2rem', color: 'white' }}>✕</Button>
                 </div>
@@ -128,8 +127,8 @@ export const GitCommandsModal: React.FC<GitCommandsModalProps> = ({ onClose }) =
                 </div>
 
                 {/* Run Button */}
-                <Button 
-                    onClick={handleRunCommand} 
+                <Button
+                    onClick={handleRunCommand}
                     disabled={loading || !workingDir || (selectedCommand === 'custom' && !customCommand.trim())}
                     style={{ background: 'var(--accent-primary)', color: 'white' }}
                 >
@@ -138,10 +137,10 @@ export const GitCommandsModal: React.FC<GitCommandsModalProps> = ({ onClose }) =
 
                 {/* Output */}
                 {result && (
-                    <div style={{ 
+                    <div style={{
                         flex: 1,
                         overflow: 'auto',
-                        padding: '1rem', 
+                        padding: '1rem',
                         background: result.success ? 'rgba(0, 255, 0, 0.05)' : 'rgba(255, 0, 0, 0.05)',
                         border: `1px solid ${result.success ? 'rgba(0, 255, 0, 0.3)' : 'rgba(255, 0, 0, 0.3)'}`,
                         borderRadius: '4px',
@@ -165,22 +164,22 @@ export const GitCommandsModal: React.FC<GitCommandsModalProps> = ({ onClose }) =
                 <div style={{ borderTop: '1px solid #333', paddingTop: '0.5rem' }}>
                     <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '0.5rem' }}>Quick Actions</div>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                        <Button 
-                            variant="ghost" 
+                        <Button
+                            variant="ghost"
                             onClick={() => { setSelectedCommand('status'); setWorkingDir(availableRepos[0] || ''); }}
                             style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
                         >
                             Status
                         </Button>
-                        <Button 
-                            variant="ghost" 
+                        <Button
+                            variant="ghost"
                             onClick={() => { setSelectedCommand('log --oneline -20'); setWorkingDir(availableRepos[0] || ''); }}
                             style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
                         >
                             Recent Commits
                         </Button>
-                        <Button 
-                            variant="ghost" 
+                        <Button
+                            variant="ghost"
                             onClick={() => { setSelectedCommand('diff'); setWorkingDir(availableRepos[0] || ''); }}
                             style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
                         >
