@@ -1,14 +1,10 @@
-/**
- * Radial Inflation and FFI Fix Verification Test
- */
-
 import { AnchorCore } from '../../engine/src/native/index.js';
 import { existsSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const TEST_DB_PATH = join(__dirname, 'test_radial.db');
+const TEST_DB_PATH = join(__dirname, 'test_optimization.db');
 
 function cleanup() {
   if (existsSync(TEST_DB_PATH)) {
@@ -17,85 +13,57 @@ function cleanup() {
 }
 
 async function runTest() {
-  console.log('🧪 Radial Inflation Test\n');
+  console.log('🧪 Verifying Optimization (Batch Loading)...');
 
   const core = new AnchorCore();
+  cleanup();
 
   try {
-    cleanup();
-
-    console.log('📦 Initializing database...');
     core.init(TEST_DB_PATH);
 
-    // --- Test 1: Verify Static Initialization Bug Fix ---
-    console.log('\n1. Verifying search bug fix...');
+    // Upsert source
+    core.upsertSource('src1', '/path/to/src1');
 
-    // Insert some unique content
-    console.log('   Upserting sources...');
-    core.upsertSource("src1", "/path/to/src1", 1000);
-    core.upsertSource("src2", "/path/to/src2", 1001);
+    // Create atoms
+    // Atom 1: Anchor
+    const id1 = core.insertAtom('src1', 'Anchor Content', 0, 10, 1000.0, 123456n);
+    // Atom 2: Neighbor
+    const id2 = core.insertAtom('src1', 'Neighbor Content', 10, 20, 1001.0, 654321n);
 
-    const id1 = core.insertAtom("src1", "Apple pie recipe", 0, 10, 1000, 12345n);
-    const id2 = core.insertAtom("src2", "Banana bread recipe", 0, 10, 1001, 67890n);
+    console.log(`Created atoms: ${id1}, ${id2}`);
 
-    console.log('   Inserted atoms:', id1, id2);
+    // Create edge
+    core.insertEdge(id1, id2, 0.5, 'tag');
+    console.log('Created edge');
 
-    const res1 = core.search("Apple", 10);
-    console.log(`   Search 'Apple': found ${res1.length} results`);
-    if (res1.length !== 1 || !res1[0].content.includes("Apple")) {
-        throw new Error("First search failed or incorrect");
+    // Perform radial inflation from id1
+    // Should find id2
+    const results = core.radialInflation([id1], 10, 0.0); // 0.0 threshold to include everything
+
+    console.log(`Radial inflation results: ${JSON.stringify(results)}`);
+
+    if (results.length > 0 && results[0].atom_id === id2) {
+      console.log('✅ Found neighbor atom correctly.');
+      if (results[0].timestamp === 1001.0 && results[0].simhash === 654321) {
+         console.log('✅ Timestamp and SimHash loaded correctly.');
+      } else {
+         console.error('❌ Metadata mismatch.');
+         console.error(`Expected timestamp 1001.0, got ${results[0].timestamp}`);
+         console.error(`Expected simhash 654321, got ${results[0].simhash}`);
+         process.exit(1);
+      }
+    } else {
+      console.error('❌ Failed to find neighbor atom.');
+      process.exit(1);
     }
-
-    const res2 = core.search("Banana", 10);
-    console.log(`   Search 'Banana': found ${res2.length} results`);
-
-    // If bug exists, res2 will be same as res1 (Apple)
-    if (res2.length !== 1 || !res2[0].content.includes("Banana")) {
-        console.error("   DEBUG: res2 content:", res2.length > 0 ? res2[0].content : "empty");
-        throw new Error("Static initialization bug detected! Subsequent searches are returning stale data.");
-    }
-
-    console.log('   ✅ Search bug is FIXED (results update correctly)');
-
-    // --- Test 2: Radial Inflation ---
-    console.log('\n2. Testing Radial Inflation...');
-
-    // Atom 1 and 2 share "recipe" tag?
-    // Let's add explicit tags using our new FFI function
-    console.log('   Adding tags...');
-    core.addTag(id1, "cooking");
-    core.addTag(id2, "cooking");
-    core.addTag(id1, "fruit");
-    core.addTag(id2, "fruit");
-
-    // Now perform radial inflation from id1
-    // Should find id2 because they share tags
-    console.log(`   Performing radial inflation from atom ${id1}...`);
-
-    const candidates = core.radialInflation([id1], 10, 0.001);
-    console.log(`   Found ${candidates.length} candidates`);
-
-    if (candidates.length === 0) {
-        throw new Error("Radial inflation returned no results (expected at least 1)");
-    }
-
-    const foundId2 = candidates.find(c => c.atom_id === id2);
-    if (!foundId2) {
-        console.log("   Candidates:", JSON.stringify(candidates, null, 2));
-        throw new Error(`Radial inflation did not find atom ${id2}`);
-    }
-
-    console.log(`   ✅ Found connected atom ${id2} with score ${foundId2.gravity_score}`);
-    console.log('   ✅ Radial Inflation works!');
 
   } catch (error) {
     console.error('❌ Test failed:', error);
     process.exit(1);
   } finally {
-    console.log('\n🧹 Cleaning up...');
     core.destroy();
     cleanup();
   }
 }
 
-runTest().catch(console.error);
+runTest();

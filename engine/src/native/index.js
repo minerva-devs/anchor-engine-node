@@ -43,9 +43,9 @@ const ffi = {
   database_destroy: lib.func('database_destroy', 'void', ['void *']),
   database_search_atoms: lib.func('database_search_atoms', 'string', ['void *', 'string', 'int64']),
   database_get_stats: lib.func('database_get_stats', 'string', ['void *']),
+  database_upsert_source: lib.func('database_upsert_source', 'bool', ['void *', 'string', 'string']),
   database_insert_atom: lib.func('database_insert_atom', 'int64', ['void *', 'string', 'string', 'int64', 'int64', 'double', 'uint64']),
-  database_upsert_source: lib.func('database_upsert_source', 'void', ['void *', 'string', 'string', 'double']),
-  database_add_tag: lib.func('database_add_tag', 'void', ['void *', 'int64', 'string', 'string']),
+  database_insert_edge: lib.func('database_insert_edge', 'bool', ['void *', 'int64', 'int64', 'double', 'string']),
   
   // Physics Walker
   physics_walker_create: lib.func('physics_walker_create', 'void *', ['double', 'double', 'int64']),
@@ -154,6 +154,11 @@ export class AnchorCore {
    * @param {bigint} simhash - SimHash value
    * @returns {number} Atom ID
    */
+  upsertSource(id, path) {
+    if (!this.#db) throw new Error('Database not initialized');
+    return ffi.database_upsert_source(this.#db, id, path);
+  }
+
   insertAtom(sourceId, content, charStart, charEnd, timestamp, simhash) {
     if (!this.#db) throw new Error('Database not initialized');
     return ffi.database_insert_atom(
@@ -168,25 +173,22 @@ export class AnchorCore {
   }
 
   /**
-   * Upsert source
-   * @param {string} id - Source ID
-   * @param {string} path - Source path
-   * @param {number} timestamp - Timestamp
+   * Insert edge
+   * @param {number} from - From atom ID
+   * @param {number} to - To atom ID
+   * @param {number} weight - Edge weight
+   * @param {string} type - Edge type
+   * @returns {boolean} Success
    */
-  upsertSource(id, path, timestamp) {
+  insertEdge(from, to, weight, type) {
     if (!this.#db) throw new Error('Database not initialized');
-    ffi.database_upsert_source(this.#db, id, path, timestamp);
-  }
-
-  /**
-   * Add tag to atom
-   * @param {number} atomId - Atom ID
-   * @param {string} tag - Tag
-   * @param {string} bucket - Bucket (optional)
-   */
-  addTag(atomId, tag, bucket = null) {
-    if (!this.#db) throw new Error('Database not initialized');
-    ffi.database_add_tag(this.#db, BigInt(atomId), tag, bucket);
+    return ffi.database_insert_edge(
+      this.#db,
+      BigInt(from),
+      BigInt(to),
+      weight,
+      type
+    );
   }
 
   /**
