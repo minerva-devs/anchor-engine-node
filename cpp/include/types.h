@@ -97,6 +97,11 @@ struct Candidate {
     
     // For deduplication tracking
     std::vector<std::string> content_fingerprints;
+
+    // For geometric overlap
+    SourceId source_id;
+    std::optional<size_t> start_byte;
+    std::optional<size_t> end_byte;
 };
 
 /**
