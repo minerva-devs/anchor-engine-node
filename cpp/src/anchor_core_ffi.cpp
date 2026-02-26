@@ -16,6 +16,12 @@
 
 using json = nlohmann::json;
 
+#if defined(_WIN32)
+  #define ANCHOR_EXPORT __declspec(dllexport)
+#else
+  #define ANCHOR_EXPORT __attribute__((visibility("default")))
+#endif
+
 // ==================== Database FFI ====================
 
 extern "C" {
@@ -25,7 +31,7 @@ extern "C" {
  * @param path Database path (or ":memory:" for in-memory)
  * @return Opaque pointer to database
  */
-__declspec(dllexport) void* database_create(const char* path) {
+ANCHOR_EXPORT void* database_create(const char* path) {
     try {
         return new anchor::Database(path ? path : ":memory:");
     } catch (...) {
@@ -37,7 +43,7 @@ __declspec(dllexport) void* database_create(const char* path) {
  * Destroy database instance
  * @param db Database pointer
  */
-__declspec(dllexport) void database_destroy(void* db) {
+ANCHOR_EXPORT void database_destroy(void* db) {
     if (db) {
         delete static_cast<anchor::Database*>(db);
     }
@@ -49,7 +55,7 @@ __declspec(dllexport) void database_destroy(void* db) {
  * @param path Database path
  * @return true on success
  */
-__declspec(dllexport) bool database_open(void* db, const char* path) {
+ANCHOR_EXPORT bool database_open(void* db, const char* path) {
     // Database is already opened in constructor
     // This function is a no-op for FFI compatibility
     return db != nullptr;
@@ -59,7 +65,7 @@ __declspec(dllexport) bool database_open(void* db, const char* path) {
  * Close database
  * @param db Database pointer
  */
-__declspec(dllexport) void database_close(void* db) {
+ANCHOR_EXPORT void database_close(void* db) {
     // Database will be closed in destructor
     // This function is a no-op for FFI compatibility
 }
@@ -71,7 +77,7 @@ __declspec(dllexport) void database_close(void* db) {
  * @param limit Maximum results
  * @return JSON string of results
  */
-__declspec(dllexport) const char* database_search_atoms(void* db, const char* query, long long limit) {
+ANCHOR_EXPORT const char* database_search_atoms(void* db, const char* query, long long limit) {
     try {
         auto* database = static_cast<anchor::Database*>(db);
         auto atoms = database->searchAtoms(query, static_cast<size_t>(limit));
@@ -102,7 +108,7 @@ __declspec(dllexport) const char* database_search_atoms(void* db, const char* qu
  * @param db Database pointer
  * @return JSON string of stats
  */
-__declspec(dllexport) const char* database_get_stats(void* db) {
+ANCHOR_EXPORT const char* database_get_stats(void* db) {
     try {
         auto* database = static_cast<anchor::Database*>(db);
         auto stats = database->getStats();
@@ -132,7 +138,7 @@ __declspec(dllexport) const char* database_get_stats(void* db) {
  * @param simhash SimHash value
  * @return Atom ID
  */
-__declspec(dllexport) long long database_insert_atom(
+ANCHOR_EXPORT long long database_insert_atom(
     void* db,
     const char* source_id,
     const char* content,
@@ -167,7 +173,7 @@ __declspec(dllexport) long long database_insert_atom(
  * @param walk_radius Walk radius (hops)
  * @return Opaque pointer
  */
-__declspec(dllexport) void* physics_walker_create(double damping, double temporal_decay, long long walk_radius) {
+ANCHOR_EXPORT void* physics_walker_create(double damping, double temporal_decay, long long walk_radius) {
     try {
         anchor::PhysicsWalkerConfig config;
         config.damping_factor = damping;
@@ -183,7 +189,7 @@ __declspec(dllexport) void* physics_walker_create(double damping, double tempora
  * Destroy physics walker
  * @param walker Walker pointer
  */
-__declspec(dllexport) void physics_walker_destroy(void* walker) {
+ANCHOR_EXPORT void physics_walker_destroy(void* walker) {
     if (walker) {
         delete static_cast<anchor::PhysicsWalker*>(walker);
     }
@@ -198,7 +204,7 @@ __declspec(dllexport) void physics_walker_destroy(void* walker) {
  * @param threshold Gravity threshold
  * @return JSON array of candidates
  */
-__declspec(dllexport) const char* physics_walker_radial_inflation(
+ANCHOR_EXPORT const char* physics_walker_radial_inflation(
     void* walker,
     void* db,
     const char* anchor_ids_json,
@@ -233,7 +239,7 @@ __declspec(dllexport) const char* physics_walker_radial_inflation(
  * @param expand_to_paragraphs Expand to paragraph boundaries
  * @return Opaque pointer
  */
-__declspec(dllexport) void* context_inflator_create(long long base_radius, bool expand_to_paragraphs) {
+ANCHOR_EXPORT void* context_inflator_create(long long base_radius, bool expand_to_paragraphs) {
     try {
         anchor::ContextInflatorConfig config;
         config.base_radius = static_cast<size_t>(base_radius);
@@ -248,7 +254,7 @@ __declspec(dllexport) void* context_inflator_create(long long base_radius, bool 
  * Destroy context inflator
  * @param inflator Inflator pointer
  */
-__declspec(dllexport) void context_inflator_destroy(void* inflator) {
+ANCHOR_EXPORT void context_inflator_destroy(void* inflator) {
     if (inflator) {
         delete static_cast<anchor::ContextInflator*>(inflator);
     }
@@ -262,7 +268,7 @@ __declspec(dllexport) void context_inflator_destroy(void* inflator) {
  * @param max_chars Maximum characters
  * @return JSON array of inflated atoms
  */
-__declspec(dllexport) const char* context_inflator_inflate(
+ANCHOR_EXPORT const char* context_inflator_inflate(
     void* inflator,
     void* db,
     const char* atom_ids_json,
@@ -306,7 +312,7 @@ __declspec(dllexport) const char* context_inflator_inflate(
  * @param simhash_threshold SimHash distance threshold
  * @return Opaque pointer
  */
-__declspec(dllexport) void* deduplicator_create(double geometric_threshold, long long simhash_threshold) {
+ANCHOR_EXPORT void* deduplicator_create(double geometric_threshold, long long simhash_threshold) {
     try {
         anchor::DeduplicatorConfig config;
         config.geometric_threshold = geometric_threshold;
@@ -321,7 +327,7 @@ __declspec(dllexport) void* deduplicator_create(double geometric_threshold, long
  * Destroy deduplicator
  * @param dedup Deduplicator pointer
  */
-__declspec(dllexport) void deduplicator_destroy(void* dedup) {
+ANCHOR_EXPORT void deduplicator_destroy(void* dedup) {
     if (dedup) {
         delete static_cast<anchor::Deduplicator*>(dedup);
     }
@@ -333,7 +339,7 @@ __declspec(dllexport) void deduplicator_destroy(void* dedup) {
  * @param candidates_json JSON array of candidates
  * @return JSON array of unique candidates
  */
-__declspec(dllexport) const char* deduplicator_deduplicate(void* dedup, const char* candidates_json) {
+ANCHOR_EXPORT const char* deduplicator_deduplicate(void* dedup, const char* candidates_json) {
     try {
         auto* d = static_cast<anchor::Deduplicator*>(dedup);
         json j_candidates = json::parse(candidates_json);
@@ -355,7 +361,7 @@ __declspec(dllexport) const char* deduplicator_deduplicate(void* dedup, const ch
  * @param min_content_length Minimum content length
  * @return Opaque pointer
  */
-__declspec(dllexport) void* transient_filter_create(long long min_content_length) {
+ANCHOR_EXPORT void* transient_filter_create(long long min_content_length) {
     try {
         anchor::TransientFilterConfig config;
         config.min_content_length = static_cast<size_t>(min_content_length);
@@ -369,7 +375,7 @@ __declspec(dllexport) void* transient_filter_create(long long min_content_length
  * Destroy transient filter
  * @param filter Filter pointer
  */
-__declspec(dllexport) void transient_filter_destroy(void* filter) {
+ANCHOR_EXPORT void transient_filter_destroy(void* filter) {
     if (filter) {
         delete static_cast<anchor::TransientFilter*>(filter);
     }
@@ -381,7 +387,7 @@ __declspec(dllexport) void transient_filter_destroy(void* filter) {
  * @param atoms_json JSON array of atoms
  * @return JSON array of filtered atoms
  */
-__declspec(dllexport) const char* transient_filter_apply(void* filter, const char* atoms_json) {
+ANCHOR_EXPORT const char* transient_filter_apply(void* filter, const char* atoms_json) {
     try {
         auto* f = static_cast<anchor::TransientFilter*>(filter);
         json j_atoms = json::parse(atoms_json);
