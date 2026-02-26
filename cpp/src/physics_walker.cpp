@@ -158,47 +158,20 @@ void PhysicsWalker::traverseGraph(Database& db,
                 candidate.physical_bonus = 0.0;
                 candidate.gravity_score = 0.0;
                 
-                // Load full atom data for timestamp and simhash
+                // Load only necessary atom data (timestamp and simhash)
                 try {
-                    auto atom = db.getAtom(edge.to);
+                    auto atom = db.getAtomTimestampAndSimhash(edge.to);
                     candidate.timestamp = atom.timestamp;
                     candidate.simhash = atom.simhash;
+                    candidate.source_id = atom.source_id;
+                    candidate.start_byte = atom.start_byte;
+                    candidate.end_byte = atom.end_byte;
                 } catch (...) {
                     continue;
                 }
                 
                 candidates.push_back(candidate);
             }
-        }
-
-        // Get implicit edges via shared tags
-        try {
-            auto tags = db.getTagsForAtom(current_id);
-            for (const auto& tag : tags) {
-                auto neighbors = db.getAtomsByTag(tag.tag);
-                for (const auto& neighbor : neighbors) {
-                    if (neighbor.id == current_id) continue;
-
-                    if (visited.find(neighbor.id) == visited.end()) {
-                        visited.insert(neighbor.id);
-                        queue.push({neighbor.id, hop + 1});
-
-                        // Create candidate
-                        Candidate candidate;
-                        candidate.atom_id = neighbor.id;
-                        candidate.hop_distance = hop + 1;
-                        candidate.shared_tags = 1; // Found via at least 1 tag
-                        candidate.physical_bonus = 0.0;
-                        candidate.gravity_score = 0.0;
-                        candidate.timestamp = neighbor.timestamp;
-                        candidate.simhash = neighbor.simhash;
-
-                        candidates.push_back(candidate);
-                    }
-                }
-            }
-        } catch (...) {
-            // Ignore errors during tag traversal
         }
     }
 }
