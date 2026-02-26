@@ -108,7 +108,8 @@ ANCHOR_EXPORT const char* database_search_atoms(void* db, const char* query, lon
             });
         }
         
-        static std::string result = j.dump();
+        thread_local std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
@@ -132,7 +133,8 @@ ANCHOR_EXPORT const char* database_get_stats(void* db) {
             {"tag_count", stats.tag_count}
         };
         
-        static std::string result = j.dump();
+        thread_local std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "{}";
@@ -171,8 +173,20 @@ ANCHOR_EXPORT long long database_insert_atom(
         atom.timestamp = timestamp;
         atom.simhash = static_cast<uint64_t>(simhash);
         
+        // Ensure source exists (workaround for missing source management FFI)
+        anchor::Source source;
+        source.id = atom.source_id;
+        source.path = "dummy_path_" + atom.source_id;
+        source.created_at = atom.timestamp;
+        source.updated_at = atom.timestamp;
+        database->upsertSource(source);
+
         return static_cast<long long>(database->insertAtom(atom));
+    } catch (const std::exception& e) {
+        printf("[anchor_core_ffi] insertAtom failed: %s\n", e.what());
+        return -1;
     } catch (...) {
+        printf("[anchor_core_ffi] insertAtom failed: unknown error\n");
         return -1;
     }
 }
@@ -309,7 +323,8 @@ ANCHOR_EXPORT const char* context_inflator_inflate(
             });
         }
         
-        static std::string result = j.dump();
+        thread_local std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
@@ -356,7 +371,7 @@ ANCHOR_EXPORT const char* deduplicator_deduplicate(void* dedup, const char* cand
     try {
         auto* d = static_cast<anchor::Deduplicator*>(dedup);
         json j_candidates = json::parse(candidates_json);
-        
+
         std::vector<anchor::Candidate> candidates;
         for (const auto& j : j_candidates) {
             anchor::Candidate c;
@@ -391,7 +406,7 @@ ANCHOR_EXPORT const char* deduplicator_deduplicate(void* dedup, const char* cand
             });
         }
 
-        static std::string result;
+        thread_local std::string result;
         result = j_result.dump();
         return result.c_str();
     } catch (...) {
@@ -437,7 +452,7 @@ ANCHOR_EXPORT const char* transient_filter_apply(void* filter, const char* atoms
     try {
         auto* f = static_cast<anchor::TransientFilter*>(filter);
         json j_atoms = json::parse(atoms_json);
-        
+
         std::vector<anchor::Atom> atoms;
         for (const auto& item : j_atoms) {
             anchor::Atom atom{};
@@ -486,7 +501,7 @@ ANCHOR_EXPORT const char* transient_filter_apply(void* filter, const char* atoms
             j_result.push_back(item);
         }
 
-        static std::string result;
+        thread_local std::string result;
         result = j_result.dump();
         return result.c_str();
     } catch (...) {
