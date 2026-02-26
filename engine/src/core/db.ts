@@ -43,12 +43,6 @@ export class Database {
       try {
         console.log(`[DB] Using database directory: ${dbPath}`);
 
-        // Close any existing database connection first
-        if (this.dbInstance) {
-          await this.dbInstance.close();
-          this.dbInstance = null;
-        }
-
         // Remove existing database directory to prevent corruption from unclean shutdowns
         if (fs.existsSync(dbPath)) {
           console.log(`[DB] Removing existing database directory (preventing corruption): ${dbPath}`);
