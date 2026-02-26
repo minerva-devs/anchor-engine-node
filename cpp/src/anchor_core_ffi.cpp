@@ -107,7 +107,8 @@ ANCHOR_EXPORT const char* database_search_atoms(void* db, const char* query, lon
             });
         }
         
-        static std::string result = j.dump();
+        static std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
@@ -131,7 +132,8 @@ ANCHOR_EXPORT const char* database_get_stats(void* db) {
             {"tag_count", stats.tag_count}
         };
         
-        static std::string result = j.dump();
+        static std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "{}";
@@ -173,6 +175,62 @@ ANCHOR_EXPORT long long database_insert_atom(
         return static_cast<long long>(database->insertAtom(atom));
     } catch (...) {
         return -1;
+    }
+}
+
+/**
+ * Upsert a source
+ * @param db Database pointer
+ * @param id Source ID
+ * @param path Source path
+ * @param timestamp Timestamp
+ */
+ANCHOR_EXPORT void database_upsert_source(
+    void* db,
+    const char* id,
+    const char* path,
+    double timestamp
+) {
+    try {
+        auto* database = static_cast<anchor::Database*>(db);
+        anchor::Source source;
+        source.id = id ? id : "";
+        source.path = path ? path : "";
+        source.created_at = timestamp;
+        source.updated_at = timestamp;
+        database->upsertSource(source);
+    } catch (...) {
+        // ignore
+    }
+}
+
+/**
+ * Add a tag to an atom
+ * @param db Database pointer
+ * @param atom_id Atom ID
+ * @param tag Tag string
+ * @param bucket Bucket string (optional, can be null)
+ */
+ANCHOR_EXPORT void database_add_tag(
+    void* db,
+    long long atom_id,
+    const char* tag,
+    const char* bucket
+) {
+    try {
+        auto* database = static_cast<anchor::Database*>(db);
+
+        anchor::Tag t;
+        t.atom_id = static_cast<anchor::AtomId>(atom_id);
+        t.tag = tag ? tag : "";
+        if (bucket) {
+            t.bucket = bucket;
+        }
+
+        std::vector<anchor::Tag> tags = {t};
+        database->addTags(t.atom_id, tags);
+    } catch (...) {
+        // fail silently for now
     }
 }
 
@@ -233,10 +291,29 @@ ANCHOR_EXPORT const char* physics_walker_radial_inflation(
             anchor_ids.push_back(id.get<anchor::AtomId>());
         }
         
-        // TODO: Implement actual radial inflation
-        // For now, return empty array
-        static std::string empty = "[]";
-        return empty.c_str();
+        auto candidates = w->performRadialInflation(*database, anchor_ids, static_cast<size_t>(limit), threshold);
+
+        json j = json::array();
+        for (const auto& candidate : candidates) {
+            j.push_back({
+                {"atom_id", candidate.atom_id},
+                {"hop_distance", candidate.hop_distance},
+                {"shared_tags", candidate.shared_tags},
+                {"physical_bonus", candidate.physical_bonus},
+                {"timestamp", candidate.timestamp},
+                {"simhash", candidate.simhash},
+                {"gravity_score", candidate.gravity_score}
+            });
+
+            // Add content fingerprints if present
+            if (!candidate.content_fingerprints.empty()) {
+                j.back()["content_fingerprints"] = candidate.content_fingerprints;
+            }
+        }
+
+        static std::string result;
+        result = j.dump();
+        return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
         return empty.c_str();
@@ -308,7 +385,8 @@ ANCHOR_EXPORT const char* context_inflator_inflate(
             });
         }
         
-        static std::string result = j.dump();
+        static std::string result;
+        result = j.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
@@ -358,7 +436,8 @@ ANCHOR_EXPORT const char* deduplicator_deduplicate(void* dedup, const char* cand
         
         // TODO: Convert JSON to Candidate objects and deduplicate
         // For now, return input
-        static std::string result = j_candidates.dump();
+        static std::string result;
+        result = j_candidates.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
@@ -406,7 +485,8 @@ ANCHOR_EXPORT const char* transient_filter_apply(void* filter, const char* atoms
         
         // TODO: Convert JSON to Atom objects and filter
         // For now, return input
-        static std::string result = j_atoms.dump();
+        static std::string result;
+        result = j_atoms.dump();
         return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
