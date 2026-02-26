@@ -377,15 +377,33 @@ export class AutoSynonymGenerator {
     try {
       // Save directly to database
       console.log(`[SynonymGenerator] Upserting synonyms to database table...`);
+      const terms: string[] = [];
+      const synLists: string[] = [];
+
       for (const [term, syns] of Object.entries(synonyms)) {
         if (!syns || syns.length === 0) continue;
-        const synList = JSON.stringify(syns);
-        const query = `
-          INSERT INTO synonyms (term, synonyms) 
-          VALUES ($1, $2) 
-          ON CONFLICT (term) DO UPDATE SET synonyms = EXCLUDED.synonyms, created_at = CURRENT_TIMESTAMP;
-        `;
-        await db.run(query, [term, synList]);
+        terms.push(term);
+        synLists.push(JSON.stringify(syns));
+      }
+
+      // Batch insert in chunks to avoid parameter limits and optimize performance
+      const BATCH_SIZE = 500;
+      let processed = 0;
+
+      while (processed < terms.length) {
+        const batchTerms = terms.slice(processed, processed + BATCH_SIZE);
+        const batchSynLists = synLists.slice(processed, processed + BATCH_SIZE);
+
+        if (batchTerms.length > 0) {
+          const query = `
+            INSERT INTO synonyms (term, synonyms)
+            SELECT * FROM unnest($1::text[], $2::text[])
+            ON CONFLICT (term) DO UPDATE SET synonyms = EXCLUDED.synonyms, created_at = CURRENT_TIMESTAMP;
+          `;
+          await db.run(query, [batchTerms, batchSynLists]);
+        }
+
+        processed += BATCH_SIZE;
       }
 
       // Ensure directory exists
