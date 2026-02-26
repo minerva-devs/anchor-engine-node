@@ -1,94 +1,121 @@
 #include "graph_traversal.h"
 #include "database.h"
-#include <cassert>
 #include <iostream>
-#include <algorithm>
+#include <cassert>
 #include <vector>
+#include <optional>
 
 using namespace anchor;
 
-void test_findTagNeighbors() {
-    std::cout << "Starting test_findTagNeighbors..." << std::endl;
-    auto db = Database::inMemory();
+void test_bfs() {
+    std::cout << "Testing BFS Traversal..." << std::endl;
 
-    // Create source
-    Source source;
-    source.id = "test_source";
-    source.path = "test_path";
-    source.created_at = 0;
-    source.updated_at = 0;
-    db.upsertSource(source);
+    // Create in-memory database
+    Database db = Database::inMemory();
 
-    // Create atoms
-    Atom a1; a1.source_id = "test_source"; a1.content = "Atom 1"; a1.simhash = 1; a1.char_start = 0; a1.char_end = 10; a1.timestamp = 1000;
-    Atom a2; a2.source_id = "test_source"; a2.content = "Atom 2"; a2.simhash = 2; a2.char_start = 11; a2.char_end = 20; a2.timestamp = 2000;
-    Atom a3; a3.source_id = "test_source"; a3.content = "Atom 3"; a3.simhash = 3; a3.char_start = 21; a3.char_end = 30; a3.timestamp = 3000;
+    // Insert sources first
+    Source s1;
+    s1.id = "src1";
+    s1.path = "path/to/src1";
+    s1.created_at = 100.0;
+    s1.updated_at = 100.0;
+    db.upsertSource(s1);
 
+    Source s2;
+    s2.id = "src2";
+    s2.path = "path/to/src2";
+    s2.created_at = 100.0;
+    s2.updated_at = 100.0;
+    db.upsertSource(s2);
+
+    Atom a1;
+    a1.source_id = "src1";
+    a1.content = "content1";
+    a1.char_start = 0;
+    a1.char_end = 10;
+    a1.timestamp = 100.0;
+    a1.simhash = 0x123;
     AtomId id1 = db.insertAtom(a1);
+
+    Atom a2;
+    a2.source_id = "src1";
+    a2.content = "content2";
+    a2.char_start = 10;
+    a2.char_end = 20;
+    a2.timestamp = 101.0;
+    a2.simhash = 0x124;
     AtomId id2 = db.insertAtom(a2);
+
+    Atom a3;
+    a3.source_id = "src2";
+    a3.content = "content3";
+    a3.char_start = 0;
+    a3.char_end = 10;
+    a3.timestamp = 102.0;
+    a3.simhash = 0x125;
     AtomId id3 = db.insertAtom(a3);
 
-    std::cout << "Inserted atoms: " << id1 << ", " << id2 << ", " << id3 << std::endl;
+    Atom a4;
+    a4.source_id = "src2";
+    a4.content = "content4";
+    a4.char_start = 10;
+    a4.char_end = 20;
+    a4.timestamp = 103.0;
+    a4.simhash = 0x126;
+    AtomId id4 = db.insertAtom(a4);
 
-    // Add tags
-    // Atom 1 and 2 share "science"
-    // Atom 2 and 3 share "physics"
-    // Atom 1 has "chemistry"
+    // Insert edges: 1->2, 1->3, 2->4
+    Edge e1;
+    e1.from = id1;
+    e1.to = id2;
+    e1.weight = 1.0;
+    e1.edge_type = "test";
+    db.insertEdge(e1);
 
-    std::vector<Tag> tags1 = {{0, id1, "science", {}}, {0, id1, "chemistry", {}}};
-    std::vector<Tag> tags2 = {{0, id2, "science", {}}, {0, id2, "physics", {}}};
-    std::vector<Tag> tags3 = {{0, id3, "physics", {}}};
+    Edge e2;
+    e2.from = id1;
+    e2.to = id3;
+    e2.weight = 1.0;
+    e2.edge_type = "test";
+    db.insertEdge(e2);
 
-    db.addTags(id1, tags1);
-    db.addTags(id2, tags2);
-    db.addTags(id3, tags3);
+    Edge e3;
+    e3.from = id2;
+    e3.to = id4;
+    e3.weight = 1.0;
+    e3.edge_type = "test";
+    db.insertEdge(e3);
 
-    std::cout << "Added tags." << std::endl;
+    // BFS from 1 with max_hops=2
+    std::vector<Edge> result_edges = bfsTraversal(db, id1, 2);
 
-    // Test neighbors for Atom 1
-    // Should be Atom 2 (shared "science")
-    auto neighbors1 = findTagNeighbors(db, id1);
-    std::cout << "Neighbors for Atom 1: " << neighbors1.size() << std::endl;
-    for (auto n : neighbors1) std::cout << n << " ";
-    std::cout << std::endl;
+    std::cout << "Traversed " << result_edges.size() << " edges." << std::endl;
 
-    assert(neighbors1.size() == 1);
-    assert(neighbors1[0] == id2);
+    // Check results
+    bool found_1_2 = false;
+    bool found_1_3 = false;
+    bool found_2_4 = false;
 
-    // Test neighbors for Atom 2
-    // Should be Atom 1 ("science") and Atom 3 ("physics")
-    auto neighbors2 = findTagNeighbors(db, id2);
-    std::cout << "Neighbors for Atom 2: " << neighbors2.size() << std::endl;
-    for (auto n : neighbors2) std::cout << n << " ";
-    std::cout << std::endl;
+    for (const auto& e : result_edges) {
+        std::cout << "Edge: " << e.from << " -> " << e.to << std::endl;
+        if (e.from == id1 && e.to == id2) found_1_2 = true;
+        if (e.from == id1 && e.to == id3) found_1_3 = true;
+        if (e.from == id2 && e.to == id4) found_2_4 = true;
+    }
 
-    assert(neighbors2.size() == 2);
-    // Sort to verify
-    std::sort(neighbors2.begin(), neighbors2.end());
-    assert(neighbors2[0] == id1);
-    assert(neighbors2[1] == id3);
+    assert(result_edges.size() == 3);
+    assert(found_1_2);
+    assert(found_1_3);
+    assert(found_2_4);
 
-    // Test neighbors for Atom 3
-    // Should be Atom 2 ("physics")
-    auto neighbors3 = findTagNeighbors(db, id3);
-    std::cout << "Neighbors for Atom 3: " << neighbors3.size() << std::endl;
-    for (auto n : neighbors3) std::cout << n << " ";
-    std::cout << std::endl;
-
-    assert(neighbors3.size() == 1);
-    assert(neighbors3[0] == id2);
-
-    std::cout << "test_findTagNeighbors passed!" << std::endl;
+    std::cout << "BFS Traversal Test Passed!" << std::endl;
 }
 
 int main() {
     try {
-        test_findTagNeighbors();
+        test_bfs();
     } catch (const std::exception& e) {
         std::cerr << "Test failed with exception: " << e.what() << std::endl;
-        return 1;
-    } catch (...) {
-        std::cerr << "Test failed with unknown exception" << std::endl;
         return 1;
     }
     return 0;
