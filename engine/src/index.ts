@@ -19,8 +19,12 @@ const __dirname = path.dirname(__filename);
 const app: express.Application = express();
 const PORT = config.PORT;
 
+// Security Fix: Limit JSON body size to prevent DoS via large payloads
+// Use configured file size limit + 50% buffer for JSON overhead (base64/escaping)
+const jsonLimit = Math.ceil((config.LIMITS?.MAX_FILE_SIZE_BYTES || 10 * 1024 * 1024) * 1.5);
+
 app.use(cors());
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: jsonLimit }));
 app.use(express.urlencoded({ extended: true }));
 
 // HTTP Request Logging Middleware
