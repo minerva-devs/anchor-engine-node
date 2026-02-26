@@ -870,6 +870,27 @@ export function setupRoutes(app: Application) {
       console.log(`[Maintenance] Found ${atoms.rows.length} atoms to re-index.`);
 
       let count = 0;
+      const BATCH_SIZE = 500;
+      let values: string[] = [];
+      let params: any[] = [];
+
+      const flushBatch = async () => {
+        if (values.length === 0) return;
+        try {
+          const placeholders = values.join(',');
+          await db.run(
+            `INSERT INTO tags (atom_id, tag, bucket) VALUES ${placeholders}
+             ON CONFLICT (atom_id, tag, bucket) DO NOTHING`,
+            params
+          );
+          count += values.length;
+        } catch (e) {
+          console.warn(`[Maintenance] Batch insert failed:`, e);
+        }
+        values = [];
+        params = [];
+      };
+
       for (const row of atoms.rows) {
         const atomId = row.id;
         const tags = row.tags as string[];
@@ -880,18 +901,20 @@ export function setupRoutes(app: Application) {
         for (const bucket of buckets) {
           for (const tag of tags) {
             if (tag && bucket) {
-              try {
-                await db.run(
-                  `INSERT INTO tags (atom_id, tag, bucket) VALUES ($1, $2, $3)
-                       ON CONFLICT (atom_id, tag, bucket) DO NOTHING`,
-                  [atomId, tag, bucket]
-                );
-                count++;
-              } catch (e) { }
+              const idx = params.length;
+              values.push(`($${idx + 1}, $${idx + 2}, $${idx + 3})`);
+              params.push(atomId, tag, bucket);
+
+              if (values.length >= BATCH_SIZE) {
+                await flushBatch();
+              }
             }
           }
         }
       }
+
+      // Flush remaining items
+      await flushBatch();
 
       console.log(`[Maintenance] Re-indexing complete. Inserted ${count} tags.`);
       res.status(200).json({ status: 'success', message: `Re-indexed ${count} tags from ${atoms.rows.length} atoms.` });
