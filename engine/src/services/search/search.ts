@@ -66,6 +66,41 @@ export async function lookupByEngram(key: string): Promise<string[]> {
   return [];
 }
 
+/**
+ * Hydrate engram IDs into full SearchResult objects
+ */
+export async function hydrateEngrams(ids: string[]): Promise<SearchResult[]> {
+  if (!ids || ids.length === 0) return [];
+
+  const query = `
+    SELECT id, content, source_path, timestamp, buckets, tags, provenance, compound_id, start_byte, end_byte
+    FROM atoms
+    WHERE id = ANY($1)
+  `;
+
+  try {
+    const result = await db.run(query, [ids]);
+
+    return result.rows.map((row: any) => ({
+      id: row.id,
+      content: row.content,
+      source: row.source_path, // Map source_path to source
+      timestamp: row.timestamp,
+      buckets: row.buckets || [],
+      tags: row.tags || [],
+      epochs: '',
+      provenance: row.provenance || 'internal',
+      score: 1.0, // High score for direct engram hits
+      compound_id: row.compound_id,
+      start_byte: row.start_byte,
+      end_byte: row.end_byte
+    }));
+  } catch (e) {
+    console.error('[Search] Failed to hydrate engrams:', e);
+    return [];
+  }
+}
+
 import { PhysicsTagWalker } from './physics-tag-walker.js';
 import { assembleAndSerialize, assembleContextPackage } from './graph-context-serializer.js';
 import { UserContext } from '../../types/context.js';
@@ -115,7 +150,7 @@ export async function findAnchors(
     }
 
     let anchors: SearchResult[] = [];
-    let atomResults: SearchResult[] = [];
+    // let atomResults: SearchResult[] = []; // Removed duplicate declaration
 
     // A. Atom Search (Radial Inflation) - Use C++ results if available
     if (cppResults.length > 0) {
@@ -471,27 +506,30 @@ export async function findAnchors(
     const { getMirrorPath } = await import('../mirror/mirror.js');
     const fs = await import('fs');
 
-    for (const anchor of anchors) {
+    // Parallelize mirror reads for performance (non-blocking I/O)
+    await Promise.all(anchors.map(async (anchor) => {
       // Skip mirror read if no source_path (chat history atoms)
       if (!anchor.source || anchor.source.trim() === '') {
-        continue; // Keep DB content
+        return; // Keep DB content
       }
       
       try {
         // Calculate Mirror Path
         const mirrorPath = getMirrorPath(anchor.source, anchor.provenance);
 
-        // Check if exists and read
-        if (fs.existsSync(mirrorPath)) {
-          const liveContent = fs.readFileSync(mirrorPath, 'utf-8');
+        // Check if exists and read async
+        try {
+          const liveContent = await fs.promises.readFile(mirrorPath, 'utf-8');
           if (liveContent && liveContent.length > 0) {
             anchor.content = liveContent;
           }
+        } catch (err) {
+          // Ignore ENOENT (file missing) or other read errors
         }
       } catch (e: any) {
         // Fail silently -> Keep DB content
       }
-    }
+    }));
 
     return anchors;
 
@@ -523,7 +561,8 @@ export async function executeSearch(
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   explicitTags: string[] = [],
   filters?: { type?: string; minVal?: number; maxVal?: number; },
-  useMaxRecall: boolean = false
+  useMaxRecall: boolean = false,
+  userContext?: UserContext
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
   console.log(`[Search] executeSearch (Physics Engine V2) called with provenance: ${provenance}`);
   const startTime = Date.now();
@@ -535,15 +574,11 @@ export async function executeSearch(
 
   // 2. Find Anchors (Planets)
   // Combine Engram Lookup + FTS + Molecule Search
-  const engramResults = await lookupByEngram(cleanQuery); // TODO: Hydrate these results
+  const engramIds = await lookupByEngram(cleanQuery);
+  const engramResults = await hydrateEngrams(engramIds);
   const primaryAnchors = await findAnchors(cleanQuery, Array.from(realBuckets), explicitTags, maxChars, provenance, filters);
 
-  // Clean up engram results if they are just IDs (lookupByEngram returns IDs? No, currently logic is missing hydration in my quick look, assuming compatible or empty)
-  // Actually lookupByEngram returns string[] of IDs. We need to fetch them.
-  // For now, let's rely on primaryAnchors.
-  // If we had time, we'd hydrate engrams.
-
-  const allAnchors = [...primaryAnchors];
+  const allAnchors = [...engramResults, ...primaryAnchors];
 
   // Deduplicate
   const seenIds = new Set<string>();
@@ -576,13 +611,13 @@ export async function executeSearch(
   }
 
   // 4. Graph-Context Serialization (GCP)
-  const userContext: UserContext = {
+  const finalUserContext: UserContext = userContext || {
     name: 'User', // TODO: Get from request context if available
     current_state: 'active'
   };
 
   const contextPackage = assembleContextPackage({
-    user: userContext,
+    user: finalUserContext,
     query: cleanQuery,
     keyTerms: cleanQuery.split(' '),
     scopeTags: explicitTags,
@@ -592,7 +627,7 @@ export async function executeSearch(
   });
 
   const serializedContext = assembleAndSerialize({
-    user: userContext,
+    user: finalUserContext,
     query: cleanQuery,
     keyTerms: cleanQuery.split(' '),
     scopeTags: explicitTags,
@@ -643,7 +678,8 @@ export async function executeMoleculeSearch(
   maxChars: number = config.SEARCH.max_chars_default, // Use config default (512KB)
   deep: boolean = false,
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
-  explicitTags: string[] = []
+  explicitTags: string[] = [],
+  userContext?: UserContext
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
 
   // Split the query into molecules (sentence-like chunks)
@@ -666,7 +702,10 @@ export async function executeMoleculeSearch(
         maxChars,
         deep,
         provenance,
-        explicitTags
+        explicitTags,
+        undefined,
+        false,
+        userContext
       );
 
       // Add unique results to our collection
@@ -746,15 +785,17 @@ async function hydrateFromMirror(results: SearchResult[]) {
     const { getMirrorPath } = await import('../mirror/mirror.js');
     const fs = await import('fs');
 
-    for (const res of results) {
+    await Promise.all(results.map(async (res) => {
       try {
         const mirrorPath = getMirrorPath(res.source, res.provenance);
-        if (fs.existsSync(mirrorPath)) {
-          const content = fs.readFileSync(mirrorPath, 'utf-8');
+        try {
+          const content = await fs.promises.readFile(mirrorPath, 'utf-8');
           if (content) res.content = content;
+        } catch (err) {
+          // ignore file not found
         }
       } catch (e) { /* ignore */ }
-    }
+    }));
   } catch (e) { /* ignore */ }
 }
 
@@ -770,7 +811,8 @@ export async function iterativeSearch(
   maxChars: number = config.SEARCH.max_chars_default, // Use config default (512KB)
   tags: string[] = [],
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
-  useMaxRecall: boolean = false
+  useMaxRecall: boolean = false,
+  userContext?: UserContext
 ): Promise<{ context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string }> {
 
   // 0. Extract Scope Tags (Hashtags) to preserve them across strategies
@@ -784,7 +826,7 @@ export async function iterativeSearch(
 
   // Strategy 1: Standard Expanded Search (All Nouns, Verbs, Dates + Expansion)
   console.log(`[IterativeSearch] Strategy 1: Standard Execution`);
-  let results = await executeSearch(query, undefined, buckets, maxChars, false, provenance, tags, undefined, useMaxRecall);
+  let results = await executeSearch(query, undefined, buckets, maxChars, false, provenance, tags, undefined, useMaxRecall, userContext);
   if (results.results.length > 0) return { ...results, attempt: 1 };
 
   // Strategy 2: Strict "Subjects & Time" (Strip Verbs/Adjectives, keep Nouns + Dates)
@@ -801,7 +843,7 @@ export async function iterativeSearch(
     // Re-inject scope tags
     const strictQuery = Array.from(uniqueTokens).join(' ') + ' ' + tagsString;
     console.log(`[IterativeSearch] Fallback Query 1: "${strictQuery.trim()}"`);
-    results = await executeSearch(strictQuery, undefined, buckets, maxChars, false, provenance, tags);
+    results = await executeSearch(strictQuery, undefined, buckets, maxChars, false, provenance, tags, undefined, undefined, userContext);
     if (results.results.length > 0) return { ...results, attempt: 2 };
   }
 
@@ -815,7 +857,7 @@ export async function iterativeSearch(
 
   if (entityQuery.trim().length > 0 && entityQuery.trim() !== (Array.from(uniqueTokens).join(' ') + ' ' + tagsString).trim()) {
     console.log(`[IterativeSearch] Fallback Query 2: "${entityQuery.trim()}"`);
-    results = await executeSearch(entityQuery, undefined, buckets, maxChars, false, provenance, tags);
+    results = await executeSearch(entityQuery, undefined, buckets, maxChars, false, provenance, tags, undefined, undefined, userContext);
     if (results.results.length > 0) return { ...results, attempt: 3 };
   }
 
@@ -839,7 +881,8 @@ export async function smartChatSearch(
   maxChars: number = 20000,
   tags: string[] = [],
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
-  useMaxRecall: boolean = false
+  useMaxRecall: boolean = false,
+  userContext?: UserContext
 ): Promise<{ context: string; results: SearchResult[]; strategy: string; splitQueries?: string[]; metadata?: any; toAgentString: () => string }> {
 
   const isLongQuery = query.length > 100;
@@ -847,7 +890,7 @@ export async function smartChatSearch(
 
   // 1. Initial Attempt (Skip if it's a massive max-recall query to force chunking)
   if (!isLongQuery || !useMaxRecall) {
-    initial = await iterativeSearch(query, buckets, maxChars, tags, provenance, useMaxRecall);
+    initial = await iterativeSearch(query, buckets, maxChars, tags, provenance, useMaxRecall, userContext);
 
     // If we have enough results, returns immediately
     if (initial.results.length >= 10 && !useMaxRecall) {
@@ -903,7 +946,7 @@ export async function smartChatSearch(
   // For max-recall mode, give each sub-query the full budget to maximize retrieval
   const budgetPerQuery = useMaxRecall ? maxChars : Math.floor(maxChars / splitQueries.length);
   const parallelPromises = splitQueries.map((entity: string) =>
-    executeSearch(entity, undefined, buckets, budgetPerQuery, false, provenance, tags, undefined, useMaxRecall)
+    executeSearch(entity, undefined, buckets, budgetPerQuery, false, provenance, tags, undefined, useMaxRecall, userContext)
   );
 
   const parallelResults = await Promise.all(parallelPromises);
@@ -950,13 +993,13 @@ export async function smartChatSearch(
   }
 
   // 5. Re-Format using GCP (Standard 086)
-  const userContext: UserContext = {
+  const finalUserContext: UserContext = userContext || {
     name: 'User',
     current_state: 'active'
   };
 
   const serializedContext = assembleAndSerialize({
-    user: userContext,
+    user: finalUserContext,
     query: query,
     keyTerms: splitQueries,
     scopeTags: tags,
