@@ -20,13 +20,21 @@ module.exports = {
     '/node_modules/',
     '/dist/',
     '/context_data/',
-    'test_context_quality_improvements.ts'  // Uses custom runner
+    'test_context_quality_improvements.ts',  // Uses custom runner
+    '\\.d\\.ts$' // Ignore declaration files
+  ],
+
+  // Module path ignore patterns (resolve Haste collisions)
+  modulePathIgnorePatterns: [
+    '<rootDir>/engine/native/',
+    '<rootDir>/engine/src/native/'
   ],
   
   // Module resolution
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
-    '^@anchor/(.*)$': '<rootDir>/packages/$1/src'
+    '^@anchor/(.*)$': '<rootDir>/packages/$1/src',
+    '^@anchor-engine/native$': '<rootDir>/engine/tests/mocks/native-mock.js'
   },
   
   // Extensions to resolve
