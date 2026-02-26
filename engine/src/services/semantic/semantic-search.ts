@@ -405,12 +405,15 @@ export async function executeSemanticSearch(
     // --- INTERSECTION SCORING ---
     // Boost results that contain multiple unique query terms (Logical AND preference)
     if (termsToInflate.length > 1) {
+      // Pre-calculate lowercased terms for performance
+      const termsLower = termsToInflate.map(t => t.toLowerCase());
+
       for (const result of inflatedResults) {
         let termMatches = 0;
         const contentLower = (result.content || '').toLowerCase();
 
-        for (const term of termsToInflate) {
-          if (contentLower.includes(term.toLowerCase())) {
+        for (const term of termsLower) {
+          if (contentLower.includes(term)) {
             termMatches++;
           }
         }
