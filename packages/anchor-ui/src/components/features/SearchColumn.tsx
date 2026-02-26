@@ -275,7 +275,7 @@ export const SearchColumn = memo(({
     };
 
     return (
-        <GlassPanel key={`search-column-${id}`} className="search-column-glass" style={{ width: columnCount === 1 ? '100%' : 'auto', flex: '1 1 0%', minWidth: 0, padding: columnCount >= 4 ? '10px' : '20px', gap: columnCount >= 4 ? '10px' : '20px', background: 'var(--bg-primary)', overflow: 'hidden', border: 'none', boxShadow: 'none' }}>
+        <GlassPanel key={`search-column-${id}`} className="search-column-glass" style={{ width: columnCount === 1 ? '100%' : 'auto', flex: '1 1 0%', minWidth: 0, padding: columnCount >= 4 ? '10px' : '20px', gap: columnCount >= 4 ? '10px' : '20px', background: 'transparent', overflow: 'hidden', border: 'none', boxShadow: 'none' }}>
 
             {/* Sidebar / Controls Area */}
             <div className="search-sidebar" style={{ display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', paddingRight: '10px' }}>
@@ -360,10 +360,10 @@ export const SearchColumn = memo(({
                             }}
                         />
                         <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                            <Button 
-                                variant="primary" 
-                                onClick={handleSearch} 
-                                disabled={loading} 
+                            <Button
+                                variant="primary"
+                                onClick={handleSearch}
+                                disabled={loading}
                                 style={{ flex: 1, padding: '12px 24px' }}
                             >
                                 {loading ? '⏳ Searching...' : '🔍 Fetch Context'}
@@ -372,7 +372,7 @@ export const SearchColumn = memo(({
                                 variant="secondary"
                                 onClick={() => setChronologicalOrder(!chronologicalOrder)}
                                 disabled={loading}
-                                title={chronologicalOrder 
+                                title={chronologicalOrder
                                     ? 'Currently: Chronological (causal narrative). Click to switch to Relevance (associative discovery).'
                                     : 'Currently: Relevance (associative discovery). Click to switch to Chronological (causal narrative).'
                                 }
@@ -391,7 +391,7 @@ export const SearchColumn = memo(({
                 </div>
 
                 {/* Slider Group & Advanced Toggles */}
-                <div className="slider-group" style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
+                <div className="slider-group glass-card" style={{ padding: '15px', border: '1px solid rgba(255,255,255,0.05)' }}>
                     <label htmlFor={`volume-slider-${id}`} style={{ marginBottom: '10px', display: 'block', color: '#94a3b8', fontSize: '0.9rem' }}>
                         Volume: <span>{tokenBudget * 4}</span> chars (≈<span>{tokenBudget}</span> tokens)
                     </label>
@@ -479,11 +479,8 @@ export const SearchColumn = memo(({
 
                 {/* Backup Restore Panel */}
                 {showBackups && (
-                    <div style={{
-                        background: 'var(--bg-secondary)',
+                    <div className="glass-card" style={{
                         padding: '15px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border-subtle)',
                         marginTop: '10px'
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -651,13 +648,10 @@ export const SearchColumn = memo(({
             </div>
 
             {/* Main Output Area */}
-            <div className="main" style={{
+            <div className="main glass-card" style={{
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
-                background: 'var(--bg-secondary)',
-                borderRadius: '12px',
-                border: '1px solid var(--border-subtle)',
                 padding: '20px',
                 minHeight: '400px'
             }}>
@@ -681,7 +675,7 @@ export const SearchColumn = memo(({
                             results.map((r, idx) => {
                                 const isIncluded = metadata?.atomCount ? idx < metadata.atomCount : true;
                                 return (
-                                    <div key={`${r._searchId || r.id || idx}-${id}`} className="card-result" style={{ opacity: isIncluded ? 1 : 0.5, borderLeft: isIncluded ? '2px solid var(--accent-primary)' : '2px solid transparent' }}>
+                                    <div key={`${r._searchId || r.id || idx}-${id}`} className="glass-card" style={{ opacity: isIncluded ? 1 : 0.5, borderLeft: isIncluded ? '2px solid var(--accent-primary)' : '2px solid transparent', padding: '15px', color: '#a5f3fc', fontFamily: 'var(--font-mono)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                 <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#334155', color: '#94a3b8', fontWeight: 'bold' }}>{r.provenance || 'EXT'}</span>
