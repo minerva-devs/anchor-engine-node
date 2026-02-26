@@ -143,6 +143,33 @@ ANCHOR_EXPORT const char* database_get_stats(void* db) {
 }
 
 /**
+ * Upsert a source
+ * @param db Database pointer
+ * @param id Source ID
+ * @param path Source path
+ * @return true on success
+ */
+ANCHOR_EXPORT bool database_upsert_source(
+    void* db,
+    const char* id,
+    const char* path
+) {
+    try {
+        auto* database = static_cast<anchor::Database*>(db);
+        anchor::Source source;
+        source.id = id ? id : "";
+        source.path = path ? path : "";
+        source.created_at = 0.0;
+        source.updated_at = 0.0;
+
+        database->upsertSource(source);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+/**
  * Insert an atom
  * @param db Database pointer
  * @param source_id Source ID
@@ -188,6 +215,37 @@ ANCHOR_EXPORT long long database_insert_atom(
     } catch (...) {
         printf("[anchor_core_ffi] insertAtom failed: unknown error\n");
         return -1;
+    }
+}
+
+/**
+ * Insert an edge
+ * @param db Database pointer
+ * @param from From atom ID
+ * @param to To atom ID
+ * @param weight Edge weight
+ * @param type Edge type
+ * @return true on success
+ */
+ANCHOR_EXPORT bool database_insert_edge(
+    void* db,
+    long long from,
+    long long to,
+    double weight,
+    const char* type
+) {
+    try {
+        auto* database = static_cast<anchor::Database*>(db);
+        anchor::Edge edge;
+        edge.from = static_cast<anchor::AtomId>(from);
+        edge.to = static_cast<anchor::AtomId>(to);
+        edge.weight = weight;
+        edge.edge_type = type ? type : "";
+
+        database->insertEdge(edge);
+        return true;
+    } catch (...) {
+        return false;
     }
 }
 
@@ -248,10 +306,23 @@ ANCHOR_EXPORT const char* physics_walker_radial_inflation(
             anchor_ids.push_back(id.get<anchor::AtomId>());
         }
         
-        // TODO: Implement actual radial inflation
-        // For now, return empty array
-        static std::string empty = "[]";
-        return empty.c_str();
+        auto candidates = w->performRadialInflation(*database, anchor_ids, static_cast<size_t>(limit), threshold);
+
+        json j = json::array();
+        for (const auto& candidate : candidates) {
+            j.push_back({
+                {"atom_id", candidate.atom_id},
+                {"hop_distance", candidate.hop_distance},
+                {"shared_tags", candidate.shared_tags},
+                {"gravity_score", candidate.gravity_score},
+                {"timestamp", candidate.timestamp},
+                {"simhash", candidate.simhash}
+            });
+        }
+
+        static std::string result;
+        result = j.dump();
+        return result.c_str();
     } catch (...) {
         static std::string empty = "[]";
         return empty.c_str();
