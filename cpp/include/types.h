@@ -84,6 +84,17 @@ struct Edge {
 };
 
 /**
+ * @brief Neighbor atom with edge and property data
+ */
+struct Neighbor {
+    AtomId id;
+    double edge_weight;
+    std::string edge_type;
+    Timestamp timestamp;
+    SimHash simhash;
+};
+
+/**
  * @brief Candidate result from physics walk
  */
 struct Candidate {
