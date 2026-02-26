@@ -11,7 +11,6 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { PGlite } from "@electric-sql/pglite";
-// import { vector } from "@electric-sql/pglite/extensions/vector"; // Commenting out since it may not be available
 
 const __filename = fileURLToPath(import.meta.url);
 
