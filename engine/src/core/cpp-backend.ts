@@ -17,7 +17,7 @@ async function loadCppBackend(): Promise<any> {
   if (AnchorCore) return AnchorCore;
 
   try {
-    const module = await import('../native/index.js');
+    const module = await import('@rbalchii/anchor-core');
     AnchorCore = module.AnchorCore;
     return AnchorCore;
   } catch (error: any) {
@@ -38,7 +38,7 @@ export async function initCppBackend(dbPath: string): Promise<any> {
 
   try {
     console.log('[CppBackend] Initializing...', dbPath);
-    
+
     // Wipe existing SQLite3 database to prevent corruption
     const fs = await import('fs');
     if (fs.existsSync(dbPath)) {
@@ -50,7 +50,7 @@ export async function initCppBackend(dbPath: string): Promise<any> {
         console.warn(`[CppBackend] Warning: Could not remove old database: ${rmError.message}`);
       }
     }
-    
+
     const CoreClass = await loadCppBackend();
     anchorInstance = new CoreClass();
     anchorInstance.init(dbPath);
@@ -65,7 +65,7 @@ export async function initCppBackend(dbPath: string): Promise<any> {
 /**
  * Get backend instance
  */
-export function getBackend(): AnchorCore {
+export function getBackend(): any {
   if (!anchorInstance) {
     throw new Error('C++ backend not initialized. Call initCppBackend() first.');
   }

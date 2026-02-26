@@ -17,7 +17,7 @@
 export type { Atom, Molecule, Compound } from './atomic.js';
 
 // 2. API Layer (Request/Response)
-export type { Menu, SearchRequest, SearchResponse } from './api.js';
+export type { Menu, SearchRequest, KnowledgeResponse } from './api.js';
 
 // 3. Semantic Taxonomy
 export { SemanticCategory } from './taxonomy.js';

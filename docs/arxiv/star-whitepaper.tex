@@ -276,9 +276,10 @@ STAR distinguishes itself from prior work through:
 \begin{tabular}{@{}llll@{}}
 \toprule
 \textbf{Level} & \textbf{Role} & \textbf{Content Stored} & \textbf{Example} \\ \midrule
-\textbf{Compound} & Document reference & Full text (temporary) & \texttt{ChatSessions.yaml} (91.88MB) \\
+\textbf{Compound} & Document reference & File path + metadata & \texttt{ChatSessions.yaml} (91.88MB) \\
 \textbf{Molecule} & Semantic chunk & Chunk text + byte offsets & Bytes 1024--2048 \\
-\textbf{Atom} & Tag/concept & \textbf{Metadata only} & \texttt{\#authentication}, \texttt{\#session} \\ \bottomrule
+\textbf{Atom} & Content unit & Byte-offset pointer + tags & Text chunk with \texttt{\#auth} tag \\
+\textbf{Tag} & Concept/label & Semantic label only & \texttt{\#authentication}, \texttt{\#session} \\ \bottomrule
 \end{tabular}
 \end{table}
 

@@ -12,7 +12,7 @@ import { validate, schemas } from '../middleware/validate.js';
 import { StructuredLogger } from '../utils/structured-logger.js';
 
 // Import services and types
-import { executeSearch, smartChatSearch } from '../services/search/search.js';
+import { executeSearch, smartChatSearch, clusterMolecules } from '../services/search/search.js';
 import { AtomizerService } from '../services/ingest/atomizer-service.js';
 import { AtomicIngestService } from '../services/ingest/ingest-atomic.js';
 import { getState, clearState } from '../services/scribe/scribe.js';
@@ -71,7 +71,7 @@ export function setupRoutes(app: Application) {
       await atomicIngest.ingestResult(compound, molecules, atoms, targetBuckets);
 
       const duration = Date.now() - startTime;
-      
+
       StructuredLogger.ingestion('success', {
         source: source || 'api_upload',
         compound_id: compound.id,
@@ -265,7 +265,7 @@ export function setupRoutes(app: Application) {
       const tokenBudget = (req.body as any).token_budget || 0;
       const maxChars = body.max_chars || 100000;
       const estimatedTokens = maxChars / 4;
-      
+
       let useMaxRecall = strategy === 'max-recall';
       if (!useMaxRecall && estimatedTokens > 16000) {
         useMaxRecall = true;
@@ -339,13 +339,18 @@ export function setupRoutes(app: Application) {
         strategy: strategy || 'enhanced_tag_walker'
       });
 
-      // Construct standard response
+      // Construct Knowledge Schema Response (Fluent Machineglish)
       if (!res.headersSent) {
+        const clusters = clusterMolecules(result.results);
+
         res.status(200).json({
+          query: body.query,
+          strategy: strategy || 'enhanced_tag_walker',
+          clusters: clusters,
+
+          // Preserved for legacy debugging/transitional clients
           status: 'success',
           context: result.context,
-          results: result.results,
-          strategy: strategy || 'enhanced_tag_walker',
           attempt: (result as any).attempt || 1,
           split_queries: result.splitQueries || [],
           metadata: {
@@ -387,16 +392,16 @@ export function setupRoutes(app: Application) {
     try {
       // Get total atom count
       const atomCount = await db.run('SELECT COUNT(*) as count FROM atoms');
-      
+
       // Get total tag count
       const tagCount = await db.run('SELECT COUNT(*) as count FROM tags');
-      
+
       // Get sample tags
       const sampleTags = await db.run('SELECT name, atom_count FROM tags ORDER BY atom_count DESC LIMIT 20');
-      
+
       // Get tags with low atom counts
       const lowCountTags = await db.run('SELECT COUNT(*) as count FROM tags WHERE atom_count < 3');
-      
+
       res.status(200).json({
         atoms: atomCount.rows?.[0]?.count || 0,
         tags: tagCount.rows?.[0]?.count || 0,
@@ -560,8 +565,8 @@ export function setupRoutes(app: Application) {
       // Validate location if provided
       const validLocations = ['inbox', 'external-inbox'];
       if (location && !validLocations.includes(location)) {
-        return res.status(400).json({ 
-          error: `Invalid location. Must be one of: ${validLocations.join(', ')}` 
+        return res.status(400).json({
+          error: `Invalid location. Must be one of: ${validLocations.join(', ')}`
         });
       }
 
@@ -572,7 +577,7 @@ export function setupRoutes(app: Application) {
       );
 
       if (existingResult.rows && existingResult.rows.length > 0) {
-        return res.status(409).json({ 
+        return res.status(409).json({
           error: 'Bucket already exists',
           exists: true,
           bucket: bucketName
@@ -583,9 +588,9 @@ export function setupRoutes(app: Application) {
       // This makes the bucket visible in the list
       const placeholderTag = `_bucket_${bucketName}`;
       await db.run(
-        `INSERT INTO tags (tag, bucket) VALUES ($1, $2) 
-         ON CONFLICT (tag, bucket) DO NOTHING`,
-        [placeholderTag, bucketName]
+        `INSERT INTO tags (atom_id, tag, bucket) VALUES ($1, $2, $3) 
+         ON CONFLICT (atom_id, tag, bucket) DO NOTHING`,
+        ['__system__', placeholderTag, bucketName]
       );
 
       // Store bucket metadata in engrams
@@ -652,7 +657,7 @@ export function setupRoutes(app: Application) {
   app.get('/v1/stats', async (_req: Request, res: Response) => {
     try {
       const startTime = Date.now();
-      
+
       // Get counts in parallel
       const [atomsResult, sourcesResult, tagsResult, moleculesResult] = await Promise.all([
         db.run('SELECT COUNT(*) as count FROM atoms'),
@@ -692,7 +697,7 @@ export function setupRoutes(app: Application) {
   app.get('/v1/backups', async (_req: Request, res: Response) => {
     try {
       const backups = await listBackups();
-      
+
       // Get metadata for each backup
       const backupsWithMeta = await Promise.all(
         backups.map(async (filename: string) => {
@@ -706,7 +711,7 @@ export function setupRoutes(app: Application) {
           };
         })
       );
-      
+
       res.status(200).json(backupsWithMeta);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -721,19 +726,19 @@ export function setupRoutes(app: Application) {
         res.status(400).json({ error: "Filename required" });
         return;
       }
-      
+
       // Validate first
       const validation = await validateBackup(filename);
       if (!validation.valid) {
         res.status(400).json({ error: validation.error });
         return;
       }
-      
+
       const startTime = Date.now();
       const result = await restoreBackup(filename);
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
       const atomsPerSec = Math.round(result.memory_count / parseFloat(totalTime));
-      
+
       res.status(200).json({
         success: true,
         message: 'Backup restore complete',
@@ -755,7 +760,7 @@ export function setupRoutes(app: Application) {
         res.status(404).json({ error: 'No backups found' });
         return;
       }
-      
+
       const validation = await validateBackup(latest);
       res.status(200).json({
         filename: latest,
@@ -781,7 +786,7 @@ export function setupRoutes(app: Application) {
 
   // Trigger Dream Endpoint (Disabled - Optimized for STAR algorithm)
   app.post('/v1/dream', async (_req: Request, res: Response) => {
-    res.status(501).json({ 
+    res.status(501).json({
       error: 'Dreamer service is disabled',
       message: 'This endpoint has been disabled to optimize startup for the STAR algorithm'
     });
@@ -995,10 +1000,10 @@ export function setupRoutes(app: Application) {
       const { idleManager } = await import('../services/idle-manager.js');
       const { NlpService } = await import('../services/nlp/nlp-service.js');
       const { isModelLoadedStatus: isNerModelLoaded } = await import('../services/tags/gliner.js');
-      
+
       const memoryStats = resourceManager.getMemoryStats();
       const idleStatus = idleManager.getStatus();
-      
+
       res.status(200).json({
         status: 'success',
         memory: {
@@ -1278,7 +1283,7 @@ export function setupRoutes(app: Application) {
       const body = req.body as any;
       const url = body.url as string;
       const bucket = body.bucket as string;
-      
+
       if (!url || !bucket) {
         res.status(400).json({ error: 'url and bucket are required' });
         return;
@@ -1289,7 +1294,7 @@ export function setupRoutes(app: Application) {
 
       // Register repo
       const repo = await service.registerRepo(url, bucket);
-      
+
       // Start async ingestion (don't wait for completion)
       service.syncRepo(repo.id).catch((error: any) => {
         console.error(`[API] Background sync failed for ${repo.id}:`, error);
@@ -1323,7 +1328,7 @@ export function setupRoutes(app: Application) {
   app.post('/v1/github/repos/:id/sync', async (req: Request, res: Response) => {
     try {
       const id = req.params.id as string;
-      
+
       const { GitHubIngestService } = await import('../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();
 
@@ -1347,12 +1352,12 @@ export function setupRoutes(app: Application) {
   app.delete('/v1/github/repos/:id', async (req: Request, res: Response) => {
     try {
       const id = req.params.id as string;
-      
+
       const { GitHubIngestService } = await import('../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();
-      
+
       const quarantinedCount = await service.removeRepo(id);
-      
+
       res.status(200).json({
         status: 'removed',
         quarantined_atoms: quarantinedCount,

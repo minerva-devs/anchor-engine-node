@@ -1,6 +1,7 @@
 import { db } from '../../core/db.js';
 import { config } from '../../config/index.js';
 import { Atom, Molecule, Compound } from '../../types/atomic.js';
+import { getBackend } from '../../core/cpp-backend.js';
 
 export class AtomicIngestService {
 
@@ -190,7 +191,7 @@ export class AtomicIngestService {
             let paramIdx = 1;
 
             for (const m of batch) {
-                placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
+                placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
                 values.push(
                     m.id,
                     m.content,
@@ -204,12 +205,32 @@ export class AtomicIngestService {
                     m.numeric_unit || null,
                     m.molecular_signature || '0',
                     JSON.stringify(this.zeroVector()), // embedding (we don't compute embeddings here anymore)
-                    m.timestamp || Date.now()
+                    m.timestamp || Date.now(),
+                    JSON.stringify(m.tags || []),
+                    JSON.stringify(m.entities || {})
                 );
+
+                try {
+                    // Seed C++ FTS backend
+                    const simhashVal = m.molecular_signature ? BigInt(m.molecular_signature) : 0n;
+                    getBackend().insertAtom(
+                        m.compoundId,
+                        m.content,
+                        m.start_byte || 0,
+                        m.end_byte || 0,
+                        m.timestamp || Date.now(),
+                        simhashVal,
+                        m.compoundId,
+                        m.start_byte || 0,
+                        m.end_byte || 0
+                    );
+                } catch (e) {
+                    // Ignore gracefully if backend missing
+                }
             }
 
             await db.run(
-                `INSERT INTO molecules (id, content, compound_id, sequence, start_byte, end_byte, type, numeric_value, numeric_unit, molecular_signature, embedding, timestamp)
+                `INSERT INTO molecules (id, content, compound_id, sequence, start_byte, end_byte, type, numeric_value, numeric_unit, molecular_signature, embedding, timestamp, tags, entities)
                  VALUES ${placeholders.join(', ')}
                  ON CONFLICT (id) DO UPDATE SET
                    content = EXCLUDED.content,
@@ -222,7 +243,9 @@ export class AtomicIngestService {
                    numeric_unit = EXCLUDED.numeric_unit,
                    molecular_signature = EXCLUDED.molecular_signature,
                    embedding = EXCLUDED.embedding,
-                   timestamp = EXCLUDED.timestamp`,
+                   timestamp = EXCLUDED.timestamp,
+                   tags = EXCLUDED.tags,
+                   entities = EXCLUDED.entities`,
                 values
             );
         }

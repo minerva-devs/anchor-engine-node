@@ -104,7 +104,10 @@ ANCHOR_EXPORT const char* database_search_atoms(void* db, const char* query, lon
                 {"char_start", atom.char_start},
                 {"char_end", atom.char_end},
                 {"timestamp", atom.timestamp},
-                {"simhash", atom.simhash}
+                {"simhash", atom.simhash},
+                {"compound_id", atom.compound_id.value_or("")},
+                {"start_byte", atom.start_byte.value_or(0)},
+                {"end_byte", atom.end_byte.value_or(0)}
             });
         }
         
@@ -187,7 +190,10 @@ ANCHOR_EXPORT long long database_insert_atom(
     long long char_start,
     long long char_end,
     double timestamp,
-    unsigned long long simhash
+    unsigned long long simhash,
+    const char* compound_id,
+    long long start_byte,
+    long long end_byte
 ) {
     try {
         auto* database = static_cast<anchor::Database*>(db);
@@ -199,6 +205,16 @@ ANCHOR_EXPORT long long database_insert_atom(
         atom.char_end = static_cast<size_t>(char_end);
         atom.timestamp = timestamp;
         atom.simhash = static_cast<uint64_t>(simhash);
+
+        if (compound_id && strlen(compound_id) > 0) {
+            atom.compound_id = compound_id;
+        }
+        if (start_byte >= 0) {
+            atom.start_byte = static_cast<size_t>(start_byte);
+        }
+        if (end_byte >= 0) {
+            atom.end_byte = static_cast<size_t>(end_byte);
+        }
         
         // Ensure source exists (workaround for missing source management FFI)
         anchor::Source source;

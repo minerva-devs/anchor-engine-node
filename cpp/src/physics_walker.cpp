@@ -127,52 +127,60 @@ void PhysicsWalker::traverseGraph(Database& db,
                                   const Atom& start_anchor, 
                                   int max_hops,
                                   std::vector<Candidate>& candidates) {
-    // BFS with hop tracking
-    std::queue<std::pair<AtomId, int>> queue;  // (atom_id, hop_distance)
+    // Level-by-level BFS with batching
     std::unordered_set<AtomId> visited;
     
-    queue.push({start_anchor.id, 0});
+    std::vector<AtomId> current_level;
+    current_level.push_back(start_anchor.id);
     visited.insert(start_anchor.id);
     
-    while (!queue.empty()) {
-        auto [current_id, hop] = queue.front();
-        queue.pop();
+    int current_hop = 0;
+    
+    while (!current_level.empty() && current_hop < max_hops) {
+        // 1. Fetch all edges for the current level in one query
+        auto all_edges = db.getEdgesFromBatch(current_level);
         
-        if (hop >= max_hops) {
-            continue;
-        }
+        std::vector<AtomId> next_level;
+        std::unordered_set<AtomId> next_level_set; // avoid duplicates in batch query
         
-        // Get edges from current atom
-        auto edges = db.getEdgesFrom(current_id);
-        
-        for (const auto& edge : edges) {
+        for (const auto& edge : all_edges) {
             if (visited.find(edge.to) == visited.end()) {
                 visited.insert(edge.to);
-                queue.push({edge.to, hop + 1});
-                
-                // Create candidate
-                Candidate candidate;
-                candidate.atom_id = edge.to;
-                candidate.hop_distance = hop + 1;
-                candidate.shared_tags = 1;  // At least one shared tag
-                candidate.physical_bonus = 0.0;
-                candidate.gravity_score = 0.0;
-                
-                // Load only necessary atom data (timestamp and simhash)
-                try {
-                    auto atom = db.getAtomTimestampAndSimhash(edge.to);
-                    candidate.timestamp = atom.timestamp;
-                    candidate.simhash = atom.simhash;
-                    candidate.source_id = atom.source_id;
-                    candidate.start_byte = atom.start_byte;
-                    candidate.end_byte = atom.end_byte;
-                } catch (...) {
-                    continue;
-                }
-                
-                candidates.push_back(candidate);
+                next_level_set.insert(edge.to);
             }
         }
+        
+        for (AtomId id : next_level_set) {
+            next_level.push_back(id);
+        }
+        
+        if (next_level.empty()) {
+            break;
+        }
+        
+        // 2. Fetch all atom metadata for the next level in one query
+        auto atoms = db.getAtomsTimestampAndSimhashBatch(next_level);
+        
+        for (const auto& atom : atoms) {
+            // Create candidate
+            Candidate candidate;
+            candidate.atom_id = atom.id;
+            candidate.hop_distance = current_hop + 1;
+            candidate.shared_tags = 1;  // At least one shared tag (approximation for speed initially)
+            candidate.physical_bonus = 0.0;
+            candidate.gravity_score = 0.0;
+            
+            candidate.timestamp = atom.timestamp;
+            candidate.simhash = atom.simhash;
+            candidate.source_id = atom.source_id;
+            candidate.start_byte = atom.start_byte;
+            candidate.end_byte = atom.end_byte;
+            
+            candidates.push_back(candidate);
+        }
+        
+        current_level = std::move(next_level);
+        current_hop++;
     }
 }
 

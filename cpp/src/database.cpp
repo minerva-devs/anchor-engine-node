@@ -10,6 +10,30 @@
 
 namespace anchor {
 
+
+void Database::finalizePreparedStatements() {
+    for (auto& pair : prepared_statements_) {
+        sqlite3_finalize(pair.second);
+    }
+    prepared_statements_.clear();
+}
+
+sqlite3_stmt* Database::getPreparedStatement(const std::string& sql) const {
+    auto it = prepared_statements_.find(sql);
+    if (it != prepared_statements_.end()) {
+        sqlite3_reset(it->second);
+        sqlite3_clear_bindings(it->second);
+        return it->second;
+    }
+    
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        throw DatabaseError("Failed to prepare statement: " + std::string(sqlite3_errmsg(db_)));
+    }
+    prepared_statements_[sql] = stmt;
+    return stmt;
+}
+
 Database::Database(const std::string& path) : db_(nullptr) {
     open(path);
 }
@@ -115,7 +139,7 @@ void Database::migrate() {
         "  char_start INTEGER NOT NULL,"
         "  char_end INTEGER NOT NULL,"
         "  timestamp REAL NOT NULL,"
-        "  simhash TEXT NOT NULL,"
+        "  simhash INTEGER NOT NULL,"
         "  metadata TEXT,"
         "  compound_id TEXT,"
         "  start_byte INTEGER,"
@@ -156,7 +180,7 @@ void Database::migrate() {
         "  start_byte INTEGER NOT NULL,"
         "  end_byte INTEGER NOT NULL,"
         "  timestamp REAL NOT NULL,"
-        "  simhash TEXT NOT NULL"
+        "  simhash INTEGER NOT NULL"
         ")",
         nullptr, nullptr, &errMsg
     );
@@ -252,28 +276,30 @@ DbStats Database::getStats() const {
     DbStats stats = {0, 0, 0};
     
     // Count atoms
-    sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db_, "SELECT COUNT(*) FROM atoms", -1, &stmt, nullptr) == SQLITE_OK) {
+    sqlite3_stmt* stmt = getPreparedStatement("SELECT COUNT(*) FROM atoms");
+    {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             stats.atom_count = sqlite3_column_int(stmt, 0);
         }
-        sqlite3_finalize(stmt);
+        // sqlite3_finalize(stmt); cached
     }
     
     // Count sources
-    if (sqlite3_prepare_v2(db_, "SELECT COUNT(*) FROM sources", -1, &stmt, nullptr) == SQLITE_OK) {
+    stmt = getPreparedStatement("SELECT COUNT(*) FROM sources");
+    {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             stats.source_count = sqlite3_column_int(stmt, 0);
         }
-        sqlite3_finalize(stmt);
+        // sqlite3_finalize(stmt); cached
     }
     
     // Count unique tags
-    if (sqlite3_prepare_v2(db_, "SELECT COUNT(DISTINCT tag) FROM tags", -1, &stmt, nullptr) == SQLITE_OK) {
+    stmt = getPreparedStatement("SELECT COUNT(DISTINCT tag) FROM tags");
+    {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             stats.tag_count = sqlite3_column_int(stmt, 0);
         }
-        sqlite3_finalize(stmt);
+        // sqlite3_finalize(stmt); cached
     }
     
     return stats;
@@ -303,14 +329,13 @@ void Database::wipeAllData() {
 
 bool Database::isEmpty() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    sqlite3_stmt* stmt;
     bool empty = true;
-    
-    if (sqlite3_prepare_v2(db_, "SELECT COUNT(*) FROM atoms", -1, &stmt, nullptr) == SQLITE_OK) {
+    sqlite3_stmt* stmt = getPreparedStatement("SELECT COUNT(*) FROM atoms");
+    {
         if (sqlite3_step(stmt) == SQLITE_ROW) {
             empty = (sqlite3_column_int(stmt, 0) == 0);
         }
-        sqlite3_finalize(stmt);
+        // sqlite3_finalize(stmt); cached
     }
     
     return empty;
@@ -467,10 +492,7 @@ AtomId Database::insertAtom(const Atom& atom) {
     sql << "INSERT INTO atoms (source_id, content, char_start, char_end, timestamp, simhash, metadata, compound_id, start_byte, end_byte) "
         << "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     
-    sqlite3_stmt* stmt;
-    if (sqlite3_prepare_v2(db_, sql.str().c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
-        throw DatabaseError("Failed to prepare statement");
-    }
+    sqlite3_stmt* stmt = getPreparedStatement(sql.str());
     
     sqlite3_bind_text(stmt, 1, atom.source_id.c_str(), -1, SQLITE_STATIC);
     sqlite3_bind_text(stmt, 2, atom.content.c_str(), -1, SQLITE_STATIC);
@@ -478,8 +500,7 @@ AtomId Database::insertAtom(const Atom& atom) {
     sqlite3_bind_int(stmt, 4, static_cast<int>(atom.char_end));
     sqlite3_bind_double(stmt, 5, atom.timestamp);
     
-    std::string simhash_hex = "0x" + std::to_string(atom.simhash);
-    sqlite3_bind_text(stmt, 6, simhash_hex.c_str(), -1, SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 6, static_cast<sqlite3_int64>(atom.simhash));
     
     if (atom.metadata.has_value()) {
         sqlite3_bind_text(stmt, 7, atom.metadata.value().c_str(), -1, SQLITE_STATIC);
@@ -553,8 +574,7 @@ Atom Database::getAtom(AtomId id) const {
         atom.char_end = sqlite3_column_int(stmt, 4);
         atom.timestamp = sqlite3_column_double(stmt, 5);
         
-        std::string simhash_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
-        atom.simhash = std::stoull(simhash_str, nullptr, 16);
+        atom.simhash = static_cast<uint64_t>(sqlite3_column_int64(stmt, 6));
         
         if (sqlite3_column_type(stmt, 7) != SQLITE_NULL) {
             atom.metadata = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 7));
@@ -580,6 +600,84 @@ Atom Database::getAtom(AtomId id) const {
     return atom;
 }
 
+Atom Database::getAtomTimestampAndSimhash(AtomId id) const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    sqlite3_stmt* stmt;
+    const char* sql = "SELECT timestamp, simhash FROM atoms WHERE id = ?";
+    
+    if (sqlite3_prepare_v2(db_, sql, -1, &stmt, nullptr) != SQLITE_OK) {
+        throw DatabaseError("Failed to prepare statement");
+    }
+    
+    sqlite3_bind_int(stmt, 1, static_cast<int>(id));
+    
+    Atom atom;
+    atom.id = id;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        atom.timestamp = sqlite3_column_double(stmt, 0);
+        
+        atom.simhash = static_cast<uint64_t>(sqlite3_column_int64(stmt, 1));
+    } else {
+        sqlite3_finalize(stmt);
+        throw DatabaseError("Atom not found: " + std::to_string(id));
+    }
+    
+    sqlite3_finalize(stmt);
+    return atom;
+}
+
+std::vector<Atom> Database::getAtomsTimestampAndSimhashBatch(const std::vector<AtomId>& ids) const {
+    if (ids.empty()) return {};
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    
+    // Construct variable-length IN clause
+    std::string sql = "SELECT id, timestamp, simhash, source_id, start_byte, end_byte FROM atoms WHERE id IN (";
+    for (size_t i = 0; i < ids.size(); ++i) {
+        sql += "?";
+        if (i < ids.size() - 1) sql += ",";
+    }
+    sql += ")";
+    
+    // Can't cache dynamic queries easily via getPreparedStatement without complex hashing,
+    // so we prepare it temporarily for this batch
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        throw DatabaseError("Failed to prepare statement for getAtomsTimestampAndSimhashBatch");
+    }
+    
+    for (size_t i = 0; i < ids.size(); ++i) {
+        sqlite3_bind_int(stmt, static_cast<int>(i + 1), static_cast<int>(ids[i]));
+    }
+    
+    std::vector<Atom> results;
+    results.reserve(ids.size());
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        Atom atom;
+        atom.id = sqlite3_column_int(stmt, 0);
+        atom.timestamp = sqlite3_column_double(stmt, 1);
+        atom.simhash = static_cast<uint64_t>(sqlite3_column_int64(stmt, 2));
+        atom.source_id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+        
+        if (sqlite3_column_type(stmt, 4) != SQLITE_NULL) {
+            atom.start_byte = static_cast<size_t>(sqlite3_column_int64(stmt, 4));
+            atom.char_start = atom.start_byte.value();
+        }
+        
+        if (sqlite3_column_type(stmt, 5) != SQLITE_NULL) {
+            atom.end_byte = static_cast<size_t>(sqlite3_column_int64(stmt, 5));
+            atom.char_end = atom.end_byte.value();
+        }
+        
+        results.push_back(atom);
+    }
+    
+    sqlite3_finalize(stmt);
+    return results;
+}
+
 std::vector<Atom> Database::getAtomsBySource(const SourceId& source_id) const {
     std::lock_guard<std::mutex> lock(mutex_);
     std::vector<Atom> atoms;
@@ -603,8 +701,7 @@ std::vector<Atom> Database::getAtomsBySource(const SourceId& source_id) const {
         atom.char_end = sqlite3_column_int(stmt, 4);
         atom.timestamp = sqlite3_column_double(stmt, 5);
         
-        std::string simhash_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
-        atom.simhash = std::stoull(simhash_str, nullptr, 16);
+        atom.simhash = static_cast<uint64_t>(sqlite3_column_int64(stmt, 6));
         
         atoms.push_back(atom);
     }
@@ -618,7 +715,7 @@ std::vector<Atom> Database::searchAtoms(const std::string& query, size_t limit) 
     std::vector<Atom> atoms;
     
     sqlite3_stmt* stmt;
-    const char* sql = "SELECT a.id, a.source_id, a.content, a.char_start, a.char_end, a.timestamp, a.simhash "
+    const char* sql = "SELECT a.id, a.source_id, a.content, a.char_start, a.char_end, a.timestamp, a.simhash, a.compound_id, a.start_byte, a.end_byte "
                       "FROM atoms a "
                       "JOIN atoms_fts fts ON a.id = fts.rowid "
                       "WHERE atoms_fts MATCH ? "
@@ -641,8 +738,19 @@ std::vector<Atom> Database::searchAtoms(const std::string& query, size_t limit) 
         atom.char_end = sqlite3_column_int(stmt, 4);
         atom.timestamp = sqlite3_column_double(stmt, 5);
         
-        std::string simhash_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
-        atom.simhash = std::stoull(simhash_str, nullptr, 16);
+        atom.simhash = static_cast<uint64_t>(sqlite3_column_int64(stmt, 6));
+        
+        if (sqlite3_column_type(stmt, 7) != SQLITE_NULL) {
+            atom.compound_id = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 7));
+        }
+
+        if (sqlite3_column_type(stmt, 8) != SQLITE_NULL) {
+            atom.start_byte = static_cast<size_t>(sqlite3_column_int64(stmt, 8));
+        }
+
+        if (sqlite3_column_type(stmt, 9) != SQLITE_NULL) {
+            atom.end_byte = static_cast<size_t>(sqlite3_column_int64(stmt, 9));
+        }
         
         atoms.push_back(atom);
     }
@@ -672,8 +780,7 @@ std::vector<Atom> Database::getAllAtoms() const {
         atom.char_end = sqlite3_column_int(stmt, 4);
         atom.timestamp = sqlite3_column_double(stmt, 5);
         
-        std::string simhash_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
-        atom.simhash = std::stoull(simhash_str, nullptr, 16);
+        atom.simhash = static_cast<uint64_t>(sqlite3_column_int64(stmt, 6));
         
         atoms.push_back(atom);
     }
@@ -788,8 +895,7 @@ std::vector<Atom> Database::getAtomsByTag(const std::string& tag) const {
         atom.char_end = sqlite3_column_int(stmt, 4);
         atom.timestamp = sqlite3_column_double(stmt, 5);
         
-        std::string simhash_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
-        atom.simhash = std::stoull(simhash_str, nullptr, 16);
+        atom.simhash = static_cast<uint64_t>(sqlite3_column_int64(stmt, 6));
         
         atoms.push_back(atom);
     }
@@ -855,10 +961,7 @@ void Database::insertMolecule(const Atom& molecule) {
 
     sqlite3_bind_double(stmt, 6, molecule.timestamp);
 
-    std::stringstream ss;
-    ss << "0x" << std::hex << molecule.simhash;
-    std::string simhash_hex = ss.str();
-    sqlite3_bind_text(stmt, 7, simhash_hex.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 7, static_cast<sqlite3_int64>(molecule.simhash));
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         sqlite3_finalize(stmt);
@@ -906,12 +1009,7 @@ std::vector<Atom> Database::getMoleculesByCompound(const std::string& compound_i
 
         atom.timestamp = sqlite3_column_double(stmt, 5);
 
-        std::string simhash_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
-        try {
-            atom.simhash = std::stoull(simhash_str, nullptr, 16);
-        } catch (...) {
-            atom.simhash = 0;
-        }
+        atom.simhash = static_cast<uint64_t>(sqlite3_column_int64(stmt, 6));
 
         molecules.push_back(atom);
     }
@@ -957,6 +1055,43 @@ std::vector<Edge> Database::getEdgesFrom(AtomId atom_id) const {
     }
     
     sqlite3_bind_int(stmt, 1, static_cast<int>(atom_id));
+    
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        Edge edge;
+        edge.from = sqlite3_column_int(stmt, 0);
+        edge.to = sqlite3_column_int(stmt, 1);
+        edge.weight = sqlite3_column_double(stmt, 2);
+        edge.edge_type = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+        
+        edges.push_back(edge);
+    }
+    
+    sqlite3_finalize(stmt);
+    return edges;
+}
+
+std::vector<Edge> Database::getEdgesFromBatch(const std::vector<AtomId>& atom_ids) const {
+    if (atom_ids.empty()) return {};
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    std::vector<Edge> edges;
+    
+    // Construct variable-length IN clause
+    std::string sql = "SELECT from_atom, to_atom, weight, edge_type FROM edges WHERE from_atom IN (";
+    for (size_t i = 0; i < atom_ids.size(); ++i) {
+        sql += "?";
+        if (i < atom_ids.size() - 1) sql += ",";
+    }
+    sql += ")";
+    
+    sqlite3_stmt* stmt;
+    if (sqlite3_prepare_v2(db_, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
+        throw DatabaseError("Failed to prepare statement for getEdgesFromBatch");
+    }
+    
+    for (size_t i = 0; i < atom_ids.size(); ++i) {
+        sqlite3_bind_int(stmt, static_cast<int>(i + 1), static_cast<int>(atom_ids[i]));
+    }
     
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         Edge edge;
