@@ -1,7 +1,7 @@
 packages:
   - engine
   - shared
-  - frontend
+  - "packages/*"
 
 ignoredBuiltDependencies:
   - cozo-node
