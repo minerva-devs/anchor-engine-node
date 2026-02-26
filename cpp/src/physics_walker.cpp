@@ -158,12 +158,14 @@ void PhysicsWalker::traverseGraph(Database& db,
                 candidate.physical_bonus = 0.0;
                 candidate.gravity_score = 0.0;
                 
-                // TODO: Load full atom data for timestamp and simhash
-                // For now, create stub
+                // Load only necessary atom data (timestamp and simhash)
                 try {
-                    auto atom = db.getAtom(edge.to);
+                    auto atom = db.getAtomTimestampAndSimhash(edge.to);
                     candidate.timestamp = atom.timestamp;
                     candidate.simhash = atom.simhash;
+                    candidate.source_id = atom.source_id;
+                    candidate.start_byte = atom.start_byte;
+                    candidate.end_byte = atom.end_byte;
                 } catch (...) {
                     continue;
                 }
