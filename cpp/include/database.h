@@ -85,6 +85,13 @@ public:
     AtomId insertAtom(const Atom& atom);
     std::vector<AtomId> insertAtomsBatch(const std::vector<Atom>& atoms);
     Atom getAtom(AtomId id) const;
+
+    /**
+     * @brief Get atom metadata (timestamp, simhash) without content
+     * @param id Atom ID
+     * @return Atom Partial atom with timestamp and simhash
+     */
+    Atom getAtomTimestampAndSimhash(AtomId id) const;
     std::vector<Atom> getAtomsBySource(const SourceId& source_id) const;
     std::vector<Atom> searchAtoms(const std::string& query, size_t limit = 100) const;
     std::vector<Atom> getAllAtoms() const;
@@ -106,6 +113,7 @@ public:
     
     void insertEdge(const Edge& edge);
     std::vector<Edge> getEdgesFrom(AtomId atom_id) const;
+    std::vector<Neighbor> getNeighbors(AtomId atom_id) const;
     
     // ==================== FTS Operations ====================
     

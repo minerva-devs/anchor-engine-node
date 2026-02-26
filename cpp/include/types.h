@@ -35,13 +35,13 @@ using SourceId = std::string;
  * @brief Represents a single atom (knowledge unit)
  */
 struct Atom {
-    AtomId id;
+    AtomId id = 0;
     SourceId source_id;
     std::string content;
-    size_t char_start;
-    size_t char_end;
-    Timestamp timestamp;
-    SimHash simhash;
+    size_t char_start = 0;
+    size_t char_end = 0;
+    Timestamp timestamp = 0.0;
+    SimHash simhash = 0;
     std::vector<std::string> tags;
     std::optional<std::string> metadata;
 
@@ -84,6 +84,17 @@ struct Edge {
 };
 
 /**
+ * @brief Neighbor atom with edge and property data
+ */
+struct Neighbor {
+    AtomId id;
+    double edge_weight;
+    std::string edge_type;
+    Timestamp timestamp;
+    SimHash simhash;
+};
+
+/**
  * @brief Candidate result from physics walk
  */
 struct Candidate {
@@ -97,6 +108,11 @@ struct Candidate {
     
     // For deduplication tracking
     std::vector<std::string> content_fingerprints;
+
+    // For geometric overlap
+    SourceId source_id;
+    std::optional<size_t> start_byte;
+    std::optional<size_t> end_byte;
 };
 
 /**

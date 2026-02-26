@@ -291,6 +291,7 @@ export function setupRoutes(app: Application) {
       const defaultLimit = 100000;
       const budget = (req.body as any).token_budget ? (req.body as any).token_budget * 4 : (body.max_chars || defaultLimit);
       const tags = (req.body as any).tags || [];
+      const userContext = body.user_context;
 
       // Enhanced Search Strategy (Standard 086)
       // Support both standard and max-recall strategies
@@ -305,7 +306,8 @@ export function setupRoutes(app: Application) {
           budget,
           tags,
           (req.body as any).provenance || 'all',
-          true  // useMaxRecall = true
+          true,  // useMaxRecall = true
+          userContext
         );
       } else {
         // Standard Strategy: Balanced 70/30 budget with temporal decay
@@ -315,7 +317,8 @@ export function setupRoutes(app: Application) {
           budget,
           tags,
           (req.body as any).provenance || 'all',
-          false  // useMaxRecall = false
+          false,  // useMaxRecall = false
+          userContext
         );
       }
 
@@ -433,6 +436,7 @@ export function setupRoutes(app: Application) {
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
       const budget = body.token_budget ? body.token_budget * 4 : (body.max_chars || 2400); // Default to 2400 as specified
       const tags = body.tags || [];
+      const userContext = body.user_context;
 
       // Use Molecule Search Strategy - split query into sentence-like chunks
       const { executeMoleculeSearch } = await import('../services/search/search.js');
@@ -443,7 +447,8 @@ export function setupRoutes(app: Application) {
         budget,
         false, // deep
         'all', // provenance
-        tags
+        tags,
+        userContext
       );
 
       // Construct standard response
@@ -483,6 +488,7 @@ export function setupRoutes(app: Application) {
       // Default to 256K chars for max recall
       const budget = body.token_budget ? body.token_budget * 4 : (body.max_chars || 262144);
       const tags = body.tags || [];
+      const userContext = body.user_context;
 
       // Use max-recall configuration
       const { smartChatSearch } = await import('../services/search/search.js');
@@ -492,7 +498,8 @@ export function setupRoutes(app: Application) {
         budget,
         tags,
         'all', // provenance
-        true   // useMaxRecall = true
+        true,   // useMaxRecall = true
+        userContext
       );
 
       console.log(`[API] Max Recall Search "${body.query}" -> Found ${result.results.length} results`);
@@ -1456,88 +1463,6 @@ export function setupRoutes(app: Application) {
       res.status(500).json({ error: error.message });
     }
   });
-
-  // Chat Completions - Disabled (requires separate inference server)
-  // To enable: Uncomment and configure inference server URL
-  /*
-  app.post('/v1/chat/completions', async (req: Request, res: Response) => {
-    try {
-      const INFERENCE_URL = 'http://localhost:3001/v1/chat/completions';
-      console.log(`[API] Proxying chat request to ${INFERENCE_URL}`);
-      
-      const { default: axios } = await import('axios');
-      const response = await axios({
-        method: 'post',
-        url: INFERENCE_URL,
-        data: req.body,
-        responseType: 'stream',
-        timeout: 0,
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.flushHeaders();
-      
-      if (response.data) {
-        let bytesSent = 0;
-        response.data.on('data', (chunk: Buffer) => {
-          bytesSent += chunk.length;
-          res.write(chunk);
-        });
-        response.data.on('end', () => {
-          console.log(`[API] Proxy Stream Completed. Sent ${bytesSent} bytes.`);
-          res.end();
-        });
-        response.data.on('error', (err: any) => {
-          console.error('[API] Stream Error:', err);
-          res.end();
-        });
-      } else {
-        res.end();
-      }
-    } catch (e: any) {
-      console.error('[API] Chat Proxy Error:', e);
-      if (!res.headersSent) {
-        res.status(503).json({
-          error: 'Inference Server Unavailable',
-          details: e.message
-        });
-      } else {
-        res.end();
-      }
-    }
-  });
-  */
-
-  // Model Management Endpoints - Disabled (requires separate inference server)
-  /*
-  const proxyToInference = async (req: Request, res: Response, path: string, method: string = 'GET') => {
-    try {
-      const INFERENCE_URL = 'http://localhost:3001';
-      const url = `${INFERENCE_URL}${path}`;
-      const options: any = {
-        method,
-        headers: { 'Content-Type': 'application/json' }
-      };
-      if (method !== 'GET' && method !== 'HEAD') {
-        options.body = JSON.stringify(req.body);
-      }
-      const response = await fetch(url, options);
-      const data = await response.json();
-      res.status(response.status).json(data);
-    } catch (e: any) {
-      console.error(`[API] Proxy Error (${path}):`, e);
-      res.status(503).json({ error: 'Inference Server Unavailable', details: e.message });
-    }
-  };
-
-  app.post('/v1/model/load', (req, res) => proxyToInference(req, res, '/v1/model/load', 'POST'));
-  app.post('/v1/model/unload', (req, res) => proxyToInference(req, res, '/v1/model/unload', 'POST'));
-  app.get('/v1/model/status', (req, res) => proxyToInference(req, res, '/v1/model/status', 'GET'));
-  app.get('/v1/models', (req, res) => proxyToInference(req, res, '/v1/models', 'GET'));
-  */
 
   // Return 503 for disabled endpoints
   app.post('/v1/chat/completions', (_req, res) => {
