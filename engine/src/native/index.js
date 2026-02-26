@@ -65,7 +65,10 @@ const ffi = {
   // Transient Filter
   transient_filter_create: lib.func('transient_filter_create', 'void *', ['int64', 'bool']),
   transient_filter_destroy: lib.func('transient_filter_destroy', 'void', ['void *']),
-  transient_filter_apply: lib.func('transient_filter_apply', 'string', ['void *', 'string'])
+  transient_filter_apply: lib.func('transient_filter_apply', 'string', ['void *', 'string']),
+
+  // SimHash
+  simhash_compute: lib.func('simhash_compute', 'uint64', ['string'])
 };
 
 console.log('[anchor-core] Native library loaded successfully');
@@ -244,6 +247,15 @@ export class AnchorCore {
     if (!this.#filter) throw new Error('Not initialized');
     const json = ffi.transient_filter_apply(this.#filter, JSON.stringify(atoms));
     return JSON.parse(json);
+  }
+
+  /**
+   * Compute SimHash for text
+   * @param {string} text - Input text
+   * @returns {bigint} SimHash value
+   */
+  computeSimHash(text) {
+    return ffi.simhash_compute(text);
   }
 }
 
