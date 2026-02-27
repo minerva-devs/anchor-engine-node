@@ -129,7 +129,7 @@ interface Config {
 // Default configuration
 const DEFAULT_CONFIG: Config = {
   // Core
-  PORT: 3000,
+  PORT: 3160,
   HOST: "0.0.0.0",
   API_KEY: "ece-secret-key",
   LOG_LEVEL: "INFO",
@@ -263,7 +263,7 @@ function loadConfig(): Config {
   // 2. Try Loading user_settings.json (Highest Priority for User Overrides)
   // First try the root of the anchor-os project (monorepo setup)
   const userSettingsPath = path.join(__dirname, '..', '..', '..', 'user_settings.json');
-  if (fs.existsSync(userSettingsPath)) {
+  if (fs.existsSync(userSettingsPath) && fs.statSync(userSettingsPath).isFile()) {
     try {
       const userSettings = JSON.parse(fs.readFileSync(userSettingsPath, 'utf8'));
       console.log(`[Config] Loaded settings from ${userSettingsPath}`);
