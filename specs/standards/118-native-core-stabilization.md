@@ -1,12 +1,33 @@
 # Standard 118: Native Core Stabilization & N-API Migration
 
-**Date:** February 2026
-**Status:** ✅ ACTIVE
-**Applies To:** Core Engine, N-API Bindings, C++ Physics Walker, SQLite Integration
+**Date:** February 2026  
+**Status:** ⚠️ SUPERSEDED by Standard 119 (PGlite-First Architecture)  
+**Applies To:** Historical reference — C++ N-API bindings, SQLite3 integration (deprecated)
 
 ---
 
-## 1. Context & Pain Points
+## Note: Superseded by Standard 119
+
+As of **February 27, 2026 (v4.3.0)**, this standard has been **superseded** by [Standard 119: PGlite-First Architecture](119-pglite-first-architecture.md).
+
+**What Changed:**
+- SQLite3 + C++ N-API bindings → PGlite (WASM-based)
+- Native compilation required → Zero native builds
+- x64-only deployment → Cross-platform (ARM64, x64, Linux, macOS)
+
+**What Remains Valid:**
+- Principles 2.1 (Batched Queries) — Still applied via transactions
+- Principles 2.4 (Prepared Statements) — PGlite handles internally
+- Principles 2.5 (Parallel Assembly) — Still applied via Promise.all()
+
+**What Is Deprecated:**
+- C++ N-API bindings (removed)
+- SQLite3 native database (replaced by PGlite)
+- FFI safety patterns (no FFI needed)
+
+---
+
+## 1. Context & Pain Points (Historical)
 
 In early 2026, the Anchor Engine underwent a significant architectural shift from a PGlite-hosted recursive SQL CTE graph walker to a dedicated C++ Physics Walker accessed via N-API. This migration addressed several crippling performance and stability bottlenecks identified in the legacy architecture.
 

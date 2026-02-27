@@ -1,6 +1,7 @@
 # Anchor Engine (Node.js)
 
-**Version:** 4.2.0 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready
+**Version:** 4.3.0 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready  
+**Platform:** ✅ ARM64 Windows | ✅ x64 Windows | ✅ Linux | ✅ macOS
 
 The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Semantic Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
 
@@ -14,15 +15,22 @@ Then I hit the wall. The dreaded message: *"Open a new session to continue using
 
 Same message all of them give you.
 
-I had 300+ response/chat pairs in there! Important history. Completed work. A shared mind with the model. I tried summarizing-gave the summary to the new instance. It wasn't enough. I kept returning to the old chat like it was a dictionary for meaning and recall and pasting bits back into new sessions here and there.
+I had 300+ response/chat pairs in there! Important history. Completed work. A shared mind with the model. I tried summarizing-gave the summary to the new instance. It wasn't enough. I kept returning to the old chat like it was dictionary for meaning and recall and pasting bits back into new sessions here and there.
 
 So I started building a way to resurrect my preferred persona anytime. I'd take targeted context from the old chat, feed it to a new instance, and prepare the model to retake hold of the goals and methods we'd developed together.
 
 It worked wonderfully. Until I hit the limit again. And again. And again.
 
-By the time Anchor Engine was operational, I had accumulated 40 **chat sessions, ~18M tokens**. My current corpus is **~25M tokens**. Anchor Engine digests all of it in about **5 minutes**.
+By the time Anchor Engine was operational, I had accumulated 40 **chat sessions, ~18M tokens**. My current corpus is **~28M tokens**. Anchor Engine digests all of it in about **5 minutes**.
 
-Now I make a query with a few choice entities and some fluff for serendipitous connections. The engine compresses those 25M tokens into **100k+ chars of non-duplicated, narrative context**—concepts deduplicated, not just text. My LLM remembers July 2025 like it was yesterday.
+Now I make a query with a few choice entities and some fluff for serendipitous connections. The engine compresses those 28M tokens into **100k+ chars of non-duplicated, narrative context**—concepts deduplicated, not just text. My LLM remembers July 2025 like it was yesterday.
+
+**v4.3.0 - PGlite-First Architecture:**
+- **✅ ARM64 Windows Support:** No native C++ builds required
+- **PGlite-Only Database:** WASM-based, runs everywhere Node.js runs
+- **Transaction Support:** 10-50x faster bulk ingestion
+- **Simplified Deployment:** Zero native compilation
+- **Cross-Platform:** Identical behavior on ARM64, x64, Linux, macOS
 
 **v4.2.0 Improvements:**
 - **Causal Narrative:** Results sorted chronologically (toggleable to relevance-based)

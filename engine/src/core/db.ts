@@ -19,6 +19,8 @@ import { pathManager } from '../utils/path-manager.js';
 export class Database {
   private dbInstance: any = null;
   private _isInitialized: boolean = false;
+  private inTransaction: boolean = false;
+  private preparedStatements: Map<string, any> = new Map();
 
   constructor() {
     // Database connection is now established in init()
@@ -26,6 +28,51 @@ export class Database {
 
   get isInitialized(): boolean {
     return this._isInitialized;
+  }
+
+  /**
+   * Begin a transaction
+   */
+  async beginTransaction(): Promise<void> {
+    if (!this.inTransaction) {
+      await this.run('BEGIN');
+      this.inTransaction = true;
+    }
+  }
+
+  /**
+   * Commit a transaction
+   */
+  async commit(): Promise<void> {
+    if (this.inTransaction) {
+      await this.run('COMMIT');
+      this.inTransaction = false;
+    }
+  }
+
+  /**
+   * Rollback a transaction
+   */
+  async rollback(): Promise<void> {
+    if (this.inTransaction) {
+      await this.run('ROLLBACK');
+      this.inTransaction = false;
+    }
+  }
+
+  /**
+   * Execute a function within a transaction
+   */
+  async transaction<T>(fn: () => Promise<T>): Promise<T> {
+    await this.beginTransaction();
+    try {
+      const result = await fn();
+      await this.commit();
+      return result;
+    } catch (error) {
+      await this.rollback();
+      throw error;
+    }
   }
 
   /**
@@ -461,8 +508,8 @@ export class Database {
   async run(query: string, params?: any[]) {
     const { config } = await import("../config/index.js");
     if (config.LOG_LEVEL === "DEBUG") {
-      console.log(`[DB] Executing Query: ${query.substring(0, 50)}...`);
-      if (params) console.log(`[DB] Params:`, params);
+      console.log(`[DB] Executing Query: ${query.substring(0, 80)}...`);
+      if (params && params.length > 0) console.log(`[DB] Params:`, params);
     }
 
     try {
@@ -474,8 +521,11 @@ export class Database {
       const result = await this.dbInstance.query(query, params || []);
       return result;
     } catch (e: any) {
-      console.error(`[DB] Query Failed: ${e.message}`);
-      console.error(`[DB] Query: ${query}`);
+      // Don't log transaction control statements as errors
+      if (!query.trim().match(/^(BEGIN|COMMIT|ROLLBACK)/i)) {
+        console.error(`[DB] Query Failed: ${e.message}`);
+        console.error(`[DB] Query: ${query}`);
+      }
       throw e;
     }
   }
