@@ -142,8 +142,8 @@ importers:
         specifier: ^0.2.0
         version: 0.2.17
       '@rbalchii/anchor-core':
-        specifier: file:../../packages/anchor-core
-        version: file:../packages/anchor-core
+        specifier: ^2.2.0
+        version: 2.2.0
       '@rbalchii/dse':
         specifier: ^1.0.0
         version: 1.0.1
@@ -259,6 +259,19 @@ importers:
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@25.3.0)(typescript@5.9.3)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
+  packages/anchor-core:
+    dependencies:
+      koffi:
+        specifier: ^2.9.0
+        version: 2.15.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.13
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -1462,8 +1475,8 @@ packages:
   '@protobufjs/utf8@1.1.0':
     resolution: {integrity: sha512-Vvn3zZrhQZkkBE8LSuW3em98c0FwgO4nxzv6OdSxPKJIEKY2bGbHn+mhGIPerzI4twdxaP8/0+06HBpwf345Lw==}
 
-  '@rbalchii/anchor-core@file:../packages/anchor-core':
-    resolution: {directory: ../packages/anchor-core, type: directory}
+  '@rbalchii/anchor-core@2.2.0':
+    resolution: {integrity: sha512-b4r58qtnsRC3FKhWeSS3qvH98B/c2E+D6HrvOtd6RGbcfg7gXEAWTGFEHjHNT1pdtC+Vo3wpMmBT/ACfR3TcEQ==}
     engines: {node: '>=18.0.0'}
     cpu: [x64, arm64]
     os: [win32, linux, darwin]
@@ -1916,6 +1929,9 @@ packages:
 
   '@types/node@18.19.130':
     resolution: {integrity: sha512-GRaXQx6jGfL8sKfaIDD6OupbIHBr9jv7Jnaml9tB7l4v068PAOXqfcujMMo5PhbIs6ggR1XODELqahT2R8v0fg==}
+
+  '@types/node@22.19.13':
+    resolution: {integrity: sha512-akNQMv0wW5uyRpD2v2IEyRSZiR+BeGuoB6L310EgGObO44HSMNT8z1xzio28V8qOrgYaopIDNA18YgdXd+qTiw==}
 
   '@types/node@24.10.15':
     resolution: {integrity: sha512-BgjLoRuSr0MTI5wA6gMw9Xy0sFudAaUuvrnjgGx9wZ522fYYLA5SYJ+1Y30vTcJEG+DRCyDHx/gzQVfofYzSdg==}
@@ -5270,6 +5286,9 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   undici-types@7.16.0:
     resolution: {integrity: sha512-Zz+aZWSj8LE6zoxD+xrjh4VfkIG8Ya6LvYkZqtUQGJPZjYl53ypCaUwWqo7eI0x66KBGeRo+mlBEkMSeSZ38Nw==}
 
@@ -6710,7 +6729,7 @@ snapshots:
 
   '@protobufjs/utf8@1.1.0': {}
 
-  '@rbalchii/anchor-core@file:../packages/anchor-core':
+  '@rbalchii/anchor-core@2.2.0':
     dependencies:
       koffi: 2.15.1
 
@@ -7081,6 +7100,10 @@ snapshots:
   '@types/node@18.19.130':
     dependencies:
       undici-types: 5.26.5
+
+  '@types/node@22.19.13':
+    dependencies:
+      undici-types: 6.21.0
 
   '@types/node@24.10.15':
     dependencies:
@@ -11003,6 +11026,8 @@ snapshots:
   undefsafe@2.0.5: {}
 
   undici-types@5.26.5: {}
+
+  undici-types@6.21.0: {}
 
   undici-types@7.16.0: {}
 

@@ -292,6 +292,7 @@ export function setupRoutes(app: Application) {
       const budget = (req.body as any).token_budget ? (req.body as any).token_budget * 4 : (body.max_chars || defaultLimit);
       const tags = (req.body as any).tags || [];
       const userContext = body.user_context;
+      const format = (req.body as any).format || 'llm';  // LLM-optimized by default
 
       // Enhanced Search Strategy (Standard 086)
       // Support both standard and max-recall strategies
@@ -307,7 +308,8 @@ export function setupRoutes(app: Application) {
           tags,
           (req.body as any).provenance || 'all',
           true,  // useMaxRecall = true
-          userContext
+          userContext,
+          format  // LLM-optimized format
         );
       } else {
         // Standard Strategy: Balanced 70/30 budget with temporal decay
@@ -318,7 +320,8 @@ export function setupRoutes(app: Application) {
           tags,
           (req.body as any).provenance || 'all',
           false,  // useMaxRecall = false
-          userContext
+          userContext,
+          format  // LLM-optimized format
         );
       }
 
