@@ -119,14 +119,6 @@ export class Database {
       }
     }
 
-    // Create extensions
-    try {
-      await this.run('CREATE EXTENSION IF NOT EXISTS pg_trgm;');
-      console.log("[DB] 'pg_trgm' extension enabled.");
-    } catch (e: any) {
-      console.warn("[DB] Could not enable 'pg_trgm' extension:", e.message);
-    }
-
     // Create Synonyms table for automatic query expansion
     try {
       await this.run(`
