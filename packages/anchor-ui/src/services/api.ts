@@ -122,6 +122,12 @@ export const api = {
         body: JSON.stringify({ path })
     }).then(r => r.json()),
 
+    openExplorer: (path: string) => fetch(`${getBaseUrl()}/v1/system/explorer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+    }).then(r => r.json()),
+
     ingestGithubRepo: (url: string, bucket: string) => fetch(`${getBaseUrl()}/v1/github/repos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
