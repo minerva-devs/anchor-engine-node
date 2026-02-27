@@ -48,7 +48,7 @@ This isn't a RAG tool I built because it sounded cool. This is the tool I built 
 # Install dependencies
 pnpm install
 
-# Build native modules and engine
+# Build engine (TypeScript + PGlite WASM - no native compilation!)
 pnpm build
 
 # Start the engine
@@ -56,6 +56,8 @@ pnpm start
 ```
 
 **Access UI:** http://localhost:3160 (or configured port in `user_settings.json`)
+
+**Note:** v4.3.0+ runs on ARM64 Windows, x64 Windows, Linux, and macOS without platform-specific builds.
 
 ---
 

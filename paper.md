@@ -13,7 +13,7 @@ authors:
 affiliations:
   - name: Independent Researcher, New Mexico Tech Affiliated
     index: 1
-date: 24 February 2026
+date: 27 February 2026
 bibliography: paper.bib
 ---
 
@@ -54,9 +54,11 @@ Second Me [@wei2025second] proposes LLM-based memory parameterization requiring 
 
 ## Architecture and Data Model
 
-STAR implements the "Browser Paradigm" for AI memory: just as browsers render websites by loading only necessary shards, STAR retrieves only relevant atoms required for the current query. The hybrid architecture uses Node.js as the interface layer, C++ N-API modules for text processing and SimHash fingerprinting, PGlite for sparse graph storage, and filesystem pointers for content (disposable, rebuildable indices).
+STAR implements the "Browser Paradigm" for AI memory: just as browsers render websites by loading only necessary shards, STAR retrieves only relevant atoms required for the current query. The architecture uses Node.js as the interface layer, TypeScript for all processing including SimHash fingerprinting, PGlite (WASM-based PostgreSQL) for sparse graph storage, and filesystem pointers for content (disposable, rebuildable indices).
 
 The data model follows a three-tier hierarchy: Compounds (document references), Molecules (semantic chunks with byte offsets), Atoms (content units with tags), and Tags (conceptual labels). Content resides in the filesystem; the database stores only pointers, enabling O(1) deduplication via 64-bit SimHash fingerprints, ephemeral indices, and lazy loading.
+
+**v4.3.0 Migration Note:** Prior to February 2026, STAR used C++ N-API modules for performance-critical operations. The migration to pure TypeScript + PGlite WASM eliminated all native compilation requirements, enabling seamless deployment on ARM64 Windows and other platforms without platform-specific builds.
 
 ## Unified Field Equation
 
@@ -98,7 +100,9 @@ The system provides stateless context retrieval via HTTP API for integration wit
 
 ## Community Readiness
 
-STAR is released under AGPL‑3.0 with comprehensive documentation (77 architecture standards), Docker support, and a stable production release (v4.2.2). The repository is publicly available at https://github.com/RSBalchII/anchor‑engine‑node.
+STAR is released under AGPL‑3.0 with comprehensive documentation (80+ architecture standards), Docker support, and a stable production release (v4.3.0). The repository is publicly available at https://github.com/RSBalchII/anchor‑engine‑node.
+
+**Platform Support:** v4.3.0+ runs on ARM64 Windows, x64 Windows, Linux (x64/ARM64), and macOS (Intel/Apple Silicon) without platform-specific compilation.
 
 # AI Usage Disclosure
 

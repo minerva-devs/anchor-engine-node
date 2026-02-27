@@ -28,7 +28,7 @@ AI memory should operate similarly. Current Retrieval-Augmented Generation (RAG)
 1. **STAR Algorithm**: Physics-based graph traversal with temporal decay and SimHash fingerprinting
 2. **Browser Paradigm**: Sharded atomization architecturally designed for 4GB RAM laptops to navigate 10TB+ datasets
 3. **Production Benchmarks**: Real-world performance on 100MB dataset (280K molecules, 151K atoms)
-4. **SQL-Native Implementation**: Unified Field Equation executed in PGlite (with C++ acceleration achieving ~10ms)
+4. **SQL-Native Implementation**: Unified Field Equation executed in PGlite (pure TypeScript + WASM, ~50-150ms latency)
 
 ---
 
@@ -124,7 +124,7 @@ LIMIT 200;
 - Sparse matrix multiplication via `JOIN` operations
 - Bitwise XOR and `bit_count` for SimHash distance
 - Zero transport overhead (only weighted results returned)
-- **Latency**: ~10ms for 1M+ atoms on consumer hardware (via C++ backend; SQL scales linearly)
+- **Latency**: ~50-150ms for 1M+ atoms on consumer hardware (TypeScript + PGlite WASM; v4.3.0+)
 
 ---
 
@@ -430,4 +430,4 @@ LIMIT 200;
 
 ---
 
-**Author Note:** This whitepaper represents the foundational architecture of Anchor Engine v4.2.0. All benchmarks are from production workloads on consumer hardware (Windows 11, 32GB RAM, NVMe SSD).
+**Author Note:** This whitepaper represents the foundational architecture of Anchor Engine v4.3.0 (February 2026). The v4.3.0 migration to pure TypeScript + PGlite WASM eliminated all native C++ dependencies, enabling seamless deployment on ARM64 Windows and other platforms without platform-specific builds. All benchmarks are from production workloads on consumer hardware (Windows 11 ARM64, XPS 13, 16GB RAM, NVMe SSD).
