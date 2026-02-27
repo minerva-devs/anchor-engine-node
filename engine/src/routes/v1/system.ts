@@ -151,6 +151,37 @@ export function setupSystemRoutes(app: Application) {
     }
   });
 
+  // POST /v1/system/explorer - Open file explorer at specified path
+  app.post('/v1/system/explorer', async (req: Request, res: Response) => {
+    try {
+      const { path } = req.body;
+      if (!path) {
+        res.status(400).json({ error: 'Path is required' });
+        return;
+      }
+
+      const { exec } = await import('child_process');
+      const platform = process.platform;
+
+      // Open file explorer based on platform
+      if (platform === 'win32') {
+        exec(`explorer.exe "${path}"`);
+      } else if (platform === 'darwin') {
+        exec(`open "${path}"`);
+      } else {
+        exec(`xdg-open "${path}"`);
+      }
+
+      res.status(200).json({
+        status: 'success',
+        message: `Opened file explorer at: ${path}`
+      });
+    } catch (e: any) {
+      console.error('[API] Failed to open file explorer:', e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Configuration endpoint to provide runtime configuration to clients
   app.get('/v1/config', async (_req: Request, res: Response) => {
     try {
