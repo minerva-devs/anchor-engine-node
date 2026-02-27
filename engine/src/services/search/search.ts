@@ -16,7 +16,6 @@ import { MAX_RECALL_CONFIG } from '../../config/max-recall-config.js';
 import { SemanticCategory } from '../../types/taxonomy.js';
 import { ContextInflator } from './context-inflator.js';
 import { Timer } from '../../utils/timer.js';
-import { cppSearch, getBackend } from '../../core/cpp-backend.js';  // C++ backend integration
 
 // --- Imports from extracted modules ---
 import {
@@ -131,18 +130,6 @@ export async function findAnchors(
 
     console.log(`[Search] Dynamic Scaling: Budget=${tokenBudget}t -> Target=${targetAtomCount} atoms`);
 
-    console.log(`[Search] Constructing TS Query...`);
-
-    // Try C++ backend for faster FTS search
-    let cppResults: any[] = [];
-    let atomResults: SearchResult[] = [];  // Declare for use in molecule merge
-    try {
-      cppResults = cppSearch(sanitizedQuery, targetAtomCount);
-      console.log(`[Search] C++ FTS found ${cppResults.length} results`);
-    } catch (e: any) {
-      console.log(`[Search] C++ backend not available, using PGlite: ${e.message}`);
-    }
-
     // Construct Query String for FTS
     let tsQueryString = sanitizedQuery.trim();
     if (fuzzy) {
@@ -152,50 +139,24 @@ export async function findAnchors(
     }
 
     let anchors: SearchResult[] = [];
-    // let atomResults: SearchResult[] = []; // Removed duplicate declaration
+    let atomResults: SearchResult[] = [];
 
-    // A. Atom Search (Radial Inflation) - Use C++ results if available
-    if (cppResults.length > 0) {
-      // Transform C++ results to SearchResult format
-      atomResults = cppResults.map((r: any) => ({
-        id: String(r.id),
-        content: r.content,
-        source: r.source_id,
-        timestamp: r.timestamp,
-        buckets: r.buckets || [],
-        tags: r.tags || [],
-        epochs: '',
-        provenance: 'internal',
-        score: r.simhash ? 1.0 : 0.5,
-        sequence: 0,
-        molecular_signature: r.simhash,
-        start_byte: r.start_byte,
-        end_byte: r.end_byte,
-        type: 'atom',
-        numeric_value: undefined,
-        numeric_unit: undefined,
-        compound_id: r.compound_id
-      }));
-      anchors = atomResults;
-      console.log(`[Search] Using C++ backend results: ${anchors.length} atoms`);
-    } else {
-      // Fallback to PGlite
-      const terms = sanitizedQuery.split(/\s+/).filter(t => t.length > 0);
+    // A. Atom Search (Radial Inflation) via ContextInflator
+    const terms = sanitizedQuery.split(/\s+/).filter(t => t.length > 0);
 
-      if (terms.length > 0) {
-        try {
-          const inflations = await Promise.all(
-            terms.map(term => ContextInflator.inflateFromAtomPositions(term, 150, 20, undefined, { buckets, provenance }))
-          );
-          let rawAtoms = inflations.flat();
-          atomResults.push(...rawAtoms);
-          console.log(`[Search] Atom search found ${rawAtoms.length} atoms for terms: ${terms.join(', ')}`);
-        } catch (e) {
-          console.error(`[Search] Atom Search failed:`, e);
-        }
+    if (terms.length > 0) {
+      try {
+        const inflations = await Promise.all(
+          terms.map(term => ContextInflator.inflateFromAtomPositions(term, 150, 20, undefined, { buckets, provenance }))
+        );
+        let rawAtoms = inflations.flat();
+        atomResults.push(...rawAtoms);
+        console.log(`[Search] Atom search found ${rawAtoms.length} atoms for terms: ${terms.join(', ')}`);
+      } catch (e) {
+        console.error(`[Search] Atom Search failed:`, e);
       }
-      anchors = atomResults;
     }
+    anchors = atomResults;
 
     // B. Molecule Search (Full-Text with BM25-style ranking)
     let moleculeQuery = `
@@ -273,15 +234,14 @@ export async function findAnchors(
         compound_id: row.compound_id
       }));
 
-      // Use anchors from C++ backend or PGlite fallback
-      const atomResultsForMerge = cppResults.length > 0 ? anchors : atomResults;
-      anchors = [...atomResultsForMerge, ...molecules];
+      // Merge atom and molecule results
+      anchors = [...atomResults, ...molecules];
 
       // Deduplicate anchors using Range Merging
       // Group by compound_id to find overlaps
       const anchorsByCompound = new Map<string, SearchResult[]>();
 
-      [...atomResultsForMerge, ...molecules].forEach(a => {
+      [...atomResults, ...molecules].forEach(a => {
         if (!a.compound_id) return;
         if (!anchorsByCompound.has(a.compound_id)) {
           anchorsByCompound.set(a.compound_id, []);
@@ -635,25 +595,26 @@ export async function executeSearch(
     return true;
   });
 
-  // 3. Physics Walker (Moons) - Use C++ backend for faster execution
+  // 3. Physics Walker (Moons) - Use TypeScript PhysicsTagWalker
   let walkerResults: any[] = [];
   try {
-    const cppBackend = await getBackend();
-    const anchorIds = uniqueAnchors.map(a => parseInt(a.id) || 0).filter(id => id > 0);
-
+    // Convert string IDs to numbers for the walker
+    const anchorIds = uniqueAnchors.map(a => a.id).filter(id => id && id !== '');
+    
     if (anchorIds.length > 0) {
-      // Use C++ radial inflation - much faster than SQL!
-      walkerResults = cppBackend.radialInflation(
+      // Use TypeScript PhysicsTagWalker for radial inflation
+      const walker = new PhysicsTagWalker();
+      walkerResults = await walker.performRadialInflation(
         anchorIds,
         useMaxRecall ? 300 : 150,  // limit
         0.005  // threshold
       );
-      console.log(`[Search] C++ Physics Walker found ${walkerResults.length} associations in <10ms`);
+      console.log(`[Search] PhysicsTagWalker found ${walkerResults.length} associations`);
     } else {
-      console.log(`[Search] No valid anchor IDs for C++ walker`);
+      console.log(`[Search] No valid anchor IDs for Physics Walker`);
     }
   } catch (e: any) {
-    console.log(`[Search] C++ walker not available, skipping: ${e.message}`);
+    console.log(`[Search] Physics Walker failed, skipping: ${e.message}`);
     walkerResults = [];
   }
 

@@ -1,12 +1,18 @@
 # Architecture Standards Index
 
-**Last Updated:** February 23, 2026 | **Total Standards:** 80
+**Last Updated:** February 27, 2026 | **Total Standards:** 81
 
 ---
 
 ## Active Standards (Current Implementation)
 
 These standards define the current production architecture:
+
+### v4.3.0 Standards (PGlite-First Architecture)
+
+| # | Standard | Description | Status |
+|---|----------|-------------|--------|
+| **119** | [PGlite-First Architecture](119-pglite-first-architecture.md) | ARM64 Windows migration, transaction support | ✅ v1.0 |
 
 ### v4.2.0 Standards (Context Quality Improvements)
 

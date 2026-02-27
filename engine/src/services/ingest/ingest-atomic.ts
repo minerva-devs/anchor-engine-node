@@ -1,7 +1,6 @@
 import { db } from '../../core/db.js';
 import { config } from '../../config/index.js';
 import { Atom, Molecule, Compound } from '../../types/atomic.js';
-import { getBackend } from '../../core/cpp-backend.js';
 
 export class AtomicIngestService {
 
@@ -33,9 +32,23 @@ export class AtomicIngestService {
 
         console.log(`[AtomicIngest] ⏱️ START Persisting: ${filename} (${molecules.length} molecules, ${atoms.length} atoms)`);
 
+        // Wrap entire ingestion in a transaction for atomicity and performance
+        await db.transaction(async () => {
+            await this._ingestResultInTransaction(compound, molecules, atoms, buckets);
+        });
+
+        const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+        console.log(`[AtomicIngest] ✅ COMPLETE: ${filename} in ${totalTime}s`);
+    }
+
+    private async _ingestResultInTransaction(
+        compound: Compound,
+        molecules: Molecule[],
+        atoms: Atom[],
+        buckets: string[]
+    ) {
         // 1. Persist Atoms (Tags)
         const atomsStart = Date.now();
-        // Filter unique atoms
         const uniqueAtomsMap = new Map<string, Atom>();
         for (const a of atoms) {
             if (!uniqueAtomsMap.has(a.id)) {
@@ -55,8 +68,6 @@ export class AtomicIngestService {
             await this.batchWriteTags(uniqueAtoms, buckets);
         }
         console.log(`[AtomicIngest] ⏱️ Tags persisted: ${Date.now() - tagsStart}ms`);
-
-
 
         // 2. Persist Molecules
         const moleculesStart = Date.now();
@@ -89,9 +100,6 @@ export class AtomicIngestService {
 
         await this.batchWriteAtomPositions(molecules, atomLabelMap);
         console.log(`[AtomicIngest] ⏱️ Atom positions persisted: ${Date.now() - positionsStart}ms`);
-
-        const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
-        console.log(`[AtomicIngest] ✅ COMPLETE: ${filename} in ${totalTime}s`);
     }
 
     private async batchWriteAtoms(atoms: Atom[]) {
@@ -172,18 +180,6 @@ export class AtomicIngestService {
         const total = molecules.length;
         const logInterval = Math.max(1000, Math.floor(total / 10));
         const molStart = Date.now();
-        let cppInsertCount = 0;
-        let cppErrorCount = 0;
-
-        // Start a C++ transaction for the entire molecule batch to avoid per-row fsync
-        let hasCppTx = false;
-        try {
-            const be = getBackend();
-            if (be && typeof be.beginTransaction === 'function') {
-                be.beginTransaction();
-                hasCppTx = true;
-            }
-        } catch (e) { /* no-op */ }
 
         for (let i = 0; i < molecules.length; i += batchSize) {
             const batch = molecules.slice(i, Math.min(i + batchSize, molecules.length));
@@ -192,7 +188,7 @@ export class AtomicIngestService {
             if (total > 1000 && i % logInterval === 0 && i > 0) {
                 const elapsed = ((Date.now() - molStart) / 1000).toFixed(1);
                 const rate = Math.round(i / ((Date.now() - molStart) / 1000));
-                console.log(`[AtomicIngest] ⏱️ Molecules: ${((i / total) * 100).toFixed(0)}% (${i}/${total}) - ${elapsed}s elapsed, ${rate} mol/s, C++: ${cppInsertCount} ok / ${cppErrorCount} err`);
+                console.log(`[AtomicIngest] ⏱️ Molecules: ${((i / total) * 100).toFixed(0)}% (${i}/${total}) - ${elapsed}s elapsed, ${rate} mol/s`);
             }
 
             // Yield to event loop every 500 rows
@@ -224,33 +220,6 @@ export class AtomicIngestService {
                     JSON.stringify(m.tags || []),
                     JSON.stringify(m.entities || {})
                 );
-
-                try {
-                    // Seed C++ FTS backend (use-after-free bug fixed in database.cpp)
-                    let simhashVal = 0n;
-                    if (m.molecular_signature) {
-                        try {
-                            // MD5 is 32 hex chars = 128 bits, but simhash is uint64 (16 hex chars max)
-                            simhashVal = BigInt(`0x${m.molecular_signature.slice(0, 16)}`);
-                        } catch (err) {
-                            simhashVal = 0n;
-                        }
-                    }
-                    getBackend().insertAtom(
-                        m.compoundId,
-                        m.content,
-                        m.start_byte || 0,
-                        m.end_byte || 0,
-                        m.timestamp || Date.now(),
-                        simhashVal,
-                        m.compoundId,
-                        m.start_byte || 0,
-                        m.end_byte || 0
-                    );
-                    cppInsertCount++;
-                } catch (e) {
-                    cppErrorCount++;
-                }
             }
 
             await db.run(
@@ -274,15 +243,8 @@ export class AtomicIngestService {
             );
         }
 
-        // Commit C++ transaction
-        if (hasCppTx) {
-            try {
-                getBackend().commitTransaction();
-            } catch (e) { /* no-op */ }
-        }
-
         const molElapsed = ((Date.now() - molStart) / 1000).toFixed(1);
-        console.log(`[AtomicIngest] ⏱️ Molecules batch complete: ${total} molecules, C++ FTS: ${cppInsertCount} inserted / ${cppErrorCount} errors, ${molElapsed}s`);
+        console.log(`[AtomicIngest] ⏱️ Molecules batch complete: ${total} molecules, ${molElapsed}s`);
     }
 
     private async batchWriteEdges(compoundId: string, atomIds: string[]) {
