@@ -17,6 +17,7 @@ import { SemanticCategory } from '../../types/taxonomy.js';
 import { ContextInflator } from './context-inflator.js';
 import { Timer } from '../../utils/timer.js';
 import { cppSearch, getBackend } from '../../core/cpp-backend.js';  // C++ backend integration
+import { LLMContextFormatter } from './llm-context-formatter.js';  // LLM-optimized format
 
 // --- Imports from extracted modules ---
 import {
@@ -564,7 +565,8 @@ export async function executeSearch(
   explicitTags: string[] = [],
   filters?: { type?: string; minVal?: number; maxVal?: number; },
   useMaxRecall: boolean = false,
-  userContext?: UserContext
+  userContext?: UserContext,
+  format: 'llm' | 'human' = 'llm'  // LLM-optimized format by default
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
   console.log(`[Search] executeSearch (Physics Engine V2) called with provenance: ${provenance}`);
   const startTime = Date.now();
@@ -707,10 +709,24 @@ export async function executeSearch(
     proximityThreshold
   });
 
+  // Format for LLM or human consumption
+  let context: string;
+  if (format === 'llm') {
+    const formatter = new LLMContextFormatter();
+    const llmContext = formatter.format(combinedResults, query, {
+      search_latency_ms: Date.now() - startTime,
+      dedup_removed: combinedResults.length - formatted.results.length,
+      backend: 'pglite'
+    });
+    context = JSON.stringify(llmContext, null, 2);
+  } else {
+    context = serializedContext;
+  }
+
   return {
-    context: serializedContext,
+    context,
     results: formatted.results,
-    toAgentString: () => serializedContext,
+    toAgentString: () => context,
     metadata: { ...contextPackage.graphStats, ...formatted.metadata }
   };
 }
@@ -859,7 +875,8 @@ export async function iterativeSearch(
   tags: string[] = [],
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   useMaxRecall: boolean = false,
-  userContext?: UserContext
+  userContext?: UserContext,
+  format: 'llm' | 'human' = 'llm'
 ): Promise<{ context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string }> {
 
   // 0. Extract Scope Tags (Hashtags) to preserve them across strategies
@@ -873,7 +890,7 @@ export async function iterativeSearch(
 
   // Strategy 1: Standard Expanded Search (All Nouns, Verbs, Dates + Expansion)
   console.log(`[IterativeSearch] Strategy 1: Standard Execution`);
-  let results = await executeSearch(query, undefined, buckets, maxChars, false, provenance, tags, undefined, useMaxRecall, userContext);
+  let results = await executeSearch(query, undefined, buckets, maxChars, false, provenance, tags, undefined, useMaxRecall, userContext, format);
   if (results.results.length > 0) return { ...results, attempt: 1 };
 
   // Strategy 2: Strict "Subjects & Time" (Strip Verbs/Adjectives, keep Nouns + Dates)
@@ -890,7 +907,7 @@ export async function iterativeSearch(
     // Re-inject scope tags
     const strictQuery = Array.from(uniqueTokens).join(' ') + ' ' + tagsString;
     console.log(`[IterativeSearch] Fallback Query 1: "${strictQuery.trim()}"`);
-    results = await executeSearch(strictQuery, undefined, buckets, maxChars, false, provenance, tags, undefined, undefined, userContext);
+    results = await executeSearch(strictQuery, undefined, buckets, maxChars, false, provenance, tags, undefined, undefined, userContext, format);
     if (results.results.length > 0) return { ...results, attempt: 2 };
   }
 
@@ -904,7 +921,7 @@ export async function iterativeSearch(
 
   if (entityQuery.trim().length > 0 && entityQuery.trim() !== (Array.from(uniqueTokens).join(' ') + ' ' + tagsString).trim()) {
     console.log(`[IterativeSearch] Fallback Query 2: "${entityQuery.trim()}"`);
-    results = await executeSearch(entityQuery, undefined, buckets, maxChars, false, provenance, tags, undefined, undefined, userContext);
+    results = await executeSearch(entityQuery, undefined, buckets, maxChars, false, provenance, tags, undefined, undefined, userContext, format);
     if (results.results.length > 0) return { ...results, attempt: 3 };
   }
 
@@ -929,7 +946,8 @@ export async function smartChatSearch(
   tags: string[] = [],
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   useMaxRecall: boolean = false,
-  userContext?: UserContext
+  userContext?: UserContext,
+  format: 'llm' | 'human' = 'llm'
 ): Promise<{ context: string; results: SearchResult[]; strategy: string; splitQueries?: string[]; metadata?: any; toAgentString: () => string }> {
 
   const isLongQuery = query.length > 100;
@@ -937,7 +955,7 @@ export async function smartChatSearch(
 
   // 1. Initial Attempt (Skip if it's a massive max-recall query to force chunking)
   if (!isLongQuery || !useMaxRecall) {
-    initial = await iterativeSearch(query, buckets, maxChars, tags, provenance, useMaxRecall, userContext);
+    initial = await iterativeSearch(query, buckets, maxChars, tags, provenance, useMaxRecall, userContext, format);
 
     // If we have enough results, returns immediately
     if (initial.results.length >= 10 && !useMaxRecall) {
