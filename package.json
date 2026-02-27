@@ -8,14 +8,11 @@
     "start": "node --expose-gc engine/dist/index.js",
     "dev": "pnpm --filter anchor-engine dev",
     "build": "pnpm --filter anchor-engine build",
-    "build:universal": "bash build-universal.sh",
-    "build:native": "echo \"Native modules now handled via npm packages\"",
     "test": "jest",
     "lint": "eslint . --ext .ts,.js",
     "clean": "rimraf dist engine/dist",
     "postinstall": "cd engine && pnpm install --ignore-scripts && pnpm run build",
-    "start-with-logging": "node --expose-gc engine/dist/index.js > ../../logs/anchor_engine.log 2>&1",
-    "build-standalone": "echo \"Building standalone engine with UI...\" && node scripts/build-standalone.js"
+    "start-with-logging": "node --expose-gc engine/dist/index.js > ../../logs/anchor_engine.log 2>&1"
   },
   "keywords": [
     "knowledge-base",
@@ -30,7 +27,6 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.2.0",
     "@rbalchii/dse": "^1.0.0",
-    "@rbalchii/native-atomizer": "^1.0.0",
     "@rbalchii/native-fingerprint": "^1.0.0",
     "@rbalchii/native-keyassassin": "^1.0.2",
     "@rbalchii/tag-walker": "^1.0.0",

@@ -1,8 +1,7 @@
 packages:
   - engine
   - shared
-  - frontend
+  - packages/anchor-ui
 
 ignoredBuiltDependencies:
-  - cozo-node
   - sharp
