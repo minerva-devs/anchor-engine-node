@@ -629,16 +629,15 @@ export async function executeSearch(
     const fallbackTags = words.filter(w => w.length > 3).map(w => w.toLowerCase());
     if (fallbackTags.length > 0) {
       // Simple programmatic fallback to explicitly look for these terms in the DB tags
-      const db = require('../../core/db.js').db;
       try {
         for (const fbTag of fallbackTags) {
-          // SQLite JSON array search for tags
+          // PostgreSQL array search - check if tag exists in array
           const tagRes = await db.run(`
                       SELECT id, content, source_path, timestamp, buckets, tags, provenance, simhash, embedding, compound_id, start_byte, end_byte
                       FROM atoms
-                      WHERE tags LIKE $1
+                      WHERE $1 = ANY(tags)
                       LIMIT 20
-                  `, [`%${fbTag}%`]);
+                  `, [fbTag]);
           if (tagRes.rows && tagRes.rows.length > 0) {
             tagRes.rows.forEach((row: any) => {
               primaryAnchors.push({

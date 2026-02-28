@@ -103,7 +103,7 @@ export class LLMContextFormatter {
     return {
       query,
       context: {
-        summary: this.generateSummary(atoms, query, entities, themes),
+        summary: this.generateThemeSummary(atoms, query, entities),
         entities,
         themes,
         timeline
@@ -296,7 +296,7 @@ export class LLMContextFormatter {
       name: themeName,
       confidence: Math.min(1.0, atomIds.size / atoms.length),
       atom_ids: Array.from(atomIds),
-      summary: this.generateThemeSummary(themeName, atomIds, atoms),
+      summary: `Theme: ${themeName} (${atomIds.size} atoms)`,
       keywords: Array.from(relatedTags).slice(0, 5)
     };
   }
@@ -311,13 +311,13 @@ export class LLMContextFormatter {
         relevance_score: this.calculateRelevance(atom),
         theme: this.findBestTheme(atom, themes),
         entities: this.extractAtomEntities(atom),
-        timestamp: atom.timestamp || new Date().toISOString(),
+        timestamp: String(atom.timestamp || new Date().toISOString()),
         content: atom.content,
         source: atom.source || 'unknown',
         tags: atom.tags || [],
         relationships: {
-          responds_to: atom.epochs?.responds_to || [],
-          referenced_by: atom.epochs?.referenced_by || [],
+          responds_to: (atom.epochs as any)?.responds_to || [],
+          referenced_by: (atom.epochs as any)?.referenced_by || [],
           related_to: this.findRelatedAtoms(atom, atoms)
         }
       }))
@@ -387,7 +387,11 @@ export class LLMContextFormatter {
       earliest: earliest.toISOString(),
       latest: latest.toISOString(),
       span_days: spanDays,
-      key_moments: keyMoments
+      key_moments: keyMoments.map(km => ({
+        timestamp: String(km.timestamp),
+        event: km.event,
+        atom_id: km.atom_id
+      }))
     };
   }
   
@@ -468,10 +472,10 @@ export class LLMContextFormatter {
       .join(' & ');
   }
   
-  private generateThemeSummary(themeName: string, atomIds: Set<string>, atoms: SearchResult[]): string {
-    const themeAtoms = atoms.filter(a => atomIds.has(a.id));
-    const sampleContent = themeAtoms.slice(0, 2).map(a => a.content.substring(0, 50)).join('... ');
-    return `Discussions about ${themeName.toLowerCase()}: ${sampleContent}...`;
+  private generateThemeSummary(atoms: SearchResult[], query: string, entities: Entity[]): string {
+    const sampleContent = atoms.slice(0, 2).map(a => a.content.substring(0, 50)).join('... ');
+    const entityNames = entities.slice(0, 3).map(e => e.name).join(', ');
+    return `Context about ${entityNames || 'the query'}: ${sampleContent}...`;
   }
   
   private findBestTheme(atom: SearchResult, themes: Theme[]): string {

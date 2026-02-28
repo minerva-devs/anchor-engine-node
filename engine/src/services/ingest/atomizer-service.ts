@@ -199,6 +199,10 @@ export class AtomizerService {
             return null; // Skip ingestion entirely
         }
 
+        // Note: System output (Anchor search results) is NOT skipped - it's cleaned during sanitization
+        // The sanitization step removes score markers, system IDs, YAML formatting, etc.
+        // Deduplication handles any remaining duplicates
+
         console.log(`[Atomizer] ⏱️ START: ${filename} (${contentSizeMB}MB)`);
 
         try {
@@ -453,7 +457,42 @@ export class AtomizerService {
         clean = clean.replace(/<\|assistant\|>/g, '');
         clean = clean.replace(/<\|system\|>/g, '');
 
-        // 4. Final Polish
+        // 4. Strip Anchor System Output (prevent self-contamination)
+        // Remove score markers from search results
+        clean = clean.replace(/score:\s*\d+(?:\.\d+)?/g, '');
+        // Remove virtual molecule IDs
+        clean = clean.replace(/virtual_mem_[a-f0-9_]+/g, '');
+        // Remove system memory IDs
+        clean = clean.replace(/\bid:\s*["']?mem_[a-f0-9_]+["']?\s*,?/g, '');
+        // Remove source path markers
+        clean = clean.replace(/source:\s*["']?inbox\/[^"'\n]+["']?\s*,?/g, '');
+        // Remove provenance markers
+        clean = clean.replace(/provenance:\s*["']?(internal|external|quarantine)["']?\s*,?/g, '');
+        // Remove bucket arrays
+        clean = clean.replace(/buckets:\s*\[[\s\w,"']*\]\s*,?/g, '');
+        // Remove epoch data
+        clean = clean.replace(/epochs?:\s*['"]?[^,\n"']+['"]?\s*,?/g, '');
+        // Remove timestamp fields from system output
+        clean = clean.replace(/timestamp:\s*["']?[^"'\n]+["']?\s*,?/g, '');
+        // Remove compound_id and byte range markers
+        clean = clean.replace(/compound_id:\s*["']?[a-f0-9_]+["']?\s*,?/g, '');
+        clean = clean.replace(/start_byte:\s*\d+\s*,?/g, '');
+        clean = clean.replace(/end_byte:\s*\d+\s*,?/g, '');
+        clean = clean.replace(/molecular_signature:\s*["']?[a-f0-9]+["']?\s*,?/g, '');
+        clean = clean.replace(/is_inflated:\s*(true|false)\s*,?/g, '');
+
+        // 5. Strip MCP/Agent Output Formatting
+        // Remove YAML list markers from search results
+        clean = clean.replace(/^\s*-\s*(id|source|score|content|tags|buckets|provenance):\s*/gm, '');
+        // Remove YAML block markers
+        clean = clean.replace(/^\s*\|\s*$/gm, '');
+        // Remove code block wrappers (keep content)
+        clean = clean.replace(/```yaml\s*/g, '');
+        clean = clean.replace(/```\s*$/gm, '');
+        // Remove emoji markers from system output
+        clean = clean.replace(/🔍\s*|🤖\s*|⚙️\s*|✅\s*|❌\s*/g, '');
+
+        // 6. Final Polish
         clean = clean.replace(/\n{3,}/g, '\n\n');
 
         return clean.trim();

@@ -308,8 +308,7 @@ export function setupRoutes(app: Application) {
           tags,
           (req.body as any).provenance || 'all',
           true,  // useMaxRecall = true
-          userContext,
-          format  // LLM-optimized format
+          userContext
         );
       } else {
         // Standard Strategy: Balanced 70/30 budget with temporal decay
@@ -320,8 +319,7 @@ export function setupRoutes(app: Application) {
           tags,
           (req.body as any).provenance || 'all',
           false,  // useMaxRecall = false
-          userContext,
-          format  // LLM-optimized format
+          userContext
         );
       }
 
