@@ -157,6 +157,8 @@ Keywords: Information Retrieval, Graph-Based Search, Local-First AI, SimHash, Pe
 4. **Second Me:** Wei et al. 2025 (contemporary comparison)
 5. **PersonalAI:** Menschikov et al. 2025 (graph-based alternative)
 6. **T-Retriever:** Wei et al. 2026 (hierarchical RAG)
+7. **TOBUGraph:** Kashmira et al. 2024 (graph-based memory retrieval)
+8. **Mem0:** Chhikara et al. 2025 (scalable long-term memory)
 
 **See:** `docs/BIBLIOGRAPHY.bib` for complete citation database
 

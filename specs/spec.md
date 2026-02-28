@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 4.2.1 | **Status:** Production Ready | **Updated:** February 24, 2026
+**Version:** 4.3.2 | **Status:** Production Ready | **Updated:** February 28, 2026
 
 ## Quick Reference
 
@@ -11,7 +11,6 @@
 | **Source of Truth** | `mirrored_brain/` filesystem |
 | **Index** | Disposable, rebuildable on startup |
 | **Search** | STAR Algorithm (70/30 Planets/Moons) |
-| **Native Modules** | @rbalchii/* npm packages (C++ N-API) |
 | **Docker** | `docker-compose up -d` (2 CPU, 2GB RAM) |
 
 ---
@@ -28,7 +27,7 @@
 
 ## Recent Changes (v4.2.1)
 
-### C++ Optimization Project (50% Complete)
+### C++ Optimization Project (Archived)
 
 **Branch:** `cpp-optimization`
 
@@ -122,20 +121,14 @@ flowchart TB
         G[Mirror]
     end
 
-    subgraph NATIVE["Native Modules<br/>@rbalchii/*"]
-        H[Atomizer]
-        I[Fingerprint]
-        J[KeyAssassin]
-    end
-
     subgraph STORAGE["Storage"]
         K[(PGlite<br/>Disposable)]
         L[mirrored_brain/<br/>Source]
         M[inbox/<br/>Files]
     end
 
-    A --> B --> C --> D --> H & I
-    C --> E --> I & J
+    A --> B --> C --> D
+    C --> E
     C --> F --> M
     C --> G --> L & M
     D & E --> K & L
@@ -150,13 +143,12 @@ flowchart TB
 1. **UI Layer**: React/Vite frontend at http://localhost:3160
 2. **HTTP API**: Express.js REST API on port 3160
 3. **Core Services**: Ingestion, Search (STAR), Watchdog, Mirror Protocol
-4. **Native Modules**: C++ N-API modules for performance (@rbalchii/* packages)
-5. **Storage**: PGlite database (disposable index) + mirrored_brain/ (source of truth)
+4. **Storage**: PGlite database (disposable index) + mirrored_brain/ (source of truth)
 
 ### Data Flow
 
 ```
-User Query → API Route → Search Service → Native Fingerprint → PGlite Query → Context Inflation → Return 618k chars
+User Query → API Route → Search Service → PGlite Query → Context Inflation → Return 618k chars
 ```
 
 ---
@@ -451,7 +443,7 @@ flowchart LR
 | **Inception** | July 2025 | Project started, initial architecture |
 | **Foundation** | Aug-Sep 2025 | CozoDB integration, core ingestion |
 | **Stabilization** | Oct-Nov 2025 | PGlite migration, reliability fixes |
-| **Acceleration** | Dec 2025 | Native C++ modules (2.3x speedup) |
+| **Acceleration** | Dec 2025 | Native C++ modules (Deprecated in v4.3.0) |
 | **Browser Paradigm** | Jan 2026 | Tag-Walker replaces vector search |
 | **Production** | Feb 2026 | 100MB ingested, 280K molecules, ready |
 
@@ -493,6 +485,7 @@ anchor-engine-node/
 | **086** | Dual-Strategy Search | specs/standards/STANDARD_086_*.md | Standard + Max-Recall modes, SimHash dedup | ✅ v2.0 |
 | **113** | Automatic Max-Recall | specs/standards/STANDARD_113_*.md | Auto-trigger at >16k tokens | ✅ v1.0 |
 | **116** | Phoenix Protocol | specs/standards/STANDARD_116_*.md | Backup/Restore with filesystem rebuild | ✅ v1.0 |
+| **120** | System Output Filtering | specs/standards/STANDARD_120_*.md | Prevents self-contamination via sanitization/blacklists | ✅ v1.0 |
 
 ### Legacy Standards (Still Valid)
 
@@ -503,7 +496,6 @@ anchor-engine-node/
 | **104** | Universal Semantic Search | Unified search architecture |
 | **094** | Smart Search Protocol | Fuzzy fallback (deprecated but referenced) |
 | **088** | Server Startup Sequence | ECONNREFUSED fix |
-| **074** | Native Module Acceleration | Iron Lung Protocol |
 | **065** | Graph Associative Retrieval | Tag-Walker protocol |
 | **059** | Reliable Ingestion | Ghost Data Protocol |
 

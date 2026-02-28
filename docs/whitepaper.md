@@ -304,7 +304,7 @@ For sovereign, local-first deployments on consumer hardware, latency scaling is 
 
 ---
 
-## 6. Comparison with Vector-Based RAG
+## 6. Comparison with Vector-Based RAG and Graph Memory
 
 | Metric | Anchor Engine (STAR) | Vector RAG (HNSW) |
 |--------|---------------------|-------------------|
@@ -325,6 +325,16 @@ For sovereign, local-first deployments on consumer hardware, latency scaling is 
 | 4GB RAM laptop | **STAR** |
 | Explainable retrieval required | **STAR** |
 | GPU infrastructure available | Vector RAG |
+
+### 6.1 Comparison with Graph Memory Systems
+
+While recent systems like TOBUGraph (arXiv:2412.05447) and Mem0 (arXiv:2504.19413) explore graph-based personal memory, they typically rely on LLM-based extractions, dense graph representations, and additive scoring. 
+
+STAR differentiates itself through:
+- **Deterministic Scoring**: Utilizing a physics-based multiplicative equation rather than opaque LLM extractions.
+- **Resource Constraints**: Architected exclusively for local-first, minimal-hardware environments (CPU-only, 4GB RAM footprints).
+- **Multiplicative Noise Elimination**: The multiplicative nature of the Unified Field Equation ensures that any zero factor (e.g., zero shared tags, or orthogonal SimHash) eliminates the result entirely, significantly reducing hallucination-inducing noise.
+- **Explainability**: Native tag paths directly explain why an atom was retrieved.
 
 ---
 
