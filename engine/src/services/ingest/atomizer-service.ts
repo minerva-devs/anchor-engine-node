@@ -3,6 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { Atom, Molecule, Compound } from '../../types/atomic.js';
+import { 
+  shouldUseStrictAtomSelection, 
+  modulateTags,
+  isEntityTag as isEntityByModulation
+} from '../../utils/tag-modulation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +27,98 @@ try {
 } catch { /* use JS fallback */ }
 
 export class AtomizerService {
+
+    /**
+     * Tag blacklist patterns - prevents low-value tags from being stored
+     * These patterns filter out noise at ingestion time
+     */
+    private static TAG_BLACKLIST_PATTERNS = [
+        // Color codes (hex)
+        /^#[0-9a-fA-F]{3,8}$/,
+        
+        // Pure numbers or too short
+        /^#\d{1,3}$/,
+        /^#_\w*$/,
+        /^#__[\w\d_]+$/,
+        
+        // HTML/DOM artifacts
+        /^#btn\b/, /^#class\b/, /^#div\b/, /^#id\b/,
+        /^#span\b/, /^#href\b/, /^#src\b/,
+        
+        // Code artifacts
+        /^#fn\b/, /^#elif\b/, /^#else\b/, /^#endif\b/,
+        /^#ifdef\b/, /^#ifndef\b/, /^#include\b/,
+        /^#define\b/, /^#pragma\b/,
+        
+        // Scraping artifacts
+        /^#cite_note/, /^#cite_ref/, /^#amp_tf/,
+        /^#details_of_atom/, /^#entry_lin/, /^#entry_links/,
+        /^#opensearch_extension/, /^#extension_elements/,
+        /^#simple_examples/, /^#query_interface/,
+        /^#api_response/, /^#response_example/,
+        /^#examples?$/, /^#overview$/, /^#preface$/,
+        /^#appendix/, /^#appendices$/, /^#bib\b/, /^#ref\b/,
+        
+        // Error/artifact tags
+        /^#incorrect_/, /^#error_/, /^#null\b/,
+        /^#undefined\b/, /^#nan\b/,
+        
+        // Too generic
+        /^#slow_pickup$/, /^#late_night$/, /^#early_morning$/,
+        /^#monday\b/, /^#tuesday\b/, /^#wednesday\b/,
+        /^#thursday\b/, /^#friday\b/, /^#saturday\b/,
+        /^#sunday\b/, /^#manual\b/, /^#manually_/,
+        /^#test_/, /^#tmp\b/, /^#temp\b/, /^#untagged$/,
+        
+        // Deprecated project names
+        /^#agentgpt$/, /^#babyagi$/, /^#autogen$/, /^#chimaera$/,
+        
+        // System tags
+        /^#manually_quarantined$/, /^#quarantined$/,
+        /^#system$/, /^#internal$/, /^#external$/,
+    ];
+
+    private static TAG_BLACKLIST_EXACT = new Set([
+        '#_', '#0', '#1', '#2', '#3', '#4', '#5', '#6', '#7', '#8', '#9',
+        '#00', '#000', '#0000', '#00000', '#000000',
+    ]);
+
+    /**
+     * Check if a tag should be filtered out
+     */
+    private isBlacklistedTag(tag: string): boolean {
+        if (!tag || typeof tag !== 'string') return true;
+
+        const normalizedTag = tag.trim();
+
+        if (AtomizerService.TAG_BLACKLIST_EXACT.has(normalizedTag)) {
+            return true;
+        }
+
+        for (const pattern of AtomizerService.TAG_BLACKLIST_PATTERNS) {
+            if (pattern.test(normalizedTag)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Apply tag modulation to atom labels
+     * Filters based on modulation level and blacklist strictness from user_settings.json
+     */
+    private applyTagModulation(atomLabels: string[]): string[] {
+        if (!atomLabels || atomLabels.length === 0) return [];
+        
+        // Convert atom labels to tag format
+        const rawTags = atomLabels.map(label => 
+            label.startsWith('#') ? label : `#${label}`
+        );
+        
+        // Apply modulation filtering
+        return modulateTags(rawTags);
+    }
 
     /**
      * Transient data patterns to exclude from ingestion
@@ -238,8 +335,9 @@ export class AtomizerService {
                     numeric_value: numericVal,
                     numeric_unit: numericUnit,
                     molecular_signature: this.generateSimHash(processedText),
-                    timestamp: currentTimestamp, // Uses earliest timestamp found in chunk for temporal ordering
-                    tags: moleculeAtoms.map(a => a.label),
+                    timestamp: currentTimestamp,
+                    // Apply tag modulation: filter blacklisted tags and apply modulation level
+                    tags: this.applyTagModulation(moleculeAtoms.map(a => a.label)),
                     entities: {
                         people: moleculeAtoms.filter(a => ['#coda', '#rob', '#oliver'].includes(a.label.toLowerCase())).map(a => a.label),
                         concepts: moleculeAtoms.filter(a => a.type === 'concept').map(a => a.label),
@@ -450,6 +548,7 @@ export class AtomizerService {
 
     private scanAtoms(content: string): Atom[] {
         const atoms: Atom[] = [];
+        const strictMode = shouldUseStrictAtomSelection();
 
         // 1. Sovereign Keywords - OPTIMIZED with compiled regex
         const keywordRegex = this.getKeywordRegex();
@@ -473,13 +572,48 @@ export class AtomizerService {
         // 2. Explicit Content Tags (#tag)
         const tagMatches = content.match(/#(\w+)/g);
         if (tagMatches) {
-            tagMatches.forEach(m => atoms.push(this.createAtom(m, 'concept')));
+            const seen = new Set<string>();
+            tagMatches.forEach(m => {
+                const tag = m.toLowerCase();
+                // In strict mode, filter out common words and low-value tags
+                if (strictMode) {
+                    const cleanTag = tag.replace(/^#/, '');
+                    // Skip if too short, common word, or looks like noise
+                    if (cleanTag.length < 3 || 
+                        this.isCommonWord(cleanTag) || 
+                        this.isBlacklistedTag(tag)) {
+                        return;
+                    }
+                }
+                if (!seen.has(tag)) {
+                    seen.add(tag);
+                    atoms.push(this.createAtom(m, 'concept'));
+                }
+            });
         }
 
         // Deduplicate locally
         const unique = new Map();
         atoms.forEach(a => unique.set(a.id, a));
         return Array.from(unique.values());
+    }
+
+    /**
+     * Check if a word is a common word that should be filtered in strict mode
+     */
+    private isCommonWord(word: string): boolean {
+        const commonWords = new Set([
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+            'of', 'with', 'by', 'from', 'up', 'about', 'into', 'over', 'after',
+            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had',
+            'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might',
+            'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they',
+            'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'how',
+            'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such',
+            'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
+            'can', 'just', 'now', 'then', 'here', 'there', 'if', 'as', 'but', 'or'
+        ]);
+        return commonWords.has(word.toLowerCase());
     }
 
     // Cache for keywords and compiled regex

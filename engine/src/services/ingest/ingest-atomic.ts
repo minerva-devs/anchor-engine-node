@@ -1,6 +1,7 @@
 import { db } from '../../core/db.js';
 import { config } from '../../config/index.js';
 import { Atom, Molecule, Compound } from '../../types/atomic.js';
+import { filterTags } from '../../utils/tag-filter.js';
 
 export class AtomicIngestService {
 
@@ -160,7 +161,9 @@ export class AtomicIngestService {
             // Ensure buckets are included
             const allBuckets = new Set([...buckets, ...(atom as any).buckets || []]);
 
-            const tags = [atom.label]; // Atom IS the tag in this architecture
+            // Filter atom label through blacklist
+            const filteredTags = filterTags([atom.label]);
+            const tags = filteredTags.length > 0 ? filteredTags : [atom.label]; // Keep original if filter removes everything
 
             for (const bucket of allBuckets) {
                 for (const tag of tags) {
@@ -391,7 +394,9 @@ export class AtomicIngestService {
             let paramIdx = 1;
 
             for (const m of batch) {
-                const specificTags = (m.atoms || []).map(id => atomLabelMap.get(id)).filter(l => l !== undefined) as string[];
+                // Extract tags from atoms and filter through blacklist
+                const rawTags = (m.atoms || []).map(id => atomLabelMap.get(id)).filter(l => l !== undefined) as string[];
+                const specificTags = filterTags(rawTags);
 
                 placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
 

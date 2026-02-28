@@ -102,6 +102,81 @@ export async function hydrateEngrams(ids: string[]): Promise<SearchResult[]> {
   }
 }
 
+/**
+ * Enrich atoms with molecule tags for better contextual associations
+ * Fetches tags from parent molecules and merges them with atom tags
+ * This provides richer semantic context for LLMs viewing search results
+ */
+async function enrichAtomsWithMoleculeTags(anchors: SearchResult[]): Promise<void> {
+  try {
+    // Group anchors by compound_id for efficient batch query
+    const anchorsByCompound = new Map<string, SearchResult[]>();
+    
+    for (const anchor of anchors) {
+      if (anchor.compound_id) {
+        if (!anchorsByCompound.has(anchor.compound_id)) {
+          anchorsByCompound.set(anchor.compound_id, []);
+        }
+        anchorsByCompound.get(anchor.compound_id)!.push(anchor);
+      }
+    }
+
+    // For each compound, fetch molecule tags and merge with atom tags
+    for (const [compoundId, compoundAnchors] of anchorsByCompound) {
+      try {
+        // Fetch all molecules for this compound with their tags
+        const molQuery = `
+          SELECT id, tags 
+          FROM molecules 
+          WHERE compound_id = $1 AND tags IS NOT NULL
+        `;
+        
+        const molResult = await db.run(molQuery, [compoundId]);
+        
+        if (molResult.rows && molResult.rows.length > 0) {
+          // Collect all unique molecule tags
+          const moleculeTags = new Set<string>();
+          
+          for (const molRow of molResult.rows) {
+            if (molRow.tags) {
+              const tags = typeof molRow.tags === 'string' 
+                ? JSON.parse(molRow.tags) 
+                : molRow.tags;
+              
+              if (Array.isArray(tags)) {
+                for (const tag of tags) {
+                  if (tag && typeof tag === 'string') {
+                    moleculeTags.add(tag);
+                  }
+                }
+              }
+            }
+          }
+          
+          // Merge molecule tags with each atom's tags
+          if (moleculeTags.size > 0) {
+            for (const anchor of compoundAnchors) {
+              const atomTags = anchor.tags || [];
+              const mergedTags = Array.from(
+                new Set([...atomTags, ...moleculeTags])
+              );
+              
+              // Sort tags for consistency (atom tags first, then molecule tags alphabetically)
+              anchor.tags = mergedTags.sort();
+            }
+          }
+        }
+      } catch (molErr) {
+        // Silently continue if molecule tag fetch fails for a compound
+        console.debug('[Search] Could not fetch molecule tags for compound:', compoundId, molErr);
+      }
+    }
+  } catch (e) {
+    console.warn('[Search] Failed to enrich atoms with molecule tags:', e);
+    // Continue without enrichment - this is not a critical failure
+  }
+}
+
 import { PhysicsTagWalker } from './physics-tag-walker.js';
 import { assembleAndSerialize, assembleContextPackage } from './graph-context-serializer.js';
 import { UserContext } from '../../types/context.js';
@@ -493,6 +568,11 @@ export async function findAnchors(
       }
     }));
 
+    // === TAG ENRICHMENT: Merge molecule tags with atom tags ===
+    // This provides richer contextual associations for LLMs by showing
+    // all tags from the parent molecule(s) alongside atom tags
+    await enrichAtomsWithMoleculeTags(anchors);
+
     return anchors;
 
   } catch (e) {
@@ -555,7 +635,7 @@ export async function executeSearch(
           // SQLite JSON array search for tags
           const tagRes = await db.run(`
                       SELECT id, content, source_path, timestamp, buckets, tags, provenance, simhash, embedding, compound_id, start_byte, end_byte
-                      FROM atoms 
+                      FROM atoms
                       WHERE tags LIKE $1
                       LIMIT 20
                   `, [`%${fbTag}%`]);
@@ -579,6 +659,10 @@ export async function executeSearch(
             });
           }
         }
+        // Enrich fallback results with molecule tags
+        if (primaryAnchors.length > 0) {
+          await enrichAtomsWithMoleculeTags(primaryAnchors);
+        }
       } catch (e: any) {
         console.warn('[Search] Tag-aware fallback failed', e);
       }
@@ -586,6 +670,11 @@ export async function executeSearch(
   }
 
   const allAnchors = [...engramResults, ...primaryAnchors];
+
+  // Enrich engram results with molecule tags (findAnchors already does this internally)
+  if (engramResults.length > 0) {
+    await enrichAtomsWithMoleculeTags(engramResults);
+  }
 
   // Deduplicate
   const seenIds = new Set<string>();

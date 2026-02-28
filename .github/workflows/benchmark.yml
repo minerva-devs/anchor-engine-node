@@ -1,0 +1,98 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main]
+
+# Allow only one concurrent benchmark run
+concurrency:
+  group: benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'pnpm'
+
+    - name: Install pnpm
+      uses: pnpm/action-setup@v2
+      with:
+        version: 8
+        run_install: false
+
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+
+    - name: Build project
+      run: pnpm --filter anchor-engine build
+
+    - name: Generate sample corpus
+      run: node benchmarks/sample-corpus-generator.js --seed 42
+
+    - name: Run benchmarks
+      run: node benchmarks/run_benchmark.js --seed 42 --db ./benchmarks/test_db
+
+    - name: Compare with expected results
+      run: |
+        node benchmarks/run_benchmark.js --seed 42 --compare || {
+          echo "❌ Benchmark regression detected!"
+          echo ""
+          echo "Expected vs Actual:"
+          echo "=================="
+          cat benchmarks/expected_results.json | jq '.'
+          echo ""
+          cat benchmarks/last_run_results.json | jq '.'
+          exit 1
+        }
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: benchmark-results-${{ github.sha }}
+        path: |
+          benchmarks/last_run_results.json
+          benchmarks/sample_corpus_stats.json
+        retention-days: 30
+
+    - name: Comment PR with results
+      uses: actions/github-script@v7
+      if: github.event_name == 'pull_request' && always()
+      with:
+        script: |
+          const fs = require('fs');
+          const results = JSON.parse(fs.readFileSync('benchmarks/last_run_results.json', 'utf8'));
+          
+          const summary = `
+          ## Benchmark Results
+            
+          ### Ingestion Performance
+          - Molecules/sec: ${results.ingestion.moleculesPerSecond.toFixed(0)}
+          - Atoms/sec: ${results.ingestion.atomsPerSecond.toFixed(0)}
+          - Total time: ${results.ingestion.totalTime.toFixed(2)}s
+            
+          ### Search Performance
+          - Avg latency: ${results.search.avgLatency.toFixed(0)}ms
+          - Min latency: ${results.search.minLatency.toFixed(0)}ms
+          - Max latency: ${results.search.maxLatency.toFixed(0)}ms
+            
+          [Full results](benchmarks/last_run_results.json)
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: summary
+          });

@@ -17,6 +17,7 @@
             --accent-secondary: #8b5cf6;
             --accent-cyan: #06b6d4;
             --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
             --border-subtle: rgba(148, 163, 184, 0.1);
         }
         body {
@@ -26,49 +27,48 @@
             margin: 0;
             min-height: 100vh;
         }
-        .glass-panel {
-            background: rgba(30, 41, 59, 0.4);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            border-radius: 12px;
-        }
         .btn-primary {
             background: linear-gradient(135deg, #6366f1, #8b5cf6);
             color: white;
             border: none;
-            padding: 0.75rem 1.5rem;
+            padding: 0.6rem 1.2rem;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
             font-weight: 500;
         }
         .btn-primary:hover {
-            transform: translateY(-2px);
+            transform: translateY(-1px);
             box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
         }
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 0.75rem 1.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.6rem 1.2rem;
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.2s;
         }
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
         }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.3);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 10px;
         }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
     </style>
 </head>
 <body>
@@ -77,26 +77,23 @@
     <script type="text/babel">
         const { useState, useEffect, useCallback } = React;
 
-        // Simple Router using History API
+        // Router
         const useRouter = () => {
             const [route, setRoute] = useState(window.location.pathname);
-            
             useEffect(() => {
                 const onPopState = () => setRoute(window.location.pathname);
                 window.addEventListener('popstate', onPopState);
                 return () => window.removeEventListener('popstate', onPopState);
             }, []);
-            
             const navigate = (path) => {
                 window.history.pushState({}, '', path);
                 setRoute(path);
-                lucide.createIcons();
+                setTimeout(() => lucide.createIcons(), 50);
             };
-            
             return { route, navigate };
         };
 
-        // API Service
+        // API
         const api = {
             search: async (params) => {
                 const res = await fetch('/v1/memory/search', {
@@ -111,15 +108,6 @@
                 const query = buckets && buckets.length > 0 ? `?buckets=${buckets.join(',')}` : '';
                 return fetch(`/v1/tags${query}`).then(r => r.json());
             },
-            chat: async (messages, model = 'default') => {
-                const res = await fetch('/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages, model })
-                });
-                return res.json();
-            },
-            getModels: () => fetch('/v1/models').then(r => r.json()),
             getPaths: () => fetch('/v1/system/paths').then(r => r.json()),
             addPath: (path) => fetch('/v1/system/paths', {
                 method: 'POST',
@@ -131,256 +119,107 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ path })
             }).then(r => r.json()),
-            // Health and status endpoints
             health: () => fetch('/health').then(r => r.json()),
             getStats: () => fetch('/v1/stats').then(r => r.json()).catch(() => ({ atoms: 0, molecules: 0 }))
         };
 
-        // Loading Screen Component
-        const LoadingScreen = ({ onComplete }) => {
-            const [status, setStatus] = useState('Initializing...');
-            const [stats, setStats] = useState({ atoms: 0, molecules: 0 });
-            const [progress, setProgress] = useState(0);
-
-            useEffect(() => {
-                let checkCount = 0;
-                const maxChecks = 60;
-                let prevMolecules = 0;
-                let stableCount = 0;
-
-                const checkStatus = async () => {
-                    try {
-                        const health = await api.health();
-                        const currentStats = await api.getStats();
-                        
-                        setStats(currentStats);
-                        
-                        const targetMolecules = 280000;
-                        const newProgress = Math.min(95, Math.round((currentStats.molecules / targetMolecules) * 100));
-                        setProgress(newProgress);
-
-                        if (currentStats.molecules > 0 && currentStats.molecules === prevMolecules) {
-                            stableCount++;
-                            if (stableCount >= 3 && health.status === 'healthy') {
-                                setStatus('✅ Ready!');
-                                setTimeout(() => onComplete(), 1000);
-                                return;
-                            }
-                        } else if (currentStats.molecules > prevMolecules) {
-                            stableCount = 0;
-                            setStatus('Digesting context...');
-                        }
-
-                        prevMolecules = currentStats.molecules;
-                        checkCount++;
-
-                        if (checkCount >= maxChecks && health.status === 'healthy') {
-                            setStatus('✅ Ready!');
-                            setTimeout(() => onComplete(), 1000);
-                        }
-                    } catch (error) {
-                        setStatus('Starting up...');
-                    }
-                };
-
-                checkStatus();
-                const interval = setInterval(checkStatus, 2000);
-                return () => clearInterval(interval);
-            }, [onComplete]);
-
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden" key="loading-screen">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-black to-black"></div>
-                    <div className="relative z-10 text-center px-4">
-                        <div className="mb-8">
-                            <div className="relative inline-block">
-                                <div className="w-20 h-20 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
-                            </div>
-                        </div>
-
-                        <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
+        // Header Component
+        const Header = ({ route, navigate, onOpenGithub, onOpenResearch }) => (
+            <header className="flex items-center justify-between px-6 py-3 border-b border-white/10 bg-black/20">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
+                        <i data-lucide="anchor" className="text-white" width="20" height="20"></i>
+                    </div>
+                    <div>
+                        <h1 className="text-lg font-semibold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                             Anchor Engine
                         </h1>
-                        <p className="text-gray-400 mb-8">Sovereign Context Protocol</p>
-
-                        <div className="glass-panel p-6 mb-6 max-w-md mx-auto">
-                            <div className="flex items-center justify-center gap-3 mb-4">
-                                <div className="flex space-x-1">
-                                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                                    <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
-                                </div>
-                            </div>
-                            <p className="text-lg text-gray-300 mb-2">{status}</p>
-                            {stats.molecules > 0 && (
-                                <p className="text-sm text-gray-500">
-                                    {stats.molecules.toLocaleString()} molecules • {stats.atoms.toLocaleString()} atoms
-                                </p>
-                            )}
-                            
-                            <div className="mt-4 h-1 bg-gray-800 rounded-full overflow-hidden">
-                                <div 
-                                    className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-500"
-                                    style={{width: `${progress}%`}}
-                                ></div>
-                            </div>
-                        </div>
-
-                        <p className="text-sm text-gray-600">
-                            Preparing your context for optimal retrieval...
-                        </p>
+                        <p className="text-xs text-gray-500 font-mono">v4.3</p>
                     </div>
                 </div>
-            );
-        };
-
-        // Landing Page Component
-        const LandingPage = ({ navigate }) => (
-            <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-black to-black"></div>
-                <div className="relative z-10 text-center px-4 fade-in">
-                    <div className="mb-12">
-                        <div className="flex items-center justify-center gap-3 mb-4">
-                            <i data-lucide="anchor" className="text-cyan-400" width="48" height="48"></i>
-                        </div>
-                        <h1 className="text-5xl font-bold mb-3 bg-gradient-to-r from-cyan-400 to-purple-500 bg-clip-text text-transparent">
-                            Anchor Engine
-                        </h1>
-                        <p className="text-gray-400 text-lg">Sovereign Context Protocol</p>
-                        <div className="flex items-center justify-center gap-2 mt-3 text-sm text-gray-500">
-                            <span className="w-2 h-2 rounded-full bg-green-500" style={{animation: 'pulse 2s infinite'}}></span>
-                            <span>System Online</span>
-                        </div>
-                    </div>
-                    <div className="flex flex-col gap-4 mb-12">
-                        <button onClick={() => navigate('/chat')} className="btn-primary text-lg px-8 py-4 flex items-center gap-3 mx-auto">
-                            <i data-lucide="message-square" width="24"></i>
-                            <span>Coda Chat</span>
-                        </button>
-                        <button onClick={() => navigate('/search')} className="btn-primary text-lg px-8 py-4 flex items-center gap-3 mx-auto">
-                            <i data-lucide="search" width="24"></i>
-                            <span>Memory Search</span>
-                        </button>
-                        <button onClick={() => navigate('/paths')} className="btn-primary text-lg px-8 py-4 flex items-center gap-3 mx-auto">
-                            <i data-lucide="git-branch" width="24"></i>
-                            <span>Knowledge Paths</span>
-                        </button>
-                    </div>
-                    <div className="text-gray-600 text-sm">
-                        <p>Local-First AI Memory & Context Engine</p>
-                        <p className="mt-1">v4.0.0 • Production Ready</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                    {/* Utility Buttons */}
+                    <button
+                        onClick={onOpenResearch}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-purple-400"
+                        title="Web Research"
+                    >
+                        <i data-lucide="globe" width="18"></i>
+                    </button>
+                    <button
+                        onClick={onOpenGithub}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-green-400"
+                        title="GitHub Ingestion"
+                    >
+                        <i data-lucide="github" width="18"></i>
+                    </button>
+                    <button
+                        onClick={() => navigate('/quarantine')}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-red-400"
+                        title="Quarantine"
+                    >
+                        <i data-lucide="shield-alert" width="18"></i>
+                    </button>
+                    <button
+                        onClick={() => navigate('/settings')}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400 hover:text-cyan-400"
+                        title="Settings"
+                    >
+                        <i data-lucide="settings" width="18"></i>
+                    </button>
+                    <div className="w-px h-6 bg-white/10 mx-1"></div>
+                    {/* Nav Buttons */}
+                    <button
+                        onClick={() => navigate('/search')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            route === '/search' 
+                                ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-500/30' 
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        <span className="flex items-center gap-2">
+                            <i data-lucide="search" width="16"></i>
+                            Search
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => navigate('/paths')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            route === '/paths' 
+                                ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30' 
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        <span className="flex items-center gap-2">
+                            <i data-lucide="folder" width="16"></i>
+                            Paths
+                        </span>
+                    </button>
                 </div>
-            </div>
+            </header>
         );
 
-        // Chat Component
-        const ChatPage = ({ navigate }) => {
-            const [messages, setMessages] = useState([]);
-            const [input, setInput] = useState('');
-            const [loading, setLoading] = useState(false);
-            const [models, setModels] = useState([]);
-            const [selectedModel, setSelectedModel] = useState('');
-
-            useEffect(() => {
-                api.getModels().then(setModels).catch(() => setModels([]));
-                lucide.createIcons();
-            }, []);
-
-            const handleSend = async () => {
-                if (!input.trim() || loading) return;
-                const userMsg = { role: 'user', content: input };
-                setMessages(prev => [...prev, userMsg]);
-                setInput('');
-                setLoading(true);
-
-                try {
-                    const data = await api.chat([...messages, userMsg], selectedModel || 'default');
-                    const assistantMsg = { role: 'assistant', content: data.choices?.[0]?.message?.content || 'No response' };
-                    setMessages(prev => [...prev, assistantMsg]);
-                } catch (error) {
-                    setMessages(prev => [...prev, { role: 'system', content: `Error: ${error.message}` }]);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            return (
-                <div className="h-screen flex flex-col">
-                    <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/20">
-                        <div className="flex items-center gap-3">
-                            <button onClick={() => navigate('/')} className="btn-secondary text-sm px-3 py-1.5">
-                                ← Back
-                            </button>
-                            <h1 className="text-xl font-bold text-purple-400">Coda Chat</h1>
-                        </div>
-                        <select 
-                            value={selectedModel} 
-                            onChange={(e) => setSelectedModel(e.target.value)}
-                            className="bg-black/40 border border-gray-700 rounded px-3 py-1.5 text-sm"
-                        >
-                            <option value="">Select Model...</option>
-                            {models.map(m => <option key={m.id} value={m.id}>{m.id}</option>)}
-                        </select>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {messages.length === 0 ? (
-                            <div className="text-center text-gray-500 mt-20">
-                                <i data-lucide="message-square" className="mx-auto mb-4 opacity-20" width="48"></i>
-                                <p>Start a conversation...</p>
-                            </div>
-                        ) : (
-                            messages.map((msg, i) => (
-                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[80%] rounded-lg p-3 ${
-                                        msg.role === 'user' ? 'bg-purple-600/20 border border-purple-500/30' :
-                                        msg.role === 'system' ? 'bg-red-900/20 border border-red-500/30 text-red-200' :
-                                        'bg-black/30 border border-gray-700/50'
-                                    }`}>
-                                        {msg.content}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                    <div className="p-4 border-t border-white/10 flex gap-2">
-                        <textarea
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
-                            placeholder="Type a message..."
-                            className="flex-1 bg-black/40 border border-gray-700 rounded-lg p-3 resize-none h-[60px] focus:border-purple-500 outline-none"
-                        ></textarea>
-                        <button onClick={handleSend} disabled={loading} className="btn-primary h-[60px] px-6">
-                            {loading ? '...' : 'Send'}
-                        </button>
-                    </div>
-                </div>
-            );
-        };
-
-        // Search Component
-        const SearchPage = ({ navigate }) => {
+        // Search Page
+        const SearchPage = () => {
             const [query, setQuery] = useState('');
             const [results, setResults] = useState([]);
             const [loading, setLoading] = useState(false);
             const [buckets, setBuckets] = useState([]);
             const [selectedBuckets, setSelectedBuckets] = useState([]);
             const [tokenBudget, setTokenBudget] = useState(4096);
-            const [showBucketSelector, setShowBucketSelector] = useState(false);
-            const [showTokenSlider, setShowTokenSlider] = useState(false);
+            const [copyFeedback, setCopyFeedback] = useState('');
+
+            // Token budget presets with finer granularity at lower values
+            const tokenPresets = [
+                512, 768, 1024, 1536, 2048, 3072, 4096, 6144, 8192, 
+                12288, 16384, 24576, 32768, 49152, 65536, 
+                98304, 131072, 196608, 262144, 393216, 524288, 786432, 1048576
+            ];
 
             useEffect(() => {
                 api.getBuckets().then(setBuckets).catch(() => setBuckets([]));
-                lucide.createIcons();
+                setTimeout(() => lucide.createIcons(), 100);
             }, []);
-
-            useEffect(() => {
-                // Initialize icons when results change
-                if (results.length > 0 || loading) {
-                    setTimeout(() => lucide.createIcons(), 100);
-                }
-            }, [results, loading]);
 
             const handleSearch = async () => {
                 if (!query.trim()) return;
@@ -396,7 +235,6 @@
                     });
                     setResults(data.results || []);
                 } catch (error) {
-                    console.error('Search error:', error);
                     setResults([{ id: 'error', content: `Search failed: ${error.message}`, source: 'System', score: 0 }]);
                 } finally {
                     setLoading(false);
@@ -404,252 +242,205 @@
             };
 
             const toggleBucket = (bucket) => {
-                setSelectedBuckets(prev => {
-                    if (prev.includes(bucket)) {
-                        const updated = prev.filter(b => b !== bucket);
-                        return updated;
-                    } else {
-                        return [...prev, bucket];
-                    }
-                });
+                setSelectedBuckets(prev => 
+                    prev.includes(bucket) ? prev.filter(b => b !== bucket) : [...prev, bucket]
+                );
             };
 
-            const clearBucketSelection = () => {
-                setSelectedBuckets([]);
+            // Get current preset index
+            const getTokenPresetIndex = (value) => {
+                return tokenPresets.findIndex(preset => preset >= value);
             };
 
-            const formatTokenCount = (num) => {
-                if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-                if (num >= 1000) return `${(num / 1000).toFixed(0)}K`;
-                return num.toString();
+            // Handle slider change with preset snapping
+            const handleTokenSliderChange = (e) => {
+                const index = parseInt(e.target.value);
+                setTokenBudget(tokenPresets[index]);
             };
 
-            const formatSource = (source) => {
-                if (!source) return 'Unknown';
-                const parts = source.split(/[\\/]/);
-                return parts.slice(-2).join('/');
+            const copyResultsAsYaml = async (resultsToCopy) => {
+                if (!resultsToCopy || resultsToCopy.length === 0) return;
+                
+                try {
+                    // Convert to YAML format (more compact than JSON)
+                    const yamlContent = resultsToCopy.map((result, index) => {
+                        const lines = [
+                            `- id: "${result.id || index}"`,
+                            `  source: "${(result.source || '').replace(/\\/g, '/').replace(/"/g, '\\"')}"`,
+                            `  score: ${result.score?.toFixed(4) || 0}`,
+                            `  content: |`
+                        ];
+                        
+                        // Split content into lines and indent
+                        const contentLines = (result.content || '').split('\n');
+                        contentLines.forEach(line => {
+                            lines.push(`    ${line}`);
+                        });
+                        
+                        if (result.tags && result.tags.length > 0) {
+                            lines.push(`  tags:`);
+                            result.tags.forEach(tag => {
+                                lines.push(`    - "${tag}"`);
+                            });
+                        }
+                        
+                        if (result.buckets && result.buckets.length > 0) {
+                            lines.push(`  buckets:`);
+                            result.buckets.forEach(bucket => {
+                                lines.push(`    - "${bucket}"`);
+                            });
+                        }
+                        
+                        return lines.join('\n');
+                    }).join('\n\n');
+                    
+                    await navigator.clipboard.writeText(yamlContent);
+                    setCopyFeedback('✅ Copied!');
+                    setTimeout(() => setCopyFeedback(''), 2000);
+                } catch (error) {
+                    setCopyFeedback('❌ Copy failed');
+                    setTimeout(() => setCopyFeedback(''), 2000);
+                    console.error('Failed to copy:', error);
+                }
             };
 
             return (
-                <div className="h-screen flex flex-col">
-                    <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/20">
-                        <div className="flex items-center gap-3">
-                            <button onClick={() => navigate('/')} className="btn-secondary text-sm px-3 py-1.5">
-                                ← Back
-                            </button>
-                            <h1 className="text-xl font-bold text-cyan-400">Memory Search</h1>
-                        </div>
-                    </div>
-                    <div className="p-4 border-b border-white/10 space-y-4">
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    {/* Search Bar */}
+                    <div className="p-4 border-b border-white/10 space-y-3">
                         <div className="flex gap-2">
-                            <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex-1 flex gap-2">
-                                <input
-                                    type="text"
-                                    value={query}
-                                    onChange={(e) => setQuery(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleSearch();
-                                        }
-                                    }}
-                                    placeholder="Search your memory..."
-                                    className="flex-1 bg-black/40 border border-gray-700 rounded-lg p-3 focus:border-cyan-500 outline-none"
-                                />
-                                <button type="submit" disabled={loading} className="btn-primary px-6 min-w-[100px]">
-                                    {loading ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                                            Searching
-                                        </span>
-                                    ) : 'Search'}
-                                </button>
-                            </form>
+                            <input
+                                type="text"
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                placeholder="Search your memory..."
+                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-cyan-500/50 outline-none transition-colors"
+                            />
+                            <button onClick={handleSearch} disabled={loading} className="btn-primary min-w-[100px]">
+                                {loading ? 'Searching...' : 'Search'}
+                            </button>
                         </div>
                         
-                        {/* Controls Row */}
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setShowTokenSlider(!showTokenSlider)}
-                                className={`flex-1 text-sm px-4 py-2 rounded-lg border transition-all flex items-center justify-center gap-2 ${
-                                    showTokenSlider 
-                                        ? 'bg-cyan-600/30 border-cyan-500 text-cyan-400' 
-                                        : 'bg-black/40 border-gray-700 text-gray-400 hover:border-gray-500'
-                                }`}
-                            >
-                                <i data-lucide="coins" width="16"></i>
-                                <span>Token Budget: {formatTokenCount(tokenBudget)}</span>
-                            </button>
-                            <button
-                                onClick={() => setShowBucketSelector(!showBucketSelector)}
-                                className={`flex-1 text-sm px-4 py-2 rounded-lg border transition-all flex items-center justify-center gap-2 ${
-                                    showBucketSelector 
-                                        ? 'bg-cyan-600/30 border-cyan-500 text-cyan-400' 
-                                        : 'bg-black/40 border-gray-700 text-gray-400 hover:border-gray-500'
-                                }`}
-                            >
-                                <i data-lucide="folder" width="16"></i>
-                                <span>Buckets {selectedBuckets.length > 0 ? `(${selectedBuckets.length})` : ''}</span>
-                            </button>
-                        </div>
-
-                        {/* Token Budget Drawer */}
-                        {showTokenSlider && (
-                            <div className="glass-panel p-4 fade-in">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                                        <i data-lucide="coins" width="16"></i>
-                                        <span>Context Token Limit</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="number"
-                                            value={tokenBudget}
-                                            onChange={(e) => setTokenBudget(Math.max(256, Math.min(1000000, parseInt(e.target.value) || 256)))}
-                                            className="w-28 bg-black/40 border border-gray-700 rounded px-2 py-1 text-sm text-right focus:border-cyan-500 outline-none"
-                                            min="256"
-                                            max="1000000"
-                                            step="256"
-                                        />
-                                        <span className="text-xs text-gray-500">tokens</span>
-                                    </div>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="256"
-                                    max="1000000"
-                                    step="256"
-                                    value={tokenBudget}
-                                    onChange={(e) => setTokenBudget(parseInt(e.target.value))}
-                                    className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-                                />
-                                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                    <span>256</span>
-                                    <span className="text-cyan-400 font-semibold">{formatTokenCount(tokenBudget)}</span>
-                                    <span>1M</span>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-2">
-                                    Higher token limits return more context per result. Each result includes surrounding atoms from the same document.
-                                </p>
+                        {/* Filters */}
+                        <div className="flex items-center gap-4 w-full px-4">
+                            <div className="flex items-center gap-2 text-sm min-w-[200px]">
+                                <i data-lucide="coins" width="14" className="text-cyan-400"></i>
+                                <span className="text-gray-400">Token budget:</span>
+                                <span className="text-cyan-400 font-mono font-bold">{tokenBudget.toLocaleString()}</span>
+                                <span className="text-gray-500 text-xs">(~{(tokenBudget * 4).toLocaleString()} chars)</span>
                             </div>
-                        )}
-
-                        {/* Bucket Selector Drawer */}
-                        {showBucketSelector && (
-                            <div className="glass-panel p-4 fade-in">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                                        <i data-lucide="folder" width="16"></i>
-                                        <span>Search Buckets</span>
-                                        {selectedBuckets.length > 0 && (
-                                            <span className="text-xs text-cyan-400">({selectedBuckets.length} selected)</span>
-                                        )}
-                                    </div>
-                                    {selectedBuckets.length > 0 && (
-                                        <button
-                                            onClick={clearBucketSelection}
-                                            className="text-xs px-3 py-1 bg-cyan-600/30 border border-cyan-500 rounded text-cyan-400 hover:bg-cyan-600/50 transition-colors"
-                                        >
-                                            Clear Selection
-                                        </button>
-                                    )}
-                                </div>
-                                
-                                <div className="flex gap-2 flex-wrap">
-                                    {buckets.length === 0 ? (
-                                        <p className="text-sm text-gray-500">No buckets available</p>
-                                    ) : (
-                                        buckets.map(bucket => (
-                                            <button
-                                                key={bucket}
-                                                onClick={() => toggleBucket(bucket)}
-                                                className={`text-xs px-3 py-1.5 rounded border transition-all ${
-                                                    selectedBuckets.includes(bucket)
-                                                        ? 'bg-cyan-600/30 border-cyan-500 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                                                        : 'bg-black/40 border-gray-700 text-gray-400 hover:border-gray-500'
-                                                }`}
-                                            >
-                                                {bucket}
-                                            </button>
-                                        ))
-                                    )}
-                                </div>
-                                
+                            <input
+                                type="range"
+                                min="0"
+                                max={tokenPresets.length - 1}
+                                step="1"
+                                value={getTokenPresetIndex(tokenBudget)}
+                                onChange={handleTokenSliderChange}
+                                className="flex-1 accent-cyan-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                style={{
+                                    background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${(getTokenPresetIndex(tokenBudget) / (tokenPresets.length - 1)) * 100}%, rgba(255,255,255,0.1) ${(getTokenPresetIndex(tokenBudget) / (tokenPresets.length - 1)) * 100}%, rgba(255,255,255,0.1) 100%)`
+                                }}
+                            />
+                        </div>
+                        
+                        {/* Slider scale markers */}
+                        <div className="flex justify-between px-4 text-xs text-gray-600 font-mono">
+                            <span>512</span>
+                            <span>4K</span>
+                            <span>16K</span>
+                            <span>65K</span>
+                            <span>262K</span>
+                            <span>1M</span>
+                        </div>
+                        
+                        {/* Bucket Filters */}
+                        {buckets.length > 0 && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm text-gray-400">Buckets:</span>
+                                {buckets.map(bucket => (
+                                    <button
+                                        key={bucket}
+                                        onClick={() => toggleBucket(bucket)}
+                                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                                            selectedBuckets.includes(bucket)
+                                                ? 'bg-purple-600/30 text-purple-300 border border-purple-500/50'
+                                                : 'bg-white/5 text-gray-400 border border-white/10 hover:border-white/30'
+                                        }`}
+                                    >
+                                        {bucket}
+                                    </button>
+                                ))}
                                 {selectedBuckets.length > 0 && (
-                                    <div className="mt-3 pt-3 border-t border-gray-800">
-                                        <p className="text-xs text-gray-500">
-                                            Searching in: <span className="text-cyan-400">{selectedBuckets.join(', ')}</span>
-                                        </p>
-                                        <p className="text-xs text-gray-600 mt-1">
-                                            Untoggle all to search all buckets
-                                        </p>
-                                    </div>
+                                    <button
+                                        onClick={() => setSelectedBuckets([])}
+                                        className="text-xs text-gray-500 hover:text-gray-300 underline"
+                                    >
+                                        Clear
+                                    </button>
                                 )}
                             </div>
                         )}
                     </div>
+
+                    {/* Results Header */}
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+                        <span className="text-sm text-gray-400">
+                            {results.length} result{results.length !== 1 ? 's' : ''}
+                        </span>
+                        <div className="flex items-center gap-3">
+                            {copyFeedback && (
+                                <span className="text-xs text-green-400">{copyFeedback}</span>
+                            )}
+                            <button
+                                onClick={() => copyResultsAsYaml(results)}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-colors flex items-center gap-2"
+                            >
+                                <i data-lucide="copy" width="14"></i>
+                                Copy as YAML
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Results */}
                     <div className="flex-1 overflow-y-auto p-4">
-                        {loading ? (
+                        {!loading && results.length === 0 && (
                             <div className="text-center text-gray-500 mt-20">
-                                <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
-                                <p>Searching your memory...</p>
-                                <p className="text-xs text-gray-600 mt-2">This may take a moment for large contexts</p>
-                            </div>
-                        ) : results.length === 0 ? (
-                            <div className="text-center text-gray-500 mt-20">
-                                <i data-lucide="search" className="mx-auto mb-4 opacity-20" width="48"></i>
+                                <i data-lucide="search" className="mx-auto mb-4 opacity-30" width="48"></i>
                                 <p>Enter a query to search your memory</p>
-                                <p className="text-xs text-gray-600 mt-2">Results will show context-aware atoms with surrounding content</p>
                             </div>
-                        ) : (
-                            <div className="grid gap-4 pb-4">
-                                <div className="flex justify-between items-center text-sm text-gray-500">
-                                    <span>Found {results.length} result{results.length !== 1 ? 's' : ''}</span>
-                                    <span className="text-xs">Results include surrounding atoms from each document</span>
-                                </div>
+                        )}
+                        {loading && (
+                            <div className="text-center text-gray-400 mt-20">
+                                <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
+                                <p>Searching...</p>
+                            </div>
+                        )}
+                        {results.length > 0 && (
+                            <div className="space-y-3 fade-in">
                                 {results.map((result, i) => (
-                                    <div key={result.id || i} className="glass-panel p-5 hover:border-cyan-500/50 transition-colors">
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs text-cyan-400 font-mono">{formatSource(result.source)}</span>
-                                                {result.buckets && result.buckets.length > 0 && (
-                                                    <div className="flex gap-1">
-                                                        {result.buckets.slice(0, 3).map((bucket, j) => (
-                                                            <span key={j} className="text-xs px-2 py-0.5 bg-gray-800 rounded text-gray-400">
-                                                                {bucket}
-                                                            </span>
-                                                        ))}
-                                                        {result.buckets.length > 3 && (
-                                                            <span className="text-xs px-2 py-0.5 bg-gray-800 rounded text-gray-400">
-                                                                +{result.buckets.length - 3}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                )}
+                                    <div key={result.id || i} className="glass-panel p-4 hover:bg-white/5 transition-colors">
+                                        <div className="flex items-start justify-between gap-4 mb-2">
+                                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                <i data-lucide="file-text" width="12"></i>
+                                                <span className="font-mono truncate max-w-md">{result.source || 'Unknown'}</span>
                                             </div>
-                                            <div className="flex items-center gap-3 text-xs">
-                                                <span className="text-gray-500">Score: <span className="text-cyan-400 font-semibold">{result.score?.toFixed(3)}</span></span>
-                                                {result.provenance && (
-                                                    <span className={`px-2 py-0.5 rounded ${
-                                                        result.provenance === 'sovereign' ? 'bg-green-600/30 text-green-400' :
-                                                        result.provenance === 'external' ? 'bg-blue-600/30 text-blue-400' :
-                                                        'bg-gray-600/30 text-gray-400'
-                                                    }`}>
-                                                        {result.provenance}
+                                            <span className="text-xs text-cyan-400 font-mono" title="FTS relevance score (higher = better match)">
+                                                {(result.score * 100).toFixed(0)}%
+                                            </span>
+                                        </div>
+                                        <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
+                                            {result.content}
+                                        </p>
+                                        {result.tags && result.tags.length > 0 && (
+                                            <div className="flex items-center gap-2 mt-3 flex-wrap">
+                                                {result.tags.slice(0, 5).map((tag, j) => (
+                                                    <span key={j} className="text-xs px-2 py-0.5 rounded bg-white/5 text-gray-400">
+                                                        #{tag}
                                                     </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="prose prose-invert prose-sm max-w-none">
-                                            <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">{result.content}</p>
-                                        </div>
-                                        {result.metadata && (
-                                            <div className="mt-3 pt-3 border-t border-gray-800 flex gap-4 text-xs text-gray-500">
-                                                {result.metadata.tokens && (
-                                                    <span>~{formatTokenCount(result.metadata.tokens)} tokens</span>
-                                                )}
-                                                {result.metadata.atoms && (
-                                                    <span>{result.metadata.atoms} atom{result.metadata.atoms !== 1 ? 's' : ''}</span>
+                                                ))}
+                                                {result.tags.length > 5 && (
+                                                    <span className="text-xs text-gray-600">+{result.tags.length - 5} more</span>
                                                 )}
                                             </div>
                                         )}
@@ -662,95 +453,425 @@
             );
         };
 
-        // Paths Component
-        const PathsPage = ({ navigate }) => {
+        // Paths Page
+        const PathsPage = () => {
             const [paths, setPaths] = useState([]);
             const [newPath, setNewPath] = useState('');
             const [loading, setLoading] = useState(false);
+            const [message, setMessage] = useState('');
 
-            const loadPaths = useCallback(async () => {
+            const loadPaths = async () => {
                 try {
                     const data = await api.getPaths();
-                    setPaths(data.paths || []);
+                    setPaths(data.paths || data || []);
                 } catch (error) {
                     console.error('Failed to load paths:', error);
                 }
-            }, []);
+            };
 
             useEffect(() => {
                 loadPaths();
-                lucide.createIcons();
-            }, [loadPaths]);
+                setTimeout(() => lucide.createIcons(), 100);
+            }, []);
 
             const handleAddPath = async () => {
                 if (!newPath.trim()) return;
                 setLoading(true);
+                setMessage('');
                 try {
-                    await api.addPath(newPath);
+                    await api.addPath(newPath.trim());
                     setNewPath('');
+                    setMessage('✅ Path added successfully');
                     loadPaths();
                 } catch (error) {
-                    alert('Failed to add path: ' + error.message);
+                    setMessage('❌ Failed to add path: ' + error.message);
                 } finally {
                     setLoading(false);
+                    setTimeout(() => setMessage(''), 3000);
                 }
             };
 
             const handleRemovePath = async (pathToRemove) => {
-                if (!confirm(`Remove this path?\n\n${pathToRemove}`)) return;
                 setLoading(true);
                 try {
                     await api.removePath(pathToRemove);
+                    setMessage('✅ Path removed');
                     loadPaths();
                 } catch (error) {
-                    alert('Failed to remove path: ' + error.message);
+                    setMessage('❌ Failed to remove: ' + error.message);
+                } finally {
+                    setLoading(false);
+                    setTimeout(() => setMessage(''), 3000);
+                }
+            };
+
+            return (
+                <div className="flex-1 p-6 overflow-y-auto">
+                    <div className="max-w-3xl mx-auto">
+                        <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                            <i data-lucide="folder" className="text-purple-400"></i>
+                            Knowledge Paths
+                        </h2>
+                        
+                        {/* Add Path Form */}
+                        <div className="glass-panel p-4 mb-6">
+                            <label className="block text-sm text-gray-400 mb-2">Add New Path</label>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={newPath}
+                                    onChange={(e) => setNewPath(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddPath()}
+                                    placeholder="C:\Users\...\Documents or /home/user/docs"
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500/50 outline-none font-mono text-sm"
+                                />
+                                <button onClick={handleAddPath} disabled={loading} className="btn-primary">
+                                    Add
+                                </button>
+                            </div>
+                            {message && (
+                                <p className={`mt-2 text-sm ${message.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>
+                                    {message}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Paths List */}
+                        <div className="space-y-2">
+                            {paths.length === 0 ? (
+                                <div className="text-center text-gray-500 py-12">
+                                    <i data-lucide="folder-open" className="mx-auto mb-4 opacity-30" width="48"></i>
+                                    <p>No paths configured yet</p>
+                                    <p className="text-sm mt-2">Add a directory path to start indexing</p>
+                                </div>
+                            ) : (
+                                paths.map((pathItem, i) => {
+                                    const pathStr = typeof pathItem === 'string' ? pathItem : pathItem.path;
+                                    return (
+                                        <div key={i} className="glass-panel p-3 flex items-center justify-between fade-in">
+                                            <div className="flex items-center gap-3 overflow-hidden">
+                                                <i data-lucide="folder" width="18" className="text-gray-500 flex-shrink-0"></i>
+                                                <span className="font-mono text-sm truncate">{pathStr}</span>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRemovePath(pathStr)}
+                                                disabled={loading}
+                                                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-gray-400 hover:text-red-400"
+                                            >
+                                                <i data-lucide="trash-2" width="16"></i>
+                                            </button>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Research Modal
+        const ResearchModal = ({ onClose }) => {
+            const [url, setUrl] = useState('');
+            const [buckets, setBuckets] = useState('');
+            const [tags, setTags] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [message, setMessage] = useState('');
+
+            const handleSubmit = async () => {
+                if (!url.trim()) return;
+                setLoading(true);
+                setMessage('');
+                try {
+                    const res = await fetch('/v1/research/fetch', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            url: url.trim(),
+                            bucket: buckets.trim() || 'web',
+                            tags: tags.trim().split(',').map(t => t.trim()).filter(Boolean)
+                        })
+                    });
+                    const data = await res.json();
+                    setMessage('✅ Content ingested: ' + (data.message || 'Success'));
+                    setUrl('');
+                    setBuckets('');
+                    setTags('');
+                } catch (error) {
+                    setMessage('❌ Failed: ' + error.message);
+                } finally {
+                    setLoading(false);
+                    setTimeout(() => setMessage(''), 4000);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 fade-in" onClick={onClose}>
+                    <div className="glass-panel w-full max-w-lg p-6 m-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <i data-lucide="globe" className="text-purple-400"></i>
+                                Web Research
+                            </h3>
+                            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                                <i data-lucide="x" width="20"></i>
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">URL to Scrape</label>
+                                <input
+                                    type="url"
+                                    value={url}
+                                    onChange={(e) => setUrl(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                                    placeholder="https://example.com/article"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500/50 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Bucket (optional)</label>
+                                <input
+                                    type="text"
+                                    value={buckets}
+                                    onChange={(e) => setBuckets(e.target.value)}
+                                    placeholder="web, articles, research..."
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500/50 outline-none text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Tags (comma-separated)</label>
+                                <input
+                                    type="text"
+                                    value={tags}
+                                    onChange={(e) => setTags(e.target.value)}
+                                    placeholder="important, reference, ai..."
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500/50 outline-none text-sm"
+                                />
+                            </div>
+                            {message && (
+                                <p className={`text-sm ${message.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>
+                                    {message}
+                                </p>
+                            )}
+                            <button onClick={handleSubmit} disabled={loading} className="btn-primary w-full">
+                                {loading ? 'Fetching...' : 'Fetch & Ingest'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // GitHub Modal
+        const GithubModal = ({ onClose }) => {
+            const [repoUrl, setRepoUrl] = useState('');
+            const [branch, setBranch] = useState('main');
+            const [buckets, setBuckets] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [message, setMessage] = useState('');
+
+            const handleSubmit = async () => {
+                if (!repoUrl.trim()) return;
+                setLoading(true);
+                setMessage('');
+                try {
+                    const res = await fetch('/v1/research/github', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            repo: repoUrl.trim(),
+                            branch: branch.trim() || 'main',
+                            bucket: buckets.trim() || 'code'
+                        })
+                    });
+                    const data = await res.json();
+                    setMessage('✅ Repository ingested: ' + (data.message || 'Success'));
+                } catch (error) {
+                    setMessage('❌ Failed: ' + error.message);
+                } finally {
+                    setLoading(false);
+                    setTimeout(() => setMessage(''), 4000);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 fade-in" onClick={onClose}>
+                    <div className="glass-panel w-full max-w-lg p-6 m-4" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-xl font-bold flex items-center gap-2">
+                                <i data-lucide="github" className="text-green-400"></i>
+                                GitHub Ingestion
+                            </h3>
+                            <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors">
+                                <i data-lucide="x" width="20"></i>
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Repository URL</label>
+                                <input
+                                    type="text"
+                                    value={repoUrl}
+                                    onChange={(e) => setRepoUrl(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                                    placeholder="https://github.com/user/repo"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none font-mono text-sm"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-2">Branch</label>
+                                    <input
+                                        type="text"
+                                        value={branch}
+                                        onChange={(e) => setBranch(e.target.value)}
+                                        placeholder="main"
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm text-gray-400 mb-2">Bucket</label>
+                                    <input
+                                        type="text"
+                                        value={buckets}
+                                        onChange={(e) => setBuckets(e.target.value)}
+                                        placeholder="code"
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none text-sm"
+                                    />
+                                </div>
+                            </div>
+                            {message && (
+                                <p className={`text-sm ${message.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>
+                                    {message}
+                                </p>
+                            )}
+                            <button onClick={handleSubmit} disabled={loading} className="btn-primary w-full">
+                                {loading ? 'Cloning...' : 'Clone & Ingest'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Quarantine Page
+        const QuarantinePage = ({ navigate }) => {
+            const [atoms, setAtoms] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [message, setMessage] = useState('');
+
+            const loadQuarantine = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch('/v1/quarantine');
+                    const data = await res.json();
+                    setAtoms(data.atoms || data || []);
+                } catch (error) {
+                    setMessage('Failed to load quarantine: ' + error.message);
                 } finally {
                     setLoading(false);
                 }
             };
 
+            useEffect(() => {
+                loadQuarantine();
+                setTimeout(() => lucide.createIcons(), 100);
+            }, []);
+
+            const handleRestore = async (id) => {
+                try {
+                    await fetch(`/v1/quarantine/${id}/restore`, { method: 'POST' });
+                    setMessage('✅ Atom restored');
+                    loadQuarantine();
+                } catch (error) {
+                    setMessage('❌ Failed: ' + error.message);
+                } finally {
+                    setTimeout(() => setMessage(''), 3000);
+                }
+            };
+
+            const handleDelete = async (id) => {
+                if (!confirm('Permanently delete this atom?')) return;
+                try {
+                    await fetch(`/v1/quarantine/${id}`, { method: 'DELETE' });
+                    setMessage('✅ Atom deleted');
+                    loadQuarantine();
+                } catch (error) {
+                    setMessage('❌ Failed: ' + error.message);
+                } finally {
+                    setTimeout(() => setMessage(''), 3000);
+                }
+            };
+
             return (
-                <div className="h-screen flex flex-col">
-                    <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/20">
+                <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="p-4 border-b border-white/10 flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <button onClick={() => navigate('/')} className="btn-secondary text-sm px-3 py-1.5">
+                            <button onClick={() => navigate('/search')} className="btn-secondary text-sm px-3 py-1.5">
                                 ← Back
                             </button>
-                            <h1 className="text-xl font-bold text-green-400">Knowledge Paths</h1>
+                            <h2 className="text-xl font-bold flex items-center gap-2 text-red-400">
+                                <i data-lucide="shield-alert"></i>
+                                Quarantine
+                            </h2>
                         </div>
+                        <button onClick={loadQuarantine} className="btn-secondary text-sm">
+                            Refresh
+                        </button>
                     </div>
-                    <div className="p-4 border-b border-white/10">
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={newPath}
-                                onChange={(e) => setNewPath(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleAddPath()}
-                                placeholder="Path to watch (e.g., C:\\Users\\Docs)"
-                                className="flex-1 bg-black/40 border border-gray-700 rounded-lg p-3 focus:border-green-500 outline-none"
-                            />
-                            <button onClick={handleAddPath} disabled={loading} className="btn-primary px-6">
-                                {loading ? 'Adding...' : 'Add Path'}
-                            </button>
-                        </div>
-                    </div>
+                    
                     <div className="flex-1 overflow-y-auto p-4">
-                        {paths.length === 0 ? (
-                            <div className="text-center text-gray-500 mt-20">
-                                <i data-lucide="folder-open" className="mx-auto mb-4 opacity-20" width="48"></i>
-                                <p>No paths configured. Add a path to start watching for files.</p>
+                        {message && (
+                            <div className={`mb-4 p-3 rounded-lg ${message.includes('✅') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                {message}
                             </div>
-                        ) : (
-                            <div className="space-y-2">
-                                {paths.map((path, i) => (
-                                    <div key={i} className="glass-panel p-4 flex justify-between items-center">
-                                        <span className="text-sm">{path}</span>
-                                        <button 
-                                            onClick={() => handleRemovePath(path)}
-                                            className="text-red-400 hover:text-red-300 p-2"
-                                        >
-                                            <i data-lucide="trash-2" width="18"></i>
-                                        </button>
+                        )}
+                        
+                        {loading && (
+                            <div className="text-center text-gray-400 mt-20">
+                                <div className="w-8 h-8 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin mx-auto mb-4"></div>
+                                <p>Loading quarantined atoms...</p>
+                            </div>
+                        )}
+                        
+                        {!loading && atoms.length === 0 && (
+                            <div className="text-center text-gray-500 mt-20">
+                                <i data-lucide="shield-check" className="mx-auto mb-4 opacity-30" width="48"></i>
+                                <p>Quarantine is empty</p>
+                                <p className="text-sm mt-2">No suspicious atoms detected</p>
+                            </div>
+                        )}
+                        
+                        {atoms.length > 0 && (
+                            <div className="space-y-3">
+                                {atoms.map((atom, i) => (
+                                    <div key={atom.id || i} className="glass-panel p-4 fade-in border-l-2 border-red-500/50">
+                                        <div className="flex items-start justify-between gap-4 mb-2">
+                                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                                <i data-lucide="file-text" width="12"></i>
+                                                <span className="font-mono">{atom.source || 'Unknown'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleRestore(atom.id)}
+                                                    className="px-3 py-1 text-xs bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 transition-colors"
+                                                >
+                                                    Restore
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(atom.id)}
+                                                    className="px-3 py-1 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-gray-300 whitespace-pre-wrap line-clamp-3">
+                                            {atom.content}
+                                        </p>
                                     </div>
                                 ))}
                             </div>
@@ -760,62 +881,422 @@
             );
         };
 
-        // Main App Component
+        // Settings Page
+        const SettingsPage = ({ navigate }) => {
+            const [settings, setSettings] = useState(null);
+            const [watchdogStatus, setWatchdogStatus] = useState({ isRunning: false, watchedPaths: [] });
+            const [loading, setLoading] = useState(true);
+            const [saving, setSaving] = useState(false);
+            const [message, setMessage] = useState('');
+
+            useEffect(() => {
+                loadSettings();
+                loadWatchdogStatus();
+                setTimeout(() => lucide.createIcons(), 100);
+            }, []);
+
+            const loadSettings = async () => {
+                try {
+                    const data = await api.getSettings?.() || await fetch('/v1/settings').then(r => r.json());
+                    setSettings(data.settings || data);
+                } catch (error) {
+                    console.error('Failed to load settings:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const loadWatchdogStatus = async () => {
+                try {
+                    const data = await fetch('/v1/watchdog/status').then(r => r.json());
+                    setWatchdogStatus({ isRunning: data.isRunning, watchedPaths: data.watchedPaths || [] });
+                } catch (error) {
+                    console.error('Failed to load watchdog status:', error);
+                }
+            };
+
+            const updateSetting = async (category, key, value) => {
+                if (!settings) return;
+                
+                const newSettings = {
+                    ...settings,
+                    [category]: {
+                        ...settings[category],
+                        [key]: value
+                    }
+                };
+                setSettings(newSettings);
+            };
+
+            const saveSettings = async () => {
+                setSaving(true);
+                setMessage('');
+                try {
+                    await fetch('/v1/settings', {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(settings)
+                    });
+                    setMessage('✅ Settings saved successfully!');
+                    setTimeout(() => setMessage(''), 3000);
+                } catch (error) {
+                    setMessage('❌ Failed to save settings');
+                } finally {
+                    setSaving(false);
+                }
+            };
+
+            const toggleWatchdog = async () => {
+                setMessage('');
+                try {
+                    const endpoint = watchdogStatus.isRunning ? '/v1/watchdog/stop' : '/v1/watchdog/start';
+                    await fetch(endpoint, { method: 'POST' });
+                    await loadWatchdogStatus();
+                    setMessage(watchdogStatus.isRunning ? '✅ Watchdog stopped' : '✅ Watchdog started');
+                } catch (error) {
+                    setMessage('❌ Failed to toggle watchdog');
+                }
+                setTimeout(() => setMessage(''), 3000);
+            };
+
+            const triggerManualIngest = async () => {
+                setMessage('');
+                try {
+                    const result = await fetch('/v1/watchdog/ingest', { method: 'POST' }).then(r => r.json());
+                    setMessage(`✅ ${result.message || 'Ingest triggered'}`);
+                } catch (error) {
+                    setMessage('❌ Failed to trigger ingest');
+                }
+                setTimeout(() => setMessage(''), 4000);
+            };
+
+            if (loading) {
+                return (
+                    <div className="flex-1 flex items-center justify-center">
+                        <div className="text-center">
+                            <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4"></div>
+                            <p className="text-gray-400">Loading settings...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex-1 p-6 overflow-y-auto">
+                    <div className="max-w-5xl mx-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold flex items-center gap-3">
+                                <i data-lucide="settings" className="text-cyan-400"></i>
+                                Settings
+                            </h2>
+                            <div className="flex gap-2">
+                                <button onClick={saveSettings} disabled={saving} className="btn-primary">
+                                    {saving ? 'Saving...' : 'Save Settings'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {message && (
+                            <div className={`mb-6 p-4 rounded-lg ${message.includes('✅') ? 'bg-green-500/20 border border-green-500/30 text-green-400' : 'bg-red-500/20 border border-red-500/30 text-red-400'}`}>
+                                {message}
+                            </div>
+                        )}
+                        
+                        {/* Ingestion Control Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-green-400">
+                                <i data-lucide="folder-sync"></i>
+                                Ingestion Control
+                            </h3>
+                            
+                            <div className="flex items-center justify-between mb-4 p-4 bg-white/5 rounded-lg">
+                                <div>
+                                    <p className="font-semibold">File Watcher</p>
+                                    <p className="text-sm text-gray-400">
+                                        {watchdogStatus.isRunning ? 'Currently watching for file changes' : 'Currently stopped'}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-3 h-3 rounded-full ${watchdogStatus.isRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`}></div>
+                                    <button onClick={toggleWatchdog} className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                                        watchdogStatus.isRunning 
+                                            ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' 
+                                            : 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'
+                                    }`}>
+                                        {watchdogStatus.isRunning ? 'Stop Watching' : 'Start Watching'}
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <button onClick={triggerManualIngest} className="btn-primary w-full mb-4">
+                                <span className="flex items-center justify-center gap-2">
+                                    <i data-lucide="zap" width="16"></i>
+                                    Trigger Manual Ingest
+                                </span>
+                            </button>
+                            
+                            <div className="text-sm text-gray-400">
+                                <p className="mb-2 font-semibold">Watched Paths:</p>
+                                <ul className="space-y-1 font-mono text-xs">
+                                    {watchdogStatus.watchedPaths.map((path, i) => (
+                                        <li key={i} className="flex items-center gap-2">
+                                            <i data-lucide="folder" width="12"></i>
+                                            {path}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+
+                        {/* Tag Modulation Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-purple-400">
+                                <i data-lucide="tags"></i>
+                                Tag Modulation
+                            </h3>
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="text-sm font-medium">Modulation Level</label>
+                                        <span className="text-sm font-mono text-cyan-400">{settings?.tagging?.modulation_level ?? 50}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={settings?.tagging?.modulation_level ?? 50}
+                                        onChange={(e) => updateSetting('tagging', 'modulation_level', parseInt(e.target.value))}
+                                        className="w-full accent-purple-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        0% = Entities only | 50% = Balanced | 100% = All tags
+                                    </p>
+                                </div>
+                                
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="text-sm font-medium">Blacklist Strictness</label>
+                                        <span className="text-sm font-mono text-cyan-400">{settings?.tagging?.blacklist_strictness ?? 75}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={settings?.tagging?.blacklist_strictness ?? 75}
+                                        onChange={(e) => updateSetting('tagging', 'blacklist_strictness', parseInt(e.target.value))}
+                                        className="w-full accent-purple-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Filter aggressiveness for blacklisted tags
+                                    </p>
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium">Atom as Tag</label>
+                                    <input
+                                        type="checkbox"
+                                        checked={settings?.tagging?.atom_as_tag ?? false}
+                                        onChange={(e) => updateSetting('tagging', 'atom_as_tag', e.target.checked)}
+                                        className="w-4 h-4 accent-purple-500"
+                                    />
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                    <label className="text-sm font-medium">Strict Atom Selection</label>
+                                    <input
+                                        type="checkbox"
+                                        checked={settings?.tagging?.strict_atom_selection ?? true}
+                                        onChange={(e) => updateSetting('tagging', 'strict_atom_selection', e.target.checked)}
+                                        className="w-4 h-4 accent-purple-500"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Search Settings Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400">
+                                <i data-lucide="search"></i>
+                                Search Settings
+                            </h3>
+                            
+                            <div className="space-y-6">
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="text-sm font-medium">Max Chars Default</label>
+                                        <span className="text-sm font-mono text-cyan-400">{(settings?.search?.max_chars_default / 1024).toFixed(0)}K</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="4096"
+                                        max="1048576"
+                                        step="4096"
+                                        value={settings?.search?.max_chars_default ?? 524288}
+                                        onChange={(e) => updateSetting('search', 'max_chars_default', parseInt(e.target.value))}
+                                        className="w-full accent-cyan-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <label className="text-sm font-medium">Relevance Weight</label>
+                                        <span className="text-sm font-mono text-cyan-400">{settings?.context?.relevance_weight ?? 0.7}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="1"
+                                        step="0.05"
+                                        value={settings?.context?.relevance_weight ?? 0.7}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            updateSetting('context', 'relevance_weight', val);
+                                            updateSetting('context', 'recency_weight', Math.round((1 - val) * 100) / 100);
+                                        }}
+                                        className="w-full accent-cyan-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Recency weight: {settings?.context?.recency_weight ?? 0.3} (auto-balances)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Physics Settings Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-orange-400">
+                                <i data-lucide="cpu"></i>
+                                Physics & Resources
+                            </h3>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium block mb-2">Damping Factor</label>
+                                    <input
+                                        type="range"
+                                        min="0.5"
+                                        max="0.95"
+                                        step="0.05"
+                                        value={settings?.physics?.damping_factor ?? 0.85}
+                                        onChange={(e) => updateSetting('physics', 'damping_factor', parseFloat(e.target.value))}
+                                        className="w-full accent-orange-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                    <p className="text-xs font-mono text-center mt-1">{settings?.physics?.damping_factor ?? 0.85}</p>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium block mb-2">Temperature</label>
+                                    <input
+                                        type="range"
+                                        min="0.1"
+                                        max="1.0"
+                                        step="0.05"
+                                        value={settings?.physics?.temperature ?? 0.2}
+                                        onChange={(e) => updateSetting('physics', 'temperature', parseFloat(e.target.value))}
+                                        className="w-full accent-orange-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                    <p className="text-xs font-mono text-center mt-1">{settings?.physics?.temperature ?? 0.2}</p>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium block mb-2">Walk Radius</label>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="5"
+                                        step="1"
+                                        value={settings?.physics?.walk_radius ?? 1}
+                                        onChange={(e) => updateSetting('physics', 'walk_radius', parseInt(e.target.value))}
+                                        className="w-full accent-orange-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                    <p className="text-xs font-mono text-center mt-1">{settings?.physics?.walk_radius ?? 1}</p>
+                                </div>
+                                
+                                <div>
+                                    <label className="text-sm font-medium block mb-2">GC Cooldown (ms)</label>
+                                    <input
+                                        type="range"
+                                        min="10000"
+                                        max="120000"
+                                        step="5000"
+                                        value={settings?.resource_management?.gc_cooldown_ms ?? 30000}
+                                        onChange={(e) => updateSetting('resource_management', 'gc_cooldown_ms', parseInt(e.target.value))}
+                                        className="w-full accent-orange-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                    <p className="text-xs font-mono text-center mt-1">{settings?.resource_management?.gc_cooldown_ms ?? 30000}ms</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App
         const App = () => {
             const { route, navigate } = useRouter();
             const [isLoading, setIsLoading] = useState(true);
-            const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-
-            useEffect(() => {
-                // Only initialize icons when not loading
-                if (!isLoading) {
-                    setTimeout(() => lucide.createIcons(), 100);
-                }
-            }, [route, isLoading]);
+            const [showResearch, setShowResearch] = useState(false);
+            const [showGithub, setShowGithub] = useState(false);
 
             useEffect(() => {
                 const checkReady = async () => {
                     try {
                         const health = await api.health();
-                        if (health.status === 'healthy' && !hasLoadedOnce) {
-                            setHasLoadedOnce(true);
+                        // Accept healthy, degraded, or starting status
+                        if (health.status === 'healthy' || health.status === 'degraded' || health.status === 'starting') {
                             setIsLoading(false);
                         }
                     } catch (error) {
                         console.log('Waiting for system...');
                     }
                 };
-                
-                if (isLoading) {
-                    checkReady();
-                    const interval = setInterval(checkReady, 1000);
-                    return () => clearInterval(interval);
-                }
-            }, [isLoading, hasLoadedOnce]);
+                checkReady();
+                const interval = setInterval(checkReady, 2000);
+                return () => clearInterval(interval);
+            }, []);
+
+            useEffect(() => {
+                setTimeout(() => lucide.createIcons(), 100);
+            }, [route, showResearch, showGithub]);
 
             if (isLoading) {
-                return <LoadingScreen key="loading" onComplete={() => { setHasLoadedOnce(true); setIsLoading(false); }} />;
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center">
+                        <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
+                        <h1 className="text-xl font-semibold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                            Anchor Engine
+                        </h1>
+                        <p className="text-gray-500 mt-2">Initializing...</p>
+                    </div>
+                );
             }
 
-            if (route === '/' || route === '') return <LandingPage key="landing" navigate={navigate} />;
-            if (route === '/chat') return <ChatPage key="chat" navigate={navigate} />;
-            if (route === '/search') return <SearchPage key="search" navigate={navigate} />;
-            if (route === '/paths') return <PathsPage key="paths" navigate={navigate} />;
-            
             return (
-                <div className="min-h-screen flex items-center justify-center" key="notfound">
-                    <div className="text-center">
-                        <h1 className="text-4xl font-bold mb-4">404</h1>
-                        <p className="text-gray-400 mb-4">Page not found</p>
-                        <button onClick={() => navigate('/')} className="btn-primary">
-                            Go Home
-                        </button>
-                    </div>
+                <div className="min-h-screen flex flex-col">
+                    <Header 
+                        route={route} 
+                        navigate={navigate} 
+                        onOpenResearch={() => setShowResearch(true)}
+                        onOpenGithub={() => setShowGithub(true)}
+                    />
+                    <main className="flex-1 overflow-hidden">
+                        {route === '/search' && <SearchPage />}
+                        {route === '/paths' && <PathsPage />}
+                        {route === '/quarantine' && <QuarantinePage navigate={navigate} />}
+                        {route === '/settings' && <SettingsPage navigate={navigate} />}
+                        {route === '/' && <SearchPage />}
+                    </main>
+                    
+                    {/* Modals */}
+                    {showResearch && <ResearchModal onClose={() => setShowResearch(false)} />}
+                    {showGithub && <GithubModal onClose={() => setShowGithub(false)} />}
                 </div>
             );
         };
 
-        ReactDOM.createRoot(document.getElementById('root')).render(<App key="app" />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>

@@ -143,6 +143,19 @@
 
 ## Current Roadmap: Q2 2026
 
+### Phase: Documentation & Reproducibility (NEW - February 2026)
+**Goal:** Make benchmarks reproducible and lower integration barrier
+
+- [x] Reproducible benchmark suite with sample corpus
+- [x] Benchmark protocol documentation (Standard 077)
+- [x] STAR parameter tuning guide (Standard 078)
+- [x] API contract examples with request/response JSON
+- [x] Security deployment guide
+- [x] Architecture tradeoffs analysis
+- [x] GitHub Actions benchmark workflow
+- [ ] Ablation study results (pending execution)
+- [ ] Cross-platform CI testing matrix (pending)
+
 ### Phase: Agent Harness Integration
 **Goal:** Enable multiple agent frameworks
 
