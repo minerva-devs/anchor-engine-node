@@ -191,6 +191,102 @@ export async function removeWatchPath(pathToRemove: string): Promise<boolean> {
     return true;
 }
 
+/**
+ * Stop the watchdog service
+ */
+export async function stopWatchdog(): Promise<void> {
+    if (watcher) {
+        await watcher.close();
+        watcher = null;
+        console.log('[Watchdog] Stopped watching files');
+    }
+}
+
+/**
+ * Get watchdog status
+ */
+export function getWatcherStatus(): { isRunning: boolean; watchedPaths: string[] } {
+    const inbox = path.join(PROJECT_ROOT, 'inbox');
+    const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
+    const extraPaths = config.WATCHER_EXTRA_PATHS || [];
+    
+    return {
+        isRunning: watcher !== null,
+        watchedPaths: [inbox, externalInbox, ...extraPaths]
+    };
+}
+
+/**
+ * Trigger manual ingestion scan
+ */
+export async function triggerManualIngest(): Promise<{ status: string; message: string; filesProcessed?: number; filesIngested?: number }> {
+    try {
+        const inbox = path.join(PROJECT_ROOT, 'inbox');
+        const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
+
+        if (!fs.existsSync(inbox)) {
+            return { status: 'error', message: 'Inbox directory not found' };
+        }
+
+        let filesProcessed = 0;
+        let filesIngested = 0;
+
+        // Scan inbox directory
+        const files = fs.readdirSync(inbox, { recursive: true }) as string[];
+        
+        for (const file of files) {
+            const filePath = path.join(inbox, file);
+            
+            // Skip directories and ignored patterns
+            if (fs.statSync(filePath).isDirectory()) continue;
+            if (IGNORE_PATTERNS.test(file)) continue;
+            
+            filesProcessed++;
+            
+            // Trigger actual ingestion by calling processFile
+            try {
+                await processFile(filePath, 'manual');
+                filesIngested++;
+            } catch (error: any) {
+                console.error(`[ManualIngest] Failed to process ${file}:`, error.message);
+            }
+        }
+
+        // Also scan external-inbox if it exists
+        if (fs.existsSync(externalInbox)) {
+            const externalFiles = fs.readdirSync(externalInbox, { recursive: true }) as string[];
+            
+            for (const file of externalFiles) {
+                const filePath = path.join(externalInbox, file);
+                
+                if (fs.statSync(filePath).isDirectory()) continue;
+                if (IGNORE_PATTERNS.test(file)) continue;
+                
+                filesProcessed++;
+                
+                try {
+                    await processFile(filePath, 'manual');
+                    filesIngested++;
+                } catch (error: any) {
+                    console.error(`[ManualIngest] Failed to process ${file}:`, error.message);
+                }
+            }
+        }
+
+        return {
+            status: 'success',
+            message: `Manual ingest complete: ${filesIngested}/${filesProcessed} files processed`,
+            filesProcessed,
+            filesIngested
+        };
+    } catch (error: any) {
+        return {
+            status: 'error',
+            message: `Manual ingest failed: ${error.message}`
+        };
+    }
+}
+
 // Revert to AtomizerService for performance
 // import { SemanticIngestionService } from '../semantic/semantic-ingestion-service.js';
 import { AtomizerService } from './atomizer-service.js';

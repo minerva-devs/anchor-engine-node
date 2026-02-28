@@ -210,4 +210,45 @@ export function setupSystemRoutes(app: Application) {
       });
     }
   });
+
+  // Watchdog control endpoints
+  app.get('/v1/watchdog/status', async (_req: Request, res: Response) => {
+    try {
+      const { getWatcherStatus } = await import('../../services/ingest/watchdog.js');
+      const status = getWatcherStatus();
+      res.status(200).json({ status: 'success', ...status });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/v1/watchdog/start', async (_req: Request, res: Response) => {
+    try {
+      const { startWatchdog } = await import('../../services/ingest/watchdog.js');
+      await startWatchdog();
+      res.status(200).json({ status: 'success', message: 'Watchdog started' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/v1/watchdog/stop', async (_req: Request, res: Response) => {
+    try {
+      const { stopWatchdog } = await import('../../services/ingest/watchdog.js');
+      await stopWatchdog();
+      res.status(200).json({ status: 'success', message: 'Watchdog stopped' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/v1/watchdog/ingest', async (_req: Request, res: Response) => {
+    try {
+      const { triggerManualIngest } = await import('../../services/ingest/watchdog.js');
+      const result = await triggerManualIngest();
+      res.status(200).json(result);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }

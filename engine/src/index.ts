@@ -34,15 +34,18 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     const status = res.statusCode;
 
-    // Skip logging 304 (Not Modified) responses - these are just cache hits from frontend polling
-    if (status !== 304) {
-      StructuredLogger.info('HTTP_REQUEST', {
-        method: req.method,
-        path: req.path,
-        status,
-        duration_ms: duration
-      });
+    // Skip logging for health checks and 304 (Not Modified) responses
+    // Health checks poll every minute and create log spam
+    if (status === 304 || req.path === '/health') {
+      return;
     }
+
+    StructuredLogger.info('HTTP_REQUEST', {
+      method: req.method,
+      path: req.path,
+      status,
+      duration_ms: duration
+    });
 
     // Mark activity for idle manager (skip static files)
     if (!req.path.startsWith('/static') && !req.path.startsWith('/chat')) {
@@ -234,6 +237,11 @@ async function startServer() {
     databaseReady = true;
     console.log("Database initialized successfully");
 
+    // Cleanup blacklisted tags from database
+    console.log('[Startup] Cleaning up blacklisted tags...');
+    const { cleanupBlacklistedTags } = await import('./utils/tag-cleanup.js');
+    await cleanupBlacklistedTags();
+
     // Initialize Vector Service
     const { vector } = await import("./core/vector.js");
     await vector.init();
@@ -255,6 +263,14 @@ async function startServer() {
     // Set up full health routes (this will replace the basic one)
     setupHealthRoutes(app);
 
+    // Set up settings routes
+    const { setupSettingsRoutes } = await import("./routes/v1/settings.js");
+    setupSettingsRoutes(app);
+
+    // Set up system routes (watchdog control, stats, etc.)
+    const { setupSystemRoutes } = await import("./routes/v1/system.js");
+    setupSystemRoutes(app);
+
     // Set up monitoring routes
     app.use('/monitoring', monitoringRouter);
 
@@ -270,8 +286,8 @@ async function startServer() {
     // to prevent duplicate instances. ProcessManager is disabled for nanobot.
     console.log('[Services] Nanobot skipped (started by launcher)');
 
-    const { startWatchdog } = await import("./services/ingest/watchdog.js");
-    startWatchdog();
+    // Watchdog is now controlled via UI settings - not auto-started
+    console.log('[Services] Watchdog disabled - start from /settings UI');
 
     // Dreamer service disabled - optimized for STAR algorithm startup (v4.0)
     console.log('[Services] All service start commands queued');

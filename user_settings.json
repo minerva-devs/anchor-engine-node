@@ -84,5 +84,19 @@
         "max_per_hop": 50,
         "direct_limit": 5,
         "walker_limit": 10
+    },
+    "tagging": {
+        "modulation_level": 50,
+        "atom_as_tag": false,
+        "strict_atom_selection": true,
+        "entity_extraction": {
+            "enabled": true,
+            "min_confidence": 0.6,
+            "categories": ["PERSON", "ORG", "PRODUCT", "EVENT", "LOCATION"]
+        },
+        "blacklist_strictness": 75,
+        "common_words_filter": true,
+        "min_tag_length": 3,
+        "max_tags_per_molecule": 20
     }
 }

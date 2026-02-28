@@ -1,0 +1,32 @@
+{
+  "description": "Expected benchmark results for reproducible testing. These values are based on typical performance on a mid-range laptop (16GB RAM, SSD). Allow 20-30% variance for different hardware.",
+  "version": "4.2.0",
+  "testConfiguration": {
+    "seed": 42,
+    "numDocuments": 200,
+    "hardwareProfile": "mid-range-laptop"
+  },
+  "ingestion": {
+    "moleculesPerSecond": 800,
+    "atomsPerSecond": 50,
+    "bytesPerSecond": 0.5,
+    "description": "Ingestion throughput for sample corpus. Actual performance varies based on CPU and disk speed."
+  },
+  "search": {
+    "avgLatency": 150,
+    "minLatency": 50,
+    "maxLatency": 300,
+    "description": "Search latency in milliseconds. First query may be slower due to cold start."
+  },
+  "tolerances": {
+    "ingestion": 0.2,
+    "search": 0.3
+  },
+  "lastUpdated": "2026-02-27",
+  "notes": [
+    "Run benchmarks with --seed 42 for reproducible results",
+    "Close other applications for most consistent results",
+    "First run may be slower due to JIT compilation",
+    "SSD recommended for consistent ingestion performance"
+  ]
+}

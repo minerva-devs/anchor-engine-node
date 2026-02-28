@@ -19,7 +19,18 @@
 
 ## 🎯 Current Focus
 
-### Phase: Agent Harness Integration
+### Phase: Documentation & Reproducibility (P0 - February 2026)
+- [x] Benchmark suite with sample corpus generator
+- [x] Benchmark protocol documentation (Standard 077)
+- [x] STAR parameter tuning guide (Standard 078)
+- [x] API contracts with request/response examples
+- [x] Security hardening documentation
+- [x] Architecture tradeoffs analysis
+- [x] GitHub Actions benchmark workflow
+- [ ] Ablation study framework (pending execution)
+- [ ] Cross-platform CI testing (pending)
+
+### Phase: Agent Harness Integration (P1 - Q2 2026)
 - [ ] OpenCLAW integration (primary target harness)
 - [ ] Harness plugin system architecture
 - [ ] Multi-harness performance monitoring
