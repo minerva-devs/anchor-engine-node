@@ -28,6 +28,7 @@
             "impact",
             "context",
             "memory"
-        ]
+        ],
+        "max_chars_default": 8192
     }
 }

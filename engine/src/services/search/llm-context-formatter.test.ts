@@ -9,23 +9,35 @@ const mockAtoms = [
   {
     id: 'atom_1',
     content: 'Rob discussed career changes with Coda over coffee',
-    timestamp: '2025-06-15T14:30:00Z',
+    timestamp: new Date('2025-06-15T14:30:00Z').getTime(),
     source: 'chat_2025-06-15',
-    tags: ['career', 'friendship', 'advice']
+    tags: ['career', 'friendship', 'advice'],
+    buckets: [],
+    epochs: '' as any,
+    provenance: 'internal' as const,
+    score: 0.9
   },
   {
     id: 'atom_2',
     content: 'Dory supported Rob through imposter syndrome during job search',
-    timestamp: '2025-08-20T09:15:00Z',
+    timestamp: new Date('2025-08-20T09:15:00Z').getTime(),
     source: 'chat_2025-08-20',
-    tags: ['relationship', 'support', 'career']
+    tags: ['relationship', 'support', 'career'],
+    buckets: [],
+    epochs: '' as any,
+    provenance: 'internal' as const,
+    score: 0.85
   },
   {
     id: 'atom_3',
     content: 'External Context Engine architecture discussion with POML protocol design',
-    timestamp: '2025-10-05T16:45:00Z',
+    timestamp: new Date('2025-10-05T16:45:00Z').getTime(),
     source: 'dev_notes',
-    tags: ['architecture', 'POML', 'ECE']
+    tags: ['architecture', 'POML', 'ECE'],
+    buckets: [],
+    epochs: '' as any,
+    provenance: 'internal' as const,
+    score: 0.8
   }
 ];
 

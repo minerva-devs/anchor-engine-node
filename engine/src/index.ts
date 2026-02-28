@@ -88,13 +88,11 @@ app.use("/static", express.static(path.join(__dirname, "../dist"), {
   }
 }));
 
-// Try to serve the external UI first (when running in full system)
-// Path to anchor-os/packages/anchor-ui/dist
-const externalFrontendDist = path.join(__dirname, "../../../anchor-os/packages/anchor-ui/dist");
+// Serve UI from engine/public (simplified single-file UI)
+// Fallback to external anchor-os UI if running in full system mode
 const internalFrontendDist = path.join(__dirname, "../public");
-const localFrontendDist = path.join(__dirname, "../../packages/anchor-ui/dist"); // New: local anchor-ui
+const externalFrontendDist = path.join(__dirname, "../../../anchor-os/packages/anchor-ui/dist");
 
-// Check if external UI exists, otherwise use local or internal lightweight UI
 if (existsSync(externalFrontendDist)) {
   StructuredLogger.info('UI_SOURCE', { source: 'external', path: externalFrontendDist });
   app.use(express.static(externalFrontendDist, {
@@ -105,17 +103,6 @@ if (existsSync(externalFrontendDist)) {
   app.get("*", (req, res, next) => {
     if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring")) return next();
     res.sendFile(path.join(externalFrontendDist, "index.html"));
-  });
-} else if (existsSync(localFrontendDist)) {
-  StructuredLogger.info('UI_SOURCE', { source: 'local', path: localFrontendDist });
-  app.use(express.static(localFrontendDist, {
-    setHeaders: (res, path) => {
-      StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'local' });
-    }
-  }));
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring")) return next();
-    res.sendFile(path.join(localFrontendDist, "index.html"));
   });
 } else {
   StructuredLogger.info('UI_SOURCE', { source: 'internal', path: internalFrontendDist });

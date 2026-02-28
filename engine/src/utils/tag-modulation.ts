@@ -62,6 +62,23 @@ const STRICT_BLACKLIST = [
   /^#incorrect_/, /^#error_/,  // Errors
   /^#null\b/, /^#undefined\b/, /^#nan\b/,  // Null values
   /^#untagged$/, /^#manual\b/, /^#manually_/,  // System tags
+  
+  // System-generated tags (prevent self-contamination from Anchor output)
+  /^#virtual_/,           // Virtual molecule markers
+  /^#mem_[a-f0-9_]+/,    // System memory IDs
+  /^#score_/,            // Score-based tags
+  /^#inbox_/,            // Source path tags
+  /^#provenance_/,       // Provenance tags
+  /^#bucket_/,           // Bucket tags
+  /^#epoch_/,            // Epoch tags
+  /^#compound_/,         // Compound ID tags
+  /^#molecule_/,         // Molecule ID tags
+  /^#atom_/,             // Atom ID tags
+  /^#simhash_/,          // Simhash tags
+  /^#ts_rank/,           // Search ranking tags
+  /^#fts_/,              // Full-text search tags
+  /^#anchor_/,           // Anchor system tags
+  /^#mcp_/,              // MCP protocol tags
 ];
 
 // Medium blacklist (filtered at low modulation)
