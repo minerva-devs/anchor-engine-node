@@ -1,6 +1,6 @@
 # Anchor Engine (Node.js)
 
-**Version:** 4.3.0 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready  
+**Version:** 4.3.2 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready  
 **Platform:** ✅ ARM64 Windows | ✅ x64 Windows | ✅ Linux | ✅ macOS
 
 The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Semantic Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
@@ -123,7 +123,7 @@ curl http://localhost:3160/health
 |----------|-------------|
 | **[docs/whitepaper.md](docs/whitepaper.md)** | STAR Algorithm whitepaper (arXiv submission ready) |
 | **[docs/ARCHITECTURE_DIAGRAMS.md](docs/ARCHITECTURE_DIAGRAMS.md)** | Visual system architecture (human-friendly) |
-| **[docs/CPP_OPTIMIZATION.md](docs/CPP_OPTIMIZATION.md)** | C++ optimization project (50% complete) |
+| **[docs/CPP_OPTIMIZATION.md](docs/CPP_OPTIMIZATION.md)** | C++ optimization project (Archived) |
 | **[docs/INDEX.md](docs/INDEX.md)** | Documentation navigation hub |
 | **[docs/BIBLIOGRAPHY.bib](docs/BIBLIOGRAPHY.bib)** | Citation database (15 key papers) |
 | **[specs/spec.md](specs/spec.md)** | System specification (LLM-optimized) |
@@ -173,17 +173,7 @@ Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
 
 ## 📦 Core Components
 
-### Native Modules (Published as `@rbalchii/*` npm packages)
-
-| Package | Function | Speed |
-|---------|----------|-------|
-| `@rbalchii/native-atomizer` | Content splitting | 2.3x faster |
-| `@rbalchii/native-keyassassin` | Sanitization | Sub-ms |
-| `@rbalchii/native-fingerprint` | SimHash generation | ~2ms/atom |
-| `@rbalchii/tag-walker` | Graph traversal | ~150ms search |
-| `@rbalchii/dse` | Semantic expansion | — |
-
-### Database: PGlite (PostgreSQL-Compatible)
+### Database: PGlite (WASM-based PostgreSQL)
 
 - **Atoms:** Knowledge units with byte-offset pointers
 - **Tags:** Bipartite graph (Atoms ↔ Tags)
@@ -221,7 +211,6 @@ Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
 | **RAM** | 4GB | 8GB+ |
 | **Storage** | 10GB free | SSD recommended |
 | **Node.js** | v18+ | v20+ |
-| **Build Tools** | C++ compiler | For native modules |
 
 **Note:** Performance scales with dataset size. Current benchmarks based on ~25M token corpus (chat history). Large-scale testing (TB+ datasets) planned for future validation.
 
@@ -232,7 +221,6 @@ Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
 ### Prerequisites
 - Node.js v18+
 - PNPM package manager
-- C++ build tools (for native modules)
 
 ### Build Commands
 
@@ -257,7 +245,6 @@ anchor-engine-node/
 ├── engine/                 # Core engine source
 │   ├── src/
 │   │   ├── services/      # Ingestion, Search, Watchdog
-│   │   ├── native/        # N-API module loaders
 │   │   └── routes/        # HTTP API endpoints
 │   └── dist/              # Built output
 ├── packages/              # Monorepo packages
@@ -309,7 +296,6 @@ Edit `user_settings.json` in root:
 | **109** | Batched Ingestion | Large file handling |
 | **094** | Smart Search Protocol | Fuzzy fallback & GIN optimization |
 | **088** | Server Startup Sequence | ECONNREFUSED fix |
-| **074** | Native Module Acceleration | Iron Lung Protocol |
 | **065** | Graph Associative Retrieval | Tag-Walker protocol |
 | **059** | Reliable Ingestion | Ghost Data Protocol |
 
@@ -353,7 +339,6 @@ Agent Query → Anchor Context Retrieval → Context (JSON/CSV/Tables) → Agent
 | **ECONNREFUSED** | Fixed in Standard 088—server starts before DB init |
 | **Slow startup** | First run includes DB initialization |
 | **UI delays** | Electron wrapper may take ~15s; access directly at http://localhost:3160 |
-| **Native module errors** | Check `pnpm build` completed; fallbacks activate automatically |
 
 ### Health Checks
 
@@ -396,7 +381,7 @@ If you use STAR in your research, please cite the software using the provided CI
 
 **Repository:** https://github.com/RSBalchII/anchor-engine-node  
 **Whitepaper:** [docs/whitepaper.md](docs/whitepaper.md)  
-**Production Status:** ✅ Ready (February 20, 2026)
+**Production Status:** ✅ Ready (February 28, 2026)
 
 ---
 

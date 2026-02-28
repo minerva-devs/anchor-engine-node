@@ -35,7 +35,7 @@ STAR addresses this gap with a sparse graph retrieval system that runs on consum
 
 ## Dense Vector and Graph-Based Retrieval
 
-Systems like HNSW [@malkov2018efficient] and FAISS [@johnson2019billion] represent state-of-the-art approximate nearest neighbor search but require loading complete vector indices into RAM (4-8GB for modest corpora), restricting deployment to high-specification servers and providing limited explainability. Recent graph-based approaches like T-Retriever [@wei2026tretriever] and PersonalAI [@menschikov2025personalai] explore alternative structures but lack temporal decay modeling or production validation.
+Systems like HNSW [@malkov2018efficient] and FAISS [@johnson2019billion] represent state-of-the-art approximate nearest neighbor search but require loading complete vector indices into RAM (4-8GB for modest corpora), restricting deployment to high-specification servers and providing limited explainability. Recent graph-based memory systems like TOBUGraph [@tobugraph2024] and Mem0 [@mem02025] explore alternative structures, often relying on LLM-based extractions or dense embeddings. In contrast, STAR introduces a deterministic, physics-inspired multiplicative scoring model (the Unified Field Equation) that prioritizes resource-constrained, local-first environments (operating on CPU-only, 4GB RAM footprints) and provides native explainability through explicit tag paths.
 
 STAR contributes a complete, deployed system with validated performance on 25M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) deduplication via SimHash [@charikar2002similar] and disposable index architectures.
 

@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.3.2] - 2026-02-28 — PGlite Migration Documentation Integrity
+
+### Changed
+- **Documentation Cleanup:** Removed outdated references to C++ native compilation, N-API modules, and associated build tools from `README.md` and `specs/spec.md` to cleanly reflect the PGlite-only architecture.
+- **Prior Art Synthesis:** Integrated analysis of TOBUGraph and Mem0 into `RESEARCH_LANDSCAPE.md` and added their citations to the arXiv submission standard (`STANDARD_117_ARXIV_SUBMISSION.md`).
+- **Standard 120:** Officially recorded `Standard 120: System Output Filtering` in the Active Architecture Standards table in `specs/spec.md`.
+- **Cleanup:** Archived temporary audit reports and pain point solution notes to maintain a clean specification repository.
+
+---
+
+## [4.3.1] - 2026-02-28 — Initial JOSS Submission Updates
+
+### Changed
+- **Documentation:** Updated `paper.md` and `docs/whitepaper.md` with explicit differentiation against prior art (TOBUGraph, Mem0) to highlight the STAR Algorithm's deterministic, physics-based scoring matrix.
+- **Bibliography:** Added citations for TOBUGraph and Mem0 to formalize theoretical foundations and academic context.
+- **Version Tracking:** Synchronized version numbers to `4.3.1` across `package.json`, `CITATION.cff`, `README.md`, and specifications for the JOSS academic snapshot.
+
+---
+
 ## [4.3.0] - 2026-02-27 — PGlite-First Architecture, ARM64 Windows Support
 
 ### The Great Migration: SQLite3 → PGlite

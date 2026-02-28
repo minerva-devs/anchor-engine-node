@@ -69,6 +69,18 @@ STAR implements **local-first architecture**:
 - **STAR Difference:** PersonalAI is framework-focused; STAR has real production validation (25M tokens)
 - **Where to Cite:** Related Work (Graph-Based Memory section)
 
+**TOBUGraph (Graph-based Personal Memory Retrieval)**
+- **Citation:** Kashmira et al. (2024) - `tobugraph2024`
+- **Contribution:** Knowledge Graph-Based Retrieval for Enhanced LLM Performance Beyond RAG
+- **STAR Difference:** TOBUGraph uses LLM-based graph extraction; STAR uses deterministic physics-based scoring with temporal decay
+- **Where to Cite:** Related Work (Graph-Based Memory section)
+
+**Mem0 (Scalable Long-Term Memory)**
+- **Citation:** Chhikara et al. (2025) - `mem02025`
+- **Contribution:** Building Production-Ready AI Agents with Scalable Long-Term Memory
+- **STAR Difference:** Mem0 is LLM-based and runs as a cloud service; STAR is local-first, deterministic, explainable, and CPU-only
+- **Where to Cite:** Related Work (Graph-Based Memory section)
+
 ---
 
 ### 3. Personal AI Memory Systems (Contemporary Work)
@@ -172,7 +184,7 @@ SimHash enables O(1) deduplication via 64-bit fingerprinting
 HNSW \cite{malkov2018efficient} and FAISS \cite{johnson2019billion}...
 
 % Graph-Based Memory
-T-Retriever \cite{wei2026tretriever}... PersonalAI \cite{menschikov2025personalai}...
+T-Retriever \cite{wei2026tretriever}... PersonalAI \cite{menschikov2025personalai}... TOBUGraph \cite{tobugraph2024}... Mem0 \cite{mem02025}...
 
 % Personal AI Memory
 Second Me \cite{wei2025second}... Cognitive AI \cite{salas2025cognitive}...
@@ -190,9 +202,9 @@ Local-first software movement \cite{haque2023local}...
 ```markdown
 ## Related Work
 
-- **HNSW** (Malkov & Yashunin, 2018) - Vector retrieval baseline
 - **Second Me** (Wei et al., 2025) - Personal AI memory
-- **PersonalAI** (Menschikov et al., 2025) - Knowledge graph for LLMs
+- **TOBUGraph** (Kashmira et al., 2024) - Graph-based memory retrieval
+- **Mem0** (Chhikara et al., 2025) - Scalable long-term memory
 ```
 
 **specs/spec.md:**
@@ -206,6 +218,8 @@ See [RESEARCH_LANDSCAPE.md](../docs/RESEARCH_LANDSCAPE.md) for comprehensive rel
 
 | Paper | Similarity | STAR's Advantage |
 |-------|------------|------------------|
+| **TOBUGraph** | Graph-based memory | Deterministic scoring, specific temporal decay |
+| **Mem0** | AI Agents & Long-term memory | Local-first, CPU-only, explainable vs cloud-based |
 | **Second Me** | Personal AI memory | Simpler, deterministic, explainable, CPU-only |
 | **PersonalAI** | Knowledge graphs | Real production validation (25M tokens) |
 | **T-Retriever** | Graph-based RAG | Includes temporal decay |
@@ -217,7 +231,7 @@ See [RESEARCH_LANDSCAPE.md](../docs/RESEARCH_LANDSCAPE.md) for comprehensive rel
 
 **See:** `docs/BIBLIOGRAPHY.bib` for complete BibTeX entries
 
-**Key Citations (15 total):**
+**Key Citations (17 total):**
 1. Charikar 2002 - SimHash
 2. Brin & Page 1998 - PageRank
 3. Malkov & Yashunin 2018 - HNSW
@@ -233,6 +247,8 @@ See [RESEARCH_LANDSCAPE.md](../docs/RESEARCH_LANDSCAPE.md) for comprehensive rel
 13. Borgeaud et al. 2022 - RETRO
 14. Karpukhin et al. 2020 - DPR
 15. Reimers & Gurevych 2019 - Sentence-BERT
+16. Kashmira et al. 2024 - TOBUGraph
+17. Chhikara et al. 2025 - Mem0
 
 ---
 
