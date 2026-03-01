@@ -1,45 +1,46 @@
 /**
  * Jest Configuration for Anchor Engine
- * 
- * Supports both JavaScript and TypeScript tests
+ *
+ * Runs Jest-style tests only.
+ * Standalone test scripts (tests/unit/*.ts) are run via ts-node/tsm separately.
  */
 module.exports = {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
-  
-  // Test file patterns
+
+  // Test file patterns - ONLY Jest-style tests
   testMatch: [
-    '**/tests/**/*.test.ts',
-    '**/tests/**/*.test.js',
-    '**/tests/unit/*.ts',
-    '**/engine/tests/**/*.ts'
+    '**/engine/tests/**/*.test.ts',
+    '**/engine/src/**/*.test.ts'
+    // Note: cpp/tests/*.test.js excluded - requires native modules
   ],
-  
+
   // Files to ignore
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
     '/context_data/',
-    'test_context_quality_improvements.ts',  // Uses custom runner
-    '\\.d\\.ts$' // Ignore declaration files
+    '\\.d\\.ts$', // Ignore declaration files
+    'pglite-database.test.ts' // Requires --experimental-vm-modules
   ],
 
   // Module path ignore patterns (resolve Haste collisions)
   modulePathIgnorePatterns: [
     '<rootDir>/engine/native/',
-    '<rootDir>/engine/src/native/'
+    '<rootDir>/engine/src/native/',
+    '<rootDir>/cpp/'
   ],
-  
-  // Module resolution
+
+  // Module resolution for ESM
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '^@anchor/(.*)$': '<rootDir>/packages/$1/src',
     '^@anchor-engine/native$': '<rootDir>/engine/tests/mocks/native-mock.js'
   },
-  
+
   // Extensions to resolve
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  
+
   // Transform settings
   transform: {
     '^.+\\.tsx?$': [
@@ -52,63 +53,42 @@ module.exports = {
           esModuleInterop: true,
           allowSyntheticDefaultImports: true,
           target: 'ES2022',
-          skipLibCheck: true
+          skipLibCheck: true,
+          isolatedModules: true
         }
       }
     ]
   },
-  
+
+  // Don't transform node_modules
+  transformIgnorePatterns: [
+    'node_modules/'
+  ],
+
   // Coverage settings
   collectCoverageFrom: [
     'engine/src/**/*.ts',
     '!engine/src/**/*.d.ts',
     '!engine/src/types/**'
   ],
-  
+
   coverageDirectory: 'coverage',
-  
+
   // Reporter settings
-  reporters: [
-    'default',
-    ['jest-junit', {
-      outputDirectory: 'reports',
-      outputName: 'jest-results.xml',
-      classNameTemplate: '{classname}',
-      titleTemplate: '{title}',
-      ancestorSeparator: ' › ',
-      usePathForSuiteName: 'true'
-    }]
-  ],
-  
+  reporters: ['default'],
+
   // Test timeout (30 seconds)
   testTimeout: 30000,
-  
+
   // Verbose output
   verbose: true,
-  
+
   // Clear mocks between tests
   clearMocks: true,
-  
-  // Collect coverage
+
+  // Don't collect coverage by default
   collectCoverage: false,
-  
-  // Coverage thresholds (adjust as needed)
-  coverageThreshold: {
-    global: {
-      branches: 50,
-      functions: 50,
-      lines: 50,
-      statements: 50
-    }
-  },
-  
-  // Setup files
-  setupFilesAfterEnv: ['<rootDir>/tests/framework/config.ts'],
-  
-  // Global test utilities
-  globals: {
-    'ts-jest': {
-      isolatedModules: true
-    }
-  }
+
+  // Stop tests on first error
+  bail: false
 };

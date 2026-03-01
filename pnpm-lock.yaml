@@ -132,21 +132,21 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.2.0
         version: 0.2.17
+      '@rbalchii/anchor-atomizer-wasm':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@rbalchii/anchor-fingerprint-wasm':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@rbalchii/anchor-keyextract-wasm':
+        specifier: ^1.0.0
+        version: 1.0.0
+      '@rbalchii/anchor-tagwalker-wasm':
+        specifier: ^1.0.0
+        version: 1.0.0
       '@rbalchii/dse':
         specifier: ^1.0.0
         version: 1.0.1
-      '@rbalchii/native-atomizer':
-        specifier: ^1.0.0
-        version: 1.0.1
-      '@rbalchii/native-fingerprint':
-        specifier: ^1.0.0
-        version: 1.0.1
-      '@rbalchii/native-keyassassin':
-        specifier: ^1.0.0
-        version: 1.0.2
-      '@rbalchii/tag-walker':
-        specifier: ^1.0.0
-        version: 1.0.1(@electric-sql/pglite@0.2.17)
       '@types/body-parser':
         specifier: ^1.19.6
         version: 1.19.6
@@ -1175,11 +1175,20 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
+  '@rbalchii/anchor-atomizer-wasm@1.0.0':
+    resolution: {integrity: sha512-5JQnNus68vVnPKmcJ5KR6H5vnpreC+HnbxvLk7fQCHAINgAb3vX/zhsZBt8AiMZU0IQ9UKlK+b0TcDdxFh/P/g==}
+
+  '@rbalchii/anchor-fingerprint-wasm@1.0.0':
+    resolution: {integrity: sha512-cwKkP3aQMSUhb7lL7SPekVNRBHFoJy9r+URNJpBM0U8XfvKMYpdjznWNqtwLQJePFMoHIpKNsGYX+tRfFWPbdA==}
+
+  '@rbalchii/anchor-keyextract-wasm@1.0.0':
+    resolution: {integrity: sha512-TqWuoX5yodYzFSHnSdJJvbVvJL5vLXHPSgg97zsCcV3jhSMxSaoOtDH5Ymn0A/qJW9wU79vPZaNx2N1Jyq7ngQ==}
+
+  '@rbalchii/anchor-tagwalker-wasm@1.0.0':
+    resolution: {integrity: sha512-fRO+UcCG2A57kIS1naZCqDlGfRF+K1YaWwQD4poXfJ7dx4mPkwk3VuyN1VoxjaGSp2A2BVka6aRQWlcl9ybOvA==}
+
   '@rbalchii/dse@1.0.1':
     resolution: {integrity: sha512-+PjZjKpR81yWJP3FduSdeAUb0ggz9vnLJf3lWxLjUBtyBoIlvk7qRg+C6xZ8fhTohp/kX+ta5M91amHPJSD30g==}
-
-  '@rbalchii/native-atomizer@1.0.1':
-    resolution: {integrity: sha512-TlNvNHSc5wbICz6V6a02oMx29NVAkdfVrC+jZOrMM7Z4TBpvhkitO3t5aiNmIPQj9BGjEzZhuxXZm8vAtFXD7w==}
 
   '@rbalchii/native-fingerprint@1.0.1':
     resolution: {integrity: sha512-xwtkyoH18DUXikAAayOs+kMzmck4I0qiDbRa3zTf+jv7LBwKfUWYxEAE20/7xi/qtp1STiv/vI9z0V0ObuWWCg==}
@@ -5439,13 +5448,15 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@rbalchii/dse@1.0.1': {}
+  '@rbalchii/anchor-atomizer-wasm@1.0.0': {}
 
-  '@rbalchii/native-atomizer@1.0.1':
-    dependencies:
-      node-addon-api: 7.1.1
-      node-gyp-build: 4.8.4
-      prebuild-install: 7.1.3
+  '@rbalchii/anchor-fingerprint-wasm@1.0.0': {}
+
+  '@rbalchii/anchor-keyextract-wasm@1.0.0': {}
+
+  '@rbalchii/anchor-tagwalker-wasm@1.0.0': {}
+
+  '@rbalchii/dse@1.0.1': {}
 
   '@rbalchii/native-fingerprint@1.0.1':
     dependencies:

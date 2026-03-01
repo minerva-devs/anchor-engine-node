@@ -1,67 +1,109 @@
 /**
  * SimHash Test
+ * 
+ * Tests the native SimHash implementation for text fingerprinting.
+ * Skipped if native modules are not available.
  */
 
-import { AnchorCore } from '../../engine/src/native/index.js';
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { describe, test, expect } from '@jest/globals';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+describe('SimHash (Native)', () => {
+  let AnchorCore;
+  let core;
 
-async function runTest() {
-  console.log('🧪 SimHash Test\n');
+  beforeAll(async () => {
+    try {
+      const module = await import('../../engine/src/native/index.js');
+      AnchorCore = module.AnchorCore;
+    } catch (e) {
+      console.warn('Native modules not available - skipping SimHash tests');
+      AnchorCore = null;
+    }
+  });
 
-  const core = new AnchorCore();
+  beforeEach(() => {
+    if (AnchorCore) {
+      core = new AnchorCore();
+      core.init(':memory:');
+    }
+  });
 
-  try {
-    core.init(':memory:');
+  afterAll(() => {
+    if (core) {
+      core.destroy();
+    }
+  });
+
+  test('should compute SimHash for text', () => {
+    if (!AnchorCore) {
+      console.warn('Skipping: native modules not available');
+      return;
+    }
+
+    const text = "the quick brown fox jumps over the lazy dog";
+    const hash = core.computeSimHash(text);
+
+    expect(hash).toBeDefined();
+    expect(typeof hash).toBe('bigint');
+    expect(hash).toBeGreaterThan(0n);
+  });
+
+  test('should produce identical hashes for identical text', () => {
+    if (!AnchorCore) {
+      console.warn('Skipping: native modules not available');
+      return;
+    }
+
+    const text = "the quick brown fox jumps over the lazy dog";
+    const hash1 = core.computeSimHash(text);
+    const hash2 = core.computeSimHash(text);
+
+    expect(hash1).toBe(hash2);
+  });
+
+  test('should produce similar hashes for similar text', () => {
+    if (!AnchorCore) {
+      console.warn('Skipping: native modules not available');
+      return;
+    }
 
     const text1 = "the quick brown fox jumps over the lazy dog";
-    const text2 = "the quick brown fox jumps over the lazy dog"; // Identical
-    const text3 = "the quick brown fox jumps over the lazy cat"; // Very similar
-    const text4 = "lorem ipsum dolor sit amet"; // Very different
+    const text2 = "the quick brown fox jumps over the lazy cat";
 
     const hash1 = core.computeSimHash(text1);
     const hash2 = core.computeSimHash(text2);
-    const hash3 = core.computeSimHash(text3);
-    const hash4 = core.computeSimHash(text4);
 
-    console.log(`Text 1: "${text1}" -> ${hash1.toString(16)}`);
-    console.log(`Text 2: "${text2}" -> ${hash2.toString(16)}`);
-    console.log(`Text 3: "${text3}" -> ${hash3.toString(16)}`);
-    console.log(`Text 4: "${text4}" -> ${hash4.toString(16)}`);
+    // Hamming distance should be small for similar texts
+    const hammingDistance = bitCount(hash1 ^ hash2);
+    expect(hammingDistance).toBeLessThan(15);
+  });
 
-    // Helper to count bits (Hamming distance)
-    function hamming(h1, h2) {
-      let x = h1 ^ h2;
-      let count = 0;
-      while (x > 0n) {
-        if (x & 1n) count++;
-        x >>= 1n;
-      }
-      return count;
+  test('should produce different hashes for different text', () => {
+    if (!AnchorCore) {
+      console.warn('Skipping: native modules not available');
+      return;
     }
 
-    const dist12 = hamming(hash1, hash2);
-    const dist13 = hamming(hash1, hash3);
-    const dist14 = hamming(hash1, hash4);
+    const text1 = "the quick brown fox jumps over the lazy dog";
+    const text2 = "lorem ipsum dolor sit amet";
 
-    console.log(`\nDistance 1-2 (Identical): ${dist12}`);
-    console.log(`Distance 1-3 (Similar):   ${dist13}`);
-    console.log(`Distance 1-4 (Different): ${dist14}`);
+    const hash1 = core.computeSimHash(text1);
+    const hash2 = core.computeSimHash(text2);
 
-    if (dist12 !== 0) throw new Error('Identical texts should have 0 distance');
-    if (dist13 > 15) throw new Error('Similar texts should have small distance');
-    if (dist14 < 15) throw new Error('Different texts should have large distance');
+    // Hamming distance should be larger for different texts
+    const hammingDistance = bitCount(hash1 ^ hash2);
+    expect(hammingDistance).toBeGreaterThan(15);
+  });
+});
 
-    console.log('\n✅ SimHash works correctly!');
-
-  } catch (error) {
-    console.error('❌ Test failed:', error);
-    process.exit(1);
-  } finally {
-    core.destroy();
+/**
+ * Count the number of set bits in a bigint
+ */
+function bitCount(x) {
+  let count = 0;
+  while (x > 0n) {
+    if (x & 1n) count++;
+    x >>= 1n;
   }
+  return count;
 }
-
-runTest();

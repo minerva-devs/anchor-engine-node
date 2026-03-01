@@ -1,4 +1,4 @@
-import { nativeModuleManager } from '../utils/native-module-manager.js';
+import { wasmModuleLoader } from '../utils/wasm-module-loader.js';
 import { InferenceService } from '../services/inference/inference-service.js';
 
 export type AgentEvent =
@@ -16,7 +16,6 @@ interface AgentRuntimeOptions {
 }
 
 export class AgentRuntime {
-  private native: any;
   private inferenceService: InferenceService;
   private verbose: boolean;
   private maxIterations: number;
@@ -29,8 +28,10 @@ export class AgentRuntime {
     this.onEvent = options.onEvent;
     this.messages = options.messages;
 
-    // Load the native module (kept for legacy/potential future needs)
-    this.native = nativeModuleManager.loadNativeModule('ece_native', 'ece_native.node');
+    // WASM modules are auto-initialized in wasm-module-loader.js
+    // No manual loading needed - all modules ready on import
+    console.log('[AgentRuntime] WASM modules ready:', 
+      Array.from(wasmModuleLoader.getAllStatus().keys()).join(', '));
 
     // Initialize inference service
     this.inferenceService = new InferenceService({
