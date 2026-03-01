@@ -8,7 +8,7 @@
 
 import { config } from '../../config/index.js';
 import { composeRollingContext } from '../../core/inference/context_manager.js';
-import { nativeModuleManager } from '../../utils/native-module-manager.js';
+import { wasmModuleLoader } from '../../utils/wasm-module-loader.js';
 import { SemanticCategory } from '../../types/taxonomy.js';
 import { ContextInflator } from './context-inflator.js';
 import * as fs from 'fs';
@@ -92,38 +92,13 @@ export function getHammingDistance(hashA: string, hashB: string): number {
         const a = BigInt(`0x${hashA}`);
         const b = BigInt(`0x${hashB}`);
 
-        // Force JS fallback to prevent native module crashes (ECONNRESET/Segfault debugging)
-        /*
-        const native = nativeModuleManager.loadNativeModule('ece_native', 'ece_native.node'); // Ensure loaded
-    
-        // Check if we're using fallback implementation
-        const isUsingFallback = nativeModuleManager.isUsingFallback('ece_native');
-        if (isUsingFallback) {
-          console.log('[Search] Using fallback implementation for native module distance calculation');
+        // Use WASM module for distance calculation (Standard 074 - WASM Edition)
+        try {
+          return wasmModuleLoader.distance(a, b);
+        } catch (wasmError) {
+          console.warn('[Search] WASM distance function failed, using JS fallback:', wasmError);
         }
-    
-        if (native && native.distance) {
-          try {
-            // Add timeout protection for native calls to prevent hanging
-            const result = native.distance(a, b);
-            if (typeof result !== 'number') {
-              console.warn('[Search] Unexpected result type from native distance function:', typeof result);
-              return 64;
-            }
-            return result;
-          } catch (nativeError) {
-            console.error('[Search] Native module distance function failed:', nativeError);
-            // Fallback to JavaScript implementation if native call fails
-            let xor = a ^ b;
-            let count = 0;
-            while (xor > 0n) {
-              xor &= (xor - 1n);
-              count++;
-            }
-            return count;
-          }
-        } else {
-        */
+        
         // JavaScript fallback implementation
         let xor = a ^ b;
         let count = 0;
@@ -132,7 +107,6 @@ export function getHammingDistance(hashA: string, hashB: string): number {
             count++;
         }
         return count;
-        //}
 
     } catch (e) {
         console.error('[Search] Hamming distance calculation failed:', e);
