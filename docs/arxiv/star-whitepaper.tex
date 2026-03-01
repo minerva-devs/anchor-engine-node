@@ -144,9 +144,9 @@ Where:
 \toprule
 \textbf{Symbol} & \textbf{Meaning} & \textbf{Default} \\ \midrule
 $\gamma$ & Damping factor (controls walk viscosity) & 0.85 \\
-$\lambda$ & Decay constant (half-life $\approx$ 115 min) & 0.0001 s$^{-1}$ \\
+$\lambda$ & Decay constant (half-life $\approx$ 7.9 years) & 0.00001 h$^{-1}$ \\
 $d(q,a)$ & Graph hop distance (0 = direct, 1 = 1-hop) & $\in \{0,1,2,3\}$ \\
-$\Delta t$ & Time difference $|\tau_q - \tau_a|$ in seconds & --- \\
+$\Delta t$ & Time difference $|\tau_q - \tau_a|$ in hours & --- \\
 $H(\cdot,\cdot)$ & Hamming distance on 64-bit SimHash & 0--63 \\
 $h_q, h_a$ & SimHash fingerprints of query and atom & $\{0,1\}^{64}$ \\ \bottomrule
 \end{tabular}
@@ -159,12 +159,14 @@ $h_q, h_a$ & SimHash fingerprints of query and atom & $\{0,1\}^{64}$ \\ \bottomr
     \begin{itemize}
         \item Shared tag count weighted by graph distance
         \item Exponential decay with hop distance (damping)
+        \item Graph distance $d(q,a)$ is the minimum number of hops from any anchor atom (direct match to the query) to candidate $a$.
     \end{itemize}
 
     \item \textbf{Temporal Decay}: $e^{-\lambda \Delta t}$
     \begin{itemize}
         \item Recent memories exert stronger gravitational pull
-        \item Half-life: $t_{1/2} = \ln(2)/\lambda \approx 6,931$ seconds $\approx$ 115 minutes
+        \item Half-life: $t_{1/2} = \ln(2)/\lambda \approx 69,314$ hours $\approx$ 7.9 years
+        \item The small decay constant ($\lambda = 0.00001$ h$^{-1}$) ensures memories remain accessible for years, suitable for personal knowledge graphs
     \end{itemize}
 
     \item \textbf{Structural Gravity}: $1 - \frac{H(h_q, h_a)}{64}$
@@ -197,7 +199,7 @@ SELECT atom_id,
   MAX(
     GREATEST(0.0, LEAST(1.0,
       ((shared_tags / 10.0) * 0.85) *
-      EXP(-0.0001 * ABS(timestamp - anchor_ts)) *
+      EXP(-0.00001 * ABS(timestamp - anchor_ts) / 3600000.0) *
       (1.0 - (bit_count(('x' || LPAD(simhash, 16, '0'))::bit(64) 
                       # ('x' || LPAD(anchor_sh, 16, '0'))::bit(64)) / 64.0))
     ))
@@ -212,8 +214,9 @@ LIMIT 200;
 
 \paragraph{Implementation Notes:}
 \begin{itemize}
-    \item \textbf{Normalization}: The $shared\_tags / 10.0$ term normalizes tag counts, assuming $\sim$10 shared tags maximum for typical queries
+    \item \textbf{Normalization}: The $shared\_tags / 10.0$ term normalizes tag counts, assuming $\sim$10 shared tags maximum for typical queries; the final gravity score is clamped to $[0,1]$ via \texttt{GREATEST}/\texttt{LEAST}.
     \item \textbf{Damping}: The $POWER(0.85, hop)$ factor applies per-hop decay; multi-hop results decay exponentially (hop 1: 85\%, hop 2: 72\%, hop 3: 61\%)
+    \item \textbf{Recursive Tag‑Walker}: The recursive CTE computes semantic overlap between successive atoms (not directly with the query) because the anchor atoms' tags already capture the query intent; this allows discovery of indirect associations while preserving semantic coherence.
     \item \textbf{Hop Tracking}: Recursive CTE tracks graph distance from anchors for proper damping application
     \item \textbf{Physical Bonus}: Production implementations may add proximity-based bonuses for co-located atoms
     \item \textbf{Bitwise Operations}: SimHash distance uses XOR (\texttt{\#}) and \texttt{bit\_count} for O(1) computation
@@ -312,10 +315,12 @@ Cache & Browser cache & Ephemeral PGlite index \\ \bottomrule
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 \textbf{Method} & \textbf{Time} & \textbf{Space} & \textbf{Explainability} & \textbf{Hardware} \\ \midrule
-\textbf{Dense Vector ANN (HNSW)} & $O(n \log n)$ or $O(n)$ & $O(n \cdot d)$ & Opaque & GPU preferred \\
+\textbf{Dense Vector ANN (HNSW)} & $O(\log n)$ (query)\textsuperscript{$\ddagger$} & $O(n \cdot d)$ & Opaque & GPU preferred \\
 \textbf{STAR (Sparse Graph)} & $\mathbf{O(k \cdot \bar{d})}$ & $\mathbf{O(|E|)}$ & \textbf{Native (tag paths)} & \textbf{CPU-only} \\ \bottomrule
 \end{tabular}
 \end{table}
+
+\textsuperscript{$\ddagger$} $O(n \log n)$ is index construction complexity; query complexity is $O(\log n)$.
 
 Where:
 \begin{itemize}
@@ -326,7 +331,7 @@ Where:
     \item $|E|$ = sparse edges (typically $10 \cdot n$)
 \end{itemize}
 
-\textbf{Key Insight:} For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR asymptotically faster than dense retrieval.
+\textbf{Key Insight:} For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR query time $O(k\bar{d})$ potentially faster than HNSW's $O(\log n)$ query time.
 
 \section{Retrieval Protocol: Planets and Moons}
 \label{sec:retrieval}
@@ -624,7 +629,7 @@ WITH RECURSIVE tag_walk AS (
     a2.timestamp,
     tw.hop_distance + 1,
     ((COUNT(DISTINCT t1.tag) / 10.0) * POWER(0.85, tw.hop_distance + 1)) *
-    EXP(-0.0001 * ABS(a2.timestamp - tw.timestamp)) *
+    EXP(-0.00001 * ABS(a2.timestamp - tw.timestamp) / 3600000.0) *
     (1.0 - (bit_count(('x' || LPAD(a2.simhash, 16, '0'))::bit(64) 
                     # ('x' || LPAD(tw.simhash, 16, '0'))::bit(64)) / 64.0))
   FROM tag_walk tw

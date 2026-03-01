@@ -15,16 +15,6 @@ import { GithubModal } from './components/features/GithubModal';
 import { GitCommandsModal } from './components/features/GitCommandsModal';
 import { navigate } from './utils/routing';
 
-// ...
-
-
-
-// ... (existing imports)
-
-// ... (existing imports)
-
-// ... (imports)
-
 // Simple Router
 const Dashboard = () => (
   <div className="flex-col-center" style={{ height: '100%', justifyContent: 'center', alignItems: 'center', gap: '2rem' }}>

@@ -7,6 +7,10 @@
  * bright-nodes.ts ("The Illuminator").
  *
  * Standard 086 Compliant.
+ * Standard 086 = "Dual-Strategy Search" (internal specification numbering).
+ * See specs/standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md for full spec.
+ * Two modes: Standard Search (70/30 budget, temporal decay) and Max-Recall
+ * (zero decay, 3-hop traversal). Mode auto-selects based on token budget.
  */
 
 import { db } from '../../core/db.js';
@@ -16,6 +20,7 @@ import { MAX_RECALL_CONFIG } from '../../config/max-recall-config.js';
 import { SemanticCategory } from '../../types/taxonomy.js';
 import { ContextInflator } from './context-inflator.js';
 import { Timer } from '../../utils/timer.js';
+import { systemStatus } from '../system-status.js';
 
 // --- Imports from extracted modules ---
 import {
@@ -608,6 +613,15 @@ export async function executeSearch(
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
   console.log(`[Search] executeSearch (Physics Engine V2) called with provenance: ${provenance}`);
   const startTime = Date.now();
+
+  // Check if system is busy with ingestion
+  const status = systemStatus.getStatus();
+  if (status.isBusy) {
+    const waitTime = systemStatus.getEstimatedWaitTime();
+    console.log(`[Search] System busy (${status.state}), but proceeding anyway. Estimated wait: ${waitTime}s`);
+    // We could throw an error or queue the request, but for now just log it
+    // throw new Error(`System is currently ${status.state}. Please wait ${waitTime} seconds and try again.`);
+  }
 
   // 1. Parse & Prepare
   const cleanQuery = query; // Simplified for now, real NLP parsing happens in findAnchors/query-parser calls if needed

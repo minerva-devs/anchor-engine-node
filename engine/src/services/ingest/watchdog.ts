@@ -14,6 +14,7 @@ import { NOTEBOOK_DIR, PROJECT_ROOT } from '../../config/paths.js';
 import { ingestAtoms } from './ingest.js';
 import { config } from '../../config/index.js';
 import { pathManager } from '../../utils/path-manager.js';
+import { systemStatus } from '../system-status.js';
 
 let watcher: chokidar.FSWatcher | null = null;
 const IGNORE_PATTERNS = /(^|[\/\\])\../; // Ignore dotfiles
@@ -307,6 +308,9 @@ async function processFile(filePath: string, event: string) {
 
     console.log(`[Watchdog] Detected ${event}: ${filePath}`);
 
+    // Set system status to ingesting
+    systemStatus.setState('ingesting', `Processing: ${path.basename(filePath)}`);
+
     try {
         const buffer = await fs.promises.readFile(filePath);
         if (buffer.length === 0) return;
@@ -338,11 +342,13 @@ async function processFile(filePath: string, event: string) {
             }
             if (existingHash === fileHash) {
                 console.log(`[Watchdog] File unchanged (hash match): ${relativePath}`);
+                systemStatus.setState('idle');
                 return;
             }
         }
 
         console.log(`[Watchdog] Processing Pipeline: ${relativePath}`);
+        systemStatus.setProgress(0, 100, 'Starting ingestion...');
 
         // 3. DETERMINE METADATA
         // Determine buckets
@@ -422,7 +428,15 @@ async function processFile(filePath: string, event: string) {
         // Trigger post-ingestion synonym generation (debounced)
         triggerPostIngestionSynonyms();
 
-    } catch (e: any) {
-        console.error(`[Watchdog] Error processing ${filePath}:`, e.message);
+        // Reset system status to idle after ingestion completes
+        systemStatus.setState('idle');
+        systemStatus.clearProgress();
+        console.log(`[SystemStatus] Ingestion complete, system ready for search`);
+
+    } catch (error: any) {
+        console.error(`[Watchdog] Error processing ${filePath}:`, error.message);
+        systemStatus.setState('idle');
+        systemStatus.clearProgress();
+        throw error;
     }
 }

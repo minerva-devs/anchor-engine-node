@@ -6,13 +6,13 @@ Robert S Balch II - Independent Researcher
 
 ### Abstract
 
-AI memory is broken. To achieve serious context retrieval, practitioners need server racks, GPU budgets, and cloud subscriptions. Intelligence is locked in black boxes—massive vector indices consuming gigabytes of RAM and tying users to proprietary systems.
+AI memory is broken. To achieve serious context retrieval, practitioners need server racks, GPU budgets, and cloud subscriptions. Intelligence is locked in black boxesΓÇömassive vector indices consuming gigabytes of RAM and tying users to proprietary systems.
 
-This paper presents **STAR** (Semantic Temporal Associative Retrieval), a novel retrieval algorithm implementing the "Browser Paradigm" for AI memory. Like a browser rendering websites by loading only necessary shards, STAR enables any device—from \$200 laptops to supercomputers—to navigate massive context by retrieving only atoms required for the current query.
+This paper presents **STAR** (Semantic Temporal Associative Retrieval), a novel retrieval algorithm implementing the "Browser Paradigm" for AI memory. Like a browser rendering websites by loading only necessary shards, STAR enables any deviceΓÇöfrom \$200 laptops to supercomputersΓÇöto navigate massive context by retrieving only atoms required for the current query.
 
-We present the mathematical foundation, implementation details, and production benchmarks from real workloads: 91MB chat history ingested in under 3 minutes, 280,000 molecules indexed, zero data loss. STAR achieves **O(k·d̄)** retrieval complexity where *k* = query tags and *d̄* = average tag degree, compared to **O(n log n)** for dense vector ANN.
+We present the mathematical foundation, implementation details, and production benchmarks from real workloads: 91MB chat history ingested in under 3 minutes, 280,000 molecules indexed, zero data loss. STAR achieves **O(k┬╖d╠ä)** retrieval complexity where *k* = query tags and *d╠ä* = average tag degree, compared to **O(n log n)** for dense vector ANN.
 
-The future of AI memory isn't bigger silos—it's universal, sharded utility running on hardware you already own.
+The future of AI memory isn't bigger silosΓÇöit's universal, sharded utility running on hardware you already own.
 
 **Keywords:** Information Retrieval, Graph-Based Search, SimHash, Local-First AI, Explainable AI, PGlite
 
@@ -20,9 +20,9 @@ The future of AI memory isn't bigger silos—it's universal, sharded utility run
 
 ## 1. Introduction
 
-Web browsers are universal. The same website renders identically on a \$300 Chromebook and a \$5000 MacBook Pro because browsers download only necessary shards (HTML, CSS, JS) for the current view—not the entire internet.
+Web browsers are universal. The same website renders identically on a \$300 Chromebook and a \$5000 MacBook Pro because browsers download only necessary shards (HTML, CSS, JS) for the current viewΓÇönot the entire internet.
 
-AI memory should operate similarly. Current Retrieval-Augmented Generation (RAG) systems require loading complete HNSW indices into RAM—gigabytes of vector data—before searching. This restricts deployment to high-spec servers, creating artificial scarcity.
+AI memory should operate similarly. Current Retrieval-Augmented Generation (RAG) systems require loading complete HNSW indices into RAMΓÇögigabytes of vector dataΓÇöbefore searching. This restricts deployment to high-spec servers, creating artificial scarcity.
 
 **Contributions:**
 1. **STAR Algorithm**: Physics-based graph traversal with temporal decay and SimHash fingerprinting
@@ -43,7 +43,7 @@ Let $G = (A, T, E)$ be a bipartite graph where:
 - **$E \subseteq A \times T$**: Sparse edges where $|E| \ll |A| \times |T|$
 
 Each atom $a_i \in A$ has:
-- **Content pointer**: $(source_i, start_i, end_i)$ — file path and byte offsets
+- **Content pointer**: $(source_i, start_i, end_i)$ ΓÇö file path and byte offsets
 - **Tag set**: $T(a_i) = \{t \in T : (a_i, t) \in E\}$
 - **Timestamp**: $\tau_i \in \mathbb{R}^+$ (Unix epoch)
 - **SimHash fingerprint**: $h_i \in \{0,1\}^{64}$
@@ -59,10 +59,10 @@ Where:
 | Symbol | Meaning | Default |
 |--------|---------|---------|
 | $\gamma$ | Damping factor (controls walk viscosity) | 0.85 |
-| $\lambda$ | Decay constant (half-life ≈ 115 min) | 0.0001 s⁻¹ |
-| $d(q,a)$ | Graph hop distance (0 = direct, 1 = 1-hop neighbor) | ∈ {0,1,2,3} |
-| $\Delta t$ | Time difference $|\tau_q - \tau_a|$ in seconds | — |
-| $H(\cdot,\cdot)$ | Hamming distance on 64-bit SimHash | 0–63 |
+| $\lambda$ | Decay constant (half-life Γëê 115 min) | 0.0001 sΓü╗┬╣ |
+| $d(q,a)$ | Graph hop distance (0 = direct, 1 = 1-hop neighbor) | Γêê {0,1,2,3} |
+| $\Delta t$ | Time difference $|\tau_q - \tau_a|$ in seconds | ΓÇö |
+| $H(\cdot,\cdot)$ | Hamming distance on 64-bit SimHash | 0ΓÇô63 |
 | $h_q, h_a$ | SimHash fingerprints of query and atom | $\{0,1\}^{64}$ |
 
 **Component Breakdown:**
@@ -73,7 +73,7 @@ Where:
 
 2. **Temporal Decay**: $e^{-\lambda \Delta t}$
    - Recent memories exert stronger gravitational pull
-   - Half-life: $t_{1/2} = \ln(2)/\lambda \approx 6,931$ seconds ≈ 115 minutes
+   - Half-life: $t_{1/2} = \ln(2)/\lambda \approx 6,931$ seconds Γëê 115 minutes
 
 3. **Structural Gravity**: $1 - \frac{H(h_q, h_a)}{64}$
    - SimHash proximity (1 = identical, 0.5 = uncorrelated, 0 = completely different)
@@ -116,7 +116,7 @@ LIMIT 200;
 
 **Implementation Notes:**
 - **Normalization:** The `shared_tags / 10.0` term normalizes tag counts, assuming ~10 shared tags maximum
-- **Damping:** The 0.85 factor applies per-hop; multi-hop traversal compounds this decay via exponentiation (γ^hop_distance). This simplified query shows the single-hop case; the full recursive CTE (shown in the paper) includes hop-distance exponentiation.
+- **Damping:** The 0.85 factor applies per-hop; multi-hop traversal compounds this decay via exponentiation (╬│^hop_distance). This simplified query shows the single-hop case; the full recursive CTE (shown in the paper) includes hop-distance exponentiation.
 - **Physical Bonus:** Production implementations may add proximity-based bonuses for co-located atoms
 - **Bitwise Operations:** SimHash distance uses XOR (`#`) and `bit_count` for O(1) computation
 
@@ -135,7 +135,7 @@ LIMIT 200;
 | Level | Role | Content Stored | Example |
 |-------|------|----------------|---------|
 | **Compound** | Document reference | File path + metadata | `ChatSessions.yaml` (91.88MB) |
-| **Molecule** | Semantic chunk | Chunk text + byte offsets | Bytes 1024–2048 |
+| **Molecule** | Semantic chunk | Chunk text + byte offsets | Bytes 1024ΓÇô2048 |
 | **Atom** | Content unit | Byte-offset pointer + tags | Text chunk with `#auth` tag |
 | **Tag** | Concept/label | Semantic label only | `#authentication`, `#session` |
 
@@ -161,9 +161,9 @@ LIMIT 200;
 
 Where:
 - $n$ = total atoms
-- $k$ = query tags (typically 5–20)
-- $\bar{d}$ = average tag degree (typically 10–100)
-- $d$ = vector dimension (typically 768–1536)
+- $k$ = query tags (typically 5ΓÇô20)
+- $\bar{d}$ = average tag degree (typically 10ΓÇô100)
+- $d$ = vector dimension (typically 768ΓÇô1536)
 - $|E|$ = sparse edges (typically $10 \cdot n$)
 
 **Key Insight:** For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR asymptotically faster than dense retrieval.
@@ -172,7 +172,7 @@ Where:
 
 ## 4. Retrieval Protocol: Planets and Moons
 
-### 4.1 Phase 1 — Anchor Discovery (Planets)
+### 4.1 Phase 1 ΓÇö Anchor Discovery (Planets)
 
 **Goal:** High-precision seed set via direct matching.
 
@@ -181,9 +181,9 @@ Where:
 2. **Radial Inflation**: Query `atom_positions` table for keyword occurrences
 3. **Engram Lookup:** O(1) cache for frequent entities
 
-**Output:** 20–200 anchor atoms with $d(q,a) = 0$
+**Output:** 20ΓÇô200 anchor atoms with $d(q,a) = 0$
 
-### 4.2 Phase 2 — Radial Inflation (Moons)
+### 4.2 Phase 2 ΓÇö Radial Inflation (Moons)
 
 **Goal:** High-recall expansion via tag-walker graph traversal.
 
@@ -221,19 +221,19 @@ def radial_inflation(anchors, radius=1, max_per_hop=50):
 }
 ```
 
-### 4.3 Phase 3 — Elastic Context Assembly
+### 4.3 Phase 3 ΓÇö Elastic Context Assembly
 
 **Goal:** Token-budget compliance with maximal coherence.
 
 **Snippets Coalescing:**
 - Merge atoms within 500-byte proximity from same source
 - Snap to sentence boundaries for narrative flow
-- **Result:** 40–100 atoms → 8–12 coherent paragraphs (500–1000 chars each)
+- **Result:** 40ΓÇô100 atoms ΓåÆ 8ΓÇô12 coherent paragraphs (500ΓÇô1000 chars each)
 
 **Progressive Inflation:**
-- Top 10% results: 2× inflation radius (1000 bytes)
-- Next 40%: 1.5× radius (750 bytes)
-- Remaining 50%: 1× radius (500 bytes)
+- Top 10% results: 2├ù inflation radius (1000 bytes)
+- Next 40%: 1.5├ù radius (750 bytes)
+- Remaining 50%: 1├ù radius (500 bytes)
 
 **Metadata Headers:**
 ```
@@ -268,22 +268,22 @@ Full coherent paragraph content...
 | **Code Repository** | 0.94MB | 20,916 | 199 | 25.0s | 836 mol/s |
 | **Total System** | ~100MB | **280,000** | **1,500** | **~4 min** | **1,200 mol/s** |
 
-**Optimization:** Monolithic files (single YAML) ingest 2× faster than hundreds of small files due to reduced I/O overhead and transaction batching.
+**Optimization:** Monolithic files (single YAML) ingest 2├ù faster than hundreds of small files due to reduced I/O overhead and transaction batching.
 
 ### 5.3 Search Performance
 
 | Search Type | Budget | Results | Latency (p95) | Use Case |
 |-------------|--------|---------|---------------|----------|
-| **Standard** (70/30) | 16k tokens | 40–100 atoms | **150ms** | Daily queries |
-| **Max Recall** (3-hop) | 65k+ tokens | 200–500 atoms | **690ms** | Research |
-| **Keyword** (direct FTS) | 4k tokens | 20–50 atoms | **100ms** | High precision |
+| **Standard** (70/30) | 16k tokens | 40ΓÇô100 atoms | **150ms** | Daily queries |
+| **Max Recall** (3-hop) | 65k+ tokens | 200ΓÇô500 atoms | **690ms** | Research |
+| **Keyword** (direct FTS) | 4k tokens | 20ΓÇô50 atoms | **100ms** | High precision |
 
 **Scaling Behavior (151K atoms):**
-- Standard Search: **7.7s** (50× increase for 100× data growth)
-- Max Recall: **25–50s** (acceptable for 618k chars retrieved)
+- Standard Search: **7.7s** (50├ù increase for 100├ù data growth)
+- Max Recall: **25ΓÇô50s** (acceptable for 618k chars retrieved)
 
 **Trade-off Analysis:**
-- **Vector RAG (HNSW):** Stable latency, memory-bound (4–8GB for 100MB)
+- **Vector RAG (HNSW):** Stable latency, memory-bound (4ΓÇô8GB for 100MB)
 - **STAR:** Linear latency scaling, constant memory (<2GB)
 
 For sovereign, local-first deployments on consumer hardware, latency scaling is acceptable.
@@ -308,13 +308,13 @@ For sovereign, local-first deployments on consumer hardware, latency scaling is 
 
 | Metric | Anchor Engine (STAR) | Vector RAG (HNSW) |
 |--------|---------------------|-------------------|
-| **90MB Ingestion** | **~178s** ✅ 2× faster | ~360s (batch) |
-| **Memory Peak** | **<1.7GB** ✅ 60–80% less | 4–8GB |
-| **Search (1.5K atoms)** | **~150ms** ✅ Comparable | ~100ms |
-| **Search (151K atoms)** | **~7.7s** ⚠️ Linear scaling | ~150ms (stable) |
-| **Hardware** | **CPU-only** ✅ No GPU | GPU preferred |
-| **Explainability** | **Native (tag paths)** ✅ | Opaque (black box) |
-| **Sovereignty** | **Local-first** ✅ No cloud | Cloud-dependent |
+| **90MB Ingestion** | **~178s** Γ£à 2├ù faster | ~360s (batch) |
+| **Memory Peak** | **<1.7GB** Γ£à 60ΓÇô80% less | 4ΓÇô8GB |
+| **Search (1.5K atoms)** | **~150ms** Γ£à Comparable | ~100ms |
+| **Search (151K atoms)** | **~7.7s** ΓÜá∩╕Å Linear scaling | ~150ms (stable) |
+| **Hardware** | **CPU-only** Γ£à No GPU | GPU preferred |
+| **Explainability** | **Native (tag paths)** Γ£à | Opaque (black box) |
+| **Sovereignty** | **Local-first** Γ£à No cloud | Cloud-dependent |
 
 **Use Case Fit:**
 
@@ -355,9 +355,9 @@ STAR enables:
 ### 7.2 Public Research Foundation
 
 Foundational AI research was publicly funded. STAR builds on:
-- **SimHash** (Charikar, 1997) — Stanford University
-- **PageRank** (Brin & Page, 1998) — Stanford University
-- **Transformer architecture** (Vaswani et al., 2017) — Google Brain
+- **SimHash** (Charikar, 1997) ΓÇö Stanford University
+- **PageRank** (Brin & Page, 1998) ΓÇö Stanford University
+- **Transformer architecture** (Vaswani et al., 2017) ΓÇö Google Brain
 
 This is a return on public investment: tools serving individuals, not corporations.
 
@@ -368,11 +368,11 @@ This is a return on public investment: tools serving individuals, not corporatio
 STAR proves that "Write Once, Run Everywhere" applies to AI infrastructure. Decouple logic from data. Shard context into atoms. Implement universal distribution.
 
 **Key Achievements:**
-- ✅ **1,200 molecules/second** ingestion throughput
-- ✅ **<200ms** search latency (p95, standard queries)
-- ✅ **69% memory reduction** after idle cleanup
-- ✅ **Zero data loss** with ephemeral index architecture
-- ✅ **151K atoms** navigable on 4GB RAM laptop
+- Γ£à **1,200 molecules/second** ingestion throughput
+- Γ£à **<200ms** search latency (p95, standard queries)
+- Γ£à **69% memory reduction** after idle cleanup
+- Γ£à **Zero data loss** with ephemeral index architecture
+- Γ£à **151K atoms** navigable on 4GB RAM laptop
 
 **Future Work:**
 1. **Caching Layer**: Frequent query result caching (target: 50% latency reduction)

@@ -37,11 +37,11 @@ STAR addresses this gap with a sparse graph retrieval system that runs on consum
 
 Systems like HNSW [@malkov2018efficient] and FAISS [@johnson2019billion] represent state-of-the-art approximate nearest neighbor search but require loading complete vector indices into RAM (4-8GB for modest corpora), restricting deployment to high-specification servers and providing limited explainability. Recent graph-based memory systems like TOBUGraph [@tobugraph2024] and Mem0 [@mem02025] explore alternative structures, often relying on LLM-based extractions or dense embeddings. In contrast, STAR introduces a deterministic, physics-inspired multiplicative scoring model (the Unified Field Equation) that prioritizes resource-constrained, local-first environments (operating on CPU-only, 4GB RAM footprints) and provides native explainability through explicit tag paths.
 
-STAR contributes a complete, deployed system with validated performance on 25M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) deduplication via SimHash [@charikar2002similar] and disposable index architectures.
+STAR contributes a complete, deployed system with validated performance on 25M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) per-atom deduplication lookups via SimHash [@charikar2002similar] and disposable index architectures.
 
 | Method | Time Complexity | Space Complexity | Explainability | Hardware |
 |--------|----------------|------------------|----------------|----------|
-| **Dense Vector ANN (HNSW)** | $O(n \log n)$ or $O(n)$ | $O(n \cdot d)$ | Opaque | GPU preferred |
+| **Dense Vector ANN (HNSW)** | $O(\log n)$ query; $O(n \log n)$ build | $O(n \cdot d)$ | Opaque | GPU preferred |
 | **STAR (Sparse Graph)** | **$O(k \cdot \bar{d})$** | **$O(|E|)$** | **Native (tag paths)** | **CPU-only** |
 
 Where $n$ = total atoms, $k$ = query tags (typically 5–20), $\bar{d}$ = average tag degree (typically 10–100), $d$ = vector dimension (typically 768–1536), and $|E|$ = sparse edges (typically $10 \cdot n$). For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR asymptotically faster than dense retrieval.
@@ -56,7 +56,7 @@ Second Me [@wei2025second] proposes LLM-based memory parameterization requiring 
 
 STAR implements the "Browser Paradigm" for AI memory: just as browsers render websites by loading only necessary shards, STAR retrieves only relevant atoms required for the current query. The architecture uses Node.js as the interface layer, TypeScript for all processing including SimHash fingerprinting, PGlite (WASM-based PostgreSQL) for sparse graph storage, and filesystem pointers for content (disposable, rebuildable indices).
 
-The data model follows a three-tier hierarchy: Compounds (document references), Molecules (semantic chunks with byte offsets), Atoms (content units with tags), and Tags (conceptual labels). Content resides in the filesystem; the database stores only pointers, enabling O(1) deduplication via 64-bit SimHash fingerprints, ephemeral indices, and lazy loading.
+The data model follows a three-tier hierarchy: Compounds (document references), Molecules (semantic chunks with byte offsets), Atoms (content units with tags), and Tags (conceptual labels). Content resides in the filesystem; the database stores only pointers, enabling O(1) per-atom deduplication lookups via 64-bit SimHash fingerprints, ephemeral indices, and lazy loading.
 
 **v4.3.0 Migration Note:** Prior to February 2026, STAR used C++ N-API modules for performance-critical operations. The migration to pure TypeScript + PGlite WASM eliminated all native compilation requirements, enabling seamless deployment on ARM64 Windows and other platforms without platform-specific builds.
 
@@ -66,7 +66,7 @@ The gravity score for query $q$ and candidate atom $a$ is:
 
 $$W(q, a) = |T(q) \cap T(a)| \cdot \gamma^{d(q,a)} \times e^{-\lambda \Delta t} \times \left(1 - \frac{H(h_q, h_a)}{64}\right)$$
 
-where $|T(q) \cap T(a)|$ counts shared tags, $\gamma^{d(q,a)}$ applies damping per hop distance ($\gamma = 0.85$), $e^{-\lambda \Delta t}$ models temporal decay ($\lambda = 0.0001$ s⁻¹, ~115 min half-life), and $1 - H(h_q, h_a)/64$ measures SimHash similarity. Multiplicative scoring ensures any zero factor eliminates noise.
+where $|T(q) \cap T(a)|$ counts shared tags, $\gamma^{d(q,a)}$ applies damping per hop distance ($\gamma = 0.85$), $e^{-\lambda \Delta t}$ models temporal decay ($\lambda = 0.00001$ h⁻¹, ~7.9 year half-life suited to personal knowledge bases where old memories retain value), and $1 - H(h_q, h_a)/64$ measures SimHash similarity. Multiplicative scoring ensures any zero factor eliminates noise.
 
 ## Retrieval Protocol
 
@@ -84,7 +84,7 @@ A comprehensive test suite includes unit tests for core components (atomizer, fi
 
 ## Production Validation
 
-STAR has been production-validated on a corpus of 28 million tokens (~100MB) comprising 151,876 atoms, 280,000 molecules, and 436 files. Ingestion throughput reaches 1,200 molecules/second on consumer hardware, processing the entire corpus in approximately four minutes. Search latency is sub‑200 ms (p95) for standard queries on 4 GB RAM laptops without GPU acceleration.
+STAR has been production-validated on a corpus of 28 million tokens (~100MB) comprising 151,876 atoms, 280,000 molecules, and 436 files. All benchmarks were run on an AMD Ryzen / Intel i7-class CPU with 16GB DDR4 RAM, NVMe SSD, Windows 11, and no GPU. Ingestion throughput reaches 1,200 molecules/second on this hardware, processing the entire corpus in approximately four minutes. Search latency is sub‑200 ms (p95) for standard queries on 4 GB RAM laptops without GPU acceleration.
 
 | Metric | Value |
 |--------|-------|

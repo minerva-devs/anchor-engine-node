@@ -1,7 +1,8 @@
 {
     "server": {
         "host": "0.0.0.0",
-        "port": 3160
+        "port": 3160,
+        "api_key": ""
     },
     "llm": {
         "provider": "remote",
@@ -84,6 +85,9 @@
         "max_per_hop": 50,
         "direct_limit": 5,
         "walker_limit": 10
+    },
+    "database": {
+        "wipe_on_startup": true
     },
     "tagging": {
         "modulation_level": 50,
