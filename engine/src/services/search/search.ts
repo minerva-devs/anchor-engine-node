@@ -708,8 +708,10 @@ export async function executeSearch(
       const walker = new PhysicsTagWalker();
       walkerResults = await walker.performRadialInflation(
         anchorIds,
-        useMaxRecall ? 300 : 150,  // limit
-        0.005  // threshold
+        1,                           // radius (1 hop)
+        useMaxRecall ? 300 : 150,    // maxPerHop (results returned; fetches 3x candidates)
+        0.2,                         // temperature
+        0.005                        // gravityThreshold
       );
       console.log(`[Search] PhysicsTagWalker found ${walkerResults.length} associations`);
     } else {
