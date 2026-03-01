@@ -138,96 +138,201 @@ function formatTimeDrift(deltaMs: number): string {
 }
 
 // =============================================================================
-// LLM TEXT SERIALIZER — The Dense Format
+// LLM TEXT SERIALIZER — Hierarchical Source-Grouped Format v2
 // =============================================================================
 
 const CHARS_PER_TOKEN = 4;
 
+// --- Internal types for hierarchical grouping ---
+
+interface SourceGroup {
+  source: string;
+  nodes: MemoryNode[];
+  maxScore: number;
+  /** Tags hoisted from all nodes in this group (appear in >= 50% of members) */
+  taxonomy: string[];
+}
+
+/**
+ * Group nodes by their source file/origin.
+ * Returns groups sorted by max gravity score descending.
+ */
+function groupNodesBySource(nodes: MemoryNode[]): SourceGroup[] {
+  const map = new Map<string, MemoryNode[]>();
+  for (const node of nodes) {
+    const key = node.source || '(unknown)';
+    const bucket = map.get(key);
+    if (bucket) {
+      bucket.push(node);
+    } else {
+      map.set(key, [node]);
+    }
+  }
+
+  const groups: SourceGroup[] = [];
+  for (const [source, groupNodes] of map) {
+    const taxonomy = hoistCommonTags(groupNodes);
+    const maxScore = Math.max(...groupNodes.map(n => n.physics.gravity_score));
+    groups.push({ source, nodes: groupNodes, maxScore, taxonomy });
+  }
+
+  // Best sources first
+  groups.sort((a, b) => b.maxScore - a.maxScore);
+  return groups;
+}
+
+/**
+ * Hoist tags that appear in >= 50% of nodes to a shared group taxonomy.
+ * Returns tags sorted by frequency descending.
+ */
+function hoistCommonTags(nodes: MemoryNode[]): string[] {
+  if (nodes.length === 0) return [];
+
+  const freq = new Map<string, number>();
+  for (const node of nodes) {
+    const seen = new Set<string>();
+    for (const tag of (node.tags || [])) {
+      const normalized = tag.startsWith('#') ? tag : `#${tag}`;
+      if (!seen.has(normalized)) {
+        seen.add(normalized);
+        freq.set(normalized, (freq.get(normalized) ?? 0) + 1);
+      }
+    }
+  }
+
+  const threshold = Math.max(1, nodes.length * 0.5);
+  return Array.from(freq.entries())
+    .filter(([, count]) => count >= threshold)
+    .sort((a, b) => b[1] - a[1])
+    .map(([tag]) => tag);
+}
+
+/**
+ * Return tags on a node that are NOT already in the group taxonomy.
+ */
+function uniqueNodeTags(node: MemoryNode, taxonomySet: Set<string>): string[] {
+  return (node.tags || [])
+    .map(t => t.startsWith('#') ? t : `#${t}`)
+    .filter(t => !taxonomySet.has(t));
+}
+
+/**
+ * Infer a short location label for a node (state-anchor marker or timestamp).
+ */
+function inferNodeLocation(node: MemoryNode): string {
+  if (node.id.startsWith('virtual_mem_')) return '[state-anchor]';
+  if (node.timestamp && node.timestamp > 1_000_000_000) {
+    const d = new Date(node.timestamp < 1e12 ? node.timestamp * 1000 : node.timestamp);
+    return `[${d.toISOString().replace('T', ' ').substring(0, 16)}]`;
+  }
+  return '';
+}
+
 /**
  * Serialize a ContextPackage into the compact [CONTEXT_GRAPH] text block.
- * 
- * This is the format the LLM sees. Every character must carry signal.
- * 
- * Format:
+ *
+ * v2 Format — Hierarchical Source Grouping with Taxonomy Hoisting:
+ *
  *   [CONTEXT_GRAPH_START]
- *   user: @name
- *   state: current_state
- *   
- *   // DIRECT HITS (Planets)
- *   [N:id] (freq:N) "content truncated to budget"
- *      -> [Themes: tag1, tag2]
- *   
- *   // ASSOCIATED MEMORIES (Moons)
- *   [N:id] [W:0.85|type] "content"
- *      -> LINKED_TO: [N:anchorId] (reason)
- *   
+ *   user: @name | state: current_state | intent: factual | terms: t1, t2
+ *
+ *   // DIRECT HITS
+ *   [SRC: path/to/file.ext | max: 1.00 | N nodes]
+ *   taxonomy: #tag1, #tag2, #tag3, ...   ← declared ONCE per source
+ *     [N:id] (freq:N) [loc] "content"
+ *     [N:id] (freq:N) [loc] "content" | +tags: #unique1
+ *
+ *   // ASSOCIATED MEMORIES
+ *   [SRC: path/to/other.ext | max: 0.82 | N nodes]
+ *   taxonomy: #sharedA, #sharedB
+ *     [N:id] [W:0.82|WALK] [loc] "content" -> [N:anchor] (reason)
+ *
  *   [CONTEXT_GRAPH_END]
+ *
+ * Token savings: ~600 tokens/node eliminated by hoisting shared tags once per source.
  */
 export function serializeForLLM(pkg: ContextPackage, charBudget?: number): string {
   const budget = charBudget || Infinity;
   let output = '';
   let currentChars = 0;
 
-  // Header
-  const header = `[CONTEXT_GRAPH_START]\nuser: @${pkg.userContext.name}\nstate: ${pkg.userContext.current_state}\n`;
-  output += header;
-  currentChars += header.length;
+  const add = (s: string) => { output += s; currentChars += s.length; };
+  const overBudget = () => currentChars >= budget * 0.95;
 
-  // Query echo (helps LLM understand the task)
-  const queryLine = `intent: ${pkg.query.intent} | terms: ${pkg.query.keyTerms.join(', ')}\n\n`;
-  output += queryLine;
-  currentChars += queryLine.length;
+  // Single-line dense header
+  add(`[CONTEXT_GRAPH_START]\nuser: @${pkg.userContext.name} | state: ${pkg.userContext.current_state}\nintent: ${pkg.query.intent} | terms: ${pkg.query.keyTerms.join(', ')}\n\n`);
 
-  // 1. ANCHORS (Direct Hits / Planets)
+  // ── DIRECT HITS (Planets) ────────────────────────────────────────────────
   if (pkg.anchors.length > 0) {
-    output += '// DIRECT HITS\n';
-    currentChars += 16;
+    add('// DIRECT HITS\n');
 
-    // Dynamic per-atom budget scaling based on total budget and number of atoms
-    const maxAtomChars = budget > 200000 
-      ? Math.min(8000, Math.floor(budget * 0.8 / pkg.anchors.length)) 
-      : (budget > 50000 ? 2500 : 500);
+    const anchorGroups = groupNodesBySource(pkg.anchors);
+    const maxAtomChars = budget > 200_000
+      ? Math.min(8000, Math.floor(budget * 0.7 / pkg.anchors.length))
+      : (budget > 50_000 ? 2500 : 500);
 
-    for (const node of pkg.anchors) {
-      if (currentChars >= budget * 0.95) break;
+    for (const group of anchorGroups) {
+      if (overBudget()) break;
 
-      const truncatedContent = truncateContent(node.content, Math.min(maxAtomChars, budget - currentChars - 100));
-      const tagsStr = node.tags.length > 0 ? node.tags.slice(0, 5).join(', ') : 'none';
+      const taxonomySet = new Set(group.taxonomy);
+      const sourceLabel = group.source.length > 60 ? '...' + group.source.slice(-57) : group.source;
 
-      const line = `[N:${shortId(node.id)}] (freq:${node.physics.frequency}) "${truncatedContent}"\n   -> [Themes: ${tagsStr}]\n`;
-      output += line;
-      currentChars += line.length;
+      add(`[SRC: ${sourceLabel} | max: ${group.maxScore.toFixed(2)} | ${group.nodes.length} node${group.nodes.length !== 1 ? 's' : ''}]\n`);
+      if (group.taxonomy.length > 0) {
+        // All hoisted tags on one compact line — no per-node repetition
+        add(`taxonomy: ${group.taxonomy.slice(0, 60).join(', ')}\n`);
+      }
+
+      for (const node of group.nodes) {
+        if (overBudget()) break;
+        const loc = inferNodeLocation(node);
+        const truncated = truncateContent(node.content, Math.min(maxAtomChars, budget - currentChars - 200));
+        const uniq = uniqueNodeTags(node, taxonomySet);
+        const uniqStr = uniq.length > 0 ? ` | +tags: ${uniq.slice(0, 10).join(', ')}` : '';
+        add(`  [N:${shortId(node.id)}] (freq:${node.physics.frequency})${loc ? ` ${loc}` : ''} "${truncated}"${uniqStr}\n`);
+      }
+
+      add('\n');
     }
   }
 
-  // 2. ASSOCIATIONS (Walker Results / Moons)
+  // ── ASSOCIATED MEMORIES (Moons) ──────────────────────────────────────────
   if (pkg.associations.length > 0) {
-    output += '\n// ASSOCIATED MEMORIES\n';
-    currentChars += 24;
+    add('// ASSOCIATED MEMORIES\n');
 
-    // Dynamic per-association budget scaling based on total budget and number of associations
-    const maxAssocChars = budget > 200000 
-      ? Math.min(5000, Math.floor(budget * 0.15 / pkg.associations.length)) 
-      : (budget > 50000 ? 1500 : 400);
+    const assocGroups = groupNodesBySource(pkg.associations);
+    const maxAssocChars = budget > 200_000
+      ? Math.min(5000, Math.floor(budget * 0.25 / pkg.associations.length))
+      : (budget > 50_000 ? 1500 : 400);
 
-    for (const node of pkg.associations) {
-      if (currentChars >= budget * 0.95) break;
+    for (const group of assocGroups) {
+      if (overBudget()) break;
 
-      const truncatedContent = truncateContent(node.content, Math.min(maxAssocChars, budget - currentChars - 100));
-      const typeLabel = connectionTypeLabel(node.physics.connection_type);
-      const anchorRef = node.physics.source_anchor_id ? shortId(node.physics.source_anchor_id) : '?';
-      const reason = node.physics.link_reason || node.physics.connection_type;
+      const taxonomySet = new Set(group.taxonomy);
+      const sourceLabel = group.source.length > 60 ? '...' + group.source.slice(-57) : group.source;
 
-      const line = `[N:${shortId(node.id)}] [W:${node.physics.gravity_score.toFixed(2)}|${typeLabel}] "${truncatedContent}"\n   -> LINKED_TO: [N:${anchorRef}] (${reason})\n`;
-      output += line;
-      currentChars += line.length;
+      add(`[SRC: ${sourceLabel} | max: ${group.maxScore.toFixed(2)} | ${group.nodes.length} node${group.nodes.length !== 1 ? 's' : ''}]\n`);
+      if (group.taxonomy.length > 0) {
+        add(`taxonomy: ${group.taxonomy.slice(0, 60).join(', ')}\n`);
+      }
+
+      for (const node of group.nodes) {
+        if (overBudget()) break;
+        const loc = inferNodeLocation(node);
+        const truncated = truncateContent(node.content, Math.min(maxAssocChars, budget - currentChars - 200));
+        const typeLabel = connectionTypeLabel(node.physics.connection_type);
+        const anchorRef = node.physics.source_anchor_id ? shortId(node.physics.source_anchor_id) : '?';
+        const reason = node.physics.link_reason || node.physics.connection_type;
+        const uniq = uniqueNodeTags(node, taxonomySet);
+        const uniqStr = uniq.length > 0 ? ` | +tags: ${uniq.slice(0, 5).join(', ')}` : '';
+        add(`  [N:${shortId(node.id)}] [W:${node.physics.gravity_score.toFixed(2)}|${typeLabel}]${loc ? ` ${loc}` : ''} "${truncated}" -> [N:${anchorRef}] (${reason})${uniqStr}\n`);
+      }
+
+      add('\n');
     }
   }
 
-  // Footer
-  const footer = `\n[CONTEXT_GRAPH_END]\n`;
-  output += footer;
-
+  add('[CONTEXT_GRAPH_END]\n');
   return output;
 }
 

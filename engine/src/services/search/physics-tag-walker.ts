@@ -249,6 +249,10 @@ export class PhysicsTagWalker {
   ): Promise<WalkerNode[]> {
     if (anchorIds.length === 0) return [];
 
+    // Ensure limit is always a positive integer (guards against float args causing
+    // "invalid input syntax for type bigint" in the LIMIT $3 SQL parameter)
+    const safeLimit = Math.max(1, Math.floor(limit));
+
     // Cap anchors
     const cappedIds = anchorIds.length > MAX_ANCHOR_IDS
       ? anchorIds.slice(0, MAX_ANCHOR_IDS)
@@ -438,12 +442,12 @@ export class PhysicsTagWalker {
       JOIN atoms a ON w.atom_id = a.id
     `;
 
-    const params = [cappedIds, threshold, limit];
+    const params = [cappedIds, threshold, safeLimit];
 
     try {
       // Debug logging for high-budget queries
-      if (anchorIds.length > 10 || limit > 100) {
-        console.log(`[PhysicsWalker] SQL params: anchorIds=${cappedIds.length}, threshold=${threshold}, limit=${limit}`);
+      if (anchorIds.length > 10 || safeLimit > 100) {
+        console.log(`[PhysicsWalker] SQL params: anchorIds=${cappedIds.length}, threshold=${threshold}, limit=${safeLimit}`);
         console.log(`[PhysicsWalker] Anchor IDs: ${cappedIds.slice(0, 5).join(', ')}...`);
       }
 
@@ -461,7 +465,7 @@ export class PhysicsTagWalker {
         console.warn(`[PhysicsWalker] Zero results - checking potential causes:`);
         console.warn(`[PhysicsWalker]  - Anchor count: ${anchorIds.length}`);
         console.warn(`[PhysicsWalker]  - Threshold: ${threshold}`);
-        console.warn(`[PhysicsWalker]  - Limit: ${limit}`);
+        console.warn(`[PhysicsWalker]  - Limit: ${safeLimit}`);
         console.warn(`[PhysicsWalker]  - Damping: ${this.DAMPING_FACTOR}, Decay: ${this.TIME_DECAY_LAMBDA}`);
       }
 
