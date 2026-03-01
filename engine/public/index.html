@@ -124,7 +124,10 @@
         };
 
         // Header Component
-        const Header = ({ route, navigate, onOpenGithub, onOpenResearch }) => (
+        const Header = ({ route, navigate, onOpenGithub, onOpenResearch, systemStatus, isDbEmpty }) => {
+            const isIngesting = systemStatus?.isBusy;
+            const statusMessage = systemStatus?.activeTask || '';
+            return (
             <header className="flex items-center justify-between px-6 py-3 border-b border-white/10 bg-black/20">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
@@ -136,6 +139,18 @@
                         </h1>
                         <p className="text-xs text-gray-500 font-mono">v4.3</p>
                     </div>
+                    {isDbEmpty && (
+                        <div className="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30">
+                            <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse"></div>
+                            <span className="text-xs text-red-400 font-medium">⚠️ Database Empty</span>
+                        </div>
+                    )}
+                    {isIngesting && (
+                        <div className="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30">
+                            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
+                            <span className="text-xs text-amber-400 font-medium">⏳ {statusMessage || 'Processing files...'}</span>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-3">
                     {/* Utility Buttons */}
@@ -198,6 +213,7 @@
                 </div>
             </header>
         );
+        };
 
         // Search Page
         const SearchPage = () => {
@@ -1228,6 +1244,55 @@
                                 </div>
                             </div>
                         </div>
+
+                        {/* Database Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-red-400">
+                                <i data-lucide="database"></i>
+                                Database
+                            </h3>
+                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                                <div>
+                                    <p className="font-semibold">Wipe Index on Startup</p>
+                                    <p className="text-sm text-gray-400">
+                                        Standard 051: Ephemeral Index. Rebuild PGlite from mirrored_brain/ on each restart.
+                                        Disable for faster startup (risks stale data if inbox changed while stopped).
+                                    </p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={settings?.database?.wipe_on_startup ?? true}
+                                    onChange={(e) => updateSetting('database', 'wipe_on_startup', e.target.checked)}
+                                    className="w-5 h-5 accent-red-500 flex-shrink-0 ml-4"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Security Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-yellow-400">
+                                <i data-lucide="shield"></i>
+                                Security
+                            </h3>
+                            {(!settings?.server?.api_key || settings?.server?.api_key === '' || settings?.server?.api_key === 'ece-secret-key') && (
+                                <div className="mb-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-sm">
+                                    ⚠️ No API key set. All /v1 endpoints are publicly accessible. Set a key to require authentication.
+                                </div>
+                            )}
+                            <div>
+                                <label className="block text-sm font-medium mb-2">API Key</label>
+                                <input
+                                    type="password"
+                                    value={settings?.server?.api_key ?? ''}
+                                    onChange={(e) => updateSetting('server', 'api_key', e.target.value)}
+                                    placeholder="Leave empty to disable authentication"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-yellow-500/50 outline-none font-mono text-sm"
+                                />
+                                <p className="text-xs text-gray-500 mt-2">
+                                    When set, all /v1 API requests must include <code>Authorization: Bearer &lt;key&gt;</code>
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             );
@@ -1239,6 +1304,41 @@
             const [isLoading, setIsLoading] = useState(true);
             const [showResearch, setShowResearch] = useState(false);
             const [showGithub, setShowGithub] = useState(false);
+            const [systemStatus, setSystemStatus] = useState({ isBusy: false, state: 'idle' });
+            const [isDbEmpty, setIsDbEmpty] = useState(true);
+
+            // Poll system status every 2 seconds
+            useEffect(() => {
+                const fetchStatus = async () => {
+                    try {
+                        const res = await fetch('/v1/system/status');
+                        if (res.ok) {
+                            const data = await res.json();
+                            setSystemStatus(data);
+                        }
+                    } catch (error) {
+                        // Silently fail
+                    }
+                };
+                fetchStatus();
+                const interval = setInterval(fetchStatus, 2000);
+                return () => clearInterval(interval);
+            }, []);
+
+            // Check database stats on mount
+            useEffect(() => {
+                const fetchStats = async () => {
+                    try {
+                        const stats = await api.getStats();
+                        setIsDbEmpty(!stats.atoms && !stats.molecules);
+                    } catch (error) {
+                        setIsDbEmpty(true);
+                    }
+                };
+                fetchStats();
+                const interval = setInterval(fetchStats, 10000);
+                return () => clearInterval(interval);
+            }, []);
 
             useEffect(() => {
                 const checkReady = async () => {
@@ -1275,11 +1375,13 @@
 
             return (
                 <div className="min-h-screen flex flex-col">
-                    <Header 
-                        route={route} 
-                        navigate={navigate} 
+                    <Header
+                        route={route}
+                        navigate={navigate}
                         onOpenResearch={() => setShowResearch(true)}
                         onOpenGithub={() => setShowGithub(true)}
+                        systemStatus={systemStatus}
+                        isDbEmpty={isDbEmpty}
                     />
                     <main className="flex-1 overflow-hidden">
                         {route === '/search' && <SearchPage />}

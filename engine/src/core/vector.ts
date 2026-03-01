@@ -12,7 +12,20 @@ interface ISoulIndex {
     close(): void;
 }
 
-// Mock implementation for fallback when native module fails
+/**
+ * MockSoulIndex — intentional no-op for the core STAR engine.
+ *
+ * The STAR algorithm achieves retrieval via sparse tag-intersection scoring
+ * (the Unified Field Equation) and does NOT require a dense vector index for
+ * its primary operation. Dense vector search is an optional augmentation.
+ *
+ * To add dense vector support:
+ *   1. Restore @rbalchii/native-vector (N-API) or swap in a WASM-based HNSW
+ *      (e.g., hnswlib-node, usearch).
+ *   2. Implement ISoulIndex against that library.
+ *   3. Replace MockSoulIndex below with that implementation.
+ *   4. Ensure ingest pipeline writes embeddings to the `embedding` column in atoms.
+ */
 class MockSoulIndex implements ISoulIndex {
     constructor(public dimensions: number) {
         console.warn('[Vector] Using Mock SoulIndex (Native module missing or failed). Vector search is disabled.');

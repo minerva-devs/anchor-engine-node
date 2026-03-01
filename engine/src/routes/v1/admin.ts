@@ -287,4 +287,29 @@ export function setupAdminRoutes(app: Application) {
       });
     }
   });
+
+  // Trigger Dream Endpoint (Disabled - Optimized for STAR algorithm)
+  app.post('/v1/dream', async (_req: Request, res: Response) => {
+    res.status(501).json({
+      error: 'Dreamer service is disabled',
+      message: 'This endpoint has been disabled to optimize startup for the STAR algorithm'
+    });
+  });
+
+  // Return 503 for disabled inference endpoints
+  app.post('/v1/chat/completions', (_req, res) => {
+    res.status(503).json({ error: 'Chat completions disabled', message: 'Inference server not configured' });
+  });
+  app.get('/v1/models', (_req, res) => {
+    res.status(503).json({ error: 'Models endpoint disabled', message: 'Inference server not configured' });
+  });
+  app.get('/v1/model/status', (_req, res) => {
+    res.status(503).json({ error: 'Model status disabled', message: 'Inference server not configured' });
+  });
+  app.post('/v1/model/load', (_req, res) => {
+    res.status(503).json({ error: 'Model load disabled', message: 'Inference server not configured' });
+  });
+  app.post('/v1/model/unload', (_req, res) => {
+    res.status(503).json({ error: 'Model unload disabled', message: 'Inference server not configured' });
+  });
 }

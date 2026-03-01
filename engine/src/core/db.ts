@@ -32,6 +32,12 @@ export class Database {
 
   /**
    * Begin a transaction
+   *
+   * NOTE: Nested transactions are not supported. If a transaction is already
+   * open, this call is a no-op. PGlite does not support SAVEPOINTs via this
+   * wrapper. For nested transactional logic, use raw SQL SAVEPOINTs:
+   *   await db.run('SAVEPOINT my_save');
+   *   ...on error... await db.run('ROLLBACK TO SAVEPOINT my_save');
    */
   async beginTransaction(): Promise<void> {
     if (!this.inTransaction) {
@@ -86,19 +92,25 @@ export class Database {
       const dbPath = process.env.PGLITE_DB_PATH || pathManager.getDatabasePath();
 
       // Wipe and recreate the database directory on every startup (Standard 051 - Ephemeral Index)
+      // Controlled by user_settings.json: database.wipe_on_startup (default: true)
+      const shouldWipe = config.DATABASE?.WIPE_ON_STARTUP !== false;
       try {
         console.log(`[DB] Using database directory: ${dbPath}`);
 
-        // Remove existing database directory to prevent corruption from unclean shutdowns
-        if (fs.existsSync(dbPath)) {
-          console.log(`[DB] Removing existing database directory (preventing corruption): ${dbPath}`);
-          try {
-            fs.rmSync(dbPath, { recursive: true, force: true });
-            console.log(`[DB] Old database directory removed successfully`);
-          } catch (rmError: any) {
-            console.warn(`[DB] Warning: Could not remove old database directory: ${rmError.message}`);
-            console.warn(`[DB] Will attempt to overwrite on init`);
+        if (shouldWipe) {
+          // Remove existing database directory to prevent corruption from unclean shutdowns
+          if (fs.existsSync(dbPath)) {
+            console.log(`[DB] Removing existing database directory (preventing corruption): ${dbPath}`);
+            try {
+              fs.rmSync(dbPath, { recursive: true, force: true });
+              console.log(`[DB] Old database directory removed successfully`);
+            } catch (rmError: any) {
+              console.warn(`[DB] Warning: Could not remove old database directory: ${rmError.message}`);
+              console.warn(`[DB] Will attempt to overwrite on init`);
+            }
           }
+        } else {
+          console.log(`[DB] Retaining existing database (wipe_on_startup=false). Index may be stale.`);
         }
 
         console.log(`[DB] Database directory ready: ${dbPath}`);

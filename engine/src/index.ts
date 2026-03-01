@@ -1,6 +1,7 @@
 // engine/src/index.ts
 import express from "express";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
 import { existsSync, rmSync } from "fs";
@@ -78,6 +79,27 @@ if (config.API_KEY && config.API_KEY !== 'ece-secret-key') {
 } else {
   StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: false });
 }
+
+// Rate limiting — applied after auth so authenticated clients share the same window
+// General limit: 100 requests / minute per IP
+const apiLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests', message: 'Rate limit exceeded. Try again in a minute.' }
+});
+// Stricter limit for expensive write operations: 20 / minute per IP
+const ingestLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Rate limit exceeded', message: 'Ingest rate limit exceeded. Try again in a minute.' }
+});
+app.use('/v1', apiLimiter);
+app.use('/v1/memory/ingest', ingestLimiter);
+app.use('/v1/watchdog/ingest', ingestLimiter);
 
 // Set up static file serving immediately so UI is accessible
 StructuredLogger.info('UI_SETUP', { static_path: '/static' });
@@ -241,27 +263,14 @@ async function startServer() {
     const { setupHealthRoutes } = await import("./routes/health.js");
     const { monitoringRouter } = await import("./routes/monitoring.js");
 
-    // Clear the basic API route handlers and set up full routes
-    // We'll set up the full routes which will override the basic ones
-
-    // Set up full API routes (this will override the basic ones)
+    // Set up all API routes (delegates to v1 modules including system + settings)
     setupRoutes(app);
 
     // Set up full health routes (this will replace the basic one)
     setupHealthRoutes(app);
 
-    // Set up settings routes
-    const { setupSettingsRoutes } = await import("./routes/v1/settings.js");
-    setupSettingsRoutes(app);
-
-    // Set up system routes (watchdog control, stats, etc.)
-    const { setupSystemRoutes } = await import("./routes/v1/system.js");
-    setupSystemRoutes(app);
-
     // Set up monitoring routes
     app.use('/monitoring', monitoringRouter);
-
-    // Reset static and wildcard routes logic has been moved to top-level so UI functions during init
 
     console.log("Full routes set up, server is ready for all requests");
     console.timeEnd("⏱️ Startup Time");
@@ -336,16 +345,23 @@ async function startServer() {
 
 // Windows graceful shutdown fix
 process.on("SIGINT", async () => {
+  // Safety net: force exit if cleanup hangs (e.g., db.close deadlock)
+  const forceExitTimer = setTimeout(() => {
+    console.error('[Shutdown] ⚠ Cleanup timed out after 10s — forcing exit');
+    process.exit(1);
+  }, 10_000);
+  forceExitTimer.unref();
+
   try {
     console.log(`[Shutdown] Starting graceful shutdown...`);
-    
+
     const { ProcessManager } = await import("./utils/process-manager.js");
     ProcessManager.getInstance().stopAll();
-    
+
     // Close database connection first (releases file locks)
     console.log(`[Shutdown] Closing database connection...`);
     await db.close();
-    
+
     // Standard 110: Ephemeral Index Architecture
     // Clear ALL derived data on shutdown - only inbox/ is source of truth
 

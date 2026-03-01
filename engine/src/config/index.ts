@@ -124,6 +124,11 @@ interface Config {
     MAX_SUMMARY_LENGTH_CHARS: number;
     DATE_EXTRACTOR_SCAN_LIMIT: number;
   };
+
+  // Database Settings
+  DATABASE: {
+    WIPE_ON_STARTUP: boolean; // Standard 051: Ephemeral Index (true = wipe & rebuild on each start)
+  };
 }
 
 // Default configuration
@@ -235,6 +240,14 @@ const DEFAULT_CONFIG: Config = {
     MAX_CHUNK_SIZE_CHARS: 3000,
     MAX_SUMMARY_LENGTH_CHARS: 2000,
     DATE_EXTRACTOR_SCAN_LIMIT: 2000
+  },
+
+  // Database Settings
+  DATABASE: {
+    // Standard 051: Ephemeral Index
+    // Default true: wipe PGlite index on each startup so it rebuilds from mirrored_brain/.
+    // Set false to retain the index across restarts (faster startup, but risks stale/corrupt data).
+    WIPE_ON_STARTUP: true
   }
 };
 
@@ -340,6 +353,11 @@ function loadConfig(): Config {
         if (userSettings.services.chat_server_port !== undefined) loadedConfig.SERVICES.CHAT_SERVER_PORT = userSettings.services.chat_server_port;
         if (userSettings.services.tag_infector_unload_timeout !== undefined) loadedConfig.SERVICES.TAG_INFECTOR_UNLOAD_TIMEOUT = userSettings.services.tag_infector_unload_timeout;
         if (userSettings.services.tag_gliner_check_interval !== undefined) loadedConfig.SERVICES.TAG_GLINER_CHECK_INTERVAL = userSettings.services.tag_gliner_check_interval;
+      }
+
+      // Load Database Settings
+      if (userSettings.database) {
+        if (userSettings.database.wipe_on_startup !== undefined) loadedConfig.DATABASE.WIPE_ON_STARTUP = userSettings.database.wipe_on_startup;
       }
 
       // Load Limits and Thresholds

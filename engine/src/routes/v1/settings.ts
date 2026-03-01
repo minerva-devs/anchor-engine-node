@@ -18,7 +18,14 @@ const SETTINGS_PATH = path.join(__dirname, '../../../user_settings.json');
 const DEFAULT_SETTINGS = {
   server: {
     host: '0.0.0.0',
-    port: 3160
+    port: 3160,
+    api_key: ''
+  },
+  database: {
+    // Standard 051: Ephemeral Index.
+    // true = wipe PGlite index on each restart (default, safest).
+    // false = retain index across restarts (faster startup, risks stale data).
+    wipe_on_startup: true
   },
   tagging: {
     modulation_level: 50,

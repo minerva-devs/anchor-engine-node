@@ -111,24 +111,11 @@ export async function initWorker() {
     return;
   }
 
-  // LOCAL FALLBACK
-  // TAG-WALKER MODE (Lightweight) - strictly skip embedding workers to save RAM
-  if (!clientWorker) {
-    console.log(`[Provider] Tag-Walker Mode Active. Spawning Chat Worker...`);
-    clientWorker = await spawnWorker("ChatWorker", CHAT_WORKER_PATH, {
-      gpuLayers: config.MODELS.MAIN.GPU_LAYERS,
-      forceCpu: config.MODELS.MAIN.GPU_LAYERS === 0
-    });
-  }
-
-  if (!orchestratorWorker) {
-    orchestratorWorker = await spawnWorker("OrchestratorWorker", CHAT_WORKER_PATH, {
-      gpuLayers: config.MODELS.ORCHESTRATOR.GPU_LAYERS,
-      forceCpu: config.MODELS.ORCHESTRATOR.GPU_LAYERS === 0
-    });
-  }
-
-  return clientWorker;
+  // LOCAL FALLBACK — disabled (node-llama-cpp removed)
+  // Workers are stub files; local inference returns errors.
+  // To re-enable, restore node-llama-cpp and the original ChatWorker implementation.
+  console.warn('[Provider] Local inference is disabled. node-llama-cpp has been removed. Set LLM_PROVIDER=remote in user_settings.json to use a remote endpoint.');
+  return;
 }
 
 async function spawnWorker(name: string, workerPath: string, workerData: any = {}): Promise<Worker> {

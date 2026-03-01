@@ -251,4 +251,18 @@ export function setupSystemRoutes(app: Application) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // System status endpoint
+  app.get('/v1/system/status', async (_req: Request, res: Response) => {
+    try {
+      const { systemStatus } = await import('../../services/system-status.js');
+      const status = systemStatus.getStatus();
+      res.json({
+        status: 'success',
+        ...status
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
