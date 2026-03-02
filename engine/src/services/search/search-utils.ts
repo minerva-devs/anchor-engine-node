@@ -355,7 +355,7 @@ export async function formatResults(
 
     // Step 3: Calculate temporal weights
     const now = Date.now();
-    const lambda = 0.0001;
+    const lambda = 0.00001;  // h⁻¹ - 7.9 year half-life (matches paper.md line 69)
 
     const enrichedSnippets = snippets.map(s => {
       const ageMs = now - s.timestamp;

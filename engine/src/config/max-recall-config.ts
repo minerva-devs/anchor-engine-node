@@ -78,7 +78,8 @@ export function getRecallConfig(mode: 'maximum' | 'balanced' | 'focused') {
         planet_budget: 0.9,
         moon_budget: 0.1,
         max_hops: 1,
-        temporal_decay: 0.0001,
+        // λ = 0.00001 h⁻¹ (7.9 year half-life) - matches paper.md line 69
+        temporal_decay: 0.00001,
         damping: 0.7,
         min_relevance: 0.5,
         temperature: 0.1,

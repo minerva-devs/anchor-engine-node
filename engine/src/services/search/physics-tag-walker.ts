@@ -95,8 +95,10 @@ export class PhysicsTagWalker {
     temperature?: number;
   }) {
     // Default values (balanced production config)
+    // λ = 0.00001 h⁻¹ gives ~7.9 year half-life, appropriate for personal knowledge bases
+    // where old memories retain value. See paper.md line 69.
     this.DAMPING_FACTOR = config?.damping ?? 0.85;
-    this.TIME_DECAY_LAMBDA = config?.temporalDecay ?? 0.0001;
+    this.TIME_DECAY_LAMBDA = config?.temporalDecay ?? 0.00001;  // h⁻¹ (per hour)
     this.MAX_PER_HOP = config?.maxPerHop ?? 50;
     this.WALK_RADIUS = config?.walkRadius ?? 1;
     this.GRAVITY_THRESHOLD = config?.gravityThreshold ?? 0.01;
