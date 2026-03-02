@@ -105,7 +105,7 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    A[User Query<br/>"Coda C-001 Rob Dory"] --> B{Budget Check<br/>max_chars > 65k?}
+    A[User Query<br/>Coda C-001 Rob Dory] --> B{Budget Check<br/>max_chars > 65k?}
 
     B -->|No| C[Standard Search<br/>70/30 Budget<br/>1-hop<br/>Temporal Decay]
     B -->|Yes| D[Max-Recall Search<br/>Zero Decay<br/>3-hop<br/>200 nodes/hop]
@@ -118,7 +118,7 @@ flowchart TB
     F --> G[Merge & Deduplicate<br/>60 Atoms]
 
     G --> H{Max-Recall?}
-    H -->|Yes| I[Context Inflation<br/>n-1, n+1 from Disk<br/>8,550 chars/atom]
+    H -->|Yes| I[Context Inflation<br/>n-1, n+1 from Disk<br/>8550 chars/atom]
     H -->|No| J[Return Results<br/>16k-32k chars]
 
     I --> K[Serialize Context<br/>512k-618k chars]
