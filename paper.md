@@ -84,15 +84,18 @@ A comprehensive test suite includes unit tests for core components (atomizer, fi
 
 ## Production Validation
 
-STAR has been production-validated on a corpus of 28 million tokens (~100MB) comprising 151,876 atoms, 280,000 molecules, and 436 files. All benchmarks were run on an AMD Ryzen / Intel i7-class CPU with 16GB DDR4 RAM, NVMe SSD, Windows 11, and no GPU. Ingestion throughput reaches 1,200 molecules/second on this hardware, processing the entire corpus in approximately four minutes. Search latency is sub‑200 ms (p95) for standard queries on 4 GB RAM laptops without GPU acceleration.
+STAR has been production-validated on a corpus of 28 million tokens (~100MB) comprising 151,876 atoms, 280,000 molecules, and 436 files. All benchmarks were run on an AMD Ryzen / Intel i7-class CPU with 16GB DDR4 RAM, NVMe SSD, Windows 11, and no GPU. Ingestion throughput reaches 1,200 molecules/second on this hardware, processing the entire corpus in approximately four minutes. 
 
-| Metric | Value |
-|--------|-------|
-| **Ingestion throughput** | 1,200 mol/s |
-| **Standard search latency** (p95) | 150 ms |
-| **Max‑recall search latency** (p95) | 690 ms |
-| **Peak memory** (ingestion) | 1,657 MB |
-| **Idle memory** (post‑cleanup) | 510 MB |
+**Search Latency Note:** Search latency scales linearly with dataset size. The ~150ms claim was measured on a 1,500 atom dataset. Current production deployment (151,000 atoms) shows ~7.7s latency for standard queries, which is acceptable for the comprehensive context retrieval use case where 100k+ characters of non-duplicated context are assembled.
+
+| Metric | Value | Dataset Size |
+|--------|-------|--------------|
+| **Ingestion throughput** | 1,200 mol/s | 151k atoms |
+| **Standard search latency** (p95) | 150 ms | 1.5k atoms |
+| **Standard search latency** (p95) | 7.7 s | 151k atoms |
+| **Max‑recall search latency** (p95) | 690 ms | 1.5k atoms |
+| **Peak memory** (ingestion) | 1,657 MB | 151k atoms |
+| **Idle memory** (post‑cleanup) | 510 MB | 151k atoms |
 
 ## External Use and Reproducibility
 
