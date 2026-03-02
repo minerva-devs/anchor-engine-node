@@ -143,7 +143,7 @@
 
 ## Current Roadmap: Q2 2026
 
-### Phase: Documentation & Reproducibility (NEW - February 2026)
+### Phase: Documentation & Reproducibility (COMPLETED - March 2026)
 **Goal:** Make benchmarks reproducible and lower integration barrier
 
 - [x] Reproducible benchmark suite with sample corpus
@@ -153,6 +153,9 @@
 - [x] Security deployment guide
 - [x] Architecture tradeoffs analysis
 - [x] GitHub Actions benchmark workflow
+- [x] Tag limiting for output quality (Standard 121)
+- [x] Physics Walker temporal decay safety (Standard 122)
+- [x] Settings UI help text enhancements
 - [ ] Ablation study results (pending execution)
 - [ ] Cross-platform CI testing matrix (pending)
 
