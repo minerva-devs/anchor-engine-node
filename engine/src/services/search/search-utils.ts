@@ -169,7 +169,7 @@ export async function coalesceByProximity(
           sourceAtoms: [atom],
           relevanceScore: atom.score,
           provenance: atom.provenance || 'internal',
-          tags: atom.tags || []
+          tags: (atom.tags || []).slice(0, 10) // Limit to top 10 tags initially
         };
       } else {
         const gap = atomStart - current.endByte;
@@ -181,7 +181,9 @@ export async function coalesceByProximity(
           current.sourceAtoms.push(atom);
           current.relevanceScore = Math.max(current.relevanceScore, atom.score);
           current.timestamp = Math.min(current.timestamp, atom.timestamp); // Use earliest timestamp
-          current.tags = Array.from(new Set([...current.tags, ...(atom.tags || [])]));
+          // Merge tags but limit to top 10 most relevant
+          const mergedTags = Array.from(new Set([...current.tags, ...(atom.tags || [])]));
+          current.tags = mergedTags.slice(0, 15); // Allow slightly more during merge, final limit applied later
           mergedCount++;
         } else {
           // Push current and start new
@@ -196,7 +198,7 @@ export async function coalesceByProximity(
             sourceAtoms: [atom],
             relevanceScore: atom.score,
             provenance: atom.provenance || 'internal',
-            tags: atom.tags || []
+            tags: (atom.tags || []).slice(0, 10) // Limit to top 10 tags for new snippets
           };
         }
       }
@@ -344,7 +346,7 @@ export async function formatResults(
         sourceAtoms: [r],
         relevanceScore: r.score,
         provenance: r.provenance || 'internal',
-        tags: r.tags || []
+        tags: (r.tags || []).slice(0, 10) // Limit to top 10 most relevant tags per molecule
       }));
     }
 

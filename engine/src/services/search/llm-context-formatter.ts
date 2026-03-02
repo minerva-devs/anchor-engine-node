@@ -314,7 +314,7 @@ export class LLMContextFormatter {
         timestamp: String(atom.timestamp || new Date().toISOString()),
         content: atom.content,
         source: atom.source || 'unknown',
-        tags: atom.tags || [],
+        tags: (atom.tags || []).slice(0, 10), // Limit to top 10 most relevant tags per molecule
         relationships: {
           responds_to: (atom.epochs as any)?.responds_to || [],
           referenced_by: (atom.epochs as any)?.referenced_by || [],

@@ -1,12 +1,19 @@
 # Architecture Standards Index
 
-**Last Updated:** February 27, 2026 | **Total Standards:** 81
+**Last Updated:** March 1, 2026 | **Total Standards:** 83
 
 ---
 
 ## Active Standards (Current Implementation)
 
 These standards define the current production architecture:
+
+### v4.3.2 Standards (Output Quality & Stability)
+
+| # | Standard | Description | Status |
+|---|----------|-------------|--------|
+| **121** | [Tag Limiting](STANDARD_121_TAG_LIMITING.md) | 10-tag limit per molecule for output quality | ✅ v1.0 |
+| **122** | [Physics Walker Safety](STANDARD_122_PHYSICS_WALKER_SAFETY.md) | Temporal decay underflow prevention | ✅ v1.0 |
 
 ### v4.3.0 Standards (PGlite-First Architecture)
 
