@@ -1,13 +1,18 @@
 /**
  * GitHub Repository Ingestion & Search Integration Test
  * 
- * Tests the complete workflow:
- * 1. Ingest a GitHub repository (simulated with test fixtures)
- * 2. Verify data persistence
- * 3. Execute search queries
- * 4. Validate search response structure and content
+ * Tests the GitHub ingestion workflow with SIMULATED data:
+ * 1. Repository registration
+ * 2. Atom/molecule insertion
+ * 3. Content search
+ * 4. Tag filtering (JSONB @> operator)
+ * 5. Tag limiting verification (Standard 121)
+ * 6. Temporal ordering
  * 
  * Standard 115 Compliant: GitHub Repository Ingestion
+ * 
+ * NOTE: This test uses simulated data to verify database operations.
+ * For live GitHub repository testing, see GITHUB_INGESTION_TESTING.md
  * 
  * Run with: node --loader ts-node/esm tests/unit/github-ingest-search.ts
  */
