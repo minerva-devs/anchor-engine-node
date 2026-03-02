@@ -6,6 +6,54 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] - JOSS Submission Fixes
+
+### Fixed
+- **Temporal Decay Constant:** Fixed λ from 0.0001 to 0.00001 h⁻¹ (7.9 year half-life) to match paper specification
+- **SQL Unit Conversion:** Added milliseconds→hours conversion (/ 3600000.0) in temporal decay calculations
+- **TypeScript Unit Conversion:** Fixed age calculation from seconds to hours for λ in h⁻¹
+
+### Added
+- Search latency scaling documentation (150ms @ 1.5k atoms, 7.7s @ 151k atoms)
+- Clear unit conversion comments in SQL and TypeScript code
+- Comprehensive audit reports for JOSS submission
+
+## [4.4.0] - 2026-03-02 — JOSS Submission Release, Rust WASM Integration
+
+### 🎯 JOSS Submission Ready
+- ✅ Temporal decay constant fixed (λ = 0.00001 h⁻¹ everywhere)
+- ✅ SQL unit conversion correct (ms → hours)
+- ✅ Search latency documented with dataset sizes
+- ✅ Benchmark transparency (1.5k vs 151k atoms)
+- ✅ Citation accuracy verified
+- ✅ Implementation fidelity verified
+
+### 📦 Rust WASM Modules
+- Replaced C++ native modules with Rust-compiled WASM packages
+- Universal platform support (ARM64, Mac, Linux, Windows)
+- Zero native compilation required
+- 97% size reduction (35KB WASM vs 1.2MB DLL)
+- 10x faster module loading
+
+#### Published Packages
+- @rbalchii/anchor-fingerprint-wasm@1.0.0
+- @rbalchii/anchor-atomizer-wasm@1.0.0
+- @rbalchii/anchor-keyextract-wasm@1.0.0
+- @rbalchii/anchor-tagwalker-wasm@1.0.0
+
+### 📊 Benchmarks
+- Comprehensive benchmark suite (memory, search latency, ingestion)
+- Reproducible benchmarks in `benchmarks/` directory
+- Dataset size documentation for all claims
+
+### 🧪 Testing
+- PGlite database tests
+- Physics walker unit tests
+- WASM module tests
+- Temporal decay verification
+
+---
+
 ## [4.3.2] - 2026-02-28 — PGlite Migration Documentation Integrity
 
 ### Changed
