@@ -359,8 +359,8 @@ export async function formatResults(
 
     const enrichedSnippets = snippets.map(s => {
       const ageMs = now - s.timestamp;
-      const ageSeconds = ageMs / 1000;
-      const decayFactor = lambda * ageSeconds;
+      const ageHours = ageMs / (1000 * 60 * 60);  // Convert ms to hours for λ in h⁻¹
+      const decayFactor = lambda * ageHours;
       const temporalWeight = Math.exp(-decayFactor);
       const relevanceScore = (s.relevanceScore * temporalWeight).toFixed(3);
 
