@@ -6,8 +6,8 @@ authors:
     given-names: "R.S."
     orcid: "https://orcid.org/0009-0001-0476-1689"
     affiliation: "Independent Researcher, New Mexico Tech Affiliated"
-version: 4.3.2
-date-released: 2026-02-28
+version: 4.4.0
+date-released: 2026-03-02
 license: AGPL-3.0
 repository-code: "https://github.com/RSBalchII/anchor-engine-node"
 keywords:
