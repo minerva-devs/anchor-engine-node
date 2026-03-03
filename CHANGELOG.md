@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] - MirroredBrain Architecture Correction
+
+### Changed
+
+#### MirroredBrain Writes Clean Content (Standard 116)
+- `mirrored_brain/` now stores **cleaned** `compound_body` content instead of verbatim raw copies
+- Cleaning (sanitize: strip timestamps, PII, LLM markers, emoji) happens once in `atomizer.sanitize()` and the result is written to both DB (`compounds.compound_body`) and `mirrored_brain/`
+- `mirror.ts`: `createMirror()` now JOINs `sources + compounds` to write `compound_body`; added `writeMirroredFile()` for O(1) per-file writes from watchdog
+- `watchdog.ts`: calls `writeMirroredFile()` after atomize instead of triggering full `createMirror()` scan
+- **Impact:** `mirrored_brain/` is smaller than inbox (noise removed); byte offsets in DB atoms align correctly to mirrored files
+
+#### Backup v2 Format — Files from MirroredBrain
+- `backup.ts`: `createBackup()` now streams files from `mirrored_brain/` into a `"files"` section (JSON array of `{path, content}`)
+- Replaces the `"memory"` section (atom records) with the `"files"` section; `"source"` and `"engrams"` sections unchanged
+- `restoreBackup()`: detects `"files"` (v2) vs `"memory"` (v1) key and routes accordingly; added `rebuildInboxFromMirror()` to copy `@inbox/ → inbox/` and `@external-inbox/ → external-inbox/`
+- `backup-restore.ts`: `validateBackup()` now accepts both `"files"` and `"memory"` as valid format markers
+- **Impact:** Backups contain clean files (not atom fragments); restore is simpler (file copy vs atom aggregation); full backward compatibility with v1 backups
+
+### Fixed
+
+#### Jest Test Suite (Windows ESM)
+- Test script changed to `node --experimental-vm-modules ./node_modules/jest/bin/jest.js` (Windows: `.bin/jest` is a Unix shell script that fails when invoked with `node` directly)
+- `physics_walker.test.ts` added to `testPathIgnorePatterns` alongside `pglite-database.test.ts` (both require Vitest due to PGlite WASM/dynamic import conflicts with Jest ESM isolation)
+- Deleted 7 stale `test-github-ingest-*` artifact directories; added `test-github-ingest-*/` and `test-physics-db-*/` to `.gitignore`
+- **Impact:** `pnpm test` runs clean (7/7 green)
+
+---
+
 ## [Unreleased] - JOSS Submission Fixes
 
 ### Fixed

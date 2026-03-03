@@ -18,14 +18,20 @@ Like the mythical bird rising from ashes, the Phoenix Protocol can resurrect you
 
 ## What Gets Backed Up
 
-### Database Tables
-- **atoms** - All memory atoms with content, tags, provenance
+### MirroredBrain Files (v2 format)
+- **mirrored_brain/** — cleaned copies of all ingested files (`compound_body`): noise, timestamps, PII, and LLM markers already stripped
+- Smaller than inbox (cleaning removes boilerplate)
+- Byte offsets align exactly to DB atoms
+
+### Database Metadata
 - **sources** - File provenance tracking
 - **engrams** - System state and metadata
 
-### Filesystem Structure
+### Filesystem Structure (restored from mirrored_brain)
 - **inbox/** - Internal/sovereign content
 - **external-inbox/** - External content (web scrapes, news, etc.)
+
+> **v1 legacy:** Old backups contain `"memory"` (raw atom records). These still restore correctly via the legacy path.
 
 ---
 
@@ -33,10 +39,11 @@ Like the mythical bird rising from ashes, the Phoenix Protocol can resurrect you
 
 When you restore from backup, the Phoenix Protocol:
 
-1. **Restores Database** - All atoms, sources, and engrams
-2. **Rebuilds Folders** - Creates inbox/external-inbox structure
-3. **Aggregates Content** - Combines atom content back into files
-4. **Preserves Provenance** - Internal vs external classification
+1. **Validates Format** - Detects v2 (`"files"` key) or v1 legacy (`"memory"` key)
+2. **Restores Metadata** - All sources and engrams
+3. **Writes MirroredBrain** - Cleaned files to `mirrored_brain/`
+4. **Rebuilds Folders** - Copies `@inbox/ → inbox/` and `@external-inbox/ → external-inbox/`
+5. **DB Rebuilds on Startup** - Ephemeral index is rebuilt from `inbox/` automatically (Standard 110)
 
 ---
 
@@ -98,13 +105,14 @@ Backups are stored in: `c:\Users\rsbiiw\Projects\anchor-engine-node\backups\`
 ## Important Notes
 
 ### Source of Truth
-- **inbox/** and **external-inbox/** are the source of truth
-- Database is a **disposable index** (Standard 110)
-- Phoenix Protocol ensures both are synchronized
+- **mirrored_brain/** is the backup source of truth (cleaned content)
+- **inbox/** and **external-inbox/** are the runtime source of truth (restored from mirror)
+- Database is a **disposable index** (Standard 110) — rebuilt on startup from inbox files
+- Phoenix Protocol ensures all three are synchronized
 
 ### Restore Behavior
 - Existing files in inbox/external-inbox will be **overwritten**
-- Database is **completely replaced** (not merged)
+- Database is rebuilt on next startup (not during restore)
 - Search results are cleared after restore
 
 ### Backup Creation
