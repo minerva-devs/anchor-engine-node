@@ -10,7 +10,7 @@ import * as path from 'path';
 import { db } from '../../core/db.js';
 import PATHS from '../../config/paths.js';
 
-const BACKUP_DIR = path.join(process.cwd(), 'backups');
+const BACKUP_DIR = PATHS.BACKUPS_DIR;
 
 export interface RestoreStats {
     memory_count: number;
@@ -430,12 +430,12 @@ export async function validateBackup(filename: string): Promise<{
             return { valid: false, error: 'Invalid JSON structure' };
         }
         
-        // Check for required fields in first chunk
+        // Check for required fields — accept both v1 ("memory") and v2 ("files") formats
         const hasTimestamp = startContent.includes('"timestamp"');
-        const hasMemory = startContent.includes('"memory"');
+        const hasContent = startContent.includes('"files"') || startContent.includes('"memory"');
         
-        if (!hasTimestamp || !hasMemory) {
-            return { valid: false, error: 'Missing required backup fields' };
+        if (!hasTimestamp || !hasContent) {
+            return { valid: false, error: 'Missing required backup fields (timestamp + files/memory)' };
         }
         
         return { 
