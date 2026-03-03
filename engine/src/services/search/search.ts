@@ -186,6 +186,26 @@ import { PhysicsTagWalker } from './physics-tag-walker.js';
 import { assembleAndSerialize, assembleContextPackage } from './graph-context-serializer.js';
 import { UserContext } from '../../types/context.js';
 
+// ---------------------------------------------------------------------------
+// Search serialization lock — only one search runs at a time to prevent
+// concurrent searches from doubling peak heap usage.
+// ---------------------------------------------------------------------------
+let _searchLock: Promise<void> = Promise.resolve();
+function acquireSearchLock(): Promise<() => void> {
+  let release!: () => void;
+  const next = new Promise<void>(resolve => { release = resolve; });
+  const acquired = _searchLock.then(() => release);
+  _searchLock = _searchLock.then(() => next);
+  return acquired;
+}
+
+// Memory thresholds for graceful degradation.
+// HEAP_PRESSURE_MB: if V8 heapUsed exceeds this, downgrade max-recall → standard
+const HEAP_PRESSURE_MB = 3200; // ~3.2 GB
+function heapUsedMB(): number {
+  return Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+}
+
 /**
  * Find Anchors (Direct Hits) - Formerly part of tagWalkerSearch
  * Executes Strategy A (Atom positions) and Strategy B (Molecules FTS)
@@ -614,6 +634,42 @@ export async function executeSearch(
   console.log(`[Search] executeSearch (Physics Engine V2) called with provenance: ${provenance}`);
   const startTime = Date.now();
 
+  // Serialize searches — only one at a time to keep peak heap predictable.
+  // Concurrent searches on a large corpus (214K+ atoms) double peak memory usage.
+  const release = await acquireSearchLock();
+  try {
+    return await _executeSearchInternal(
+      query, _bucket, buckets, maxChars, _deep, provenance,
+      explicitTags, filters, useMaxRecall, userContext, startTime
+    );
+  } finally {
+    release();
+    if (typeof global.gc === 'function') global.gc();
+  }
+}
+
+async function _executeSearchInternal(
+  query: string,
+  _bucket?: string,
+  buckets?: string[],
+  maxChars: number = config.SEARCH.max_chars_default,
+  _deep: boolean = false,
+  provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
+  explicitTags: string[] = [],
+  filters?: { type?: string; minVal?: number; maxVal?: number; },
+  useMaxRecall: boolean = false,
+  userContext?: UserContext,
+  startTime: number = Date.now()
+): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
+  // Memory pressure check: if heap is already near the limit, downgrade max-recall
+  // to standard search to avoid OOM. Trades result depth for stability.
+  const heapMB = heapUsedMB();
+  if (useMaxRecall && heapMB > HEAP_PRESSURE_MB) {
+    console.warn(`[Search] Memory pressure detected (${heapMB}MB heap). Downgrading max-recall → standard search.`);
+    useMaxRecall = false;
+    maxChars = Math.min(maxChars, config.SEARCH.max_chars_default);
+  }
+
   // Check if system is busy with ingestion
   const status = systemStatus.getStatus();
   if (status.isBusy) {
@@ -848,9 +904,6 @@ export async function executeSearch(
     enableCoalescing,
     proximityThreshold
   });
-
-  // Release V8 heap after search — --expose-gc is already set in start script
-  if (typeof global.gc === 'function') global.gc();
 
   return {
     context: serializedContext,
