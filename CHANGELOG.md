@@ -6,6 +6,61 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] - Search Result Quality Fixes
+
+### ✨ Features
+
+#### Semantic Deduplication (Standard 125)
+- Search results included multiple overlapping snippets from the same file (e.g. Sybil-History.md contributing 3-4 redundant snippets about Dory/neurodivergence)
+- Two-layer fix in `search-utils.ts`:
+  1. **Per-source cap** in `coalesceByProximity`: after merging atoms by proximity, each source file contributes at most `max(3, min(8, ceil(maxSnippets/15)))` snippets (3 for 4KB budget, 8 for max-recall)
+  2. **Word-overlap dedup** in `formatResults`: after temporal enrichment, sort by weighted score DESC; drop any snippet whose significant-word Jaccard overlap with an already-accepted snippet ≥ 60%. Re-sort chronologically after dedup pass.
+- Significant words: length ≥ 5 chars, not in stopword set; tolerant to paraphrase but catches near-verbatim duplication
+- Dedup stats exposed in response metadata: `metadata.deduplication.{ removed, remaining }`
+- **Impact:** Eliminates "C+ for efficiency" token waste; prevents single files from monopolizing 4K context windows
+
+### 🐛 Bug Fixes
+
+#### SmartSearch Concurrent Max-Recall OOM (v4.4.x)
+- `smartChatSearch` always triggered parallel multi-query split in max-recall mode even when initial search had results
+- Split launched N `executeSearch` calls via `Promise.all` — each with the full 393K-char budget — multiplying heap use by N simultaneously
+- Fix 1: return early from `smartChatSearch` when `useMaxRecall && initial.results.length > 0` — initial max-recall search already uses full budget with 1639-atom target, no split needed
+- Fix 2: for long queries where initial search is skipped, splits now run sequentially (`for...of` loop) instead of `Promise.all`
+- **Impact:** Eliminates `FATAL ERROR: Reached heap limit` crash pattern during multi-word max-recall searches
+
+#### Search Memory Reduction (Phase 1+2)
+- `--max-old-space-size` reduced from 8192 → 3072: V8 GC now triggers at 3GB, not just before crash at 8GB
+- `global.gc()` called after each `formatResults()` completes; `--expose-gc` was already set but unused
+- `SET work_mem = '32MB'` injected before physics walker CTE to cap PostgreSQL sort/hash memory per node
+- Physics walker fetch cap: `Math.min(hopMaxPerHop * 1.5, 200)` → `Math.min(hopMaxPerHop, 100)` (50 standard, 100 max-recall)
+- Lazy snippet inflation: `coalesceByProximity` now accepts `maxSnippets` param, sorts all merged windows by score DESC, inflates only top-N — for 4KB budget this reduces disk inflation calls from 200 to ~14
+- `formatResults` computes `maxSnippets = max(50, ceil(maxChars / 300))` to bound inflation proportionally to budget
+- PGlite startup: `SET effective_cache_size = '200MB'` and `SET work_mem = '16MB'` applied at init to bound WASM page cache
+- **Impact:** Standard search ≤800MB peak; max-recall ≤2GB steady state (prior: 8GB crash)
+
+#### Virtual Anchor Resolution for Physics Walker (Standard 124)
+- Physics Walker was receiving `virtual_*` in-memory IDs from ContextInflator that have no row in the DB
+- `resolved_atoms` CTE returned 0 rows → walker returned 0 associations despite finding 40+ FTS anchors
+- Fix: filter out all `virtual_*` IDs; batch-resolve their `compound_id` to real `mol_*` IDs via `SELECT id FROM molecules WHERE compound_id = ANY($1)`
+- **Impact:** Physics Walker now receives real anchor IDs and returns associative results
+
+### ✨ Features
+
+#### Search Result Tag Sanitization (Standard 123)
+- Source YAML/JSON files embed serialized tag lists inside molecule content (e.g. `\"#TypeScript\" - \"#algorithm\"`, `##19864Residential`)
+- These tokens appeared verbatim in search results, consuming LLM context budget with zero signal
+- Fix: `stripInlineTags()` in `graph-context-serializer.ts` removes escaped-quote tags, plain `#Tag` and `##Tag` tokens, and orphaned separator chains from `MemoryNode.content` at serialization time
+- Tags are preserved on `result.tags` field — only the inline text representation is cleaned
+- **Impact:** Clean, readable content delivered to LLM and UI; tags remain available for all graph/ranking operations
+
+### 📚 Documentation
+
+#### New Standards
+- **Standard 123:** Search Result Tag Sanitization
+- **Standard 124:** Virtual Anchor Resolution for Physics Walker
+
+---
+
 ## [Unreleased] - MirroredBrain Architecture Correction
 
 ### Changed

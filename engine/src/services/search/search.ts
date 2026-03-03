@@ -617,10 +617,22 @@ export async function executeSearch(
   // Check if system is busy with ingestion
   const status = systemStatus.getStatus();
   if (status.isBusy) {
-    const waitTime = systemStatus.getEstimatedWaitTime();
-    console.log(`[Search] System busy (${status.state}), but proceeding anyway. Estimated wait: ${waitTime}s`);
-    // We could throw an error or queue the request, but for now just log it
-    // throw new Error(`System is currently ${status.state}. Please wait ${waitTime} seconds and try again.`);
+    // Wait for ingestion to finish before running search.
+    // Concurrent search+ingestion causes O(N) memory pressure that can exceed the heap limit
+    // (e.g. 207K molecules sharing a compound_id → physics walker cross product crashes at 8GB).
+    const maxWaitMs = 180_000; // 3 minutes
+    const pollMs = 1_000;
+    let waited = 0;
+    console.log(`[Search] System busy (${status.state}), waiting for idle before proceeding...`);
+    while (systemStatus.getStatus().isBusy && waited < maxWaitMs) {
+      await new Promise(r => setTimeout(r, pollMs));
+      waited += pollMs;
+    }
+    if (systemStatus.getStatus().isBusy) {
+      console.warn(`[Search] System still busy after ${waited}ms, proceeding with risk.`);
+    } else {
+      console.log(`[Search] System became idle after ${waited}ms, proceeding with search.`);
+    }
   }
 
   // 1. Parse & Prepare
@@ -700,18 +712,71 @@ export async function executeSearch(
   // 3. Physics Walker (Moons) - Use TypeScript PhysicsTagWalker
   let walkerResults: any[] = [];
   try {
-    // Convert string IDs to numbers for the walker
-    const anchorIds = uniqueAnchors.map(a => a.id).filter(id => id && id !== '');
+    // Separate real DB IDs from virtual in-memory molecules created by ContextInflator.
+    // Virtual IDs (any prefix starting with 'virtual') have no row in atoms/molecules tables.
+    // For each virtual anchor, use its compound_id to find the nearest real molecule.
+    const realIds = uniqueAnchors
+      .map(a => a.id)
+      .filter(id => id && id !== '' && !id.startsWith('virtual'));
+
+    // Collect unique compound_ids from virtual anchors so we can resolve them to real mol_* IDs.
+    const virtualCompoundIds = [...new Set(
+      uniqueAnchors
+        .filter(a => a.id && a.id.startsWith('virtual') && a.compound_id)
+        .map(a => a.compound_id as string)
+    )];
+
+    let resolvedMolIds: string[] = [];
+    if (virtualCompoundIds.length > 0) {
+      try {
+        const res = await db.run(
+          `SELECT id FROM molecules WHERE compound_id = ANY($1) ORDER BY timestamp DESC LIMIT 100`,
+          [virtualCompoundIds]
+        );
+        if (res.rows) resolvedMolIds = res.rows.map((r: any) => String(r.id));
+      } catch (e: any) {
+        console.warn('[Search] Failed to resolve virtual compound IDs:', e.message);
+      }
+    }
+
+    const anchorIds = [...new Set([...realIds, ...resolvedMolIds])];
+
+    // Round-robin by compound_id so the walker sees anchors from diverse source
+    // documents rather than 30 IDs all from the same file.
+    const diverseAnchorIds: string[] = [];
+    {
+      const byCompound = new Map<string, string[]>();
+      for (const a of uniqueAnchors) {
+        if (!a.id || (a.id as string).startsWith('virtual')) continue;
+        const cid = (a.compound_id as string) || '__unknown__';
+        if (!byCompound.has(cid)) byCompound.set(cid, []);
+        byCompound.get(cid)!.push(a.id as string);
+      }
+      // Append resolved mol IDs (from virtual compounds) under their compound bucket
+      for (const molId of resolvedMolIds) {
+        const cid = '__virtual__';
+        if (!byCompound.has(cid)) byCompound.set(cid, []);
+        byCompound.get(cid)!.push(molId);
+      }
+      const groups = [...byCompound.values()];
+      const maxRound = Math.max(...groups.map(g => g.length));
+      for (let i = 0; i < maxRound; i++) {
+        for (const group of groups) {
+          if (i < group.length) diverseAnchorIds.push(group[i]);
+        }
+      }
+    }
+    const dedupedAnchorIds = [...new Set(diverseAnchorIds)];
     
-    if (anchorIds.length > 0) {
+    if (dedupedAnchorIds.length > 0) {
       // Use TypeScript PhysicsTagWalker for radial inflation
       const walker = new PhysicsTagWalker();
       walkerResults = await walker.performRadialInflation(
-        anchorIds,
+        dedupedAnchorIds,
         1,                           // radius (1 hop)
         useMaxRecall ? 300 : 150,    // maxPerHop (results returned; fetches 3x candidates)
         0.2,                         // temperature
-        0.005                        // gravityThreshold
+        0.001                        // gravityThreshold (lowered from 0.005 for sparser graphs)
       );
       console.log(`[Search] PhysicsTagWalker found ${walkerResults.length} associations`);
     } else {
@@ -751,7 +816,7 @@ export async function executeSearch(
   console.log(`[Search] Search completed in ${Date.now() - startTime}ms`);
 
   // Map back to SearchResult[] for legacy API compatibility
-  // Combine Anchors + Walker Results
+  // Combine Anchors + Walker Results, sorted by score desc
   const combinedResults = [
     ...uniqueAnchors,
     ...walkerResults.map(w => ({
@@ -760,6 +825,18 @@ export async function executeSearch(
     })) as any[]
   ];
 
+  // Cap total results fed to formatResults to prevent OOM.
+  // 100KB per snippet cap in inflateSnippetFromDisk bounds memory per snippet,
+  // but 900+ snippets * 100KB = still huge. Limit by budget: budget / 200 chars minimum
+  // gives a rough upper bound on useful snippets.
+  const maxResultsForBudget = Math.min(
+    combinedResults.length,
+    Math.max(200, Math.ceil(maxChars / 200))
+  );
+  const cappedResults = combinedResults
+    .sort((a: any, b: any) => (b.score || 0) - (a.score || 0))
+    .slice(0, maxResultsForBudget);
+
   // Apply context provenance formatting with coalescing (Standard 108)
   // Enable coalescing for high-budget queries to improve coherence
   const enableCoalescing = maxChars > 16000; // Only coalesce for budgets > 16k chars
@@ -767,10 +844,13 @@ export async function executeSearch(
 
   console.log(`[Search] Coalescing: ${enableCoalescing ? 'enabled' : 'disabled'} (threshold: ${proximityThreshold}px)`);
 
-  const formatted = await formatResults(combinedResults, maxChars, {
+  const formatted = await formatResults(cappedResults, maxChars, {
     enableCoalescing,
     proximityThreshold
   });
+
+  // Release V8 heap after search — --expose-gc is already set in start script
+  if (typeof global.gc === 'function') global.gc();
 
   return {
     context: serializedContext,
@@ -1008,6 +1088,12 @@ export async function smartChatSearch(
     if (initial.results.length >= 10 && !useMaxRecall) {
       return { ...initial, strategy: 'standard' };
     }
+    // Max-recall initial search already runs with full budget and 1639-atom target —
+    // parallel sub-query split would just run 3 more full-budget searches simultaneously,
+    // tripling memory. Return here.
+    if (useMaxRecall && initial.results.length > 0) {
+      return { ...initial, strategy: 'max-recall' };
+    }
   }
 
   console.log(`[SmartSearch] Triggering Multi-Query Split...`);
@@ -1053,15 +1139,16 @@ export async function smartChatSearch(
 
   console.log(`[SmartSearch] Split Entities/Chunks: ${JSON.stringify(splitQueries)}`);
 
-  // 3. Parallel Execution
-  // We run executeSearch for each entity independently
-  // For max-recall mode, give each sub-query the full budget to maximize retrieval
+  // 3. Sequential Execution
+  // Run each split sub-query one at a time to prevent concurrent heap exhaustion.
+  // Parallel Promise.all with max-recall budgets multiplies memory by N sub-queries.
   const budgetPerQuery = useMaxRecall ? maxChars : Math.floor(maxChars / splitQueries.length);
-  const parallelPromises = splitQueries.map((entity: string) =>
-    executeSearch(entity, undefined, buckets, budgetPerQuery, false, provenance, tags, undefined, useMaxRecall, userContext)
-  );
-
-  const parallelResults = await Promise.all(parallelPromises);
+  const parallelResults: Awaited<ReturnType<typeof executeSearch>>[] = [];
+  for (const entity of splitQueries) {
+    parallelResults.push(
+      await executeSearch(entity, undefined, buckets, budgetPerQuery, false, provenance, tags, undefined, useMaxRecall, userContext)
+    );
+  }
 
   // 4. Merge & Deduplicate
   const mergedMap = new Map<string, SearchResult>();

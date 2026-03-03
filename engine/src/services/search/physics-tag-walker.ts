@@ -150,9 +150,12 @@ export class PhysicsTagWalker {
     // Given the efficiency, radius=1 is usually sufficient if the first hop is high quality.
 
     // Get connected nodes via shared tags with SQL weighting
+    // BUGFIX 2026-03-03: Reduced from hopMaxPerHop * 3 to hopMaxPerHop * 1.5
+    // to prevent memory overflow on large datasets (207K molecules)
+    // The SQL LIMIT already filters by gravity_score, no need to over-fetch
     const connectedNodes = await this.getConnectedNodesWeighted(
       currentAnchors,
-      hopMaxPerHop * 3, // Fetch more candidates, we filter by threshold later
+      Math.min(hopMaxPerHop, 100), // Cap at 100 total to bound WASM heap (50 standard, 100 max-recall)
       hopGravityThreshold
     );
 
@@ -251,9 +254,11 @@ export class PhysicsTagWalker {
   ): Promise<WalkerNode[]> {
     if (anchorIds.length === 0) return [];
 
+    // BUGFIX 2026-03-03: Guard against excessive limit values that cause heap overflow
     // Ensure limit is always a positive integer (guards against float args causing
     // "invalid input syntax for type bigint" in the LIMIT $3 SQL parameter)
-    const safeLimit = Math.max(1, Math.floor(limit));
+    // Also cap at 300 to prevent memory exhaustion on large datasets
+    const safeLimit = Math.max(1, Math.min(Math.floor(limit), 300));
 
     // Cap anchors
     const cappedIds = anchorIds.length > MAX_ANCHOR_IDS
@@ -262,45 +267,73 @@ export class PhysicsTagWalker {
 
     const startTime = Date.now();
 
+    // Cap PostgreSQL sort/hash memory per query node to prevent WASM heap spikes
+    await db.run("SET work_mem = '32MB'");
+
     // 1. Prepare Anchor Params
     // We pass the anchor IDs as a single array as the first parameter.
-    // threshold and limit follow as $2 and $3.
+    // Physics constants and query params follow
+    // $1 = anchorIds array
+    // $2 = threshold
+    // $3 = safeLimit
+    // $4 = WALK_RADIUS
+    // $5 = DAMPING_FACTOR
+    // $6 = TIME_DECAY_LAMBDA
 
-    // 2. The Great Physics Query
-    const thresholdParamIdx = 2;
-    const limitParamIdx = 3;
+    // Big-O summary for this query (N = total molecules, A = atoms, T = tags):
+    // resolved_atoms:    O(|anchors|)          — subquery fence ensures PK lookup, not full-table cross join
+    // anchor_stats:      O(A) → LIMIT 10       — scan atoms WHERE id IN small set
+    // anchor_tag_set:    O(10 × avg_tags)      — materialized once, replaces correlated subquery
+    // hop_traversal:     O(anchor_count × avg_tag_neighbors)  — recursive, bounded by WALK_RADIUS
+    // atom_hop_distance: O(hop_traversal rows) — GROUP BY
+    // candidates:        O(atom_hop_distance × avg_tags_per_atom)  — no correlated subquery
+    // candidates_limited/physical: O(LIMIT 50) each
+    // weighted_ids CROSS JOIN: O(100 candidates × 10 anchors) = O(1000) — manageable
+    // Final JOIN atoms:  O(safeLimit × row_size) — only materialized content
 
     const refinedQuery = `
-      WITH RECURSIVE anchor_ids AS (
-        SELECT unnest($1::text[]) as id
-      ),
-      -- Resolve both Atoms and Molecules to a unified set of Atom IDs
+      WITH RECURSIVE
+      -- Resolve both Atoms and Molecules to a unified set of Atom IDs.
+      -- CRITICAL: The molecule branch uses a subquery fence to materialize anchor molecules
+      -- (small set, O(|anchors|) via PK) BEFORE joining to atoms.
+      -- Without this, "atoms JOIN molecules ON compound_id" produces an O(A×N) cross product
+      -- when all molecules share a single compound_id (e.g. one large file = 207K molecules).
       resolved_atoms AS (
-        (SELECT id as atom_id FROM atoms WHERE id IN (SELECT id FROM anchor_ids))
-        UNION
-        (SELECT a.id as atom_id FROM atoms a
-         JOIN molecules m ON a.compound_id = m.compound_id
-         JOIN anchor_ids ai ON m.id = ai.id
-         WHERE m.id IN (SELECT id FROM anchor_ids)
-         AND a.start_byte >= (m.start_byte - 500)
-         AND a.end_byte <= (m.end_byte + 500)
-         LIMIT 100)
+        SELECT id as atom_id FROM atoms WHERE id = ANY($1::text[])
+        UNION ALL
+        SELECT a.id as atom_id
+        FROM (
+          SELECT id, compound_id, start_byte, end_byte
+          FROM molecules
+          WHERE id = ANY($1::text[])
+          LIMIT 50
+        ) anc_mol
+        JOIN atoms a ON a.compound_id = anc_mol.compound_id
+          AND a.start_byte >= (anc_mol.start_byte - 500::int)
+          AND a.end_byte <= (anc_mol.end_byte + 500::int)
+        LIMIT 100
       ),
       anchor_stats AS (
-        -- OPTIMIZATION (2026-02-23): Limit to top 10 most relevant anchors
         SELECT
           id as anchor_id,
           timestamp as anchor_ts,
           simhash as anchor_sh,
-          0 as hop_distance  -- Anchors are hop 0
+          0::int as hop_distance
         FROM atoms
         WHERE id IN (SELECT atom_id FROM resolved_atoms)
         ORDER BY timestamp DESC
         LIMIT 10
       ),
+      -- Materialized anchor tag set: replaces the correlated subquery
+      -- "t.tag IN (SELECT tag FROM tags WHERE atom_id = ast.anchor_id)"
+      -- that previously ran once per (candidate_atom × anchor) pair.
+      anchor_tag_set AS (
+        SELECT DISTINCT tag
+        FROM tags
+        WHERE atom_id IN (SELECT anchor_id FROM anchor_stats)
+      ),
       -- HOP TRACKING: Recursive CTE for multi-hop traversal with hop distance
       hop_traversal AS (
-        -- Base case: anchors at hop 0
         SELECT
           anchor_id as atom_id,
           anchor_ts,
@@ -311,7 +344,6 @@ export class PhysicsTagWalker {
 
         UNION ALL
 
-        -- Recursive case: expand via shared tags, incrementing hop
         SELECT DISTINCT
           t2.atom_id,
           a2.timestamp as anchor_ts,
@@ -323,24 +355,22 @@ export class PhysicsTagWalker {
         JOIN tags t1 ON a1.id = t1.atom_id
         JOIN tags t2 ON t1.tag = t2.tag AND t1.atom_id != t2.atom_id
         JOIN atoms a2 ON t2.atom_id = a2.id
-        WHERE ht.hop_distance < ${this.WALK_RADIUS}
-          AND NOT t2.atom_id = ANY(ht.path)  -- Prevent cycles
+        WHERE ht.hop_distance < $4
+          AND NOT t2.atom_id = ANY(ht.path)
           AND a2.id NOT IN (SELECT anchor_id FROM anchor_stats)
       ),
-      -- Get the minimum hop distance for each discovered atom
       atom_hop_distance AS (
-        SELECT 
+        SELECT
           atom_id,
           anchor_ts,
           anchor_sh,
           MIN(hop_distance) as hop_distance
         FROM hop_traversal
-        WHERE hop_distance > 0  -- Exclude anchors themselves
+        WHERE hop_distance > 0
         GROUP BY atom_id, anchor_ts, anchor_sh
       ),
-      -- 1. Candidate Generation with hop tracking
+      -- Candidate Generation: uses anchor_tag_set (hash join) instead of correlated subquery
       candidates AS (
-         -- Part A: Tag-based (from hop traversal)
          SELECT
            h.atom_id,
            a.timestamp,
@@ -350,10 +380,7 @@ export class PhysicsTagWalker {
            MIN(h.hop_distance) as hop_distance
          FROM atom_hop_distance h
          JOIN atoms a ON h.atom_id = a.id
-         JOIN tags t ON a.id = t.atom_id
-         JOIN anchor_stats ast ON t.tag IN (
-           SELECT tag FROM tags WHERE atom_id = ast.anchor_id
-         )
+         JOIN tags t ON a.id = t.atom_id AND t.tag IN (SELECT tag FROM anchor_tag_set)
          GROUP BY h.atom_id, a.timestamp, a.simhash
       ),
       candidates_limited AS (
@@ -367,14 +394,14 @@ export class PhysicsTagWalker {
            a.id as atom_id,
            a.timestamp,
            a.simhash,
-           0 as shared_tags,
+           0::bigint as shared_tags,
            1.0 as physical_bonus,
-           1 as hop_distance  -- Physical proximity treated as hop 1
+           1::int as hop_distance  -- Physical proximity treated as hop 1
          FROM atoms a
          JOIN anchor_stats ast ON a.compound_id = (SELECT compound_id FROM atoms WHERE id = ast.anchor_id)
          WHERE a.id NOT IN (SELECT anchor_id FROM anchor_stats)
-         AND a.start_byte >= ((SELECT start_byte FROM atoms WHERE id = ast.anchor_id) - 1000)
-         AND a.end_byte <= ((SELECT end_byte FROM atoms WHERE id = ast.anchor_id) + 1000)
+         AND a.start_byte >= ((SELECT start_byte FROM atoms WHERE id = ast.anchor_id) - 1000::int)
+         AND a.end_byte <= ((SELECT end_byte FROM atoms WHERE id = ast.anchor_id) + 1000::int)
          LIMIT 50
       ),
       candidates_combined AS (
@@ -405,8 +432,8 @@ export class PhysicsTagWalker {
            sc.atom_id,
            MAX(
               GREATEST(0.0, LEAST(1.0,
-                 ( ((COALESCE(sc.total_shared_tags, 0) / 10.0) * POWER(${this.DAMPING_FACTOR}, LEAST(GREATEST(COALESCE(sc.hop_distance, 1), 0), 3))) + (COALESCE(sc.physical_bonus, 0) * 0.1) ) *
-                 EXP(-${this.TIME_DECAY_LAMBDA} * LEAST(ABS(COALESCE(sc.timestamp - ast.anchor_ts, 0)) / 3600000.0, 700000)) *
+                 ( ((COALESCE(sc.total_shared_tags, 0::bigint)::float8 / 10.0) * POWER($5::float8, LEAST(GREATEST(COALESCE(sc.hop_distance, 1::int)::float8, 0.0), 3.0))) + (COALESCE(sc.physical_bonus, 0.0) * 0.1) ) *
+                 EXP((-$6::float8) * LEAST(ABS(COALESCE(sc.timestamp::float8 - ast.anchor_ts::float8, 0.0)) / 3600000.0, 700000.0)) *
                  (1.0 - (bit_count(('x' || LPAD(COALESCE(sc.simhash, '0'), 16, '0'))::bit(64) # ('x' || LPAD(COALESCE(ast.anchor_sh, '0'), 16, '0'))::bit(64)) / 64.0))
               ))
            ) as gravity_score,
@@ -418,13 +445,13 @@ export class PhysicsTagWalker {
         GROUP BY sc.atom_id
         HAVING MAX(
               GREATEST(0.0, LEAST(1.0,
-                 ( ((COALESCE(sc.total_shared_tags, 0) / 10.0) * POWER(${this.DAMPING_FACTOR}, LEAST(GREATEST(COALESCE(sc.hop_distance, 1), 0), 3))) + (COALESCE(sc.physical_bonus, 0) * 0.1) ) *
-                 EXP(-${this.TIME_DECAY_LAMBDA} * LEAST(ABS(COALESCE(sc.timestamp - ast.anchor_ts, 0)) / 3600000.0, 700000)) *
+                 ( ((COALESCE(sc.total_shared_tags, 0::bigint)::float8 / 10.0) * POWER($5::float8, LEAST(GREATEST(COALESCE(sc.hop_distance, 1::int)::float8, 0.0), 3.0))) + (COALESCE(sc.physical_bonus, 0.0) * 0.1) ) *
+                 EXP((-$6::float8) * LEAST(ABS(COALESCE(sc.timestamp::float8 - ast.anchor_ts::float8, 0.0)) / 3600000.0, 700000.0)) *
                  (1.0 - (bit_count(('x' || LPAD(COALESCE(sc.simhash, '0'), 16, '0'))::bit(64) # ('x' || LPAD(COALESCE(ast.anchor_sh, '0'), 16, '0'))::bit(64)) / 64.0))
               ))
-           ) > $${thresholdParamIdx}
+           ) > $2::float8
         ORDER BY gravity_score DESC
-        LIMIT $${limitParamIdx}
+        LIMIT $3
       )
       -- 4. Final projection with hop distance
       SELECT 
@@ -447,7 +474,14 @@ export class PhysicsTagWalker {
       JOIN atoms a ON w.atom_id = a.id
     `;
 
-    const params = [cappedIds, threshold, safeLimit];
+    const params = [
+      cappedIds,              // $1
+      threshold,              // $2
+      safeLimit,              // $3
+      this.WALK_RADIUS,       // $4
+      this.DAMPING_FACTOR,    // $5
+      this.TIME_DECAY_LAMBDA  // $6
+    ];
 
     try {
       // Debug logging for high-budget queries

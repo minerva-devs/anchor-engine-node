@@ -125,6 +125,10 @@ export class Database {
         // Let PGlite handle directory creation internally
         this.dbInstance = await new PGlite(dbPath);
         console.log(`[DB] PGlite initialized successfully: ${dbPath}`);
+        // Hint to PostgreSQL planner to keep buffer cache and sort memory bounded.
+        // Without these, complex search CTEs can grow PGlite's WASM heap unboundedly.
+        await this.dbInstance.exec("SET effective_cache_size = '200MB'");
+        await this.dbInstance.exec("SET work_mem = '16MB'");
       } catch (e: any) {
         console.error(`[DB] Failed to initialize PGlite: ${e.message}`);
         throw e;

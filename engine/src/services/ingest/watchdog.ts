@@ -429,6 +429,7 @@ async function processFile(filePath: string, event: string) {
         triggerPostIngestionSynonyms();
 
         // Reset system status to idle after ingestion completes
+        if (typeof (global as any).gc === 'function') (global as any).gc();
         systemStatus.setState('idle');
         systemStatus.clearProgress();
         console.log(`[SystemStatus] Ingestion complete, system ready for search`);

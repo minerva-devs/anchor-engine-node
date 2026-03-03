@@ -33,10 +33,47 @@ export class AtomicIngestService {
 
         console.log(`[AtomicIngest] ⏱️ START Persisting: ${filename} (${molecules.length} molecules, ${atoms.length} atoms)`);
 
+        // BUGFIX 2026-03-03: For large ingests (>100K molecules), temporarily drop FTS index
+        // to prevent PGlite corruption from concurrent index updates
+        const isLargeIngestion = molecules.length > 100000;
+        if (isLargeIngestion) {
+            console.log(`[AtomicIngest] ⏱️ Large ingestion detected (${molecules.length} molecules), dropping FTS index...`);
+            try {
+                await db.run('DROP INDEX IF EXISTS idx_molecules_content_gin');
+                await db.run('DROP INDEX IF EXISTS idx_atoms_content_gin');
+            } catch (e: any) {
+                console.warn(`[AtomicIngest] Could not drop FTS indexes: ${e.message}`);
+            }
+        }
+
         // Wrap entire ingestion in a transaction for atomicity and performance
         await db.transaction(async () => {
             await this._ingestResultInTransaction(compound, molecules, atoms, buckets);
         });
+
+        // Recreate FTS indexes after bulk insert
+        if (isLargeIngestion) {
+            console.log(`[AtomicIngest] ⏱️ Recreating FTS indexes...`);
+            try {
+                await db.run(`
+                    CREATE INDEX IF NOT EXISTS idx_molecules_content_gin
+                    ON molecules
+                    USING GIN(to_tsvector('simple', content));
+                `);
+                await db.run(`
+                    CREATE INDEX IF NOT EXISTS idx_atoms_content_gin
+                    ON atoms
+                    USING GIN(to_tsvector('simple', content));
+                `);
+                // BUGFIX 2026-03-03: VACUUM ANALYZE after index rebuild to clear PGlite's cache
+                // This prevents "nfig"]D errors from stale query plans
+                await db.run('VACUUM ANALYZE atoms');
+                await db.run('VACUUM ANALYZE molecules');
+                console.log(`[AtomicIngest] ✅ FTS indexes recreated and optimized`);
+            } catch (e: any) {
+                console.warn(`[AtomicIngest] Could not recreate FTS indexes: ${e.message}`);
+            }
+        }
 
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
         console.log(`[AtomicIngest] ✅ COMPLETE: ${filename} in ${totalTime}s`);

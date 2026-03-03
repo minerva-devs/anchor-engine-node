@@ -52,7 +52,10 @@
     "watcher": {
         "debounce_ms": 2000,
         "stability_threshold_ms": 2000,
-        "extra_paths": []
+        "extra_paths": [
+            "C:\\Users\\rsbiiw\\Projects\\Coding-Notes\\Notebook\\history\\important-context",
+            "C:\\Users\\rsbiiw\\Projects\\Coding-Notes\\Notebook\\history\\"
+        ]
     },
     "context": {
         "relevance_weight": 0.7,
@@ -96,7 +99,13 @@
         "entity_extraction": {
             "enabled": true,
             "min_confidence": 0.6,
-            "categories": ["PERSON", "ORG", "PRODUCT", "EVENT", "LOCATION"]
+            "categories": [
+                "PERSON",
+                "ORG",
+                "PRODUCT",
+                "EVENT",
+                "LOCATION"
+            ]
         },
         "blacklist_strictness": 75,
         "common_words_filter": true,
