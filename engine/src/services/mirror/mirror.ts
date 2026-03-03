@@ -1,9 +1,10 @@
 /**
  * Mirror Protocol Service - "Tangible Knowledge Graph"
  *
- * Pure filesystem mirroring: copies files as-is from inbox/external-inbox
- * to mirrored_brain, preserving directory structure.
- * 
+ * Writes CLEANED content (compound_body) to mirrored_brain/, not raw copies.
+ * The sanitizer strips noise, timestamps, PII, and boilerplate before writing,
+ * so mirrored_brain/ is smaller and more meaningful than the original inbox/.
+ *
  * Supports YAML rehydration: flattened YAML files (from read_all.js) are
  * expanded back into their original file structure.
  */
@@ -15,24 +16,27 @@ import { db } from '../../core/db.js';
 import { NOTEBOOK_DIR } from '../../config/paths.js';
 import PATHS from '../../config/paths.js';
 
-export const MIRRORED_BRAIN_PATH = path.join(NOTEBOOK_DIR, 'mirrored_brain');
+export const MIRRORED_BRAIN_PATH = PATHS.MIRRORED_BRAIN_DIR;
 
 /**
- * Mirror Protocol: Pure filesystem mirroring with YAML rehydration
- * 
- * - Copies files as-is preserving directory structure
- * - YAML files with files[] array are rehydrated into individual files
+ * Mirror Protocol: Full rebuild of mirrored_brain/ from DB compounds.
+ * Writes cleaned compound_body for each source. Falls back to raw file
+ * copy only when compound_body is missing (migration / edge case).
  */
 export async function createMirror() {
-    console.log('🪞 Mirror Protocol: Starting pure filesystem mirror...');
+    console.log('🪞 Mirror Protocol: Rebuilding from cleaned compound content...');
 
     // Create mirror root
     if (!fs.existsSync(MIRRORED_BRAIN_PATH)) {
         fs.mkdirSync(MIRRORED_BRAIN_PATH, { recursive: true });
     }
 
-    // Get all unique source paths from sources table (replacing legacy compounds)
-    const sourcesQuery = `SELECT path FROM sources`;
+    // Join sources with compounds to get cleaned content
+    const sourcesQuery = `
+        SELECT s.path, c.compound_body, c.provenance
+        FROM sources s
+        LEFT JOIN compounds c ON c.path = s.path
+    `;
     const result = await db.run(sourcesQuery);
 
     if (!result.rows || result.rows.length === 0) {
@@ -41,22 +45,17 @@ export async function createMirror() {
     }
 
     let fileCount = 0;
+    let fallbackCount = 0;
     let rehydratedCount = 0;
 
     for (const row of result.rows) {
-        const dbPath = Array.isArray(row) ? row[0] : row.path; // PGlite rowMode handling
+        const dbPath: string = Array.isArray(row) ? row[0] : row.path;
+        const compoundBody: string | null = Array.isArray(row) ? row[1] : row.compound_body;
+        const provenance: string = (Array.isArray(row) ? row[2] : row.provenance) || 'internal';
 
         if (!dbPath) continue;
 
-        // Resolve source path - may be relative (from DB) or absolute
-        let sourcePath = dbPath;
-        if (!path.isAbsolute(sourcePath)) {
-            sourcePath = path.join(NOTEBOOK_DIR, sourcePath);
-        }
-
-        if (!fs.existsSync(sourcePath)) continue;
-
-        // Determine mirror subdirectory based on path
+        // Determine mirror subdirectory
         let provenanceDir = '@inbox';
         if (dbPath.startsWith('external-inbox') || dbPath.includes('external-inbox')) {
             provenanceDir = '@external-inbox';
@@ -64,24 +63,55 @@ export async function createMirror() {
             provenanceDir = '@quarantine';
         }
 
+        // Use cleaned compound_body when available
+        if (compoundBody) {
+            const relativePath = getRelativePath(dbPath);
+            const mirrorPath = path.join(MIRRORED_BRAIN_PATH, provenanceDir, relativePath);
+            await writeFile(mirrorPath, compoundBody);
+            fileCount++;
+            continue;
+        }
+
+        // Fallback: raw file copy for sources without compound_body (migration)
+        let sourcePath = dbPath;
+        if (!path.isAbsolute(sourcePath)) {
+            sourcePath = path.join(NOTEBOOK_DIR, sourcePath);
+        }
+
+        if (!fs.existsSync(sourcePath)) continue;
+
         // Check if this is a rehydratable YAML file
         if (sourcePath.endsWith('.yaml') || sourcePath.endsWith('.yml')) {
             const rehydrated = await tryRehydrateYAML(sourcePath, provenanceDir);
             if (rehydrated > 0) {
                 rehydratedCount += rehydrated;
-                continue; // Skip normal copy for rehydrated files
+                continue;
             }
         }
 
-        // Normal file: copy as-is preserving relative path
         const relativePath = getRelativePath(sourcePath);
         const mirrorPath = path.join(MIRRORED_BRAIN_PATH, provenanceDir, relativePath);
-
         await copyFile(sourcePath, mirrorPath);
-        fileCount++;
+        fallbackCount++;
     }
 
-    console.log(`🪞 Mirror Protocol: Complete. ${fileCount} files mirrored, ${rehydratedCount} files rehydrated.`);
+    console.log(`🪞 Mirror Protocol: Complete. ${fileCount} cleaned, ${fallbackCount} fallback copies, ${rehydratedCount} rehydrated.`);
+}
+
+/**
+ * Write a single file's cleaned content directly to mirrored_brain/.
+ * Called by watchdog after atomization — faster than a full createMirror() rebuild.
+ */
+export async function writeMirroredFile(
+    relativePath: string,
+    cleanedContent: string,
+    provenance: 'internal' | 'external' | 'quarantine' = 'internal'
+): Promise<void> {
+    if (!fs.existsSync(MIRRORED_BRAIN_PATH)) {
+        fs.mkdirSync(MIRRORED_BRAIN_PATH, { recursive: true });
+    }
+    const mirrorPath = getMirrorPath(relativePath, provenance);
+    await writeFile(mirrorPath, cleanedContent);
 }
 
 /**

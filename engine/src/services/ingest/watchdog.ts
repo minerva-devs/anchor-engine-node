@@ -419,11 +419,11 @@ async function processFile(filePath: string, event: string) {
 
         console.log(`[Watchdog] Sync Complete: ${relativePath}`);
 
-        // Trigger Mirror
+        // Trigger Mirror: write cleaned content directly (O(1) vs full rebuild)
         try {
-            const { createMirror } = await import('../mirror/mirror.js');
-            await createMirror();
-        } catch (e: any) { console.error(`[Watchdog] Mirror trigger failed:`, e.message); }
+            const { writeMirroredFile } = await import('../mirror/mirror.js');
+            await writeMirroredFile(relativePath, compound.compound_body, provenance);
+        } catch (e: any) { console.error(`[Watchdog] Mirror write failed:`, e.message); }
 
         // Trigger post-ingestion synonym generation (debounced)
         triggerPostIngestionSynonyms();
