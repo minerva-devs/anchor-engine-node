@@ -1,6 +1,6 @@
 # Standard 123: Search Result Tag Sanitization
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Date:** March 3, 2026
 **Status:** Active
 **Supersedes:** None
@@ -9,7 +9,12 @@
 
 ## Summary
 
-Standard 123 defines the **Search Result Tag Sanitization** protocol for stripping inline hashtag tokens from molecule/atom content before that content is delivered to LLM consumers or the UI. Tags are valuable for graph traversal and ranking — they should not appear verbatim inside the text window where they add noise and confuse language models.
+Standard 123 defines the **Search Result Tag Sanitization** protocol with two complementary functions:
+
+1. **stripInlineTags()** — Removes inline hashtag tokens (`#Word`, `##19864Residential`) from content
+2. **stripTagFooters()** — Removes trailing structural metadata footers from truncated snippets (e.g., YAML serialization artifacts)
+
+Both operate at different points in the pipeline to ensure clean, readable content delivery to LLM consumers and the UI. Tags are valuable for graph traversal and ranking — they should not appear verbatim inside the text window where they add noise and confuse language models.
 
 ---
 
@@ -39,9 +44,11 @@ This is **distinct** from Standard 120 (ingestion-time contamination filtering).
 
 ## Solution
 
-Strip inline tag tokens from `content` at the point where `SearchResult` objects are converted to `MemoryNode` objects — after retrieval, before delivery.
+Strip inline tag tokens and structural metadata footers from content at the appropriate pipeline stages:
+1. **stripInlineTags()** — Applied during `toMemoryNode()` conversion (graph-context-serializer.ts)
+2. **stripTagFooters()** — Applied during snippet inflation from disk (search-utils.ts)
 
-### Implementation
+### Implementation: stripInlineTags()
 
 **File:** `engine/src/services/search/graph-context-serializer.ts`
 
@@ -68,7 +75,7 @@ function toMemoryNode(result: SearchResult, physics: PhysicsMetadata): MemoryNod
 }
 ```
 
-### Regex Patterns
+### Regex Patterns: stripInlineTags()
 
 | Pattern | Matches | Example |
 |---------|---------|---------|
@@ -76,15 +83,62 @@ function toMemoryNode(result: SearchResult, physics: PhysicsMetadata): MemoryNod
 | `/##?[A-Za-z0-9_]+/g` | Plain/double-hash tags | `#algorithm`, `##19864Residential` |
 | `/(\s*-\s*)+/g` | Orphaned separators | ` - ` chains left after stripping |
 
+### Implementation: stripTagFooters()
+
+**File:** `engine/src/services/search/search-utils.ts`
+
+**Location:** `stripTagFooters()` function, called in `inflateSnippetFromDisk()` after `snapToSentenceBoundaries()`.
+
+**Problem Addressed:** When search results are truncated due to `MAX_SNIPPET_BYTES` (100KB), YAML structural metadata footers remain. These appear at the end of truncated session records:
+
+```
+...previous content...
+##19864Residential
+##1Okay
+##3am
+##ABQLo
+```
+
+These are serialization artifacts from YAML tag/category systems, not content.
+
+**Solution:** Remove trailing lines matching the pattern `/^(##[A-Za-z0-9_]*\s*)+$/`
+
+```typescript
+function stripTagFooters(content: string): string {
+  if (!content) return content;
+  // Remove trailing lines matching YAML tag footer pattern: ##Token ##Token ##Token
+  const lines = content.split('\n');
+  while (lines.length > 0) {
+    const lastLine = lines[lines.length - 1].trim();
+    if (/^(##[A-Za-z0-9_]*\s*)*$/.test(lastLine) && lastLine.length > 0) {
+      lines.pop();
+    } else {
+      break;
+    }
+  }
+  return lines.join('\n');
+}
+```
+
+**Why after snapToSentenceBoundaries():** This order preserves sentence coherence while still cleaning structural noise before final delivery.
+
 ---
 
 ## What Is and Is NOT Stripped
 
-### Stripped ✅
+### Stripped by stripInlineTags() ✅
 ```
 "#TypeScript" - "#algorithm" - "#anchor"   →  (removed)
 #Rob                                        →  (removed)
-##19864Residential                          →  (removed)
+Normal text with #tag embedded              →  Normal text with  embedded
+```
+
+### Stripped by stripTagFooters() ✅
+```
+...content...
+##19864Residential
+##1Okay
+##3am                                       →  (footer lines removed)
 ```
 
 ### NOT Stripped ✅
@@ -106,19 +160,31 @@ Tag data is **not lost** — the `result.tags` field is passed through unchanged
 ```
 SearchResult (from DB / ContextInflator)
          ↓
+[inflateSnippetFromDisk()]
+         ↓
+[snapToSentenceBoundaries()]
+         ↓
+[stripTagFooters()] — removes trailing ##Token lines
+         ↓
 [toMemoryNode()] — graph-context-serializer.ts
          ↓
-[stripInlineTags()] — removes #Tag tokens from content
+[stripInlineTags()] — removes inline #Tag tokens from content
          ↓
 MemoryNode.content = clean text
          ↓
 [serializeForLLM()] / UI response
 ```
 
-This position is deliberate:
-- **Late binding:** Tags in content don't affect scoring or retrieval — they're already used upstream
-- **Single choke point:** All results (anchors, walker results) pass through `toMemoryNode()`
-- **Non-destructive:** DB content unchanged; stripping is view-only
+### Functional Separation
+
+| Function | Location | Operates On | Removes |
+|----------|----------|-------------|---------|
+| **stripTagFooters()** | search-utils.ts (inflation pipeline) | Raw snippet content | Trailing ##Token lines (structural metadata) |
+| **stripInlineTags()** | graph-context-serializer.ts (serialization) | Content field of SearchResult | Inline #Tag and ##Tag tokens scattered through text |
+
+This two-layer approach handles both artifact sources:
+- **stripTagFooters()** cleans structural noise from truncated YAML records
+- **stripInlineTags()** cleans semantic noise from ingested tag lists
 
 ---
 
@@ -171,6 +237,7 @@ test('stripInlineTags handles double-hash garbage tokens', () => {
 
 ## Implementation Files
 
+- `engine/src/services/search/search-utils.ts` — `stripTagFooters()` function + integration in `inflateSnippetFromDisk()`
 - `engine/src/services/search/graph-context-serializer.ts` — `stripInlineTags()` + `toMemoryNode()` call
 
 ---
