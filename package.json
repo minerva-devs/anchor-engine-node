@@ -9,9 +9,9 @@
     "dev": "pnpm --filter anchor-engine dev",
     "build": "pnpm --filter anchor-engine build",
     
-    "test": "jest --config jest.config.cjs",
-    "test:watch": "jest --watch --config jest.config.cjs",
-    "test:coverage": "jest --coverage --config jest.config.cjs",
+    "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.cjs",
+    "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch --config jest.config.cjs",
+    "test:coverage": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --config jest.config.cjs",
     
     "test:standalone": "ts-node --esm tests/unit/test_atomizer_logic.ts",
     "test:all": "pnpm test && pnpm test:standalone",

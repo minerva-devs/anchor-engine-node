@@ -21,7 +21,8 @@ module.exports = {
     '/dist/',
     '/context_data/',
     '\\.d\\.ts$', // Ignore declaration files
-    'pglite-database.test.ts' // Requires --experimental-vm-modules
+    'pglite-database.test.ts', // Requires Vitest: PGlite WASM/ESM module-linking conflict with Jest
+    'physics_walker.test.ts'   // Requires Vitest: PGlite WASM/ESM module-linking conflict with Jest
   ],
 
   // Module path ignore patterns (resolve Haste collisions)
