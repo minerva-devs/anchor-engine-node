@@ -390,8 +390,9 @@ export async function formatResults(
     };
 
     if (enableCoalescing) {
-      // Cap snippets to inflate based on budget: minimum 50, max one per 300 chars of budget
-      const maxSnippetsForBudget = Math.max(50, Math.ceil(maxChars / 300));
+      // Cap snippets to inflate based on budget: minimum 50, max one per 500 chars of budget
+      // (reduced from 300 to prevent OOM when processing large result sets)
+      const maxSnippetsForBudget = Math.max(50, Math.ceil(maxChars / 500));
       snippets = await coalesceByProximity(results, proximityThreshold, maxSnippetsForBudget);
       coalescingStats = {
         original_atoms: results.length,
@@ -473,6 +474,11 @@ export async function formatResults(
       console.log(`[Dedup] Removed ${dedupRemovedCount} semantically overlapping snippets (${enrichedSnippets.length} → ${deduplicatedSnippets.length})`);
     }
 
+    // Force garbage collection after dedup to free memory from enrichedSnippets
+    if (global.gc) {
+      global.gc();
+    }
+
     // Step 4: Build XML-wrapped context with metadata headers
     const xmlContext = deduplicatedSnippets.map((s, idx) => {
       const timestamp = new Date(s.timestamp).toISOString();
@@ -491,6 +497,11 @@ export async function formatResults(
 ${s.content}
 </atom>`;
     }).join('\n\n');
+
+    // Force garbage collection after building XML context to free dedup arrays
+    if (global.gc) {
+      global.gc();
+    }
 
     // Step 5: Calculate budget allocation
     const totalContentChars = deduplicatedSnippets.reduce((sum, s) => sum + s.content.length, 0);
