@@ -1,12 +1,14 @@
 # Standard 113: Automatic Max-Recall Trigger
 
-**Status:** ✅ Production Ready | **Version:** 1.0.0 | **Date:** February 22, 2026
+**Status:** ✅ Production Ready | **Version:** 1.1.0 | **Date:** March 3, 2026
 
 ---
 
 ## Overview
 
 Standard 113 defines the **automatic max-recall trigger** mechanism. When a user requests a large token budget (>16k tokens / 65k chars), the search automatically switches to max-recall mode for comprehensive retrieval.
+
+**Updated (v1.1):** Added search serialization and memory pressure downgrade to prevent OOM crashes during concurrent max-recall searches.
 
 ---
 
