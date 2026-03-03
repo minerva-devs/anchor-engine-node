@@ -43,6 +43,10 @@ backups/*.db
 Thumbs.db
 *.bak
 
+# Test artifacts
+test-github-ingest-*/
+test-physics-db-*/
+
 # Temporary/User Specific
 codebase
 codebase/*
