@@ -21,7 +21,7 @@
         "test:unit": "ts-node ../tests/unit/test_context_quality_improvements.ts",
         "test:vector": "node --loader ts-node/esm tests/unit/test_vector_service.ts",
         "benchmark": "node tests/benchmark.js",
-        "build": "tsc",
+        "build": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc",
         "build:npm-native": "echo \"Native modules now handled via npm packages\"",
         "build:standalone": "tsc && pkg .",
         "build:universal": "npm run build",

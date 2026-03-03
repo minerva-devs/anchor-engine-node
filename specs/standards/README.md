@@ -1,12 +1,20 @@
 # Architecture Standards Index
 
-**Last Updated:** March 1, 2026 | **Total Standards:** 83
+**Last Updated:** March 3, 2026 | **Total Standards:** 86
 
 ---
 
 ## Active Standards (Current Implementation)
 
 These standards define the current production architecture:
+
+### v4.4.2 Standards (Search Result Quality)
+
+| # | Standard | Description | Status |
+|---|----------|-------------|--------|
+| **123** | [Search Result Tag Sanitization](STANDARD_123_SEARCH_RESULT_TAG_SANITIZATION.md) | Strip inline `#Tag` tokens from content before LLM delivery | ✅ v1.0 |
+| **124** | [Virtual Anchor Resolution](STANDARD_124_VIRTUAL_ANCHOR_RESOLUTION.md) | Map `virtual_*` ContextInflator IDs to real `mol_*` DB IDs for Physics Walker | ✅ v1.0 |
+| **125** | [Semantic Deduplication](STANDARD_125_SEMANTIC_DEDUPLICATION.md) | Per-source snippet cap + word-overlap dedup to eliminate redundant results | ✅ v1.0 |
 
 ### v4.3.2 Standards (Output Quality & Stability)
 
@@ -152,7 +160,7 @@ Standards are numbered sequentially. Gaps indicate deprecated or merged standard
 - 001-050: Foundation (July-September 2025)
 - 051-080: Stabilization (October-November 2025)
 - 081-100: Acceleration (December 2025-January 2026)
-- 101-115: Production (February 2026-present)
+- 101-125: Production (February 2026-present)
 
 ---
 

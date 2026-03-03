@@ -67,8 +67,31 @@ export function detectIntent(query: string): QueryIntent {
 }
 
 // =============================================================================
-// SERIALIZER — SearchResult → MemoryNode
+// CONTENT SANITIZATION — Strip inline tags from molecule content
 // =============================================================================
+
+/**
+ * Remove hashtag tokens from content so they don't pollute LLM context.
+ * Tags are stored separately in result.tags and used for graph traversal;
+ * they add noise when embedded literally in the text window.
+ *
+ * Strips:
+ *   - Quoted tag lists:  "\"#Tag1\" - \"#Tag2\""  or  '"#Tag1" - "#Tag2"'
+ *   - Plain hashtags:    #Tag, ##Tag
+ *   - Separator runs left behind: " - " chains at start/end
+ */
+function stripInlineTags(content: string): string {
+  if (!content) return content;
+  // Remove escaped-quote wrapped tags: \"#Word\"
+  let s = content.replace(/\\?"#[^"\\]+\\?"/g, '');
+  // Remove plain hashtags (one or two #) followed by word chars
+  s = s.replace(/##?[A-Za-z0-9_]+/g, '');
+  // Clean up orphaned separator sequences and excess whitespace
+  s = s.replace(/(\s*-\s*)+/g, ' ').trim();
+  return s;
+}
+
+
 
 /**
  * Convert a SearchResult + PhysicsMetadata into a MemoryNode.
@@ -76,7 +99,7 @@ export function detectIntent(query: string): QueryIntent {
 function toMemoryNode(result: SearchResult, physics: PhysicsMetadata): MemoryNode {
   return {
     id: result.id,
-    content: result.content || '',
+    content: stripInlineTags(result.content || ''),
     source: result.source || '',
     type: result.type || 'thought',
     tags: result.tags || [],

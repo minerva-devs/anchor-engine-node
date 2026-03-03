@@ -17,6 +17,18 @@ import { getMirrorPath, MIRRORED_BRAIN_PATH } from '../mirror/mirror.js';
 import { NOTEBOOK_DIR } from '../../config/paths.js';
 
 /**
+ * Remove inline hashtag tokens from content (Standard 123).
+ * Tags are stored separately in result.tags; they add noise when embedded in text.
+ */
+function stripInlineTags(content: string): string {
+  if (!content) return content;
+  let s = content.replace(/\\?"#[^"\\]+\\?"/g, '');
+  s = s.replace(/##?[A-Za-z0-9_]+/g, '');
+  s = s.replace(/(\s*-\s*)+/g, ' ').trim();
+  return s;
+}
+
+/**
  * Coalesced Snippet - Merged atoms from same file within proximity threshold
  */
 export interface CoalescedSnippet {
@@ -131,7 +143,8 @@ export function getItems(input: string[] | undefined): string[] {
  */
 export async function coalesceByProximity(
   results: SearchResult[],
-  proximityThreshold: number = 500
+  proximityThreshold: number = 500,
+  maxSnippets: number = 500
 ): Promise<CoalescedSnippet[]> {
   // Group by compound_id (source file)
   const byCompound = new Map<string, SearchResult[]>();
@@ -205,28 +218,46 @@ export async function coalesceByProximity(
     }
     if (current) merged.push(current);
 
-    // Re-inflate content from disk with expanded windows
-    for (const snippet of merged) {
-      try {
-        const inflatedContent = await inflateSnippetFromDisk(snippet);
-        if (inflatedContent) {
-          snippet.content = inflatedContent;
-        }
-      } catch (e) {
-        console.warn(`[Coalesce] Failed to inflate snippet from ${snippet.source}`, e);
-      }
-    }
-
-    coalesced.push(...merged);
+    // Per-source cap: prevent a single file from dominating the results.
+    // Keep the top-scoring snippets per source before the global maxSnippets cap.
+    // maxPerSource scales with budget: 3 for small budgets, up to 8 for large.
+    const maxPerSource = Math.max(3, Math.min(8, Math.ceil(maxSnippets / 15)));
+    const perSourceCapped = merged
+      .sort((a, b) => b.relevanceScore - a.relevanceScore)
+      .slice(0, maxPerSource);
+    coalesced.push(...perSourceCapped);
   }
 
-  console.log(`[Coalesce] Merged ${results.length} atoms -> ${coalesced.length} snippets (${mergedCount} merges)`);
-  return coalesced;
+  // Sort all snippets by relevance score DESC, keep only top-maxSnippets before
+  // inflating from disk. This prevents inflating 200+ snippets when only 20-30
+  // will fit in the token budget.
+  coalesced.sort((a, b) => b.relevanceScore - a.relevanceScore);
+  const cappedCoalesced = coalesced.slice(0, maxSnippets);
+
+  // Re-inflate content from disk only for the snippets we're keeping
+  for (const snippet of cappedCoalesced) {
+    try {
+      const inflatedContent = await inflateSnippetFromDisk(snippet);
+      if (inflatedContent) {
+        snippet.content = inflatedContent;
+      }
+    } catch (e) {
+      console.warn(`[Coalesce] Failed to inflate snippet from ${snippet.source}`, e);
+    }
+  }
+
+  console.log(`[Coalesce] Merged ${results.length} atoms -> ${coalesced.length} snippets (${mergedCount} merges), inflating top ${cappedCoalesced.length}`);
+  return cappedCoalesced;
 }
 
 /**
  * Inflate a coalesced snippet from disk
  */
+// Hard limit per snippet to prevent OOM when coalesced byte ranges span large files.
+// With 800px proximity threshold in max-recall, merged windows can be multi-MB.
+// 100KB is ample for any single context snippet (≈25k tokens).
+const MAX_SNIPPET_BYTES = 100_000;
+
 async function inflateSnippetFromDisk(snippet: CoalescedSnippet): Promise<string | null> {
   try {
     // Resolve file path - try mirrored first
@@ -246,15 +277,21 @@ async function inflateSnippetFromDisk(snippet: CoalescedSnippet): Promise<string
 
     // Clamp to file bounds
     const start = Math.max(0, snippet.startByte);
-    const end = Math.min(fileSize, snippet.endByte);
+    const rawEnd = Math.min(fileSize, snippet.endByte);
 
-    if (start >= end) return null;
+    if (start >= rawEnd) return null;
+
+    // Cap read size: if the merged window is huge, read from the start of the window
+    // up to MAX_SNIPPET_BYTES only.  Content is truncated, not silently dropped.
+    const readLength = Math.min(rawEnd - start, MAX_SNIPPET_BYTES);
+    const end = start + readLength;
+    const truncated = end < rawEnd;
 
     // Read content
-    const buffer = Buffer.alloc(end - start);
+    const buffer = Buffer.alloc(readLength);
     const fd = fs.openSync(absolutePath, 'r');
     try {
-      fs.readSync(fd, buffer, 0, end - start, start);
+      fs.readSync(fd, buffer, 0, readLength, start);
     } finally {
       fs.closeSync(fd);
     }
@@ -266,7 +303,7 @@ async function inflateSnippetFromDisk(snippet: CoalescedSnippet): Promise<string
 
     // Add ellipsis to indicate truncation
     if (start > 0) content = '...' + content;
-    if (end < fileSize) content = content + '...';
+    if (truncated || end < fileSize) content = content + '...';
 
     return content.trim();
   } catch (e) {
@@ -328,7 +365,9 @@ export async function formatResults(
     };
 
     if (enableCoalescing) {
-      snippets = await coalesceByProximity(results, proximityThreshold);
+      // Cap snippets to inflate based on budget: minimum 50, max one per 300 chars of budget
+      const maxSnippetsForBudget = Math.max(50, Math.ceil(maxChars / 300));
+      snippets = await coalesceByProximity(results, proximityThreshold, maxSnippetsForBudget);
       coalescingStats = {
         original_atoms: results.length,
         coalesced_snippets: snippets.length,
@@ -366,14 +405,51 @@ export async function formatResults(
 
       return {
         ...s,
+        content: stripInlineTags(s.content),   // Standard 123: strip inline #Tag tokens
         temporal_weight: temporalWeight,
         decay_factor: decayFactor,
         weighted_score: relevanceScore
       };
     });
 
+    // Step 3.5: Semantic word-overlap deduplication.
+    // Drop snippets whose significant words are already well-covered by a higher-scored snippet.
+    // "Significant words" = >4 chars, not stopwords. Overlap threshold = 60%.
+    const OVERLAP_THRESHOLD = 0.60;
+    const STOPWORDS = new Set(['this','that','with','from','they','were','have','been','their','which','when','will','also','what','your','more','some','than','then','into','there','about','would','could','should','other','after','these','those','just','over','such','even','like','much','well','also','here','very','only','its']);
+    const sigWords = (text: string): Set<string> => {
+      const words = text.toLowerCase().match(/\b[a-z]{5,}\b/g) || [];
+      return new Set(words.filter(w => !STOPWORDS.has(w)));
+    };
+    const jaccardOverlap = (a: Set<string>, b: Set<string>): number => {
+      if (a.size === 0 || b.size === 0) return 0;
+      let intersection = 0;
+      for (const w of a) if (b.has(w)) intersection++;
+      return intersection / Math.min(a.size, b.size);
+    };
+
+    const deduped: typeof enrichedSnippets = [];
+    const acceptedWordSets: Set<string>[] = [];
+    // Sort by weighted_score DESC for dedup pass (best snippets win), then re-sort chronologically below
+    const scoreOrdered = [...enrichedSnippets].sort((a, b) => parseFloat(b.weighted_score) - parseFloat(a.weighted_score));
+    for (const s of scoreOrdered) {
+      const words = sigWords(s.content);
+      const isDuplicate = acceptedWordSets.some(accepted => jaccardOverlap(words, accepted) >= OVERLAP_THRESHOLD);
+      if (!isDuplicate) {
+        deduped.push(s);
+        acceptedWordSets.push(words);
+      }
+    }
+    // Restore chronological order for causal narrative
+    deduped.sort((a, b) => a.timestamp - b.timestamp);
+    const deduplicatedSnippets = deduped;
+    const dedupRemovedCount = enrichedSnippets.length - deduplicatedSnippets.length;
+    if (dedupRemovedCount > 0) {
+      console.log(`[Dedup] Removed ${dedupRemovedCount} semantically overlapping snippets (${enrichedSnippets.length} → ${deduplicatedSnippets.length})`);
+    }
+
     // Step 4: Build XML-wrapped context with metadata headers
-    const xmlContext = enrichedSnippets.map((s, idx) => {
+    const xmlContext = deduplicatedSnippets.map((s, idx) => {
       const timestamp = new Date(s.timestamp).toISOString();
       const persona = s.tags[0] || s.provenance || 'unknown';
       const atomCount = s.sourceAtoms.length;
@@ -392,12 +468,12 @@ ${s.content}
     }).join('\n\n');
 
     // Step 5: Calculate budget allocation
-    const totalContentChars = enrichedSnippets.reduce((sum, s) => sum + s.content.length, 0);
+    const totalContentChars = deduplicatedSnippets.reduce((sum, s) => sum + s.content.length, 0);
     const overheadChars = xmlContext.length - totalContentChars;
     const budgetUtilization = maxChars > 0 ? ((totalContentChars + overheadChars) / maxChars * 100).toFixed(1) : 'N/A';
 
     // Step 6: Convert snippets back to SearchResult[] for API compatibility
-    const enrichedResults: SearchResult[] = enrichedSnippets.map(s => ({
+    const enrichedResults: SearchResult[] = deduplicatedSnippets.map(s => ({
       id: s.sourceAtoms.map(a => a.id).join('+'),
       content: s.content,
       source: s.source,
@@ -419,12 +495,13 @@ ${s.content}
       context: xmlContext || 'No results found.',
       results: enrichedResults,
       toAgentString: () => {
-        return enrichedSnippets.map(s =>
+        return deduplicatedSnippets.map(s =>
           `[${s.provenance}] ${s.source} (t=${s.temporal_weight.toFixed(3)}, atoms=${s.sourceAtoms.length}): ${s.content.substring(0, 200)}...`
         ).join('\n');
       },
       metadata: {
         coalescing: coalescingStats,
+        deduplication: { removed: dedupRemovedCount, remaining: deduplicatedSnippets.length },
         budget_allocation: {
           total_chars: totalContentChars + overheadChars,
           content_chars: totalContentChars,
