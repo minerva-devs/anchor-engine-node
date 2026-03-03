@@ -1,6 +1,6 @@
 # Standard 116: Phoenix Protocol - Transactional Backup & Restore
 
-**Status:** ✅ IMPLEMENTED | **Date:** February 22, 2026 | **Priority:** CRITICAL
+**Status:** ✅ IMPLEMENTED | **Date:** February 22, 2026 | **Last Updated:** 2026-03 | **Priority:** CRITICAL
 
 ---
 
@@ -12,13 +12,17 @@ Prior to Phoenix Protocol, backup/restore operations were incomplete:
 - Mirror Protocol ran on startup before files existed
 - No timing or performance metrics for restore operations
 
+**v2 correction (2026-03):** The original v1 backup stored raw DB atom records (`"memory"` section). `mirrored_brain/` stored verbatim raw copies of inbox files. Byte offsets in atoms pointed into cleaned DB content but the mirror held uncleaned content — they did not align. Backup restore reconstructed files by concatenating atom content fragments (imperfect).
+
 ## Solution
 
 Phoenix Protocol implements **transactional backup/restore** that:
-1. Restores all database tables (atoms, sources, engrams)
-2. Rebuilds filesystem structure from database content
-3. Writes to both `inbox/` AND `mirrored_brain/` simultaneously
+1. Restores all database tables (sources, engrams)
+2. Rebuilds filesystem structure from `mirrored_brain/` (clean files)
+3. Writes cleaned content to both `mirrored_brain/` AND `inbox/` / `external-inbox/`
 4. Provides detailed timing and performance metrics
+
+**MirroredBrain is now the backup source of truth.** `mirrored_brain/` holds cleaned `compound_body` content (sanitized: noise, timestamps, PII, LLM markers stripped). Backups are a file archive of `mirrored_brain/` — smaller than inbox and perfectly aligned with DB byte offsets.
 
 ---
 
@@ -44,20 +48,28 @@ Phoenix Protocol implements **transactional backup/restore** that:
 └─────────────────────────────────────────────────────────┘
 ```
 
-### Restore Flow
+### Restore Flow (v2 — files format)
 
 ```
 1. User initiates restore via UI
-2. API validates backup file
+2. API validates backup file (accepts "files" key OR legacy "memory" key)
 3. Stream-parse backup JSON (1000-item batches)
-4. Insert atoms, sources, engrams into PGlite
+4. Insert sources, engrams into PGlite
+5. Write "files" entries to mirrored_brain/
+6. Copy @inbox/ → inbox/  and  @external-inbox/ → external-inbox/
+7. Report completion with metrics
+```
+
+### Restore Flow (v1 legacy — "memory" format, backward compat)
+
+```
+1-4. Same as above
 5. Query sources table for file paths
 6. For each source:
-   a. Query atoms for content
-   b. Aggregate atom content into file
-   c. Write to inbox/ or external-inbox/
-   d. Write to mirrored_brain/@inbox/ or @external-inbox/
-7. Report completion with metrics
+   a. Aggregate atom content into file
+   b. Write to inbox/ or external-inbox/
+   c. Write to mirrored_brain/@inbox/ or @external-inbox/
+7. Report completion
 ```
 
 ---
@@ -80,9 +92,10 @@ Phoenix Protocol implements **transactional backup/restore** that:
 
 | Version | Batch Size | Speed | Notes |
 |---------|------------|-------|-------|
-| Initial | 100 | ~50 atoms/s | Too slow, excessive logging |
+| v1 | 100 | ~50 atoms/s | Too slow, excessive logging |
 | v2 | 1000 | ~340 atoms/s | 10x faster, reduced logging |
-| v3 | 1000 + filesystem | ~340 atoms/s | Added filesystem rebuild |
+| v3 | 1000 + filesystem | ~340 atoms/s | Added filesystem rebuild (atom aggregation) |
+| v4 | files from mirrored_brain | N/A | Clean files; no atom aggregation needed |
 
 ---
 
@@ -105,7 +118,36 @@ function toPgArray(arr: any[]): string {
 }
 ```
 
-### Filesystem Rebuild Strategy
+### Backup Format v2 (current)
+
+```json
+{
+  "source": "anchor-engine",
+  "timestamp": "...",
+  "engrams": [...],
+  "files": [
+    { "path": "@inbox/myfile.txt", "content": "<cleaned compound_body>" },
+    { "path": "@external-inbox/article.txt", "content": "..." }
+  ]
+}
+```
+
+`files` entries are read directly from `mirrored_brain/`. Paths use `@inbox/` and `@external-inbox/` prefixes to preserve source classification.
+
+### Backup Format v1 (legacy, read-only)
+
+```json
+{
+  "source": "anchor-engine",
+  "timestamp": "...",
+  "memory": [...],
+  "engrams": [...]
+}
+```
+
+v1 backups stored raw DB atom records. Still accepted by `restoreBackup()` and `validateBackup()` — routed to `rebuildFilesystemFromSources()` legacy path.
+
+### Filesystem Rebuild Strategy (v1 legacy)
 
 ```typescript
 async function rebuildFilesystemFromSources(): Promise<void> {

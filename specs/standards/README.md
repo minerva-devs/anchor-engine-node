@@ -27,7 +27,7 @@ These standards define the current production architecture:
 |---|----------|-------------|--------|
 | **086** | [Dual-Strategy Search](STANDARD_086_DUAL_STRATEGY_SEARCH.md) | Standard + Max-Recall with XML metadata | ✅ v2.0 |
 | **113** | [Automatic Max-Recall](STANDARD_113_AUTOMATIC_MAX_RECALL.md) | Auto-trigger at >16k tokens | ✅ v1.0 |
-| **116** | [Phoenix Protocol](STANDARD_116_PHOENIX_PROTOCOL.md) | Backup/Restore with filesystem rebuild | ✅ v1.0 |
+| **116** | [Phoenix Protocol](STANDARD_116_PHOENIX_PROTOCOL.md) | Backup/Restore with mirrored_brain (v2 files format) | ✅ v2.0 |
 | **118** | [Native Core Stabilization](118-native-core-stabilization.md) | C++ N-API Migration, N+1 Query Fixes, Thread Safety | ✅ v1.0 |
 
 ### Core Standards (v4.x)
