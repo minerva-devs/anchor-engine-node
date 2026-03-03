@@ -29,6 +29,28 @@ function stripInlineTags(content: string): string {
 }
 
 /**
+ * Remove tag footers from truncated snippets (Standard 123 extension).
+ * When YAML session records are truncated mid-record, structural metadata
+ * footers appear (e.g., ##19864Residen ##1Okay ##3am ##ABQLo).
+ * These are serialization artifacts, not content.
+ */
+function stripTagFooters(content: string): string {
+  if (!content) return content;
+  const lines = content.split('\n');
+  // Remove trailing lines that are predominantly tag tokens (##*)
+  while (lines.length > 0) {
+    const lastLine = lines[lines.length - 1].trim();
+    // Pattern: one or more "##Token" separated by spaces (structural footer)
+    if (/^(##[A-Za-z0-9_]*\s*)+$/.test(lastLine)) {
+      lines.pop();
+    } else {
+      break;
+    }
+  }
+  return lines.join('\n').trim();
+}
+
+/**
  * Coalesced Snippet - Merged atoms from same file within proximity threshold
  */
 export interface CoalescedSnippet {
@@ -300,6 +322,9 @@ async function inflateSnippetFromDisk(snippet: CoalescedSnippet): Promise<string
 
     // Snap to sentence boundaries for coherence
     content = snapToSentenceBoundaries(content, 0, content.length).text;
+
+    // Strip tag footers (##19864Residen, ##1Okay, etc.) that appear when truncating YAML records
+    content = stripTagFooters(content);
 
     // Add ellipsis to indicate truncation
     if (start > 0) content = '...' + content;
