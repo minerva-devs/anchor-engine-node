@@ -62,3 +62,5 @@ QWEN.md
 
 # Android binary output
 engine/dist-android/
+
+engine/dist-win/
