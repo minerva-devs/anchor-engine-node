@@ -59,3 +59,6 @@ context/
 
 # Generated documentation
 QWEN.md
+
+# Android binary output
+engine/dist-android/
