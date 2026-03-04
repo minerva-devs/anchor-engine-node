@@ -24,6 +24,7 @@
         "build": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc",
         "build:npm-native": "echo \"Native modules now handled via npm packages\"",
         "build:standalone": "tsc && pkg .",
+        "build:android": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc && pkg dist/index.js --target node18-linux-arm64 --output dist-android/anchor-engine --compress GZip",
         "build:universal": "npm run build",
         "lint": "eslint src/ --ext .ts,.js",
         "chat": "ts-node tools/chat.ts",
@@ -33,22 +34,25 @@
         "audit-tags": "node --loader ts-node/esm src/commands/audit-tags.ts"
     },
     "pkg": {
+        "scripts": [
+            "dist/**/*.js"
+        ],
         "assets": [
-            "src/**/*",
-            "context/**/*",
-            "codebase/**/*",
-            "specs/**/*",
-            "shared/**/*",
+            "dist/**/*",
+            "context_data/**/*",
             "user_settings.json",
-            "!*.log",
-            "!logs/",
-            "!node_modules/@types/"
+            "node_modules/@electric-sql/pglite/**/*",
+            "node_modules/@rbalchii/anchor-atomizer-wasm/**/*",
+            "node_modules/@rbalchii/anchor-fingerprint-wasm/**/*",
+            "node_modules/@rbalchii/anchor-keyextract-wasm/**/*",
+            "node_modules/@rbalchii/anchor-tagwalker-wasm/**/*",
+            "node_modules/wink-eng-lite-web-model/**/*",
+            "node_modules/wink-nlp/**/*"
         ],
         "targets": [
-            "node18-win-x64",
-            "node18-win-arm64"
+            "node18-linux-arm64"
         ],
-        "outputPath": "dist",
+        "outputPath": "dist-android",
         "compress": "GZip"
     },
     "dependencies": {
@@ -86,7 +90,7 @@
         "@types/node": "^25.0.7",
         "@types/tar": "^6.1.13",
         "eslint": "^8.56.0",
-        "pkg": "^5.8.1",
+        "@yao-pkg/pkg": "^5.12.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.9.3"
     }
