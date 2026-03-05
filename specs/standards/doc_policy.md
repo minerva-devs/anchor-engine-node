@@ -36,10 +36,10 @@ anchor-engine-node/
 │   ├── plan.md              # Project timeline
 │   └── standards/           # Architecture standards
 │       ├── README.md        # Standards index
-│       ├── STANDARD_086_*.md  # Dual-Strategy Search
-│       ├── STANDARD_113_*.md  # Automatic Max-Recall
-│       ├── STANDARD_116_*.md  # Phoenix Protocol
-│       ├── STANDARD_117_*.md  # arXiv Submission
+│       ├── 086-dual_strategy_search.md  # Dual-Strategy Search
+│       ├── 113-automatic_max_recall.md  # Automatic Max-Recall
+│       ├── 116-phoenix-protocol.md  # Phoenix Protocol
+│       ├── 117-arxiv_submission.md  # arXiv Submission
 │       ├── RESEARCH_LANDSCAPE.md  # Related work analysis
 │       ├── code_style.md    # Coding standards
 │       ├── doc_policy.md    # This file
@@ -134,7 +134,7 @@ anchor-engine-node/
 
 ---
 
-### 6. arXiv Submission (specs/standards/STANDARD_117_ARXIV_SUBMISSION.md)
+### 6. arXiv Submission (specs/standards/117-arxiv_submission.md)
 
 **Purpose:** Define arXiv submission workflow
 
@@ -257,7 +257,7 @@ pub fn example() -> Result<()> {
 ```markdown
 See [STAR Algorithm](../docs/whitepaper.md#sec:math)
 Refer to [Task 1.4](../specs/tasks.md#task-14)
-As defined in [STANDARD_086](STANDARD_086_DUAL_STRATEGY_SEARCH.md)
+As defined in [Standard 086](086-dual_strategy_search.md)
 ```
 
 ---
@@ -277,7 +277,7 @@ As defined in [STANDARD_086](STANDARD_086_DUAL_STRATEGY_SEARCH.md)
 
 **After arXiv submission:**
 1. Create `RESEARCH_LANDSCAPE.md` from Related Work section
-2. Create `STANDARD_117_ARXIV_SUBMISSION.md` from submission experience
+2. Create `117-arxiv_submission.md` from submission experience
 3. Update `CHANGELOG.md` with arXiv ID
 
 ### Step 3: Maintain Consistency

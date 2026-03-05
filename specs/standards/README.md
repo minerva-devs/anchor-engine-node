@@ -12,16 +12,16 @@ These standards define the current production architecture:
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
-| **123** | [Search Result Tag Sanitization](STANDARD_123_SEARCH_RESULT_TAG_SANITIZATION.md) | Strip inline `#Tag` tokens from content before LLM delivery | ✅ v1.0 |
-| **124** | [Virtual Anchor Resolution](STANDARD_124_VIRTUAL_ANCHOR_RESOLUTION.md) | Map `virtual_*` ContextInflator IDs to real `mol_*` DB IDs for Physics Walker | ✅ v1.0 |
-| **125** | [Semantic Deduplication](STANDARD_125_SEMANTIC_DEDUPLICATION.md) | Per-source snippet cap + word-overlap dedup to eliminate redundant results | ✅ v1.0 |
+| **123** | [Search Result Tag Sanitization](123-search_result_tag_sanitization.md) | Strip inline `#Tag` tokens from content before LLM delivery | ✅ v1.0 |
+| **124** | [Virtual Anchor Resolution](124-virtual_anchor_resolution.md) | Map `virtual_*` ContextInflator IDs to real `mol_*` DB IDs for Physics Walker | ✅ v1.0 |
+| **125** | [Semantic Deduplication](125-semantic_deduplication.md) | Per-source snippet cap + word-overlap dedup to eliminate redundant results | ✅ v1.0 |
 
 ### v4.3.2 Standards (Output Quality & Stability)
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
-| **121** | [Tag Limiting](STANDARD_121_TAG_LIMITING.md) | 10-tag limit per molecule for output quality | ✅ v1.0 |
-| **122** | [Physics Walker Safety](STANDARD_122_PHYSICS_WALKER_SAFETY.md) | Temporal decay underflow prevention | ✅ v1.0 |
+| **121** | [Tag Limiting](121-tag_limiting.md) | 10-tag limit per molecule for output quality | ✅ v1.0 |
+| **122** | [Physics Walker Safety](122-physics_walker_safety.md) | Temporal decay underflow prevention | ✅ v1.0 |
 
 ### v4.3.0 Standards (PGlite-First Architecture)
 
@@ -33,9 +33,9 @@ These standards define the current production architecture:
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
-| **086** | [Dual-Strategy Search](STANDARD_086_DUAL_STRATEGY_SEARCH.md) | Standard + Max-Recall with XML metadata | ✅ v2.0 |
-| **113** | [Automatic Max-Recall](STANDARD_113_AUTOMATIC_MAX_RECALL.md) | Auto-trigger at >16k tokens | ✅ v1.0 |
-| **116** | [Phoenix Protocol](STANDARD_116_PHOENIX_PROTOCOL.md) | Backup/Restore with mirrored_brain (v2 files format) | ✅ v2.0 |
+| **086** | [Dual-Strategy Search](086-dual_strategy_search.md) | Standard + Max-Recall with XML metadata | ✅ v2.0 |
+| **113** | [Automatic Max-Recall](113-automatic_max_recall.md) | Auto-trigger at >16k tokens | ✅ v1.0 |
+| **116** | [Phoenix Protocol](116-phoenix-protocol.md) | Backup/Restore with mirrored_brain (v2 files format) | ✅ v2.0 |
 | **118** | [Native Core Stabilization](118-native-core-stabilization.md) | C++ N-API Migration, N+1 Query Fixes, Thread Safety | ✅ v1.0 |
 
 ### Core Standards (v4.x)

@@ -296,7 +296,7 @@ this.TIME_DECAY_LAMBDA = config?.temporalDecay ?? 0.0001;
 | **078** | [Parameter Tuning](standards/078-parameter-tuning.md) - Lambda tuning guide |
 | **096** | [Timestamp Assignment](standards/096-timestamp-assignment-protocol.md) - Temporal scoring |
 | **104** | [Universal Semantic Search](standards/104-universal-semantic-search.md) - Search architecture |
-| **121** | [Tag Limiting](STANDARD_121_TAG_LIMITING.md) - Output quality control |
+| **121** | [Tag Limiting](121-tag_limiting.md) - Output quality control |
 
 ---
 

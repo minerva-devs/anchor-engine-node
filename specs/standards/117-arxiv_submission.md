@@ -25,7 +25,7 @@ anchor-engine-node/
 └── specs/                   # Technical specifications
     ├── spec.md              # System specification (LLM-optimized)
     └── standards/
-        ├── STANDARD_117_ARXIV_SUBMISSION.md  # This file
+        ├── 117-arxiv_submission.md  # This file
         └── RESEARCH_LANDSCAPE.md  # Related work analysis
 ```
 
