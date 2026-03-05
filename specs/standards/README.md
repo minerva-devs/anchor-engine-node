@@ -12,6 +12,8 @@ These standards define the current production architecture:
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
+| **200** | [Deployment Security](200-deployment_security.md) | Production security hardening & threat model | ✅ v1.0 |
+| **126** | [Pointer-Only Index Design](126-pointer_only_index_design.md) | Architecture tradeoffs for filesystem + pointer index | ✅ v1.0 |
 | **123** | [Search Result Tag Sanitization](123-search_result_tag_sanitization.md) | Strip inline `#Tag` tokens from content before LLM delivery | ✅ v1.0 |
 | **124** | [Virtual Anchor Resolution](124-virtual_anchor_resolution.md) | Map `virtual_*` ContextInflator IDs to real `mol_*` DB IDs for Physics Walker | ✅ v1.0 |
 | **125** | [Semantic Deduplication](125-semantic_deduplication.md) | Per-source snippet cap + word-overlap dedup to eliminate redundant results | ✅ v1.0 |
@@ -42,6 +44,7 @@ These standards define the current production architecture:
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
+| **105** | [API Contracts](105-api-contracts.md) | Integration API specification with authentication & examples | ✅ ACTIVE |
 | **104** | [Universal Semantic Search](104-universal-semantic-search.md) | Unified search architecture (70/30 budget) | ✅ ACTIVE |
 | **110** | Ephemeral Index | Disposable database pattern | ✅ ACTIVE |
 | **109** | Batched Ingestion | Large file handling | ✅ ACTIVE |
@@ -55,6 +58,7 @@ These standards define the current production architecture:
 | **096** | [Timestamp Assignment](096-timestamp-assignment-protocol.md) | Temporal decay scoring | ✅ ACTIVE |
 | **095** | [Database Reset](095-database-reset-on-startup.md) | Ephemeral index pattern | ✅ ACTIVE |
 | **088** | [Server Startup Sequence](088-server-startup-sequence.md) | ECONNREFUSED fix | ✅ ACTIVE |
+| **077** | [Benchmark Protocol](077-benchmark-protocol.md) | Standardized benchmarking methodology | ✅ ACTIVE |
 | **074** | [Native Module Acceleration](074-native-module-acceleration.md) | Iron Lung Protocol (C++) | ✅ ACTIVE |
 | **065** | [Graph Associative Retrieval](065-graph-associative-retrieval.md) | Tag-Walker protocol | ✅ ACTIVE |
 | **059** | [Reliable Ingestion](059-reliable-ingestion.md) | Ghost Data Protocol | ✅ ACTIVE |
