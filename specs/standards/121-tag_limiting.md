@@ -180,7 +180,7 @@ curl -X POST http://localhost:3160/v1/memory/search \
 |----------|--------------|
 | **078** | [Parameter Tuning](standards/078-parameter-tuning.md) - Tag modulation settings |
 | **104** | [Universal Semantic Search](standards/104-universal-semantic-search.md) - Search architecture |
-| **120** | [System Output Filtering](STANDARD_120_SYSTEM_OUTPUT_FILTERING.md) - Output quality control |
+| **120** | [System Output Filtering](120-system_output_filtering.md) - Output quality control |
 
 ---
 
