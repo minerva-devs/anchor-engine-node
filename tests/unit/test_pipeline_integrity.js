@@ -28,7 +28,7 @@ async function testPipelineIntegrity() {
         const atomizer = new AtomizerService();
         const ingestService = new AtomicIngestService();
         // Complex content: Prose + Data + Code
-        const filePath = "C:/Users/rsbiiw/Projects/pipeline_test.md";
+        const filePath = "/path/to/projects/pipeline_test.md";
         const content = `
 # Pipeline Test
 

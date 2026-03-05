@@ -1,6 +1,6 @@
 commit bf36eae9e5e9f0486dea787201d84c8890492c5c
 Merge: 879f91e 45946f2
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Sat Feb 21 16:05:04 2026 -0700
 
     Merge branch 'main' of https://github.com/RSBalchII/anchor-engine-node
@@ -30,7 +30,7 @@ Date:   Sat Feb 21 16:03:55 2026 -0700
 M	README.md
 
 commit 879f91eec722c1e9d283f2c57f55cc4bab0038dc
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Sat Feb 21 15:51:19 2026 -0700
 
     UI Overhaul: SPA Router, Loading Screen, Enhanced Search
@@ -936,7 +936,7 @@ Date:   Sat Feb 21 14:35:57 2026 -0700
 M	README.md
 
 commit 234fbc2f169e280b44c0d84352b28d3c24c7ef36
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Sat Feb 21 14:32:42 2026 -0700
 
     Production v4.0 - Monday Release Prep
@@ -1073,7 +1073,7 @@ M	specs/standards/README.md
 M	specs/tasks.md
 
 commit 35f3fae877eab51b6a40f058ce42f503424b628c
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 15:30:01 2026 -0700
 
     docs: add search fidelity fixes implementation summary
@@ -1081,7 +1081,7 @@ Date:   Fri Feb 20 15:30:01 2026 -0700
 A	SEARCH_FIDELITY_FIXES.md
 
 commit 228d7fcff38315f57a0ba231ce7106ff5c77d81b
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 15:08:08 2026 -0700
 
     fix: disable nanobot proxy routes
@@ -1089,7 +1089,7 @@ Date:   Fri Feb 20 15:08:08 2026 -0700
 M	engine/src/routes/api.ts
 
 commit ed9ec1a7eef6a69f651a465f845b92a07379eb38
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 14:53:28 2026 -0700
 
     fix: search fidelity improvements
@@ -1102,7 +1102,7 @@ M	engine/src/services/search/physics-tag-walker.ts
 M	engine/src/services/search/search.ts
 
 commit 5f2b0c7fae11edcf24c986a9aa6065a315297452
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 13:48:09 2026 -0700
 
     feat: add max-recall strategy and anchor_stats endpoint
@@ -1110,7 +1110,7 @@ Date:   Fri Feb 20 13:48:09 2026 -0700
 M	engine/src/routes/api.ts
 
 commit e8d56fd4a42a521f3493a39785bd3b45262eab6d
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 13:41:35 2026 -0700
 
     fix: simplify synonym generation to avoid SQL complexity
@@ -1118,7 +1118,7 @@ Date:   Fri Feb 20 13:41:35 2026 -0700
 M	engine/src/services/synonyms/auto-synonym-generator.ts
 
 commit d67a6778344fcce21ef0a35c465ae04b552c9e58
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 13:27:26 2026 -0700
 
     fix: serve UI at /static route correctly
@@ -1126,7 +1126,7 @@ Date:   Fri Feb 20 13:27:26 2026 -0700
 M	engine/src/index.ts
 
 commit 6dd3e1845f0b1eec99dc6a8502100f3fcf25d669
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 13:21:32 2026 -0700
 
     perf: optimize synonym co-occurrence query with batching
@@ -1134,7 +1134,7 @@ Date:   Fri Feb 20 13:21:32 2026 -0700
 M	engine/src/services/synonyms/auto-synonym-generator.ts
 
 commit 290d8eedbdd71d9f8ab1b9c33e930f3f984b817f
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 13:11:28 2026 -0700
 
     fix: run synonym generation in background with 5min timeout
@@ -1144,7 +1144,7 @@ A	engine/src/services/search/context-manager.ts
 M	engine/src/services/synonyms/auto-synonym-generator.ts
 
 commit 1ac43fe1ef54bb7d6176e5ff3b4effe59abfea53
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 12:36:04 2026 -0700
 
     docs: update whitepaper with production performance benchmarks
@@ -1152,7 +1152,7 @@ Date:   Fri Feb 20 12:36:04 2026 -0700
 M	docs/whitepaper.md
 
 commit 7a887d567867b5949e8a309ea748641d46ef81dc
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 11:12:25 2026 -0700
 
     fix: PROJECT_ROOT now correctly resolves to project root (3 levels up from engine/src/config)
@@ -1160,7 +1160,7 @@ Date:   Fri Feb 20 11:12:25 2026 -0700
 M	engine/src/config/paths.ts
 
 commit edac5f2e5eef70425af4e16fb1eb8397cc4b1b67
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 10:58:47 2026 -0700
 
     fix: serve anchor-ui from anchor-os/packages/anchor-ui/dist instead of nanobot UI
@@ -1168,7 +1168,7 @@ Date:   Fri Feb 20 10:58:47 2026 -0700
 M	engine/src/index.ts
 
 commit fe9a85719a0968a49e247fb5cdb33cd14cb01539
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 10:51:25 2026 -0700
 
     fix: watchdog now watches project root inbox/ and external-inbox/ instead of notebook/
@@ -1176,7 +1176,7 @@ Date:   Fri Feb 20 10:51:25 2026 -0700
 M	engine/src/config/paths.ts
 
 commit 09250b42f69459fae0ec9c1e7f2dbbdbc501e679
-Author: RSBalchII <robertbalchii@gmail.com>
+Author: RSBalchII <[REDACTED_EMAIL]>
 Date:   Fri Feb 20 10:46:05 2026 -0700
 
     docs: add git backup verification - all 465 commits preserved as prior art
