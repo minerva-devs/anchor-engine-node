@@ -5,7 +5,7 @@ import { PhysicsTagWalker } from '../engine/src/services/search/physics-tag-walk
 async function verify() {
     console.log('[Verify] Initializing DB...');
     // Force path to populated database
-    process.env.PGLITE_DB_PATH = 'c:/Users/rsbiiw/Projects/anchor-engine-sync/engine/context_data';
+    process.env.PGLITE_DB_PATH = '/path/to/projects/anchor-engine-sync/engine/context_data';
     await db.init();
 
     const query = 'STAR Algorithm explained';

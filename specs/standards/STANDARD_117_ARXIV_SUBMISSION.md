@@ -93,7 +93,7 @@ copy star-whitepaper.pdf star-arxiv-submission\
 ```
 Title: STAR: Semantic Temporal Associative Retrieval - The Browser Paradigm for AI Memory
 Authors: R.S. Balch II
-Email: rsbalchii@gmail.com
+Email: [REDACTED_EMAIL]
 
 Categories:
 - Primary: cs.IR (Information Retrieval)

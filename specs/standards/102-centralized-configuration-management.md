@@ -42,7 +42,7 @@ Implement a centralized configuration system using a single `user_settings.json`
   },
   "llm": {
     "provider": "remote",
-    "remote_url": "http://100.74.174.76:8000/v1",
+    "remote_url": "http://localhost:8000/v1",
     "chat_model": "GLM-4.7-Flash.i1-Q4_K_S.gguf",
     "gpu_layers": 1,
     "ctx_size": 8192

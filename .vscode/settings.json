@@ -5,12 +5,12 @@
         "customOpenAI": {
             "endpoint": "http://localhost:8080/v1",
             "apiKey": "",
-            "model": "C:\\Users\\rsbiiw\\Projects\\models\\Reka-Flash-3-21B-Reasoning-MAX-NEO-D_AU-Q4_K_S-imat.gguf"
+            "model": "C:\\Users\\[USERNAME]\\Projects\\models\\[MODEL_FILENAME].gguf"
         }
     },
     "cline.customOpenAISettings": {
         "endpoint": "http://localhost:8080/v1",
-        "model": "C:\\Users\\rsbiiw\\Projects\\models\\Reka-Flash-3-21B-Reasoning-MAX-NEO-D_AU-Q4_K_S-imat.gguf",
+        "model": "C:\\Users\\[USERNAME]\\Projects\\models\\[MODEL_FILENAME].gguf",
         "apiKey": ""  // Leave blank if not required
     },
     "cline.mcp": {
