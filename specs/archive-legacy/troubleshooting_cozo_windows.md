@@ -12,12 +12,12 @@ This is a known issue with native Node.js modules on Windows systems. The `cozo-
 ## Windows Binary Location
 On Windows systems, the cozo-node binary may need to be placed at:
 ```
-C:\Users\ECE_Core\engine\cozo_node_prebuilt.node
+C:\Users\[USERNAME]\engine\cozo_node_prebuilt.node
 ```
 
 The binary can typically be found in the pnpm store at:
 ```
-C:\Users\ECE_Core\node_modules\.pnpm\cozo-node@0.7.6\node_modules\cozo-node\native\6\cozo_node_prebuilt.node
+C:\Users\[USERNAME]\node_modules\.pnpm\cozo-node@0.7.6\node_modules\cozo-node\native\6\cozo_node_prebuilt.node
 ```
 
 ## Current Behavior

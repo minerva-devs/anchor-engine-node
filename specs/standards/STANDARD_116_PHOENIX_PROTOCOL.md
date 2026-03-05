@@ -98,7 +98,7 @@ After a successful restore, you'll see stats like:
 
 ## Backup File Location
 
-Backups are stored in: `c:\Users\rsbiiw\Projects\anchor-engine-node\backups\`
+Backups are stored in: `[LOCAL_PROJECT_ROOT]\backups\`
 
 ---
 

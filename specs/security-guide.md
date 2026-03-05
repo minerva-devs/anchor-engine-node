@@ -41,7 +41,7 @@ The `mirrored_brain/` directory contains raw content files. Protect it:
 **Windows:**
 ```powershell
 # Set restrictive permissions (current user only)
-icacls "C:\Users\rsbii\Projects\anchor-engine-node\engine\mirrored_brain" /grant:r "$env:USERNAME:(OI)(CI)F" /inheritance:r
+icacls "[LOCAL_PROJECT_ROOT]\engine\mirrored_brain" /grant:r "$env:USERNAME:(OI)(CI)F" /inheritance:r
 ```
 
 **Linux/Mac:**
