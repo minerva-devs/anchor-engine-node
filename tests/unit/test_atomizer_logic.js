@@ -37,7 +37,7 @@ async function testAtomizerLogic() {
     }
     // --- TEST 2: TAGGING ---
     console.log('\nTest 2: Auto-Tagging');
-    const path2 = 'C:/Users/rsbiiw/Projects/MyProject/src/utils/helper.ts';
+    const path2 = '/path/to/projects/MyProject/src/utils/helper.ts';
     const content2 = 'Some function using #optimization and #database.';
     const res2 = await atomizer.atomize(content2, path2, 'internal');
     const tags = res2.atoms.filter(a => a.type === 'concept' || a.type === 'system').map(a => a.label);

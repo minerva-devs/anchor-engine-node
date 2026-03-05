@@ -8,7 +8,7 @@ async function testAtomicIngest() {
     // 2. Atomize Content
     const atomizer = new AtomizerService();
     const content = "The mitochondria is the powerhouse of the cell. #biology. Python is a programming language. #python";
-    const path = "C:/Users/rsbiiw/Projects/science_notes.md";
+    const path = "/path/to/projects/science_notes.md";
     console.log('Atomizing content...');
     const result = await atomizer.atomize(content, path, 'internal');
     console.log(`Produced Compound: ${result.compound.id}`);

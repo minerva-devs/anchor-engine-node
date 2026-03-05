@@ -4,6 +4,14 @@
 *.env
 prompts/
 
+# Additional sensitive data patterns
+**/context_data/
+**/databases/
+**/personal_contacts/
+*secret*
+*token*
+*credential*
+
 # Database & Storage
 context.db/
 context_data/
