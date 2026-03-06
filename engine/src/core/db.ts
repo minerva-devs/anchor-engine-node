@@ -121,14 +121,44 @@ export class Database {
 
       try {
         console.log(`[DB] Initializing PGlite at: ${dbPath}`);
-        // Initialize PGlite without vector extension initially
-        // Let PGlite handle directory creation internally
-        this.dbInstance = await new PGlite(dbPath);
+        
+        // Initialize PGlite with optimized memory settings (Standard 127)
+        // Memory reduction tactics for embedded deployment (phones + laptops)
+        this.dbInstance = await new PGlite(dbPath, {
+          // Don't set maxMemory limit - let Node.js GC manage heap (6GB from --max-old-space-size)
+          // OOM prevention is handled by:
+          // 1. Search serialization (one search at a time)
+          // 2. Memory pressure detection (downgrade max-recall if heap >3.2GB)
+          // 3. Forced GC after ingestion and search completion
+          relaxedDurability: true, // Skip fsync during ingestion (Standard 059)
+          settings: {
+            // Reduce PGlite WASM buffer cache from default 1GB
+            'shared_buffers': '256MB',
+            // Bound planner's estimate to prevent unbounded CTE memory
+            'effective_cache_size': '512MB',
+            // Per-operation memory for sorts/hashes (physics walker CTEs)
+            'work_mem': '16MB',
+            // Memory for VACUUM, CREATE INDEX, etc.
+            'maintenance_work_mem': '64MB',
+            // WAL buffer size
+            'wal_buffers': '4MB',
+            // Spread checkpoint writes over 90% of checkpoint interval
+            'checkpoint_completion_target': 0.9,
+            // Random page access cost estimate (helps planner choose seq scans)
+            'random_page_cost': 1.1,
+            // Sequential scan cost estimate
+            'seq_page_cost': 1.0,
+          }
+        });
+        
         console.log(`[DB] PGlite initialized successfully: ${dbPath}`);
-        // Hint to PostgreSQL planner to keep buffer cache and sort memory bounded.
-        // Without these, complex search CTEs can grow PGlite's WASM heap unboundedly.
-        await this.dbInstance.exec("SET effective_cache_size = '200MB'");
+        console.log(`[DB] Memory settings: shared_buffers=256MB, effective_cache_size=512MB, work_mem=16MB`);
+        
+        // Additional runtime memory bounds (applied after init)
+        // These complement the constructor settings above
+        await this.dbInstance.exec("SET effective_cache_size = '512MB'");
         await this.dbInstance.exec("SET work_mem = '16MB'");
+        await this.dbInstance.exec("SET maintenance_work_mem = '64MB'");
       } catch (e: any) {
         console.error(`[DB] Failed to initialize PGlite: ${e.message}`);
         throw e;
