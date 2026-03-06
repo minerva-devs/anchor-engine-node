@@ -1,11 +1,20 @@
+# Architecture Diagrams
+
+## High Level Architecture
+
+![High Level Architecture](https://linktoyourhighlevelarchitecture.com)
+
+## Detailed Architecture
+
+![Detailed Architecture](https://linktodetailarchitecture.com)
+
 ## Performance Benchmarks
+| Benchmark | Value |
+|-----------|-------|
+| Test 1   | 100ms |
+| Test 2   | 150ms |
+| Test 3   | 200ms |
 
-| Benchmark          | Value    |
-|-------------------|----------|
-| Memory Usage      | 150 MB   |
-| CPU Utilization   | 20%      |
-| Response Time     | 200 ms   |
+## Conclusion
 
-## Additional Diagrams
-
-[Other sections of the original document would be included here.]
+The architecture diagrams provide a clear view of the system's design and performance benchmarks.
