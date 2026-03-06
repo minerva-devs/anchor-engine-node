@@ -276,10 +276,21 @@
 
             const copyResultsAsYaml = async (resultsToCopy) => {
                 if (!resultsToCopy || resultsToCopy.length === 0) return;
+
+                // Cap YAML copy to first 20 results, content preview to 500 chars each.
+                // Full content can be hundreds of KB — clipboard bloat breaks LLM context pasting.
+                const MAX_RESULTS = 20;
+                const MAX_CONTENT_CHARS = 500;
+                const capped = resultsToCopy.slice(0, MAX_RESULTS);
                 
                 try {
                     // Convert to YAML format (more compact than JSON)
-                    const yamlContent = resultsToCopy.map((result, index) => {
+                    const yamlContent = capped.map((result, index) => {
+                        const rawContent = result.content || '';
+                        const preview = rawContent.length > MAX_CONTENT_CHARS
+                            ? rawContent.slice(0, MAX_CONTENT_CHARS) + '…'
+                            : rawContent;
+
                         const lines = [
                             `- id: "${result.id || index}"`,
                             `  source: "${(result.source || '').replace(/\\/g, '/').replace(/"/g, '\\"')}"`,
@@ -288,7 +299,7 @@
                         ];
                         
                         // Split content into lines and indent
-                        const contentLines = (result.content || '').split('\n');
+                        const contentLines = preview.split('\n');
                         contentLines.forEach(line => {
                             lines.push(`    ${line}`);
                         });
@@ -309,10 +320,15 @@
                         
                         return lines.join('\n');
                     }).join('\n\n');
+
+                    const totalChar = yamlContent.length;
+                    const truncNote = resultsToCopy.length > MAX_RESULTS
+                        ? `\n# (showing ${MAX_RESULTS} of ${resultsToCopy.length} results, content capped at ${MAX_CONTENT_CHARS} chars each)`
+                        : `\n# (${capped.length} results, content capped at ${MAX_CONTENT_CHARS} chars each)`;
                     
-                    await navigator.clipboard.writeText(yamlContent);
-                    setCopyFeedback('✅ Copied!');
-                    setTimeout(() => setCopyFeedback(''), 2000);
+                    await navigator.clipboard.writeText(yamlContent + truncNote);
+                    setCopyFeedback(`✅ Copied! (~${Math.round(totalChar/1024)}KB)`);
+                    setTimeout(() => setCopyFeedback(''), 3000);
                 } catch (error) {
                     setCopyFeedback('❌ Copy failed');
                     setTimeout(() => setCopyFeedback(''), 2000);
