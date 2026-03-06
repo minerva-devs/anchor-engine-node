@@ -231,12 +231,13 @@ export async function findAnchors(
     console.log(`[Search] Dynamic Scaling: Budget=${tokenBudget}t -> Target=${targetAtomCount} atoms`);
 
     // Construct Query String for FTS
+    // Use OR ( | ) by default so multi-word queries find documents containing
+    // ANY of the terms, not ALL of them. AND ( & ) is too restrictive for
+    // conversational queries like "College Music education" — it requires all
+    // three words in the same molecule, which rarely matches.
+    // Fuzzy mode was already OR; standard mode was incorrectly AND.
     let tsQueryString = sanitizedQuery.trim();
-    if (fuzzy) {
-      tsQueryString = tsQueryString.split(/\s+/).join(' | ');
-    } else {
-      tsQueryString = tsQueryString.split(/\s+/).join(' & ');
-    }
+    tsQueryString = tsQueryString.split(/\s+/).join(' | ');
 
     let anchors: SearchResult[] = [];
     let atomResults: SearchResult[] = [];
