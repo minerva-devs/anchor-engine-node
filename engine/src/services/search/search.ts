@@ -235,15 +235,33 @@ export async function findAnchors(
     // ANY of the terms, not ALL of them. AND ( & ) is too restrictive for
     // conversational queries like "College Music education" — it requires all
     // three words in the same molecule, which rarely matches.
-    // Fuzzy mode was already OR; standard mode was incorrectly AND.
-    let tsQueryString = sanitizedQuery.trim();
-    tsQueryString = tsQueryString.split(/\s+/).join(' | ');
+    // Strip English stop words before building the tsquery — 'simple' config
+    // does NOT filter them, so connector words like "and", "the", "or" would
+    // match almost every molecule and corrupt ranking.
+    const FTS_STOP_WORDS = new Set([
+      'a','an','and','are','as','at','be','been','being','but','by',
+      'can','could','did','do','does','doing','done','each','for',
+      'from','had','has','have','having','he','her','him','his',
+      'how','i','if','in','is','it','its','itself','just','me',
+      'more','my','no','not','of','off','on','or','our','out',
+      'own','same','she','should','so','some','such','than','that',
+      'the','their','them','then','there','these','they','this',
+      'those','to','too','very','was','we','were','what','when',
+      'where','which','while','who','whom','why','will','with',
+      'would','you','your','yours'
+    ]);
+    const queryWords = sanitizedQuery.trim().split(/\s+/).filter(t => t.length > 0);
+    const contentWords = queryWords.filter(t => !FTS_STOP_WORDS.has(t));
+    // Fall back to full word list if stop-word stripping removed everything
+    const tsTerms = contentWords.length > 0 ? contentWords : queryWords;
+    let tsQueryString = tsTerms.join(' | ');
 
     let anchors: SearchResult[] = [];
     let atomResults: SearchResult[] = [];
 
     // A. Atom Search (Radial Inflation) via ContextInflator
-    const terms = sanitizedQuery.split(/\s+/).filter(t => t.length > 0);
+    // Use stop-word-stripped terms (tsTerms) so we don't inflate around "and", "the", etc.
+    const terms = tsTerms.length > 0 ? tsTerms : sanitizedQuery.split(/\s+/).filter(t => t.length > 0);
 
     if (terms.length > 0) {
       try {
