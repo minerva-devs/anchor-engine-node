@@ -277,18 +277,21 @@
             const copyResultsAsYaml = async (resultsToCopy) => {
                 if (!resultsToCopy || resultsToCopy.length === 0) return;
 
-                // Cap YAML copy to first 20 results, content preview to 500 chars each.
-                // Full content can be hundreds of KB — clipboard bloat breaks LLM context pasting.
+                // Total YAML clipboard budget: ~60K chars (~15K tokens) — safe for LLM pasting.
+                // Molecules can be up to 100KB each (search-utils MAX_SNIPPET_BYTES), so we must
+                // budget across results rather than per-result.  Distribute evenly across up to 20
+                // results; any single result may use its full per-result allotment.
                 const MAX_RESULTS = 20;
-                const MAX_CONTENT_CHARS = 500;
+                const TOTAL_CHAR_BUDGET = 60_000;
                 const capped = resultsToCopy.slice(0, MAX_RESULTS);
-                
+                const perResultBudget = Math.floor(TOTAL_CHAR_BUDGET / capped.length);
+
                 try {
                     // Convert to YAML format (more compact than JSON)
                     const yamlContent = capped.map((result, index) => {
                         const rawContent = result.content || '';
-                        const preview = rawContent.length > MAX_CONTENT_CHARS
-                            ? rawContent.slice(0, MAX_CONTENT_CHARS) + '…'
+                        const preview = rawContent.length > perResultBudget
+                            ? rawContent.slice(0, perResultBudget) + '…'
                             : rawContent;
 
                         const lines = [
@@ -297,35 +300,33 @@
                             `  score: ${result.score?.toFixed(4) || 0}`,
                             `  content: |`
                         ];
-                        
-                        // Split content into lines and indent
-                        const contentLines = preview.split('\n');
-                        contentLines.forEach(line => {
+
+                        preview.split('\n').forEach(line => {
                             lines.push(`    ${line}`);
                         });
-                        
+
                         if (result.tags && result.tags.length > 0) {
                             lines.push(`  tags:`);
                             result.tags.forEach(tag => {
                                 lines.push(`    - "${tag}"`);
                             });
                         }
-                        
+
                         if (result.buckets && result.buckets.length > 0) {
                             lines.push(`  buckets:`);
                             result.buckets.forEach(bucket => {
                                 lines.push(`    - "${bucket}"`);
                             });
                         }
-                        
+
                         return lines.join('\n');
                     }).join('\n\n');
 
                     const totalChar = yamlContent.length;
                     const truncNote = resultsToCopy.length > MAX_RESULTS
-                        ? `\n# (showing ${MAX_RESULTS} of ${resultsToCopy.length} results, content capped at ${MAX_CONTENT_CHARS} chars each)`
-                        : `\n# (${capped.length} results, content capped at ${MAX_CONTENT_CHARS} chars each)`;
-                    
+                        ? `\n# (showing ${MAX_RESULTS} of ${resultsToCopy.length} results; ~${perResultBudget} chars/result, ${TOTAL_CHAR_BUDGET} total budget)`
+                        : `\n# (${capped.length} results; ~${perResultBudget} chars/result, ${TOTAL_CHAR_BUDGET} total budget)`;
+
                     await navigator.clipboard.writeText(yamlContent + truncNote);
                     setCopyFeedback(`✅ Copied! (~${Math.round(totalChar/1024)}KB)`);
                     setTimeout(() => setCopyFeedback(''), 3000);
