@@ -158,14 +158,13 @@ export async function addWatchPath(newPath: string): Promise<boolean> {
 }
 
 export async function removeWatchPath(pathToRemove: string): Promise<boolean> {
-    if (!watcher) {
-        throw new Error("Watchdog not started");
+    // Remove from chokidar watcher if it exists (watchdog is running)
+    if (watcher) {
+        watcher.unwatch(pathToRemove);
+        console.log(`[Watchdog] Removed watch path: ${pathToRemove}`);
+    } else {
+        console.log(`[Watchdog] Path marked for removal (watchdog not running): ${pathToRemove}`);
     }
-
-    // Remove from watcher
-    // chokidar.unwatch() accepts a file, dir, or array of them
-    watcher.unwatch(pathToRemove);
-    console.log(`[Watchdog] Removed watch path: ${pathToRemove}`);
 
     // Update Config (In-Memory)
     if (config.WATCHER_EXTRA_PATHS && config.WATCHER_EXTRA_PATHS.includes(pathToRemove)) {
