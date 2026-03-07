@@ -68,3 +68,10 @@
 *   **Bulk Operations**: Use `INSERT INTO ... VALUES (...), (...), (...)` syntax rather than looping prepared statements.
 *   **Conflict Handling**: Use `ON CONFLICT DO NOTHING` or `DO UPDATE` within the bulk statement to gracefully handle duplicates without aborting the transaction.
 *   **Performance Target**: Ingestion must remain O(1) relative to the startup overhead for `db.run`, regardless of chunk size (up to safe parameter limits).
+
+## 11. Relaxed Durability Protocol (Standard 127)
+**Context**: PGlite defaults to fsync on every WAL write. For an ephemeral index (Standard 051), this is wasted I/O — the database is wiped on startup and rebuilt from the filesystem.
+*   **`relaxedDurability: true`** MUST be passed to the `PGlite` constructor at initialization (not via `SET` after init — too late for the WASM allocator).
+*   **Speedup**: ~10-50x faster ingestion of large files (eliminates ~207K fsyncs for a 207K-molecule corpus).
+*   **Acceptable Risk**: Data loss on power failure during write is acceptable because the source of truth is always `mirrored_brain/` filesystem, not the PGlite index.
+*   **Do NOT enable** `relaxedDurability` if the database is ever converted to a durable store. See Proposal 127: External PostgreSQL Migration.
