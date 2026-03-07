@@ -76,6 +76,15 @@ export class AtomizerService {
         // System tags
         /^#manually_quarantined$/, /^#quarantined$/,
         /^#system$/, /^#internal$/, /^#external$/,
+
+        // Test fixture tags (from unit test mock data bleeding into production)
+        /^#tag\d*$/i,           // #Tag, #Tag1, #tag2
+        /^#shared[a-z]$/i,      // #sharedA, #sharedB
+        /^#word\d*$/i,          // #Word, #Word1
+        /^#fixture/i,           // #fixture...
+        /^#mock/i,              // #mock...
+        /^#dummy/i,             // #dummy...
+        /^#sample[a-z0-9]*$/i,  // #sample, #sampleA
     ];
 
     private static TAG_BLACKLIST_EXACT = new Set([
@@ -973,7 +982,9 @@ export class AtomizerService {
                                 high = mid - 1;
                             }
                         }
-                        splitPoint = low;
+                        // Walk back to nearest newline to avoid splitting mid-line
+                        let newlinePos = remaining.lastIndexOf('\n', low);
+                        splitPoint = newlinePos > 0 ? newlinePos + 1 : low;
                     }
 
                     const chunk = remaining.substring(0, splitPoint);

@@ -24,7 +24,9 @@ function stripInlineTags(content: string): string {
   if (!content) return content;
   let s = content.replace(/\\?"#[^"\\]+\\?"/g, '');
   s = s.replace(/##?[A-Za-z0-9_]+/g, '');
-  s = s.replace(/(\s*-\s*)+/g, ' ').trim();
+  // Only strip " - " list separators (space-hyphen-space), not bare hyphens
+  // in kebab-case identifiers like p-6, text-xl, font-bold, etc.
+  s = s.replace(/[ \t]+-[ \t]+/g, ' ').trim();
   return s;
 }
 

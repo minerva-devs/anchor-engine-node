@@ -121,23 +121,30 @@ const results = await walker.performRadialInflation(
 
 **Standard:** FTS MUST use PGlite GIN indexes with `to_tsvector()`.
 
-**Schema:**
-```sql
-CREATE INDEX IF NOT EXISTS idx_atoms_content_gin
-ON atoms USING GIN(to_tsvector('simple', content));
+**Stop Word Filtering:** Before building the `to_tsquery` string, the query terms MUST be
+filtered through an English stop word set (`search.ts: FTS_STOP_WORDS`). The `simple` text
+search config has no built-in stop words — without filtering, connector words like "and",
+"the", "or" would match virtually every molecule and corrupt `ts_rank_cd` scoring.
 
-CREATE INDEX IF NOT EXISTS idx_molecules_content_gin
-ON molecules USING GIN(to_tsvector('simple', content));
+```typescript
+// Remove stop words before building OR query
+const FTS_STOP_WORDS = new Set(['a','an','and','are','as','at','be', ...]);
+const contentWords = queryWords.filter(t => !FTS_STOP_WORDS.has(t));
+const tsTerms = contentWords.length > 0 ? contentWords : queryWords; // fallback
+const tsQueryString = tsTerms.join(' | ');
 ```
 
-**Query Pattern:**
-```typescript
-const result = await db.run(`
-  SELECT m.id, m.content, c.path as source,
-         ts_rank_cd(to_tsvector('simple', m.content), to_tsquery('simple', $1)) as score
-  FROM molecules m
-  WHERE to_tsvector('simple', m.content) @@ to_tsquery('simple', $1)
-`, [tsQueryString]);
+**Query Pattern (OR semantics):** Multi-term queries use `|` (OR), not `&` (AND).
+`AND` is too restrictive — it requires all terms in a single molecule. `ts_rank_cd`
+still rewards molecules that contain multiple terms via cover-density scoring.
+
+```sql
+-- tsQueryString = 'work | unemployment'  (stop words stripped, OR joined)
+SELECT m.id, m.content, c.path as source,
+       ts_rank_cd(to_tsvector('simple', m.content), to_tsquery('simple', $1)) as score
+FROM molecules m
+WHERE to_tsvector('simple', m.content) @@ to_tsquery('simple', $1)
+ORDER BY score DESC LIMIT $2
 ```
 
 ---

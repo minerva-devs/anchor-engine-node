@@ -132,6 +132,9 @@ class GitHubIngestService {
   
   // Sync repo (download + extract + ingest)
   syncRepo(repoId: string): Promise<SyncResult>
+
+  // Fetch and ingest full commit history via GitHub Commits API
+  ingestGitHistory(owner, repo, branch, bucket, token?): Promise<number>
   
   // List all registered repos
   listRepos(): Promise<RepoRecord[]>
@@ -148,8 +151,8 @@ class GitHubIngestService {
 ```typescript
 // Register new repo and trigger initial ingestion
 POST /v1/github/repos
-Body: { url: string, bucket: string }
-Response: { id: string, status: 'ingesting', message: string }
+Body: { url: string, bucket: string, include_history?: boolean }
+Response: { id: string, status: 'ingesting', include_history: boolean, message: string }
 
 // List all registered repos
 GET /v1/github/repos
@@ -211,6 +214,43 @@ When user clicks [Sync Now]:
 4. Update `last_synced_at`, `total_files`, `total_atoms` in registry
 
 **Rationale:** Simple approach avoids complex delta detection. Quarantine preserves history if needed for debugging.
+
+### 4.6. Git Commit History Ingestion
+
+**Motivation:** Tarball-only ingestion captures a code *snapshot* but not *evolution*. Searching
+"why was X changed" or "what was fixed in March" returns nothing because commit messages are never
+indexed. With full history ingested, the physics walker can surface relevant commits alongside
+current code.
+
+**Implementation:** Uses GitHub Commits API — no `git` binary required, works cross-platform.
+
+```
+GET /repos/{owner}/{repo}/commits?sha={branch}&per_page=100&page=N
+```
+
+Pages until `Link: rel="next"` is absent. Each commit formatted as:
+
+```markdown
+## abc123def456 — 2026-03-06T04:39:09Z
+Author: RSBalchII
+
+fix: strip English stop words from FTS query
+
+Files:
+  M engine/src/services/search/search.ts (+22 -4)
+```
+
+**Storage:**
+- Source path: `github:{owner}/{repo}/commit-history.md`
+- Buckets: `[user-bucket, 'git-history']`
+- Single compound, ~1 molecule per commit paragraph
+- Searchable: commit messages, author names, file paths, change summaries
+
+**Rate limit note:** A repo with 500 commits = 5 paginated API calls. With unauthenticated limit
+of 60/hour and history fetch running after tarball sync, this is well within limits for most repos.
+Set `GITHUB_TOKEN` for repos with thousands of commits.
+
+**UI:** "Include full commit history" checkbox in GitHub modal, **on by default**.
 
 ## 5. UI Integration
 
@@ -297,11 +337,11 @@ GITHUB_EXCLUDE_PATTERNS=node_modules/**,.git/**,dist/**
 
 ## 9. Future Enhancements (Out of Scope)
 
-- **Delta Sync**: Detect changed files via commit SHA comparison
-- **Branch Selection**: UI dropdown to select branch before ingest
+- **Delta Sync**: Detect changed files via commit SHA comparison (history is indexed; file-level diff is not)
 - **Subdirectory Ingest**: Only ingest `/src` or `/docs` folder
 - **Webhook Integration**: Auto-sync on GitHub push events
 - **PR Review Mode**: Ingest PR diff for code review context
+- **Per-commit diffs**: Currently ingests commit metadata + file stats; full patch (`git diff`) not yet fetched
 
 ## 10. Related Standards
 
