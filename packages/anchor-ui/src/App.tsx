@@ -51,6 +51,9 @@ const SearchPage = () => {
   const [availableBuckets, setAvailableBuckets] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
 
+  // Mobile drawer state
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+
   useEffect(() => {
     Promise.all([
       api.getBuckets().catch(() => []),
@@ -97,6 +100,15 @@ const SearchPage = () => {
       {/* GLOBAL HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.2rem 2rem', borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', zIndex: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {/* Hamburger Menu Button (Mobile) */}
+          <button
+            className="hamburger-btn"
+            onClick={() => setMobileDrawerOpen(true)}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', cursor: 'pointer', transition: 'all 0.2s' }}
+          >
+            <span className="material-symbols-outlined">menu</span>
+          </button>
+
           <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--glass-shadow)' }}>
             <span className="material-symbols-outlined" style={{ color: 'var(--bg-primary)' }}>anchor</span>
           </div>
@@ -118,6 +130,74 @@ const SearchPage = () => {
           </Button>
         </div>
       </header>
+
+      {/* Mobile Drawer */}
+      <>
+        <div
+          className={`mobile-drawer-overlay ${mobileDrawerOpen ? 'open' : ''}`}
+          onClick={() => setMobileDrawerOpen(false)}
+        />
+        <div className={`mobile-drawer ${mobileDrawerOpen ? 'open' : ''}`}>
+          <div className="mobile-drawer-header">
+            <div className="mobile-drawer-title">Anchor Engine</div>
+            <button className="mobile-drawer-close" onClick={() => setMobileDrawerOpen(false)}>
+              <span className="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div className="mobile-nav-section">
+            <div className="mobile-nav-section-title">System Controls</div>
+
+            <button onClick={() => { handleBackup(); setMobileDrawerOpen(false); }} className="mobile-nav-item">
+              <span className="material-symbols-outlined" style={{ color: 'var(--accent-primary)' }}>save</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>{backupStatus || 'Backup Output'}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>State preservation</div>
+              </div>
+            </button>
+
+            <button onClick={() => { setShowResearch(true); setMobileDrawerOpen(false); }} className="mobile-nav-item">
+              <span className="material-symbols-outlined" style={{ color: '#a78bfa' }}>travel_explore</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>Web Research</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Scrape & Ingest</div>
+              </div>
+            </button>
+
+            <button onClick={() => { setShowGithub(true); setMobileDrawerOpen(false); }} className="mobile-nav-item">
+              <span className="material-symbols-outlined" style={{ color: '#34d399' }}>code_blocks</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>GitHub Ingestion</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Pull repository code</div>
+              </div>
+            </button>
+
+            <button onClick={() => { setShowGitCommands(true); setMobileDrawerOpen(false); }} className="mobile-nav-item">
+              <span className="material-symbols-outlined" style={{ color: '#fbbf24' }}>terminal</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>Git Commands</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Manage git repos</div>
+              </div>
+            </button>
+
+            <button onClick={() => { navigate('/quarantine'); setMobileDrawerOpen(false); }} className="mobile-nav-item">
+              <span className="material-symbols-outlined" style={{ color: '#f87171' }}>coronavirus</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>Infection Center</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Quarantine atoms</div>
+              </div>
+            </button>
+
+            <button onClick={() => { navigate('/paths'); setMobileDrawerOpen(false); }} className="mobile-nav-item">
+              <span className="material-symbols-outlined" style={{ color: '#60a5fa' }}>folder_managed</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>Manage Paths</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Corpus directories</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Instrument Panel (Sidebar) */}

@@ -8,12 +8,27 @@ interface GithubModalProps {
     onClose: () => void;
 }
 
+interface GithubCredentials {
+    has_credentials: boolean;
+    credential_source: string | null;
+    username: string | null;
+    user_info: { login: string; name?: string } | null;
+    token_valid: boolean;
+    scopes: string[];
+    can_access_private_repos: boolean;
+    message: string;
+}
+
 export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
     const [repoUrl, setRepoUrl] = useState('');
     const [bucket, setBucket] = useState('');
     const [availableBuckets, setAvailableBuckets] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
+
+    // Credential status
+    const [credentials, setCredentials] = useState<GithubCredentials | null>(null);
+    const [checkingCredentials, setCheckingCredentials] = useState(true);
 
     // New bucket creation state
     const [showNewBucket, setShowNewBucket] = useState(false);
@@ -33,6 +48,17 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
                 }
             })
             .catch(err => console.error("Failed to load buckets", err));
+
+        // Check GitHub credentials
+        api.getGithubCredentials()
+            .then(creds => {
+                setCredentials(creds);
+                setCheckingCredentials(false);
+            })
+            .catch(err => {
+                console.error("Failed to check GitHub credentials", err);
+                setCheckingCredentials(false);
+            });
     }, []);
 
     const handleCreateBucket = async () => {
@@ -229,6 +255,104 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
                                 {creatingBucket ? 'Creating...' : 'Create Bucket'}
                             </Button>
                         </div>
+                    </div>
+                )}
+
+                {/* GitHub Credential Status */}
+                {!checkingCredentials && credentials && (
+                    <div style={{
+                        padding: '0.75rem',
+                        background: credentials.has_credentials
+                            ? (credentials.can_access_private_repos
+                                ? 'rgba(76, 175, 80, 0.1)'
+                                : 'rgba(255, 152, 0, 0.1)')
+                            : 'rgba(158, 158, 158, 0.1)',
+                        border: `1px solid ${credentials.has_credentials
+                            ? (credentials.can_access_private_repos
+                                ? 'rgba(76, 175, 80, 0.3)'
+                                : 'rgba(255, 152, 0, 0.3)')
+                            : 'rgba(158, 158, 158, 0.3)'}`,
+                        borderRadius: '4px',
+                        fontSize: '0.8rem',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                            <span style={{ fontSize: '1rem' }}>
+                                {credentials.has_credentials
+                                    ? (credentials.can_access_private_repos ? '✅' : '⚠️')
+                                    : 'ℹ️'}
+                            </span>
+                            <span style={{
+                                fontWeight: 600,
+                                color: credentials.has_credentials
+                                    ? (credentials.can_access_private_repos ? '#4caf50' : '#ff9800')
+                                    : '#9e9e9e'
+                            }}>
+                                {credentials.has_credentials
+                                    ? (credentials.can_access_private_repos
+                                        ? 'GitHub Authenticated'
+                                        : 'Limited Access')
+                                    : 'Public Repos Only'}
+                            </span>
+                        </div>
+                        <div style={{ color: '#ccc', marginTop: '0.25rem' }}>
+                            {credentials.message}
+                        </div>
+                        {credentials.username && (
+                            <div style={{ color: '#888', marginTop: '0.25rem', fontSize: '0.75rem' }}>
+                                User: {credentials.user_info?.name || credentials.username}
+                            </div>
+                        )}
+                        {credentials.has_credentials && !credentials.can_access_private_repos && (
+                            <div style={{
+                                marginTop: '0.5rem',
+                                padding: '0.5rem',
+                                background: 'rgba(255, 152, 0, 0.15)',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                color: '#ffb74d'
+                            }}>
+                                <strong>⚠️ Private repos require full repo scope.</strong>
+                                <br />
+                                Generate a new PAT at{' '}
+                                <a
+                                    href="https://github.com/settings/tokens"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ color: '#64b5f6', textDecoration: 'underline' }}
+                                >
+                                    github.com/settings/tokens
+                                </a>{' '}
+                                with the <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '2px' }}>repo</code> scope.
+                            </div>
+                        )}
+                        {!credentials.has_credentials && (
+                            <div style={{
+                                marginTop: '0.5rem',
+                                padding: '0.5rem',
+                                background: 'rgba(158, 158, 158, 0.15)',
+                                borderRadius: '4px',
+                                fontSize: '0.75rem',
+                                color: '#bdbdbd'
+                            }}>
+                                <strong>ℹ️ No credentials stored.</strong>
+                                <br />
+                                To access private repos, add your PAT to <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '2px' }}>~/.netrc</code> or set the <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '2px' }}>GITHUB_TOKEN</code> env var.
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {checkingCredentials && (
+                    <div style={{
+                        padding: '0.75rem',
+                        background: 'rgba(158, 158, 158, 0.1)',
+                        border: '1px solid rgba(158, 158, 158, 0.3)',
+                        borderRadius: '4px',
+                        fontSize: '0.8rem',
+                        color: '#888',
+                        textAlign: 'center'
+                    }}>
+                        Checking GitHub credentials...
                     </div>
                 )}
 

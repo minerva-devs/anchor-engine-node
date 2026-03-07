@@ -128,6 +128,8 @@ export const api = {
         body: JSON.stringify({ url, bucket })
     }).then(r => r.json()),
 
+    getGithubCredentials: () => fetch(`${getBaseUrl()}/v1/github/credentials`).then(r => r.json()),
+
     getGitRepos: () => fetch(`${getBaseUrl()}/v1/git/repos`).then(r => r.json()),
 
     runGitCommand: (command: string, workingDir: string) =>
