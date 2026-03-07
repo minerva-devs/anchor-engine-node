@@ -6,101 +6,81 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased] - Search Result Quality Fixes
+## [4.5.0] - 2026-03-07 — Search Quality + Mobile UI Release
 
-### ✨ Features
+### Features
 
 #### Semantic Deduplication (Standard 125)
-- Search results included multiple overlapping snippets from the same file (e.g. Sybil-History.md contributing 3-4 redundant snippets about Dory/neurodivergence)
-- Two-layer fix in `search-utils.ts`:
-  1. **Per-source cap** in `coalesceByProximity`: after merging atoms by proximity, each source file contributes at most `max(3, min(8, ceil(maxSnippets/15)))` snippets (3 for 4KB budget, 8 for max-recall)
-  2. **Word-overlap dedup** in `formatResults`: after temporal enrichment, sort by weighted score DESC; drop any snippet whose significant-word Jaccard overlap with an already-accepted snippet ≥ 60%. Re-sort chronologically after dedup pass.
-- Significant words: length ≥ 5 chars, not in stopword set; tolerant to paraphrase but catches near-verbatim duplication
-- Dedup stats exposed in response metadata: `metadata.deduplication.{ removed, remaining }`
-- **Impact:** Eliminates "C+ for efficiency" token waste; prevents single files from monopolizing 4K context windows
-
-### 🐛 Bug Fixes
-
-#### SmartSearch Concurrent Max-Recall OOM (v4.4.x)
-- `smartChatSearch` always triggered parallel multi-query split in max-recall mode even when initial search had results
-- Split launched N `executeSearch` calls via `Promise.all` — each with the full 393K-char budget — multiplying heap use by N simultaneously
-- Fix 1: return early from `smartChatSearch` when `useMaxRecall && initial.results.length > 0` — initial max-recall search already uses full budget with 1639-atom target, no split needed
-- Fix 2: for long queries where initial search is skipped, splits now run sequentially (`for...of` loop) instead of `Promise.all`
-- **Impact:** Eliminates `FATAL ERROR: Reached heap limit` crash pattern during multi-word max-recall searches
-
-#### Search Memory Reduction (Phase 1+2)
-- `--max-old-space-size` reduced from 8192 → 3072: V8 GC now triggers at 3GB, not just before crash at 8GB
-- `global.gc()` called after each `formatResults()` completes; `--expose-gc` was already set but unused
-- `SET work_mem = '32MB'` injected before physics walker CTE to cap PostgreSQL sort/hash memory per node
-- Physics walker fetch cap: `Math.min(hopMaxPerHop * 1.5, 200)` → `Math.min(hopMaxPerHop, 100)` (50 standard, 100 max-recall)
-- Lazy snippet inflation: `coalesceByProximity` now accepts `maxSnippets` param, sorts all merged windows by score DESC, inflates only top-N — for 4KB budget this reduces disk inflation calls from 200 to ~14
-- `formatResults` computes `maxSnippets = max(50, ceil(maxChars / 300))` to bound inflation proportionally to budget
-- PGlite startup: `SET effective_cache_size = '200MB'` and `SET work_mem = '16MB'` applied at init to bound WASM page cache
-- **Impact:** Standard search ≤800MB peak; max-recall ≤2GB steady state (prior: 8GB crash)
-
-#### Virtual Anchor Resolution for Physics Walker (Standard 124)
-- Physics Walker was receiving `virtual_*` in-memory IDs from ContextInflator that have no row in the DB
-- `resolved_atoms` CTE returned 0 rows → walker returned 0 associations despite finding 40+ FTS anchors
-- Fix: filter out all `virtual_*` IDs; batch-resolve their `compound_id` to real `mol_*` IDs via `SELECT id FROM molecules WHERE compound_id = ANY($1)`
-- **Impact:** Physics Walker now receives real anchor IDs and returns associative results
-
-### ✨ Features
+- Per-source cap in coalesceByProximity: each source contributes at most max(3, min(8, ceil(maxSnippets/15))) snippets
+- Word-overlap dedup in formatResults: drop snippets with Jaccard overlap >=60% with an already-accepted snippet
+- Dedup stats in response metadata: metadata.deduplication.{ removed, remaining }
+- Impact: Prevents single files from monopolizing 4K context windows
 
 #### Search Result Tag Sanitization (Standard 123)
-- Source YAML/JSON files embed serialized tag lists inside molecule content (e.g. `\"#TypeScript\" - \"#algorithm\"`, `##19864Residential`)
-- These tokens appeared verbatim in search results, consuming LLM context budget with zero signal
-- Fix: `stripInlineTags()` in `graph-context-serializer.ts` removes escaped-quote tags, plain `#Tag` and `##Tag` tokens, and orphaned separator chains from `MemoryNode.content` at serialization time
-- Tags are preserved on `result.tags` field — only the inline text representation is cleaned
-- **Impact:** Clean, readable content delivered to LLM and UI; tags remain available for all graph/ranking operations
+- stripInlineTags() removes escaped-quote tags, plain #Tag/##Tag tokens, and orphaned separators from returned content
+- Tags preserved on result.tags field; only inline text representation cleaned
 
-### 📚 Documentation
+#### camelCase Query Expansion
+- expandCamelCase() in query-parser.ts splits at camelCase/PascalCase boundaries at query time
+- findAnchors -> [findanchors, find, anchors]; PhysicsTagWalker -> [physicstagwalker, physics, tag, walker]
+- All variants fed to to_tsquery with OR -- existing matches preserved, recall improved for code search
 
-#### New Standards
-- **Standard 123:** Search Result Tag Sanitization
-- **Standard 124:** Virtual Anchor Resolution for Physics Walker
+#### Mobile-Responsive Navbar + Drawer
+- Hamburger menu on mobile (<= 768px), hidden on desktop
+- Slide-in drawer with all system controls (Backup, Research, GitHub, Git, Quarantine, Paths)
+- Desktop sidebar unchanged; mobile collapses to full-width single-column layout
+- Fixed three CSS regressions: missing --text-secondary variable, drawer styles inside media query, aside display:none blocked by inline style
+
+#### GitHub Credentials Detection
+- GitHub modal detects token validity and OAuth scopes before ingestion
+
+### Bug Fixes
+
+#### Hyphen Stripping in Search Results
+- stripInlineTags() used /(\s*-\s*)+/g which stripped ALL hyphens (p-6 -> p 6, text-xl -> text xl)
+- Fixed to /[ \t]+-[ \t]+/g: only strips space-hyphen-space (YAML list markers)
+- Applied to both search-utils.ts and graph-context-serializer.ts
+
+#### Newline-Aware Chunk Splitter
+- Max-size enforcer in atomizer-service.ts now walks back to nearest newline before splitting
+- Prevents mid-word and mid-identifier cuts (fr + equency, string { alone)
+
+#### Test Fixture Tag Filtering
+- Mock test atoms with #Tag, #Tag1, #sharedA, #sharedB, #Word now blacklisted from production graph
+- Added 7 patterns to TAG_BLACKLIST_PATTERNS: #tag*, #shared[a-z], #word*, #fixture, #mock, #dummy, #sample
+
+#### SmartSearch Concurrent Max-Recall OOM
+- smartChatSearch no longer triggers parallel multi-query split when initial max-recall search has results
+- Remaining splits run sequentially (for...of) instead of Promise.all
+- Impact: Eliminates FATAL ERROR: Reached heap limit crash pattern
+
+#### Search Memory Reduction (Phase 1+2)
+- --max-old-space-size reduced 8192 -> 4096; gc() called after each search and after ingestion
+- SET work_mem = '32MB' before physics walker CTE
+- Lazy snippet inflation: inflates only top-N by score (4KB budget: ~14 disk reads vs 200)
+- Impact: Standard search <=800MB peak; max-recall <=2GB steady state
+
+#### Virtual Anchor Resolution for Physics Walker (Standard 124)
+- Filter out virtual_* IDs; batch-resolve compound_id to real mol_* IDs
+- Impact: Physics Walker now returns associative results
+
+#### MirroredBrain Architecture Correction (Standard 116)
+- mirrored_brain/ stores cleaned compound_body content; backup v2 streams from mirrored_brain/
+
+#### JOSS Submission Fixes
+- Temporal decay constant corrected: lambda 0.0001 -> 0.00001 h^-1 (7.9 year half-life)
+- Milliseconds->hours unit conversion added in SQL and TypeScript decay calculations
+
+### Tests
+- Jest unit tests for GitHub commit ingestion formatting and pagination (10/10)
+- Vitest A/B integration test with real PGlite in-memory: before/after commit history ingestion (9/9)
+
+### Documentation
+- Standard 123: Search Result Tag Sanitization
+- Standard 124: Virtual Anchor Resolution for Physics Walker
+- Standard 125: Semantic Deduplication
 
 ---
-
-## [Unreleased] - MirroredBrain Architecture Correction
-
-### Changed
-
-#### MirroredBrain Writes Clean Content (Standard 116)
-- `mirrored_brain/` now stores **cleaned** `compound_body` content instead of verbatim raw copies
-- Cleaning (sanitize: strip timestamps, PII, LLM markers, emoji) happens once in `atomizer.sanitize()` and the result is written to both DB (`compounds.compound_body`) and `mirrored_brain/`
-- `mirror.ts`: `createMirror()` now JOINs `sources + compounds` to write `compound_body`; added `writeMirroredFile()` for O(1) per-file writes from watchdog
-- `watchdog.ts`: calls `writeMirroredFile()` after atomize instead of triggering full `createMirror()` scan
-- **Impact:** `mirrored_brain/` is smaller than inbox (noise removed); byte offsets in DB atoms align correctly to mirrored files
-
-#### Backup v2 Format — Files from MirroredBrain
-- `backup.ts`: `createBackup()` now streams files from `mirrored_brain/` into a `"files"` section (JSON array of `{path, content}`)
-- Replaces the `"memory"` section (atom records) with the `"files"` section; `"source"` and `"engrams"` sections unchanged
-- `restoreBackup()`: detects `"files"` (v2) vs `"memory"` (v1) key and routes accordingly; added `rebuildInboxFromMirror()` to copy `@inbox/ → inbox/` and `@external-inbox/ → external-inbox/`
-- `backup-restore.ts`: `validateBackup()` now accepts both `"files"` and `"memory"` as valid format markers
-- **Impact:** Backups contain clean files (not atom fragments); restore is simpler (file copy vs atom aggregation); full backward compatibility with v1 backups
-
-### Fixed
-
-#### Jest Test Suite (Windows ESM)
-- Test script changed to `node --experimental-vm-modules ./node_modules/jest/bin/jest.js` (Windows: `.bin/jest` is a Unix shell script that fails when invoked with `node` directly)
-- `physics_walker.test.ts` added to `testPathIgnorePatterns` alongside `pglite-database.test.ts` (both require Vitest due to PGlite WASM/dynamic import conflicts with Jest ESM isolation)
-- Deleted 7 stale `test-github-ingest-*` artifact directories; added `test-github-ingest-*/` and `test-physics-db-*/` to `.gitignore`
-- **Impact:** `pnpm test` runs clean (7/7 green)
-
----
-
-## [Unreleased] - JOSS Submission Fixes
-
-### Fixed
-- **Temporal Decay Constant:** Fixed λ from 0.0001 to 0.00001 h⁻¹ (7.9 year half-life) to match paper specification
-- **SQL Unit Conversion:** Added milliseconds→hours conversion (/ 3600000.0) in temporal decay calculations
-- **TypeScript Unit Conversion:** Fixed age calculation from seconds to hours for λ in h⁻¹
-
-### Added
-- Search latency scaling documentation (150ms @ 1.5k atoms, 7.7s @ 151k atoms)
-- Clear unit conversion comments in SQL and TypeScript code
-- Comprehensive audit reports for JOSS submission
-
 ## [4.4.1] - 2026-03-02 — Production Stability Release
 
 ### 🐛 Critical Bug Fixes
