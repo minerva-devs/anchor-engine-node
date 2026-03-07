@@ -700,6 +700,7 @@
             const [repoUrl, setRepoUrl] = useState('');
             const [branch, setBranch] = useState('main');
             const [buckets, setBuckets] = useState('');
+            const [includeHistory, setIncludeHistory] = useState(true);
             const [loading, setLoading] = useState(false);
             const [message, setMessage] = useState('');
 
@@ -708,22 +709,23 @@
                 setLoading(true);
                 setMessage('');
                 try {
-                    const res = await fetch('/v1/research/github', {
+                    const res = await fetch('/v1/github/repos', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            repo: repoUrl.trim(),
+                            url: repoUrl.trim(),
                             branch: branch.trim() || 'main',
-                            bucket: buckets.trim() || 'code'
+                            bucket: buckets.trim() || 'code',
+                            include_history: includeHistory,
                         })
                     });
                     const data = await res.json();
-                    setMessage('✅ Repository ingested: ' + (data.message || 'Success'));
+                    setMessage('✅ ' + (data.message || 'Repository ingestion started'));
                 } catch (error) {
                     setMessage('❌ Failed: ' + error.message);
                 } finally {
                     setLoading(false);
-                    setTimeout(() => setMessage(''), 4000);
+                    setTimeout(() => setMessage(''), 5000);
                 }
             };
 
@@ -774,6 +776,18 @@
                                     />
                                 </div>
                             </div>
+                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={includeHistory}
+                                    onChange={(e) => setIncludeHistory(e.target.checked)}
+                                    className="w-4 h-4 accent-green-400"
+                                />
+                                <span className="text-sm text-gray-300">
+                                    Include full commit history
+                                    <span className="text-gray-500 ml-1">(search code changes over time)</span>
+                                </span>
+                            </label>
                             {message && (
                                 <p className={`text-sm ${message.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>
                                     {message}
