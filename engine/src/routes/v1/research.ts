@@ -86,18 +86,20 @@ export function setupResearchRoutes(app: Application) {
   app.post('/v1/research/github', async (req: Request, res: Response) => {
     try {
       const body = req.body as any;
-      const url = body.url as string;
-      const bucket = body.bucket as string;
+      // UI sends 'repo', but we also support 'url' for compatibility
+      const repoUrl = body.repo || body.url as string;
+      const bucket = body.bucket as string || 'code';
+      const branch = body.branch as string || 'main';
 
-      if (!url || !bucket) {
-        res.status(400).json({ error: 'url and bucket are required' });
+      if (!repoUrl) {
+        res.status(400).json({ error: 'repo (or url) and bucket are required' });
         return;
       }
 
       const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();
 
-      const repo = await service.registerRepo(url, bucket);
+      const repo = await service.registerRepo(repoUrl, bucket);
 
       service.syncRepo(repo.id).catch((error: any) => {
         console.error(`[API] Background sync failed for ${repo.id}:`, error);
