@@ -60,17 +60,18 @@ export async function startWatchdog() {
     const inbox = path.join(PROJECT_ROOT, 'inbox');
     const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
 
-    console.log(`[Watchdog] Starting watch on: ${inbox} and ${externalInbox}`);
-
+    // Auto-create inbox directories if missing (Standard 051: Ephemeral Index)
+    // These are gitignored and should be created on-demand
     if (!fs.existsSync(inbox)) {
-        console.warn(`[Watchdog] Inbox directory not found: ${inbox}. Skipping watch.`);
-        return;
+        fs.mkdirSync(inbox, { recursive: true });
+        console.log(`[Watchdog] Created inbox directory: ${inbox}`);
     }
-
-    // Auto-create external inbox if missing
     if (!fs.existsSync(externalInbox)) {
         fs.mkdirSync(externalInbox, { recursive: true });
+        console.log(`[Watchdog] Created external-inbox directory: ${externalInbox}`);
     }
+
+    console.log(`[Watchdog] Starting watch on: ${inbox} and ${externalInbox}`);
 
     // Load extra paths from config
     const extraPaths = config.WATCHER_EXTRA_PATHS || [];
