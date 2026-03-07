@@ -52,10 +52,7 @@
     "watcher": {
         "debounce_ms": 2000,
         "stability_threshold_ms": 2000,
-        "extra_paths": [
-            "C:\\Users\\[USERNAME]\\Projects\\Coding-Notes\\Notebook\\history\\important-context",
-            "C:\\Users\\[USERNAME]\\Projects\\Coding-Notes\\Notebook\\history\\"
-        ]
+        "extra_paths": []
     },
     "context": {
         "relevance_weight": 0.7,

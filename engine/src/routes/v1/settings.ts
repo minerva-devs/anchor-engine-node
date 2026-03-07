@@ -1,6 +1,6 @@
 /**
  * Settings API Routes
- * 
+ *
  * Provides endpoints for reading and updating user_settings.json
  */
 
@@ -9,6 +9,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { config } from '../../config/index.js';
+import { PROJECT_ROOT, PATHS } from '../../config/paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -165,7 +166,7 @@ export function setupSettingsRoutes(app: Application) {
   app.post('/v1/settings/reset', async (req: Request, res: Response) => {
     try {
       fs.writeFileSync(SETTINGS_PATH, JSON.stringify(DEFAULT_SETTINGS, null, 4), 'utf-8');
-      
+
       res.status(200).json({
         status: 'success',
         message: 'Settings reset to defaults'
@@ -174,6 +175,31 @@ export function setupSettingsRoutes(app: Application) {
       res.status(500).json({
         status: 'error',
         error: `Failed to reset settings: ${error.message}`
+      });
+    }
+  });
+
+  // GET /v1/settings/paths - Get auto-discovered file paths (Standard 051)
+  // Returns universal paths based on project root, no hardcoded values
+  app.get('/v1/settings/paths', async (_req: Request, res: Response) => {
+    try {
+      res.status(200).json({
+        status: 'success',
+        paths: {
+          project_root: PROJECT_ROOT,
+          inbox: PATHS.INBOX_DIR,
+          external_inbox: PATHS.EXTERNAL_INBOX_DIR,
+          mirrored_brain: PATHS.MIRRORED_BRAIN_DIR,
+          backups: PATHS.BACKUPS_DIR,
+          logs: PATHS.LOGS_DIR,
+          database: PATHS.DATABASE_FILE,
+          user_settings: PATHS.USER_SETTINGS
+        }
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        status: 'error',
+        error: `Failed to discover paths: ${error.message}`
       });
     }
   });
