@@ -8,6 +8,7 @@ export function setupGitRoutes(app: Application) {
       const body = req.body as any;
       const url = body.url as string;
       const bucket = body.bucket as string;
+      const includeHistory = body.include_history === true;
 
       if (!url || !bucket) {
         res.status(400).json({ error: 'url and bucket are required' });
@@ -21,14 +22,24 @@ export function setupGitRoutes(app: Application) {
       const repo = await service.registerRepo(url, bucket);
 
       // Start async ingestion (don't wait for completion)
-      service.syncRepo(repo.id).catch((error: any) => {
-        console.error(`[API] Background sync failed for ${repo.id}:`, error);
-      });
+      (async () => {
+        try {
+          await service.syncRepo(repo.id);
+          if (includeHistory) {
+            const token = process.env.GITHUB_TOKEN;
+            await service.ingestGitHistory(repo.owner, repo.repo, repo.branch, bucket, token);
+            console.log(`[API] Git history ingested for ${repo.owner}/${repo.repo}`);
+          }
+        } catch (error: any) {
+          console.error(`[API] Background sync/history failed for ${repo.id}:`, error);
+        }
+      })();
 
       res.status(202).json({
         id: repo.id,
         status: 'ingesting',
-        message: `Started ingestion for ${repo.owner}/${repo.repo}`,
+        include_history: includeHistory,
+        message: `Started ingestion for ${repo.owner}/${repo.repo}${includeHistory ? ' (with full commit history)' : ''}`,
       });
     } catch (error: any) {
       console.error('[API] GitHub repo registration error:', error);
