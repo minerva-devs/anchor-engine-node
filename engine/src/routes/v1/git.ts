@@ -117,6 +117,115 @@ export function setupGitRoutes(app: Application) {
     }
   });
 
+  // GET /v1/github/credentials - Check for stored GitHub credentials
+  app.get('/v1/github/credentials', async (_req: Request, res: Response) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const os = await import('os');
+
+      let token: string | null = null;
+      let source: string | null = null;
+      let username: string | null = null;
+
+      // 1. Check environment variable
+      if (process.env.GITHUB_TOKEN) {
+        token = process.env.GITHUB_TOKEN;
+        source = 'GITHUB_TOKEN environment variable';
+      }
+
+      // 2. Check .netrc file
+      if (!token) {
+        const netrcPath = path.join(os.homedir(), '.netrc');
+        if (fs.existsSync(netrcPath)) {
+          const netrcContent = fs.readFileSync(netrcPath, 'utf8');
+          const netrcMatch = netrcContent.match(/machine\s+github\.com\s+login\s+(\S+)\s+password\s+(\S+)/);
+          if (netrcMatch) {
+            username = netrcMatch[1];
+            token = netrcMatch[2];
+            source = '.netrc file';
+          }
+        }
+      }
+
+      // 3. Check git config for credential helper
+      if (!token) {
+        const { exec } = await import('child_process');
+        const util = await import('util');
+        const execPromise = util.promisify(exec);
+
+        try {
+          // Try to get credential helper status
+          const { stdout } = await execPromise('git config --global credential.helper', {
+            timeout: 5000
+          });
+          if (stdout.trim()) {
+            source = `git credential.helper: ${stdout.trim()}`;
+            // Note: We can't directly read credentials from git credential-store
+            // without invoking the credential helper, which is complex.
+            // We just inform the user that a helper is configured.
+          }
+        } catch {
+          // Git not available or no credential helper
+        }
+      }
+
+      // If we have a token, validate it and get user info
+      let userInfo: { login: string; name?: string } | null = null;
+      let tokenValid = false;
+      let tokenScopes: string[] = [];
+
+      if (token) {
+        try {
+          const response = await fetch('https://api.github.com/user', {
+            headers: {
+              'Authorization': `token ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+              'User-Agent': 'anchor-engine-node',
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            userInfo = { login: data.login, name: data.name };
+            tokenValid = true;
+
+            // Get scopes from headers
+            const scopesHeader = response.headers.get('x-oauth-scopes');
+            if (scopesHeader) {
+              tokenScopes = scopesHeader.split(',').map(s => s.trim());
+            }
+          }
+        } catch (error: any) {
+          console.error('[API] GitHub token validation error:', error.message);
+        }
+      }
+
+      const hasCredentials = !!token;
+      const canAccessPrivateRepos = tokenValid && (
+        tokenScopes.includes('repo') || tokenScopes.includes('public_repo')
+      );
+
+      res.status(200).json({
+        has_credentials: hasCredentials,
+        credential_source: source,
+        username: username || userInfo?.login || null,
+        user_info: userInfo,
+        token_valid: tokenValid,
+        scopes: tokenScopes,
+        can_access_private_repos: canAccessPrivateRepos,
+        message: hasCredentials
+          ? (canAccessPrivateRepos
+              ? 'GitHub credentials found. You can access both public and private repositories.'
+              : 'GitHub credentials found but may be limited to public repositories only.')
+          : 'No GitHub credentials found. You can only access public repositories.',
+      });
+    } catch (error: any) {
+      console.error('[API] GitHub credentials check error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /v1/git/repos - List available git repositories
   app.get('/v1/git/repos', async (_req: Request, res: Response) => {
     try {
