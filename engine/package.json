@@ -11,6 +11,8 @@
         "migrate": "node src/migrate_history.js",
         "read-all": "node src/read_all.js",
         "hydrate": "node src/hydrate.js",
+        "test:vitest": "vitest run --config vitest.config.ts",
+        "test:vitest:watch": "vitest --config vitest.config.ts",
         "test": "node tests/suite.js",
         "test:routes": "node tests/all_routes_and_services.js",
         "test:quick": "node tests/suite.js",
@@ -90,9 +92,10 @@
         "@types/js-yaml": "^4.0.9",
         "@types/node": "^25.0.7",
         "@types/tar": "^6.1.13",
-        "eslint": "^8.56.0",
         "@yao-pkg/pkg": "^5.12.0",
+        "eslint": "^8.56.0",
         "ts-node": "^10.9.2",
-        "typescript": "^5.9.3"
+        "typescript": "^5.9.3",
+        "vitest": "^4.0.18"
     }
 }
