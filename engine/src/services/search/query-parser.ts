@@ -86,6 +86,28 @@ export function sanitizeFtsQuery(query: string): string {
 }
 
 /**
+ * Expand camelCase and PascalCase identifiers into additional search terms.
+ * e.g. "findAnchors" → ["findAnchors", "find", "Anchors", "anchors"]
+ * Returned terms are de-duped and lowercased for FTS.
+ */
+export function expandCamelCase(terms: string[]): string[] {
+    const expanded = new Set<string>();
+    for (const term of terms) {
+        expanded.add(term.toLowerCase());
+        // Split on camelCase/PascalCase boundaries
+        const parts = term
+            .replace(/([a-z])([A-Z])/g, '$1 $2')   // camelCase → camel Case
+            .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // acronym run: ABCDef → ABC Def
+            .split(/\s+/)
+            .filter(p => p.length > 1);
+        for (const p of parts) {
+            expanded.add(p.toLowerCase());
+        }
+    }
+    return Array.from(expanded);
+}
+
+/**
  * Helper: Extract Temporal Context
  * Detects "last X months/years", year ranges, and returns a list of relevant year tags.
  */

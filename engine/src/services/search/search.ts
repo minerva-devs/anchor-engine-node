@@ -25,7 +25,7 @@ import { systemStatus } from '../system-status.js';
 // --- Imports from extracted modules ---
 import {
   nlp, isExpansionReady, semanticExpand,
-  getGlobalTags, expandQuery, sanitizeFtsQuery,
+  getGlobalTags, expandQuery, sanitizeFtsQuery, expandCamelCase,
   parseNaturalLanguage, extractKeyTermsFromConversation,
   extractTemporalContext, splitQueryIntoMolecules, parseQuery,
   expandConversationalQuery, getRelatedTagsForQuery
@@ -253,7 +253,10 @@ export async function findAnchors(
     const queryWords = sanitizedQuery.trim().split(/\s+/).filter(t => t.length > 0);
     const contentWords = queryWords.filter(t => !FTS_STOP_WORDS.has(t));
     // Fall back to full word list if stop-word stripping removed everything
-    const tsTerms = contentWords.length > 0 ? contentWords : queryWords;
+    const baseTerms = contentWords.length > 0 ? contentWords : queryWords;
+    // Expand camelCase identifiers (e.g. findAnchors → [findanchors, find, anchors])
+    // so FTS can match partial names and prose descriptions of the same concept.
+    const tsTerms = expandCamelCase(baseTerms);
     let tsQueryString = tsTerms.join(' | ');
 
     let anchors: SearchResult[] = [];

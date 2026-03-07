@@ -82,12 +82,11 @@ export function detectIntent(query: string): QueryIntent {
  */
 function stripInlineTags(content: string): string {
   if (!content) return content;
-  // Remove escaped-quote wrapped tags: \"#Word\"
   let s = content.replace(/\\?"#[^"\\]+\\?"/g, '');
-  // Remove plain hashtags (one or two #) followed by word chars
   s = s.replace(/##?[A-Za-z0-9_]+/g, '');
-  // Clean up orphaned separator sequences and excess whitespace
-  s = s.replace(/(\s*-\s*)+/g, ' ').trim();
+  // Only strip " - " list separators (space-hyphen-space), not bare hyphens
+  // in kebab-case identifiers like p-6, text-xl, font-bold, etc.
+  s = s.replace(/[ \t]+-[ \t]+/g, ' ').trim();
   return s;
 }
 
