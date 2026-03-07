@@ -583,8 +583,86 @@ export class GitHubIngestService {
   }
 
   /**
-   * Check GitHub API rate limit status
+   * Fetch full commit history from GitHub API and ingest as searchable molecules.
+   * Each commit becomes its own paragraph: sha, author, date, message, files changed.
+   * The entire history is ingested as one compound: github:{owner}/{repo}/commit-history.md
    */
+  async ingestGitHistory(
+    owner: string,
+    repo: string,
+    branch: string,
+    bucket: string,
+    token?: string
+  ): Promise<number> {
+    const headers: Record<string, string> = {
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'anchor-engine-node',
+    };
+    if (token) headers['Authorization'] = `token ${token}`;
+
+    const commits: string[] = [];
+    let page = 1;
+    const PER_PAGE = 100;
+
+    console.log(`[GitHub] Fetching commit history for ${owner}/${repo} (branch: ${branch})`);
+
+    while (true) {
+      const url = `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${PER_PAGE}&page=${page}`;
+      const res = await fetch(url, { headers });
+
+      if (!res.ok) {
+        console.warn(`[GitHub] Commits API error ${res.status} on page ${page} — stopping`);
+        break;
+      }
+
+      const data = await res.json() as any[];
+      if (!Array.isArray(data) || data.length === 0) break;
+
+      for (const c of data) {
+        const sha = (c.sha || '').slice(0, 12);
+        const author = c.commit?.author?.name || c.author?.login || 'unknown';
+        const date = c.commit?.author?.date || '';
+        const message = (c.commit?.message || '').trim();
+        const filesLine = Array.isArray(c.files)
+          ? c.files.map((f: any) => `  ${f.status[0].toUpperCase()} ${f.filename} (+${f.additions} -${f.deletions})`).join('\n')
+          : '';
+
+        commits.push(
+          `## ${sha} — ${date}\nAuthor: ${author}\n\n${message}${filesLine ? '\n\nFiles:\n' + filesLine : ''}`
+        );
+      }
+
+      console.log(`[GitHub] Fetched page ${page} (${data.length} commits, total so far: ${commits.length})`);
+
+      // Check Link header for next page
+      const linkHeader = res.headers.get('link') || '';
+      if (!linkHeader.includes('rel="next"')) break;
+      page++;
+
+      // Yield to event loop between pages
+      await new Promise(resolve => setImmediate(resolve));
+    }
+
+    if (commits.length === 0) {
+      console.log(`[GitHub] No commits found for ${owner}/${repo}`);
+      return 0;
+    }
+
+    const historyContent = `# Git History: ${owner}/${repo} (${branch})\n\nTotal commits: ${commits.length}\n\n---\n\n${commits.join('\n\n---\n\n')}`;
+    const sourcePath = `github:${owner}/${repo}/commit-history.md`;
+
+    console.log(`[GitHub] Ingesting ${commits.length} commits as ${sourcePath}`);
+
+    const atomizeResult = await this.atomizer.atomize(historyContent, sourcePath, 'external');
+    if (atomizeResult) {
+      const { compound, molecules, atoms } = atomizeResult;
+      await this.atomicIngest.ingestResult(compound, molecules, atoms, [bucket, 'git-history']);
+    }
+
+    return commits.length;
+  }
+
+
   async getRateLimitStatus(): Promise<{
     limit: number;
     remaining: number;
