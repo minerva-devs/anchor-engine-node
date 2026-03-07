@@ -8,14 +8,11 @@
     "start": "node --expose-gc --max-old-space-size=6144 engine/dist/index.js",
     "dev": "pnpm --filter anchor-engine dev",
     "build": "pnpm --filter anchor-engine build",
-    
     "test": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --config jest.config.cjs",
     "test:watch": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --watch --config jest.config.cjs",
     "test:coverage": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js --coverage --config jest.config.cjs",
-    
     "test:standalone": "ts-node --esm tests/unit/test_atomizer_logic.ts",
     "test:all": "pnpm test && pnpm test:standalone",
-    
     "lint": "eslint . --ext .ts,.js",
     "clean": "rimraf dist engine/dist",
     "postinstall": "cd engine && pnpm install --ignore-scripts && pnpm run build",
@@ -45,6 +42,7 @@
     "express-rate-limit": "^7.4.0",
     "got-scraping": "^4.1.3",
     "sharp": "^0.34.5",
+    "tar": "^7.5.10",
     "turndown": "^7.2.2",
     "typescript": "^5.0.0",
     "uuid": "^13.0.0",

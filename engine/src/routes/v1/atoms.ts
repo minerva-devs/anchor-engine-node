@@ -142,4 +142,86 @@ export function setupAtomRoutes(app: Application) {
       res.status(500).json({ error: e.message });
     }
   });
+
+  // === Compatibility Routes for UI ===
+
+  // GET /v1/quarantine - List quarantined atoms
+  app.get('/v1/quarantine', async (_req: Request, res: Response) => {
+    try {
+      const query = `
+        SELECT id, content, source_path, timestamp, buckets, tags, provenance, simhash, embedding
+        FROM atoms
+        WHERE provenance = 'quarantine'
+        ORDER BY timestamp DESC
+        LIMIT 100
+      `;
+      const result = await db.run(query);
+
+      const atoms = (result.rows || []).map((row: any) => ({
+        id: row.id,
+        content: row.content,
+        source: row.source_path,
+        timestamp: row.timestamp,
+        buckets: row.buckets,
+        tags: row.tags,
+        provenance: row.provenance,
+        simhash: row.simhash
+      }));
+
+      res.status(200).json({ atoms, total: atoms.length });
+    } catch (e: any) {
+      console.error('[API] Failed to fetch quarantined atoms:', e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /v1/quarantine/:id/restore - Restore a quarantined atom
+  app.post('/v1/quarantine/:id/restore', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      console.log(`[API] Restoring Atom: ${id}`);
+
+      const fullRecord = await db.run(
+        `SELECT id, timestamp, content, source_path, source_id, sequence, type, hash, buckets, epochs, tags, provenance, simhash, embedding
+         FROM atoms WHERE id = $1`,
+        [id]
+      );
+
+      if (!fullRecord.rows || fullRecord.rows.length === 0) {
+        res.status(404).json({ error: 'Atom not found' });
+        return;
+      }
+
+      const row = fullRecord.rows[0];
+      const currentTags = row.tags as string[] || [];
+
+      // Filter out quarantine tags
+      const newTags = currentTags.filter(t => t !== '#manually_quarantined' && t !== '#auto_quarantined');
+
+      await db.run(
+        `UPDATE atoms SET tags = $1, provenance = $2 WHERE id = $3`,
+        [newTags, 'internal', id]
+      );
+
+      res.status(200).json({ status: 'success', message: `Atom ${id} restored to Graph.` });
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // DELETE /v1/quarantine/:id - Delete a quarantined atom
+  app.delete('/v1/quarantine/:id', async (req: Request, res: Response) => {
+    try {
+      const { id } = req.params;
+      console.log(`[API] Deleting quarantined atom: ${id}`);
+
+      await db.run(`DELETE FROM atoms WHERE id = $1`, [id]);
+
+      res.status(200).json({ status: 'deleted', id });
+    } catch (e: any) {
+      console.error(e);
+      res.status(500).json({ error: e.message });
+    }
+  });
 }

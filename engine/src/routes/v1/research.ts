@@ -69,4 +69,48 @@ export function setupResearchRoutes(app: Application) {
       res.status(500).json({ error: e.message });
     }
   });
+
+  // Compatibility: /v1/research/github -> proxy to /v1/github/repos
+  app.get('/v1/research/github', async (_req: Request, res: Response) => {
+    try {
+      const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
+      const service = new GitHubIngestService();
+      const repos = await service.listRepos();
+      res.status(200).json(repos);
+    } catch (error: any) {
+      console.error('[API] GitHub repo list error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/v1/research/github', async (req: Request, res: Response) => {
+    try {
+      const body = req.body as any;
+      const url = body.url as string;
+      const bucket = body.bucket as string;
+
+      if (!url || !bucket) {
+        res.status(400).json({ error: 'url and bucket are required' });
+        return;
+      }
+
+      const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
+      const service = new GitHubIngestService();
+
+      const repo = await service.registerRepo(url, bucket);
+
+      service.syncRepo(repo.id).catch((error: any) => {
+        console.error(`[API] Background sync failed for ${repo.id}:`, error);
+      });
+
+      res.status(202).json({
+        id: repo.id,
+        status: 'ingesting',
+        message: `Started ingestion for ${repo.owner}/${repo.repo}`,
+      });
+    } catch (error: any) {
+      console.error('[API] GitHub repo registration error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
