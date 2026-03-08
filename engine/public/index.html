@@ -286,7 +286,7 @@
                         // normalise to results array
                         data = { results: (data.results || data.nodes || []).map(n => ({
                             id: n.id, content: n.content, source: n.source,
-                            tags: n.tags || [], score: n.score || 1,
+                            tags: n.tags || [], score: n.score ?? 1,
                             _algo: '🌐 illuminate'
                         })) };
                     } else {
