@@ -14,6 +14,10 @@
 import { db } from '../../core/db.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 
+/** PGlite WASM has a practical call-stack limit on large parameter arrays.
+ *  Keep every IN clause under this many parameters to avoid stack overflow. */
+const PGLITE_MAX_PARAMS = 200;
+
 export interface ExploreRequest {
   seed: {
     query?: string;
@@ -112,31 +116,36 @@ async function bfsViaEdges(
 ): Promise<{ nodeIds: string[]; edges: ExploreEdge[] }> {
   const visited = new Set<string>(seeds);
   let frontier = [...seeds];
-  let depthReached = 0;
   const allEdges: ExploreEdge[] = [];
 
   for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
-    const placeholders = frontier.map((_, i) => `$${i + 2}`).join(', ');
-    const result = await db.run(
-      `SELECT source_id, target_id, weight FROM edges
-       WHERE (source_id IN (${placeholders}) OR target_id IN (${placeholders}))
-         AND weight >= $1`,
-      [minWeight, ...frontier]
-    );
+    // Chunk frontier to stay under PGlite parameter limit
+    const chunks: string[][] = [];
+    for (let i = 0; i < frontier.length; i += PGLITE_MAX_PARAMS) {
+      chunks.push(frontier.slice(i, i + PGLITE_MAX_PARAMS));
+    }
 
     const nextFrontier: string[] = [];
-    for (const row of result.rows as any[]) {
-      const neighbor = visited.has(row.source_id) ? row.target_id : row.source_id;
-      if (!visited.has(neighbor)) {
-        visited.add(neighbor);
-        nextFrontier.push(neighbor);
+    for (const chunk of chunks) {
+      const placeholders = chunk.map((_, i) => `$${i + 2}`).join(', ');
+      const result = await db.run(
+        `SELECT source_id, target_id, weight FROM edges
+         WHERE (source_id IN (${placeholders}) OR target_id IN (${placeholders}))
+           AND weight >= $1`,
+        [minWeight, ...chunk]
+      );
+
+      for (const row of result.rows as any[]) {
+        const neighbor = visited.has(row.source_id) ? row.target_id : row.source_id;
+        if (!visited.has(neighbor)) {
+          visited.add(neighbor);
+          nextFrontier.push(neighbor);
+        }
+        allEdges.push({ source: row.source_id, target: row.target_id, weight: row.weight });
       }
-      // Record edge (dedup by pair)
-      allEdges.push({ source: row.source_id, target: row.target_id, weight: row.weight });
     }
 
     frontier = nextFrontier;
-    depthReached = depth + 1;
     if (visited.size >= maxNodes) break;
   }
 
@@ -156,22 +165,30 @@ async function bfsViaTags(
   let frontier = [...seeds];
 
   for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
-    const placeholders = frontier.map((_, i) => `$${i + 1}`).join(', ');
-    const result = await db.run(
-      `SELECT DISTINCT t2.atom_id
-       FROM tags t1
-       JOIN tags t2 ON t1.tag = t2.tag AND t1.atom_id != t2.atom_id
-       WHERE t1.atom_id IN (${placeholders})`,
-      frontier
-    );
+    const chunks: string[][] = [];
+    for (let i = 0; i < frontier.length; i += PGLITE_MAX_PARAMS) {
+      chunks.push(frontier.slice(i, i + PGLITE_MAX_PARAMS));
+    }
 
     const nextFrontier: string[] = [];
-    for (const row of result.rows as any[]) {
-      if (!visited.has(row.atom_id)) {
-        visited.add(row.atom_id);
-        nextFrontier.push(row.atom_id);
+    for (const chunk of chunks) {
+      const placeholders = chunk.map((_, i) => `$${i + 1}`).join(', ');
+      const result = await db.run(
+        `SELECT DISTINCT t2.atom_id
+         FROM tags t1
+         JOIN tags t2 ON t1.tag = t2.tag AND t1.atom_id != t2.atom_id
+         WHERE t1.atom_id IN (${placeholders})`,
+        chunk
+      );
+
+      for (const row of result.rows as any[]) {
+        if (!visited.has(row.atom_id)) {
+          visited.add(row.atom_id);
+          nextFrontier.push(row.atom_id);
+        }
       }
     }
+
     frontier = nextFrontier;
     if (visited.size >= maxNodes) break;
   }
@@ -179,28 +196,37 @@ async function bfsViaTags(
   return { nodeIds: [...visited].slice(0, maxNodes) };
 }
 
-/** Fetch full atom details for a list of IDs */
+/** Fetch full atom details for a list of IDs — chunked to avoid PGlite param overflow */
 async function fetchNodes(ids: string[]): Promise<ExploreNode[]> {
   if (ids.length === 0) return [];
 
-  const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
-  const atomsResult = await db.run(
-    `SELECT id, content, source_path FROM atoms WHERE id IN (${placeholders})`,
-    ids
-  );
+  const atomRows: any[] = [];
+  const tagRows: any[] = [];
 
-  const tagsResult = await db.run(
-    `SELECT atom_id, tag FROM tags WHERE atom_id IN (${placeholders})`,
-    ids
-  );
+  for (let i = 0; i < ids.length; i += PGLITE_MAX_PARAMS) {
+    const chunk = ids.slice(i, i + PGLITE_MAX_PARAMS);
+    const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
+
+    const aResult = await db.run(
+      `SELECT id, content, source_path FROM atoms WHERE id IN (${placeholders})`,
+      chunk
+    );
+    atomRows.push(...(aResult.rows as any[]));
+
+    const tResult = await db.run(
+      `SELECT atom_id, tag FROM tags WHERE atom_id IN (${placeholders})`,
+      chunk
+    );
+    tagRows.push(...(tResult.rows as any[]));
+  }
 
   const tagMap = new Map<string, string[]>();
-  for (const row of tagsResult.rows as any[]) {
+  for (const row of tagRows) {
     if (!tagMap.has(row.atom_id)) tagMap.set(row.atom_id, []);
     tagMap.get(row.atom_id)!.push(row.tag);
   }
 
-  return (atomsResult.rows as any[]).map(r => ({
+  return atomRows.map(r => ({
     id: r.id,
     content: r.content,
     source: r.source_path || '',
