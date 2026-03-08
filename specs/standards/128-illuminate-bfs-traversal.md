@@ -1,4 +1,214 @@
-# Standard 128: Illuminate — BFS Graph Traversal
+# Standard 128: Illuminate & Explore — Corpus Traversal Modes
+
+**Status:** ✅ Active | **Version:** 2.0 | **Date:** 2026-03-08  
+**Introduced:** v4.5.1 | **Revised:** v4.5.2
+
+---
+
+## 1. Purpose
+
+Define two complementary corpus traversal modes accessible via `POST /v1/memory/explore`:
+
+| Mode | UI Prefix | Seed | Returns | Primary Use |
+|---|---|---|---|---|
+| **Explore** | `explore: <query>` | FTS query or atom IDs | Tag-hub concept map | Discover what topics exist; skeleton for LLM orientation |
+| **Illuminate** | `illuminate:` (empty) | Global top-degree hubs | Ranked content atoms | Read the corpus narrative; surface representative passages |
+
+**Design principle:** Explore reveals the *shape* of the data. Illuminate reads the *substance* of it.
+
+---
+
+## 2. Explore Mode — Concept Skeleton
+
+### What it does
+
+BFS traversal from query-resolved seeds through the `edges` graph. Because edges connect `mem_` compound hubs to `atom_` tag nodes (`relation='has_tag'`), the reachable set is the **concept spine** of the corpus for that topic.
+
+### Why it matters
+
+An LLM receiving explore output sees which topics exist and how they cluster — without reading any actual content. This orients the model to the shape of the dataset and prevents hallucination by grounding it in real tag vocabulary.
+
+**Example output:** `#rust`, `#architecture`, `#memory`, `#search`, `#authentication` → the model now knows these are the core themes and can formulate targeted queries.
+
+### Seed resolution
+
+```sql
+SELECT id FROM atoms
+WHERE to_tsvector('simple', content) @@ to_tsquery('simple', $terms)
+LIMIT $limit_seeds
+```
+
+Falls back to `ILIKE` if FTS returns nothing.
+
+---
+
+## 3. Illuminate Mode — Corpus Narrative
+
+### What it does
+
+Three-phase global traversal — no query required:
+
+**Phase 1: Find top-degree hubs**
+```sql
+SELECT id, SUM(weight) AS total_weight
+FROM (
+  SELECT source_id AS id, weight FROM edges WHERE weight >= $min_weight
+  UNION ALL
+  SELECT target_id AS id, weight FROM edges WHERE weight >= $min_weight
+) all_edges
+GROUP BY id ORDER BY total_weight DESC LIMIT $seed_count
+```
+Returns the `mem_` compound IDs with the most edge connections — the most cross-referenced documents.
+
+**Phase 2: BFS to tag atoms (concept spine)**
+Edge-BFS from those hubs reaches the `atom_` tag nodes connected to them: the tags that appear most broadly across the corpus.
+
+**Phase 3: Content pull ranked by thematic centrality**
+```sql
+SELECT atom_id, COUNT(*) AS matches
+FROM tags
+WHERE tag IN (<top_tag_labels>)
+GROUP BY atom_id
+ORDER BY matches DESC
+```
+Each content atom's score = how many of the top-hub tags it shares. An atom tagged `#rust` + `#code` + `#anchor` scores higher than one with only `#rust`.
+
+### Result
+
+The most thematically central content atoms in the corpus — actual passages, not stubs — ordered by how many core themes they touch. With `auto_budget`, the output is proportionally sized to the corpus (default: corpus_chars / 1000).
+
+### Why this is powerful
+
+A 350M-character corpus → ~350K characters of output (1000:1 compression). The output is not a summary — it is the actual most-representative atoms from the real data, selected by graph topology. An LLM reading this can infer the full corpus structure without hallucination.
+
+---
+
+## 4. API Contract
+
+### Endpoint
+
+`POST /v1/memory/explore`
+
+### Explore request
+
+```json
+{
+  "seed": { "query": "rust memory architecture", "limit_seeds": 5 },
+  "max_depth": 2,
+  "min_weight": 0.1,
+  "max_nodes": 50,
+  "format": "flat"
+}
+```
+
+### Illuminate request (global mode)
+
+```json
+{
+  "seed": { "global": true, "seed_count": 10 },
+  "max_depth": 3,
+  "auto_budget": true,
+  "compression_ratio": 1000
+}
+```
+
+### Full parameter table
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `seed.query` | string | — | FTS query for explore mode |
+| `seed.atom_ids` | string[] | [] | Explicit seed IDs |
+| `seed.limit_seeds` | number | 5 | Max seeds from query |
+| `seed.global` | boolean | false | Illuminate mode: use top-degree hubs |
+| `seed.seed_count` | number | 10 | How many top hubs to start from |
+| `max_depth` | number | 2 | BFS hops (max 4) |
+| `min_weight` | number | 0.1 | Min edge weight to follow |
+| `max_nodes` | number | 50 (explore) / 10000 (illuminate) | Result cap |
+| `auto_budget` | boolean | false | Auto-size output to corpus proportion |
+| `compression_ratio` | number | 1000 | corpus_chars / ratio = char budget |
+| `max_chars` | number | — | Explicit char budget override |
+| `format` | `flat\|graph` | `flat` | Response shape |
+
+---
+
+## 5. Implementation
+
+### Files
+
+| File | Role |
+|---|---|
+| `engine/src/services/search/explore.ts` | BFS service — both modes |
+| `engine/src/routes/v1/memory.ts` | Route handler |
+
+### Key functions
+
+| Function | Mode | Purpose |
+|---|---|---|
+| `globalTopNodes()` | Illuminate | Weighted degree centrality via edge SUM |
+| `bfsViaEdges()` | Both | Edge-table BFS, frontier chunked at `PGLITE_CHUNK_IDS=100` |
+| `fetchContentAtomsByTopTags()` | Illuminate | Phase 3 content pull ranked by thematic centrality |
+| `fetchNodes()` | Both | Content fetch chunked at `PGLITE_CHUNK_CONTENT=25` |
+| `rankNodesBySubgraphDegree()` | Explore | Ranks atoms by intra-result edge weights for budget trim |
+
+### PGlite WASM limits
+
+Two chunk constants guard against WASM call-stack overflow:
+
+```typescript
+const PGLITE_CHUNK_IDS     = 100;  // ID/tag queries — small result rows
+const PGLITE_CHUNK_CONTENT =  25;  // Content queries — ~1KB/row avg
+```
+
+Content queries at 200+ rows cause WASM heap corruption and permanently break the DB connection — all subsequent queries fail including `SELECT 1`. Chunking prevents this.
+
+---
+
+## 6. UI Integration
+
+| Prefix | Sends | Result |
+|---|---|---|
+| `illuminate:` (empty) | `seed: { global: true }` + `auto_budget: true` | Content atoms, corpus-proportional |
+| `illuminate: <topic>` | `seed: { query: topic }` | Explore BFS from topic seeds |
+| `explore: <topic>` | `seed: { query: topic }` | Same as illuminate with query |
+| `deep:` | search endpoint | Max-recall multi-hop |
+| `exact:` | search endpoint | FTS only |
+| *(none)* | search endpoint | STAR auto search |
+
+---
+
+## 7. MCP Integration
+
+The `anchor_explore` tool supports both modes:
+
+```json
+{
+  "name": "anchor_explore",
+  "inputSchema": {
+    "query": "seed query (optional if global=true)",
+    "global": false,
+    "seed_count": 10,
+    "max_depth": 2,
+    "auto_budget": false,
+    "max_nodes": 50,
+    "format": "flat | graph"
+  }
+}
+```
+
+---
+
+## 8. Related Standards
+
+- **Standard 065:** Graph Associative Retrieval (Tag-Walker)
+- **Standard 086:** Dual-Strategy Search
+- **Standard 104:** Universal Semantic Search
+- **Standard 115:** GitHub Repository Ingestion
+
+---
+
+**Introduced:** v4.5.1 | **Revised:** v4.5.2  
+**Owner:** Anchor Engine Team
+
 
 **Status:** ✅ Active | **Version:** 1.0 | **Date:** 2026-03-08  
 **Introduced:** v4.5.1

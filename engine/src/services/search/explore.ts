@@ -309,8 +309,55 @@ function rankNodesBySubgraphDegree(
     .map(([id]) => id);
 }
 
+/** For global illuminate: given tag atom IDs, resolve content atoms ranked by thematic centrality.
+ *  - Fetches the tag stub atoms to extract their label strings (#rust, #anchor, etc.)
+ *  - Queries the tags table for content atoms sharing those labels
+ *  - Ranks by how many top-hub tags each content atom touches
+ *  - Returns content atom IDs ordered most-central first
+ */
+async function fetchContentAtomsByTopTags(
+  tagAtomIds: string[],
+  maxCount: number
+): Promise<string[]> {
+  if (tagAtomIds.length === 0) return [];
+
+  // Step 1: fetch the tag stub atoms to get their label strings
+  const tagAtoms = await fetchNodes(tagAtomIds);
+  const topTagLabels = tagAtoms
+    .map(n => n.content.trim())
+    .filter(t => t.startsWith('#'));
+
+  if (topTagLabels.length === 0) return [];
+
+  // Step 2: for each chunk of tag labels, find content atoms that share them
+  // Result rows are (atom_id, matches) — lightweight, use CHUNK_IDS
+  const scoreMap = new Map<string, number>();
+  for (let i = 0; i < topTagLabels.length; i += PGLITE_CHUNK_IDS) {
+    const chunk = topTagLabels.slice(i, i + PGLITE_CHUNK_IDS);
+    const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
+    const result = await db.run(
+      `SELECT atom_id, COUNT(*) AS matches
+       FROM tags
+       WHERE tag IN (${placeholders})
+       GROUP BY atom_id`,
+      chunk
+    );
+    for (const row of result.rows as any[]) {
+      scoreMap.set(row.atom_id, (scoreMap.get(row.atom_id) ?? 0) + Number(row.matches));
+    }
+  }
+
+  // Step 3: sort by total match count (most thematically central first)
+  return [...scoreMap.entries()]
+    .filter(([id]) => !id.startsWith('atom_source')) // exclude tag-stub atoms themselves
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxCount)
+    .map(([id]) => id);
+}
+
+
 export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult> {
-  const maxDepth = Math.min(req.max_depth ?? 2, 4);
+  const maxDepth= Math.min(req.max_depth ?? 2, 4);
   const minWeight = req.min_weight ?? 0.1;
   const limitSeeds = req.seed.limit_seeds ?? 5;
   const seedCount = req.seed.seed_count ?? 10;
@@ -367,7 +414,22 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
     strategy = 'tag-bfs';
   }
 
-  // 3. Resolve char budget
+  // 3. Global illuminate: replace tag-stub nodeIds with ranked content atoms.
+  //    Edge-BFS from mem_ hubs produces tag atoms (#rust, #anchor, …) — the concept spine.
+  //    We use those tag labels to pull real content atoms, ranked by thematic centrality
+  //    (how many top-hub tags each content atom shares).
+  if (req.seed.global && nodeIds.length > 0) {
+    const contentIds = await fetchContentAtomsByTopTags(nodeIds, maxNodes);
+    StructuredLogger.info('EXPLORE_ILLUMINATE_CONTENT', {
+      tag_hubs: nodeIds.length,
+      content_atoms: contentIds.length
+    });
+    nodeIds = contentIds;
+    edges = []; // edges were mem_→tag_atom; not meaningful for content output
+    strategy = 'illuminate-global';
+  }
+
+  // 4. Resolve char budget
   let charBudget: number | undefined;
   if (req.auto_budget) {
     const corpusChars = await estimateCorpusChars();
@@ -378,14 +440,16 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
     charBudget = req.max_chars;
   }
 
-  // 4. Fetch node details — then trim to budget by subgraph importance
+  // 5. Fetch node details — then trim to budget by importance
   let finalNodeIds = nodeIds;
-  if (charBudget !== undefined && edges.length > 0) {
-    const ranked = rankNodesBySubgraphDegree(nodeIds, edges);
+  if (charBudget !== undefined) {
+    // illuminate-global: nodeIds already ranked by tag centrality; just trim by char budget
+    // edge-bfs: rank by subgraph degree first
+    const ranked = edges.length > 0
+      ? rankNodesBySubgraphDegree(nodeIds, edges)
+      : nodeIds; // already ranked
     const trimmed: string[] = [];
     let usedChars = 0;
-    // We'll fetch content in ranked order and stop at budget
-    // Fetch all first (need content lengths), then trim
     const allNodes = await fetchNodes(ranked);
     for (const node of allNodes) {
       if (usedChars + node.content.length > charBudget) break;

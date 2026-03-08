@@ -2,7 +2,7 @@
 
 **Status:** LIVING | **Domain:** Search & Retrieval
 **Maintained By:** Anchor Engine Team
-**Last Updated:** 2026-03-08 (Standard 128)
+**Last Updated:** 2026-03-08 (Standard 128 v2.0 — Explore/Illuminate semantic split)
 
 ## 1. Overview
 The **Universal Semantic Search** protocol unifies all retrieval operations under a single, permissive, and context-aware strategy. It prioritizes recall and relevance over exact keyword matching, using a "Semantic First" approach.
@@ -45,34 +45,48 @@ Search acts as an entry point to the Knowledge Graph:
 2.  **Atom Retrieval**: FTS finds initial Entry Nodes.
 3.  **Graph Walk**: System traverses `simhash` and `tag` edges to find related content (The "30%" Budget).
 
-## 5. Illuminate — BFS Graph Traversal (Standard 128)
+## 5. Explore & Illuminate — Corpus Traversal Modes (Standard 128)
 
-**Illuminate** is a separate mode that returns the full connected subgraph from seed concepts rather than ranked results. It is exposed via `POST /v1/memory/explore`.
+**Explore** and **Illuminate** are two complementary modes on `POST /v1/memory/explore` that together give an LLM (or user) full situational awareness of the corpus.
 
-### When to use
+### Semantic Split
 
-| Mode | Question answered |
+| Mode | UI Prefix | Seed | Returns | Primary Use |
+|---|---|---|---|---|
+| **Explore** | `explore: <query>` | FTS query / atom IDs | Tag-hub concept map | Discover topics; orient LLM to data shape |
+| **Illuminate** | `illuminate:` (empty) | Global top-degree hubs | Ranked content atoms | Read representative passages; corpus narrative |
+
+**Explore** reveals the *skeleton* — which concepts exist and how they cluster. An LLM receiving explore output understands the vocabulary of the corpus without reading content.
+
+**Illuminate** reads the *substance* — the most thematically central actual passages. Operates via three phases:
+1. **Top hubs** — weighted degree centrality on the edges graph (most cross-referenced compounds)
+2. **Concept spine** — BFS from hubs reaches the dominant tag atoms
+3. **Content pull** — finds all content atoms sharing those top tags, ranked by how many they share
+
+With `auto_budget`, output is proportional to corpus size (default 1000:1 compression). A 350M-char corpus → ~350K chars of the most representative real passages.
+
+### When to use each
+
+| Question | Mode |
 |---|---|
-| Search (`/v1/memory/search`) | "What's the most relevant content for this query?" |
-| Illuminate (`/v1/memory/explore`) | "What is everything connected to this concept?" |
-
-Illuminate is suited for structural corpus exploration, topic mapping, and compressing large ingested corpora into navigable spines.
+| "What topics can I search for?" | `explore:` |
+| "Orient me to this dataset" | `explore:` then pass output to LLM |
+| "Show me the most important passages" | `illuminate:` |
+| "Compress this corpus for an LLM prompt" | `illuminate:` with `auto_budget` |
+| "What's connected to rust?" | `illuminate: rust` |
 
 ### Search Prefix System (UI)
-
-The search input accepts prefixes to override the default routing:
 
 | Prefix | Mode | Endpoint |
 |---|---|---|
 | *(none)* | Auto STAR search | `/v1/memory/search` |
-| `illuminate:` | BFS graph traversal | `/v1/memory/explore` |
-| `explore:` | BFS graph traversal (alias) | `/v1/memory/explore` |
+| `illuminate:` | Illuminate global (content atoms) | `/v1/memory/explore` with `global: true` |
+| `illuminate: <topic>` | Explore BFS from topic | `/v1/memory/explore` with query |
+| `explore: <topic>` | Explore BFS from topic | `/v1/memory/explore` with query |
 | `deep:` | Max-recall multi-hop | `/v1/memory/search` with `deep: true` |
 | `exact:` / `fast:` | FTS only | `/v1/memory/search` with strict FTS |
 
-Prefix parsing is client-side in `engine/public/index.html` (`parseQuery()`). The prefix is stripped before the cleaned query is forwarded to the endpoint.
-
-See [Standard 128](128-illuminate-bfs-traversal.md) for full BFS specification.
+See [Standard 128](128-illuminate-bfs-traversal.md) for full specification.
 
 ## HISTORY & DEPRECATIONS
 *   **Standard 104 (2026-02-10)**: Introduced Universal Semantic Search, 70/30 Split, and Smart Weighting. Deprecated "Smart Search" (094) and "Tag Walker" (086).
