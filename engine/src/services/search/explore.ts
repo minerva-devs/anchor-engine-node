@@ -329,17 +329,19 @@ async function fetchContentAtomsByTopTags(
 
   if (topTagLabels.length === 0) return [];
 
-  // Step 2: for each chunk of tag labels, find content atoms that share them
-  // Result rows are (atom_id, matches) — lightweight, use CHUNK_IDS
+  // Step 2: for each chunk of tag labels, find content atoms that share them.
+  // JOIN atoms to exclude tag stubs (source_path = 'atom_source').
+  // Result rows are (atom_id, matches) — lightweight, use CHUNK_IDS.
   const scoreMap = new Map<string, number>();
   for (let i = 0; i < topTagLabels.length; i += PGLITE_CHUNK_IDS) {
     const chunk = topTagLabels.slice(i, i + PGLITE_CHUNK_IDS);
     const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
     const result = await db.run(
-      `SELECT atom_id, COUNT(*) AS matches
-       FROM tags
-       WHERE tag IN (${placeholders})
-       GROUP BY atom_id`,
+      `SELECT t.atom_id, COUNT(*) AS matches
+       FROM tags t
+       JOIN atoms a ON a.id = t.atom_id AND a.source_path != 'atom_source'
+       WHERE t.tag IN (${placeholders})
+       GROUP BY t.atom_id`,
       chunk
     );
     for (const row of result.rows as any[]) {
@@ -349,7 +351,6 @@ async function fetchContentAtomsByTopTags(
 
   // Step 3: sort by total match count (most thematically central first)
   return [...scoreMap.entries()]
-    .filter(([id]) => !id.startsWith('atom_source')) // exclude tag-stub atoms themselves
     .sort((a, b) => b[1] - a[1])
     .slice(0, maxCount)
     .map(([id]) => id);
