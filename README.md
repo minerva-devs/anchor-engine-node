@@ -48,7 +48,7 @@ For example:
 → Nodes: `[Apple, M3, GPU]`  
 → Edges: `[announced, has-performance]`
 
-### 2. STAR Algorithm (Semantic Traversal And Retrieval)
+### 2. STAR Algorithm (Semantic Traversal And Associative Retrieval)
 
 When you query, we don't compute cosine similarity – we **walk the graph** deterministically. The result is a set of context blocks that are guaranteed to be connected to your query, with no fuzzy matching.
 
