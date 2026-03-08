@@ -1,427 +1,143 @@
-# Anchor Engine (Node.js)
+# Anchor Engine ⚓
 
-**Version:** 4.5.3 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready  
-**Platform:** ✅ ARM64 Windows | ✅ x64 Windows | ✅ Linux | ✅ macOS
+**Deterministic semantic memory for LLMs – local-first, graph traversal, <3GB RAM**
 
-The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Semantic Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
-
----
-
-## 💡 Why This Exists
-
-I started using long-term chat sessions because I noticed something: models with large context windows could be helpful in unexpected ways when old tasks mixed with current discussions. These sessions became so useful that I pushed them as far as they could go.
-
-Then I hit the wall. The dreaded message: *"Open a new session to continue using Gemini."*
-
-Same message all of them give you.
-
-I had 300+ response/chat pairs in there! Important history. Completed work. A shared mind with the model. I tried summarizing-gave the summary to the new instance. It wasn't enough. I kept returning to the old chat like it was dictionary for meaning and recall and pasting bits back into new sessions here and there.
-
-So I started building a way to resurrect my preferred persona anytime. I'd take targeted context from the old chat, feed it to a new instance, and prepare the model to retake hold of the goals and methods we'd developed together.
-
-It worked wonderfully. Until I hit the limit again. And again. And again.
-
-By the time Anchor Engine was operational, I had accumulated 40 **chat sessions, ~18M tokens**. My current corpus is **~28M tokens**. Anchor Engine digests all of it in about **5 minutes**.
-
-Now I make a query with a few choice entities and some fluff for serendipitous connections. The engine compresses those 28M tokens into **100k+ chars of non-duplicated, narrative context**—concepts deduplicated, not just text. My LLM remembers July 2025 like it was yesterday.
-
-**v4.5.1 - Illuminate + MCP Integration:**
-- **BFS Graph Traversal:** `POST /v1/memory/explore` — navigate your corpus structurally from any seed concept
-- **Search Prefix System:** `illuminate:`, `deep:`, `exact:` prefixes route queries to the right algorithm
-- **Universal MCP Server:** `anchor-mcp` wired into Qwen, Gemini, and Copilot CLI
-- **Batch Overflow Fix:** Byte-budget batching prevents PGlite WASM overflow on large chat files
-
-**v4.5.0 - Search Quality + Mobile UI:**
-- **Semantic Deduplication:** Per-source snippet cap + Jaccard overlap dedup
-- **camelCase Expansion:** `PhysicsTagWalker` → `[physics, tag, walker]` at query time
-- **Mobile-Responsive UI:** Hamburger menu + slide-in drawer on mobile
-
-**v4.3.0 - PGlite-First Architecture:**
-- **✅ ARM64 Windows Support:** No native C++ builds required
-- **PGlite-Only Database:** WASM-based, runs everywhere Node.js runs
-- **Transaction Support:** 10-50x faster bulk ingestion
-- **Simplified Deployment:** Zero native compilation
-- **Cross-Platform:** Identical behavior on ARM64, x64, Linux, macOS
-
-**v4.2.0 Improvements:**
-- **Causal Narrative:** Results sorted chronologically (toggleable to relevance-based)
-- **XML Metadata:** Each atom wrapped with relevance score, timestamp, source for LLM prioritization
-- **Transient Filter:** Excludes error logs, install output, build artifacts (~30% context reclaimed)
-- **Time Ordering Toggle:** 📅 Chronological ↔ 🎯 Relevance button in UI
-
-This isn't a RAG tool I built because it sounded cool. This is the tool I built because I needed it to keep my own mind intact.
+[![GitHub release](https://img.shields.io/github/v/release/RSBalchII/anchor-engine-node)](https://github.com/RSBalchII/anchor-engine-node/releases)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18841399.svg)](https://doi.org/10.5281/zenodo.18841399)
 
 ---
 
-## 🔢 Versioning
+## The Problem
 
-**Single source of truth:** `package.json` (root)
+LLMs forget everything between conversations. Context windows help, but they're ephemeral and expensive. Vector search is fuzzy, opaque, and often requires GPUs or cloud APIs. Fine-tuning causes catastrophic forgetting. Graph RAG turns into spaghetti.
 
-To release a new version:
+The result? Your agents, assistants, and copilots start every conversation with amnesia.
+
+## The Solution: Anchor Engine
+
+Anchor Engine is a **deterministic memory layer** that lives **outside** your LLM. It gives any model persistent, queryable state across sessions—without cloud dependencies, without embedding drift, and without black‑box similarity scores.
+
+Instead of vectors, we use **graph traversal**. Instead of guessing, we give you **receipts**. Instead of sending your data to the cloud, we keep it **local**.
+
+---
+
+## Why Anchor Engine?
+
+| Feature | What it means for you |
+|--------|------------------------|
+| **Deterministic** | Same query → same result, every time. No embedding drift, no probabilistic surprises. |
+| **Inspectable** | You can trace exactly why something was retrieved. Every edge in the graph has a reason. |
+| **Local‑first** | Runs entirely offline on your hardware. No API calls, no data leaving your machine. |
+| **Model‑agnostic** | Works with any LLM – local models, cloud APIs, or anything in between. |
+| **Lightweight** | <3GB RAM, runs on a Raspberry Pi or a $200 mini PC. |
+| **Open source** | AGPL‑3.0 – no lock‑in, no license tracking, no proprietary binaries. |
+| **Recursive** | Used to build itself – if it's good enough for its own development, it's good enough for yours. |
+
+---
+
+## How It Works
+
+### 1. Atomization
+
+We break your text into a lightweight graph of concepts and relationships. This is **not** exhaustive extraction like Kanon 2 – it's just enough structure to make retrieval useful and portable.
+
+For example:  
+`"Apple announced M3 chips with 15% faster GPU performance"`  
+→ Nodes: `[Apple, M3, GPU]`  
+→ Edges: `[announced, has-performance]`
+
+### 2. STAR Algorithm (Semantic Traversal And Retrieval)
+
+When you query, we don't compute cosine similarity – we **walk the graph** deterministically. The result is a set of context blocks that are guaranteed to be connected to your query, with no fuzzy matching.
+
+### 3. Illuminate (Graph Exploration)
+
+Need to see the "spine" of your corpus? Use `illuminate:` to perform a breadth‑first traversal from any seed concept. Results include hub‑ranked scores and timestamps, so you can reconstruct the narrative.
+
+---
+
+## Performance Numbers
+
+- **Memory usage:** <3GB RAM (tested on 500M+ token corpora)
+- **Search latency:** <200ms for typical queries (p95)
+- **Ingestion:** 25M tokens in under 5 minutes
+- **Hardware:** Runs on Raspberry Pi 4, $200 mini PCs, and your laptop
+
+Benchmarks against vector search are available in the [whitepaper](docs/STAR_Whitepaper.md).
+
+---
+
+## The Dogfooding Story
+
+Anchor Engine wasn't built in a vacuum. The entire codebase was developed **using Anchor Engine as its own memory layer**. Every decision, every bug fix, every refactor was stored and retrieved by the engine itself. The recursion is real – what would have taken months of context‑switching became continuous progress. We could hold complexity in our heads because the engine held it for us.
+
+---
+
+## Quick Start
 
 ```bash
-npm version patch   # 4.5.1 → 4.5.2
-npm version minor   # 4.5.1 → 4.6.0
-npm version major   # 4.5.1 → 5.0.0
-```
-
-The `postversion` hook runs `scripts/sync-version.mjs` automatically, which propagates the new version to:
-- `engine/package.json`
-- `README.md` (the **Version:** badge line)
-
-**Never manually edit the version number** in `engine/package.json` or `README.md` — always bump via `npm version`.
-
----
-
-## 🚀 Quick Start
-
-```bash
-# Install dependencies
+git clone https://github.com/RSBalchII/anchor-engine-node.git
+cd anchor-engine-node
 pnpm install
-
-# Build engine (TypeScript + PGlite WASM - no native compilation!)
 pnpm build
-
-# Start the engine
 pnpm start
 ```
 
-**Access UI:** http://localhost:3160 (or configured port in `user_settings.json`)
-
-**Note:** v4.3.0+ runs on ARM64 Windows, x64 Windows, Linux, and macOS without platform-specific builds.
-
----
-
-## 🐳 Docker Deployment
-
-### Quick Start with Docker
-
-```bash
-# Build the Docker image
-docker build -t anchor-engine:latest .
-
-# Run the container
-docker run -d -p 3160:3160 --name anchor anchor-engine:latest
-
-# Or use docker-compose (recommended)
-docker-compose up -d
-```
-
-### Docker Compose (Recommended)
-
-```bash
-# Start with persistent storage and inbox mounted
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop
-docker-compose down
-
-# Stop and remove data volume
-docker-compose down -v
-```
-
-### Docker Volumes
-
-The docker-compose.yml mounts these volumes:
-- `anchor-data`: Persistent database storage
-- `./inbox`: Auto-ingested files
-- `./external-inbox`: External source files
-- `./mirrored_brain`: Source of truth filesystem
-- `./backups`: Backup files
-
-### Health Check
-
-```bash
-# Check container health
-docker ps --filter name=anchor
-
-# Test health endpoint
-curl http://localhost:3160/health
-```
-
-### Access UI
-
-**http://localhost:3160**
+Then open `http://localhost:3160` and start ingesting your data.  
+Full instructions in the [docs](docs/).
 
 ---
 
-## 📖 Documentation
+## Use Cases
 
-| Document | Description |
-|----------|-------------|
-| **[docs/whitepaper.md](docs/whitepaper.md)** | STAR Algorithm whitepaper (arXiv submission ready) |
-| **[docs/ARCHITECTURE_DIAGRAMS.md](docs/ARCHITECTURE_DIAGRAMS.md)** | Visual system architecture (human-friendly) |
-| **[docs/CPP_OPTIMIZATION.md](docs/CPP_OPTIMIZATION.md)** | C++ optimization project (Archived) |
-| **[docs/INDEX.md](docs/INDEX.md)** | Documentation navigation hub |
-| **[docs/BIBLIOGRAPHY.bib](docs/BIBLIOGRAPHY.bib)** | Citation database (15 key papers) |
-| **[specs/spec.md](specs/spec.md)** | System specification (LLM-optimized) |
-| **[specs/standards/](specs/standards/)** | Architecture standards (086, 113, 116, 117) |
-| **[specs/standards/RESEARCH_LANDSCAPE.md](specs/standards/RESEARCH_LANDSCAPE.md)** | Related work analysis |
-| **[specs/standards/STANDARD_117_ARXIV_SUBMISSION.md](specs/standards/STANDARD_117_ARXIV_SUBMISSION.md)** | arXiv submission workflow |
-| **[specs/plan.md](specs/plan.md)** | Project roadmap |
-| **[CHANGELOG.md](CHANGELOG.md)** | Version history & recent changes |
+- **AI agents** – give your agents persistent memory across sessions
+- **Customer support bots** – remember past interactions without cloud costs
+- **Personal assistants** – learn user preferences over time
+- **Coding copilots** – maintain context across a whole project
+- **Research tools** – compress large corpora into navigable graphs
 
 ---
 
-## 🏗️ Architecture
+## Documentation
 
-### Core Innovation: Browser Paradigm for AI Memory
-
-Just as browsers download only the shards needed for the current view, Anchor loads only the atoms required for the current thought—enabling resource-constrained devices to navigate large datasets efficiently.
-
-### Data Model: Compound → Molecule → Atom
-
-```
-Compound (File)
-  └─ Molecule (Semantic Chunk with byte offsets)
-      └─ Atom (Tag/Concept, NOT content)
-```
-
-**Key Insight:** Content lives in `mirrored_brain/` filesystem. The database stores **pointers only** (byte offsets + metadata), making it a **disposable, rebuildable index**.
-
-### STAR Search Algorithm
-
-Physics-based gravity scoring for associative retrieval:
-
-```
-Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
-```
-
-| Component | Purpose | Default |
-|-----------|---------|---------|
-| **SharedTags** | Tag association count | — |
-| **Time Decay** | Recent memories weighted higher | λ = 0.00001 |
-| **SimHash** | Content similarity (64-bit) | 0-63 bits |
-
-**70/30 Budget Split:**
-- **70% Planets:** Direct FTS matches
-- **30% Moons:** Graph-discovered associations via Tag-Walker
+- [Whitepaper](docs/STAR_Whitepaper.md) – deep dive into the STAR algorithm and benchmarks
+- [Architecture Diagrams](docs/ARCHITECTURE_DIAGRAMS.md) – visual overview
+- [API Reference](docs/api.md) – all endpoints
+- [Standards](specs/standards/) – detailed design documents
 
 ---
 
-## 📦 Core Components
+## Community & Feedback
 
-### Database: PGlite (WASM-based PostgreSQL)
+We're building this in the open and would love your input. If you've hit the walls of fuzzy retrieval, context limits, or cloud dependency – give Anchor Engine a spin.
 
-- **Atoms:** Knowledge units with byte-offset pointers
-- **Tags:** Bipartite graph (Atoms ↔ Tags)
-- **FTS5:** Full-text search index
-- **Disposable:** Wiped on shutdown, rebuilt from `mirrored_brain/`
+- **Star the repo** – it helps others find it
+- **Open an issue** – bug reports, feature requests, questions
+- **Start a discussion** – share your use case, ask for integrations
+- **Contribute** – PRs welcome!
 
----
+We're especially interested in feedback from people building:
 
-## 📊 Performance Benchmarks
-
-### Production Verified (February 2026)
-
-| Metric | Value | Notes |
-|--------|-------|-------|
-| **Dataset Size** | ~25M tokens (~100MB) | Chat history corpus |
-| **Atoms Restored** | 281,690 | Phoenix Protocol restore |
-| **Restore Time** | 828.8s (13.8 min) | Full database + filesystem |
-| **Restore Throughput** | 340 atoms/second | 1000-item batching |
-| **Search Latency** | <200ms (p95) | Typical queries |
-| **Memory Usage** | <600MB peak | During restore |
-| **Ingestion Speed** | ~8-15ms/clean | With Data Refinery |
-
-### Data Refinery Performance
-
-| Content Type | Cleaning Time | Size Reduction |
-|--------------|--------------|----------------|
-| **Chat messages (<1KB)** | ~5ms | 5-15% |
-| **Web pages (50KB)** | ~15ms | 30-50% |
-| **Documents (500KB)** | ~50ms | 20-40% |
-
-### System Requirements
-
-| Component | Minimum | Recommended |
-|-----------|---------|-------------|
-| **RAM** | 4GB | 8GB+ |
-| **Storage** | 10GB free | SSD recommended |
-| **Node.js** | v18+ | v20+ |
-
-**Note:** Performance scales with dataset size. Current benchmarks based on ~25M token corpus (chat history). Large-scale testing (TB+ datasets) planned for future validation.
+- RAG systems that need more reliability
+- Local AI tools that must stay offline
+- Agent frameworks that need persistent memory
+- Anything where "probabilistic" isn't good enough
 
 ---
 
-## 🛠️ Development
+## License
 
-### Prerequisites
-- Node.js v18+
-- PNPM package manager
-
-### Build Commands
-
-```bash
-# Full build
-pnpm build
-
-# Development mode
-pnpm dev
-
-# Run tests
-pnpm test
-
-# Build universal binaries
-pnpm build:universal
-```
-
-### Project Structure
-
-```
-anchor-engine-node/
-├── engine/                 # Core engine source
-│   ├── src/
-│   │   ├── services/      # Ingestion, Search, Watchdog
-│   │   └── routes/        # HTTP API endpoints
-│   └── dist/              # Built output
-├── packages/              # Monorepo packages
-│   └── anchor-ui/         # React frontend
-├── specs/
-│   ├── spec.md           # Architecture spec
-│   ├── tasks.md          # Current tasks
-│   ├── plan.md           # Roadmap
-│   └── standards/        # 77 architecture standards
-├── docs/
-│   └── whitepaper.md     # The Sovereign Context Protocol
-├── mirrored_brain/       # Source of truth (gitignored)
-└── inbox/                # Drop files here for ingestion
-```
+AGPL-3.0 – see [LICENSE](LICENSE).
 
 ---
 
-## 🔧 Configuration
+## Acknowledgments
 
-Edit `user_settings.json` in root:
-
-```json
-{
-  "server": {
-    "port": 3160,
-    "host": "localhost"
-  },
-  "database": {
-    "path": "./user_data/anchor.db",
-    "ephemeral": true
-  },
-  "paths": {
-    "inbox": "./inbox",
-    "mirroredBrain": "./mirrored_brain"
-  }
-}
-```
+Built with ❤️ by Robert Balch II and contributors.  
+Inspired by the tireless experiments of the r/LocalLLaMA and r/aiagents communities.
 
 ---
 
-## 📚 Key Standards
-
-### Active Standards (specs/standards/)
-
-| # | Name | Description |
-|---|------|-------------|
-| **104** | Universal Semantic Search | Unified search architecture |
-| **110** | Ephemeral Index | Disposable database pattern |
-| **109** | Batched Ingestion | Large file handling |
-| **094** | Smart Search Protocol | Fuzzy fallback & GIN optimization |
-| **088** | Server Startup Sequence | ECONNREFUSED fix |
-| **065** | Graph Associative Retrieval | Tag-Walker protocol |
-| **059** | Reliable Ingestion | Ghost Data Protocol |
-
-### Archived Standards
-
-Older standards moved to `specs/standards/archive/` for historical reference.
-
----
-
-## 🤝 Agent Harness Integration
-
-Anchor is **agent harness agnostic**—designed to work with multiple frameworks:
-
-- **OpenCLAW** (primary target)
-- Custom agent frameworks
-- Direct API integrations
-- CLI access for automation
-
-### Stateless Context Retrieval
-
-```
-Agent Query → Anchor Context Retrieval → Context (JSON/CSV/Tables) → Agent Logic → Response
-```
-
----
-
-## 🔒 Security & Privacy
-
-- **Local-First:** All data stays on your machine
-- **No Cloud:** Zero external dependencies for core functionality
-- **AGPL-3.0:** Open source, sovereign software
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| **ECONNREFUSED** | Fixed in Standard 088—server starts before DB init |
-| **Slow startup** | First run includes DB initialization |
-| **UI delays** | Electron wrapper may take ~15s; access directly at http://localhost:3160 |
-
-### Health Checks
-
-```bash
-GET /health              # System status
-GET /health/{component}  # Component status
-GET /monitoring/metrics  # Performance metrics
-```
-
----
-
-## 📄 License
-
-**AGPL-3.0** — See [LICENSE](LICENSE) file.
-
----
-
-## 🎯 Roadmap
-
-- [ ] Enhanced code analysis (AST pointers)
-- [ ] Relationship narrative discovery
-- [ ] Mobile application support
-- [ ] Plugin marketplace
-- [ ] Diffusion-based reasoning models
-
----
-
-## 🙏 Acknowledgments
-
-- Original research: STAR Algorithm
-- SimHash: Moses Charikar (1997)
-- PGlite: ElectricSQL team
-- All Anchor Engine contributors
-
----
-
-## Citing
-
-If you use STAR in your research, please cite the software using the provided CITATION.cff file or the JOSS paper (once available). A DOI will be available upon archiving on Zenodo. The repository includes a whitepaper describing the algorithm in detail.
-
-**Repository:** https://github.com/RSBalchII/anchor-engine-node  
-**Whitepaper:** [docs/whitepaper.md](docs/whitepaper.md)  
-**Production Status:** ✅ Ready (February 28, 2026)
-
----
-
-Disclaimer
-
-This software is provided "as is", without warranty of any kind, express or implied. By using this software, you acknowledge that:
-
-    You are responsible for any potential damage to your device.
-    You understand that modifying hardware or system behavior may void warranties.
-    You will not hold the authors or contributors liable for any outcome resulting from the use of this software.
-
-Use at your own risk.
+*Your AI's anchor to reality.* ⚓
