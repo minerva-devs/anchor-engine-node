@@ -1,6 +1,6 @@
 {
   "name": "anchor-engine",
-  "version": "4.5.0",
+  "version": "4.5.1",
   "description": "Anchor - Knowledge Database Engine (Pure Node/C++ DB API on Port 3160)",
   "main": "index.js",
   "type": "module",
@@ -16,7 +16,8 @@
     "lint": "eslint . --ext .ts,.js",
     "clean": "rimraf dist engine/dist",
     "postinstall": "cd engine && pnpm install --ignore-scripts && pnpm run build",
-    "start-with-logging": "node --expose-gc engine/dist/index.js > ../../logs/anchor_engine.log 2>&1"
+    "start-with-logging": "node --expose-gc engine/dist/index.js > ../../logs/anchor_engine.log 2>&1",
+    "postversion": "node scripts/sync-version.mjs && git add engine/package.json README.md && git commit --amend --no-edit"
   },
   "keywords": [
     "knowledge-base",
