@@ -14,9 +14,16 @@
 import { db } from '../../core/db.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 
-/** PGlite WASM has a practical call-stack limit on large parameter arrays.
- *  Keep every IN clause under this many parameters to avoid stack overflow. */
-const PGLITE_MAX_PARAMS = 200;
+/** PGlite WASM has a practical call-stack limit on large parameter arrays
+ *  AND on large result payloads (result data is marshaled through WASM stack).
+ *
+ *  Two separate limits:
+ *  - CHUNK_IDS: for ID-only or small-column queries (edges, tags, id lookups)
+ *  - CHUNK_CONTENT: for queries that return content columns (~1KB avg per row)
+ *    50 rows × ~1KB = ~50KB through WASM — safe margin below ~100KB limit.
+ */
+const PGLITE_CHUNK_IDS     = 100;  // ID-only / lightweight result rows
+const PGLITE_CHUNK_CONTENT =  25;  // Rows that include content column
 
 export interface ExploreRequest {
   seed: {
@@ -121,8 +128,8 @@ async function bfsViaEdges(
   for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
     // Chunk frontier to stay under PGlite parameter limit
     const chunks: string[][] = [];
-    for (let i = 0; i < frontier.length; i += PGLITE_MAX_PARAMS) {
-      chunks.push(frontier.slice(i, i + PGLITE_MAX_PARAMS));
+    for (let i = 0; i < frontier.length; i += PGLITE_CHUNK_IDS) {
+      chunks.push(frontier.slice(i, i + PGLITE_CHUNK_IDS));
     }
 
     const nextFrontier: string[] = [];
@@ -166,8 +173,8 @@ async function bfsViaTags(
 
   for (let depth = 0; depth < maxDepth && frontier.length > 0; depth++) {
     const chunks: string[][] = [];
-    for (let i = 0; i < frontier.length; i += PGLITE_MAX_PARAMS) {
-      chunks.push(frontier.slice(i, i + PGLITE_MAX_PARAMS));
+    for (let i = 0; i < frontier.length; i += PGLITE_CHUNK_IDS) {
+      chunks.push(frontier.slice(i, i + PGLITE_CHUNK_IDS));
     }
 
     const nextFrontier: string[] = [];
@@ -203,16 +210,21 @@ async function fetchNodes(ids: string[]): Promise<ExploreNode[]> {
   const atomRows: any[] = [];
   const tagRows: any[] = [];
 
-  for (let i = 0; i < ids.length; i += PGLITE_MAX_PARAMS) {
-    const chunk = ids.slice(i, i + PGLITE_MAX_PARAMS);
+  // Content queries: small chunks (25) — each row ~1KB, ~25KB per query
+  for (let i = 0; i < ids.length; i += PGLITE_CHUNK_CONTENT) {
+    const chunk = ids.slice(i, i + PGLITE_CHUNK_CONTENT);
     const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
-
     const aResult = await db.run(
       `SELECT id, content, source_path FROM atoms WHERE id IN (${placeholders})`,
       chunk
     );
     atomRows.push(...(aResult.rows as any[]));
+  }
 
+  // Tag queries: larger chunks (100) — each row is just atom_id + tag string
+  for (let i = 0; i < ids.length; i += PGLITE_CHUNK_IDS) {
+    const chunk = ids.slice(i, i + PGLITE_CHUNK_IDS);
+    const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
     const tResult = await db.run(
       `SELECT atom_id, tag FROM tags WHERE atom_id IN (${placeholders})`,
       chunk
