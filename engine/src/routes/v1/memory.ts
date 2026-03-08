@@ -18,8 +18,8 @@ export function setupMemoryRoutes(app: Application) {
     try {
       const body = req.body as ExploreRequest;
 
-      if (!body?.seed || (!body.seed.query && !body.seed.atom_ids?.length)) {
-        res.status(400).json({ error: 'seed.query or seed.atom_ids is required' });
+      if (!body?.seed || (!body.seed.global && !body.seed.query && !body.seed.atom_ids?.length)) {
+        res.status(400).json({ error: 'seed.query, seed.atom_ids, or seed.global:true is required' });
         return;
       }
 
