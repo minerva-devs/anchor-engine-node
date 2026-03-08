@@ -6,6 +6,46 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.5.3] - 2026-03-08 — Illuminate Fidelity, Scoring, Timestamps, WASM Stability
+
+### Features
+
+#### Illuminate Hub-Rank Scores
+- `illuminate:` results now carry meaningful scores instead of flat `1.0`
+- Score = `(N - rank) / N` — `1.0` = most connected compound in corpus, approaches `0` for least central
+- Results sorted descending by score so YAML output presents load-bearing content first
+- LLMs can now prioritize high-score nodes; humans see a real gradient instead of "1.0 lol"
+
+#### Timestamps on Explore/Illuminate Nodes
+- `ExploreNode` now includes `timestamp?: number` (epoch ms, source content date — not ingestion time)
+- YAML copy output adds `date: YYYY-MM-DD` field when timestamp present
+- Addresses "jumbled chronology" finding from fidelity meta-analysis; consuming models can reconstruct timeline
+
+#### YAML Copy — Illuminate Copies All Results
+- `illuminate:` results are pre-budget-trimmed server-side; copy button now copies all results (was: hardcoded 20)
+- Footer now shows real stats: actual avg chars/result and actual total chars
+- Previously footer showed `tokenBudget * 4 / 20` as chars/result — completely unrelated to illuminate content
+
+#### Adaptive Status Polling
+- Status polling is now 3s when `isBusy=true` (ingesting), 30s when idle
+- Fixes ingestion badge (`⏳ Processing files...`) disappearing — polling was merged to 30s flat in v978d7eb, making the badge invisible during active ingestion
+
+### Bug Fixes
+
+#### WASM Stack Overflow in `fetchContentAtomsByHubs`
+- Added `PGLITE_CHUNK_RESULT_IDS = 500` — caps rows returned per fan-out query
+- Large corpora with 200+ hub compounds × 100+ molecules = 10K+ rows per query → WASM overflow
+- Per-chunk `LIMIT min(remaining, 500)` iterates safely in ~10KB batches
+
+### Documentation
+- `doc_policy.md` — added `## LLM Developer Orientation 🤖` section at the top
+  - Three-tier atoms model summary table (the most common source of DB bugs)
+  - Ordered reading list for any new LLM agent: Database_Schema → Search_Protocol → 128 → API → spec
+  - Warning: "If your query returns 0 results, tag stubs, or full documents: re-read Database_Schema.md"
+  - Related Standards footer updated with Database_Schema.md as first entry
+
+---
+
 ## [4.5.2] - 2026-03-08 — Illuminate Content Pass, Explore/Illuminate Semantic Split
 
 ### Features
