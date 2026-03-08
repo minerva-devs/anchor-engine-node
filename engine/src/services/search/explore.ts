@@ -309,51 +309,39 @@ function rankNodesBySubgraphDegree(
     .map(([id]) => id);
 }
 
-/** For global illuminate: given tag atom IDs, resolve content atoms ranked by thematic centrality.
- *  - Fetches the tag stub atoms to extract their label strings (#rust, #anchor, etc.)
- *  - Queries the tags table for content atoms sharing those labels
- *  - Ranks by how many top-hub tags each content atom touches
- *  - Returns content atom IDs ordered most-central first
+/** For global illuminate: fetch content atoms from the top-degree compound hubs.
+ *
+ *  Content atoms have a compound_id pointing to their parent mem_ compound.
+ *  The most-connected compounds (highest weighted degree) contain the most
+ *  cross-referenced content in the corpus — their atoms are the corpus narrative.
+ *
+ *  Atoms are returned in compound rank order (most-connected compound first),
+ *  then by start_byte within each compound (document reading order).
+ *
+ *  NOTE: the tags table only indexes tag stub atoms (source_path='atom_source').
+ *  Content atom tags live in atoms.tags (JSON column). The compound_id link is
+ *  the reliable path to content from a hub compound.
  */
-async function fetchContentAtomsByTopTags(
-  tagAtomIds: string[],
+async function fetchContentAtomsByHubs(
+  hubIds: string[],  // mem_ compound IDs ordered by importance (most connected first)
   maxCount: number
 ): Promise<string[]> {
-  if (tagAtomIds.length === 0) return [];
+  if (hubIds.length === 0) return [];
 
-  // Step 1: fetch the tag stub atoms to get their label strings
-  const tagAtoms = await fetchNodes(tagAtomIds);
-  const topTagLabels = tagAtoms
-    .map(n => n.content.trim())
-    .filter(t => t.startsWith('#'));
-
-  if (topTagLabels.length === 0) return [];
-
-  // Step 2: for each chunk of tag labels, find content atoms that share them.
-  // JOIN atoms to exclude tag stubs (source_path = 'atom_source').
-  // Result rows are (atom_id, matches) — lightweight, use CHUNK_IDS.
-  const scoreMap = new Map<string, number>();
-  for (let i = 0; i < topTagLabels.length; i += PGLITE_CHUNK_IDS) {
-    const chunk = topTagLabels.slice(i, i + PGLITE_CHUNK_IDS);
+  const allIds: string[] = [];
+  for (let i = 0; i < hubIds.length && allIds.length < maxCount; i += PGLITE_CHUNK_IDS) {
+    const chunk = hubIds.slice(i, i + PGLITE_CHUNK_IDS);
     const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
     const result = await db.run(
-      `SELECT t.atom_id, COUNT(*) AS matches
-       FROM tags t
-       JOIN atoms a ON a.id = t.atom_id AND a.source_path != 'atom_source'
-       WHERE t.tag IN (${placeholders})
-       GROUP BY t.atom_id`,
+      `SELECT id FROM atoms
+       WHERE compound_id IN (${placeholders})
+         AND source_path != 'atom_source'
+       ORDER BY start_byte`,
       chunk
     );
-    for (const row of result.rows as any[]) {
-      scoreMap.set(row.atom_id, (scoreMap.get(row.atom_id) ?? 0) + Number(row.matches));
-    }
+    allIds.push(...(result.rows as any[]).map((r: any) => r.id));
   }
-
-  // Step 3: sort by total match count (most thematically central first)
-  return [...scoreMap.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, maxCount)
-    .map(([id]) => id);
+  return allIds.slice(0, maxCount);
 }
 
 
@@ -403,31 +391,32 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
   let edges: ExploreEdge[] = [];
   let strategy: string;
 
-  const hasEdges = await edgesTableHasData();
-  if (hasEdges) {
-    const result = await bfsViaEdges(seedIds, maxDepth, minWeight, maxNodes);
-    nodeIds = result.nodeIds;
-    edges = result.edges;
-    strategy = 'edge-bfs';
-  } else {
-    const result = await bfsViaTags(seedIds, maxDepth, maxNodes);
-    nodeIds = result.nodeIds;
-    strategy = 'tag-bfs';
-  }
-
-  // 3. Global illuminate: replace tag-stub nodeIds with ranked content atoms.
-  //    Edge-BFS from mem_ hubs produces tag atoms (#rust, #anchor, …) — the concept spine.
-  //    We use those tag labels to pull real content atoms, ranked by thematic centrality
-  //    (how many top-hub tags each content atom shares).
-  if (req.seed.global && nodeIds.length > 0) {
-    const contentIds = await fetchContentAtomsByTopTags(nodeIds, maxNodes);
+  if (req.seed.global) {
+    // Illuminate mode: skip edge-BFS entirely.
+    // Get a larger pool of top-degree compound hubs (seed_count × 20, max 500),
+    // then pull their content atoms directly via compound_id.
+    // Hub order = weighted degree rank → atoms from most-connected compounds come first.
+    const hubCount = Math.min((req.seed.seed_count ?? 10) * 20, 500);
+    const hubIds = await globalTopNodes(hubCount, minWeight);
+    const contentIds = await fetchContentAtomsByHubs(hubIds, maxNodes);
     StructuredLogger.info('EXPLORE_ILLUMINATE_CONTENT', {
-      tag_hubs: nodeIds.length,
+      hubs_queried: hubIds.length,
       content_atoms: contentIds.length
     });
     nodeIds = contentIds;
-    edges = []; // edges were mem_→tag_atom; not meaningful for content output
     strategy = 'illuminate-global';
+  } else {
+    const hasEdges = await edgesTableHasData();
+    if (hasEdges) {
+      const result = await bfsViaEdges(seedIds, maxDepth, minWeight, maxNodes);
+      nodeIds = result.nodeIds;
+      edges = result.edges;
+      strategy = 'edge-bfs';
+    } else {
+      const result = await bfsViaTags(seedIds, maxDepth, maxNodes);
+      nodeIds = result.nodeIds;
+      strategy = 'tag-bfs';
+    }
   }
 
   // 4. Resolve char budget
