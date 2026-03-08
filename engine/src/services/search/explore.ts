@@ -63,6 +63,9 @@ export interface ExploreNode {
   content: string;
   source: string;
   tags: string[];
+  /** Hub-rank score: 1.0 = most connected node, approaches 0 for least connected.
+   *  Only present for illuminate-global results; undefined for BFS results. */
+  score?: number;
 }
 
 export interface ExploreEdge {
@@ -463,18 +466,32 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
 
   const nodes = await fetchNodes(finalNodeIds);
 
-  StructuredLogger.info('EXPLORE_DONE', { nodes: nodes.length, edges: edges.length, strategy });
+  // For illuminate-global: assign hub-rank score (1.0 = most central, ~0 = least).
+  // finalNodeIds is already ordered by centrality; map position → score.
+  let scoredNodes: ExploreNode[];
+  if (req.seed.global) {
+    const total = finalNodeIds.length;
+    const rankMap = new Map<string, number>();
+    finalNodeIds.forEach((id, i) => rankMap.set(id, parseFloat(((total - i) / total).toFixed(4))));
+    scoredNodes = nodes.map(n => ({ ...n, score: rankMap.get(n.id) ?? 0 }));
+    // Re-sort by score descending so output order matches centrality rank
+    scoredNodes.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+  } else {
+    scoredNodes = nodes;
+  }
 
-  const charsUsed = nodes.reduce((sum, n) => sum + n.content.length, 0);
+  StructuredLogger.info('EXPLORE_DONE', { nodes: scoredNodes.length, edges: edges.length, strategy });
+
+  const charsUsed = scoredNodes.reduce((sum, n) => sum + n.content.length, 0);
 
   if (format === 'graph') {
     const nodeSet = new Set(finalNodeIds);
     const filteredEdges = edges.filter(e => nodeSet.has(e.source) && nodeSet.has(e.target));
     return {
-      nodes,
+      nodes: scoredNodes,
       edges: filteredEdges,
       stats: {
-        nodes_count: nodes.length,
+        nodes_count: scoredNodes.length,
         edges_count: filteredEdges.length,
         seed_nodes: actualSeedCount,
         max_depth_achieved: maxDepth,
@@ -486,9 +503,9 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
   }
 
   return {
-    nodes,
+    nodes: scoredNodes,
     stats: {
-      nodes_count: nodes.length,
+      nodes_count: scoredNodes.length,
       seed_nodes: actualSeedCount,
       max_depth_achieved: maxDepth,
       strategy,
