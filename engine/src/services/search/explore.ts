@@ -28,6 +28,20 @@ export interface ExploreRequest {
   min_weight?: number;
   max_nodes?: number;
   format?: 'flat' | 'graph';
+  /**
+   * Character budget for output content. BFS collects freely then trims to
+   * fit. Most-connected nodes (by subgraph degree) are kept first.
+   * ~4 chars ≈ 1 token, so 200_000 chars ≈ 50k tokens.
+   */
+  max_chars?: number;
+  /**
+   * Auto-derive max_chars from corpus size.
+   * Budget = (total corpus chars) / compression_ratio (default 1000).
+   * e.g. 500M-token corpus (~2B chars) → 2M chars at ratio 1000.
+   */
+  auto_budget?: boolean;
+  /** Compression ratio for auto_budget (default 1000) */
+  compression_ratio?: number;
 }
 
 export interface ExploreNode {
@@ -52,6 +66,8 @@ export interface ExploreResult {
     seed_nodes: number;
     max_depth_achieved: number;
     strategy: string;
+    chars_used?: number;
+    char_budget?: number;
   };
 }
 
@@ -222,13 +238,48 @@ async function globalTopNodes(seedCount: number, minWeight: number): Promise<str
   return (result.rows as any[]).map(r => r.id);
 }
 
+/** Estimate total corpus char size for auto_budget calculation */
+async function estimateCorpusChars(): Promise<number> {
+  const result = await db.run(
+    `SELECT COUNT(*) AS atom_count, AVG(LENGTH(content)) AS avg_len FROM atoms`,
+    []
+  );
+  const row = (result.rows as any[])[0];
+  return Math.round((row.atom_count ?? 0) * (row.avg_len ?? 0));
+}
+
+/**
+ * Rank nodes by their subgraph degree (sum of edge weights within result set).
+ * Returns node IDs ordered most-connected first.
+ */
+function rankNodesBySubgraphDegree(
+  nodeIds: string[],
+  edges: ExploreEdge[]
+): string[] {
+  const score = new Map<string, number>();
+  for (const id of nodeIds) score.set(id, 0);
+  for (const e of edges) {
+    if (score.has(e.source)) score.set(e.source, score.get(e.source)! + e.weight);
+    if (score.has(e.target)) score.set(e.target, score.get(e.target)! + e.weight);
+  }
+  return [...score.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([id]) => id);
+}
+
 export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult> {
   const maxDepth = Math.min(req.max_depth ?? 2, 4);
   const minWeight = req.min_weight ?? 0.1;
-  const maxNodes = Math.min(req.max_nodes ?? 50, 200);
   const limitSeeds = req.seed.limit_seeds ?? 5;
   const seedCount = req.seed.seed_count ?? 10;
   const format = req.format ?? 'flat';
+
+  // Budget-aware max_nodes: if a char budget is active, allow up to 10k nodes
+  // (trimming happens after fetch). Otherwise honour explicit max_nodes cap.
+  const hasBudget = req.max_chars !== undefined || req.auto_budget;
+  const maxNodes = hasBudget
+    ? Math.min(req.max_nodes ?? 10_000, 10_000)
+    : Math.min(req.max_nodes ?? 50, 200);
 
   // 1. Resolve seeds
   let seedIds: string[] = [];
@@ -274,14 +325,48 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
     strategy = 'tag-bfs';
   }
 
-  // 3. Fetch node details
-  const nodes = await fetchNodes(nodeIds);
+  // 3. Resolve char budget
+  let charBudget: number | undefined;
+  if (req.auto_budget) {
+    const corpusChars = await estimateCorpusChars();
+    const ratio = req.compression_ratio ?? 1000;
+    charBudget = Math.max(Math.round(corpusChars / ratio), 50_000); // floor 50k chars
+    StructuredLogger.info('EXPLORE_AUTO_BUDGET', { corpus_chars: corpusChars, ratio, budget: charBudget });
+  } else if (req.max_chars !== undefined) {
+    charBudget = req.max_chars;
+  }
+
+  // 4. Fetch node details — then trim to budget by subgraph importance
+  let finalNodeIds = nodeIds;
+  if (charBudget !== undefined && edges.length > 0) {
+    const ranked = rankNodesBySubgraphDegree(nodeIds, edges);
+    const trimmed: string[] = [];
+    let usedChars = 0;
+    // We'll fetch content in ranked order and stop at budget
+    // Fetch all first (need content lengths), then trim
+    const allNodes = await fetchNodes(ranked);
+    for (const node of allNodes) {
+      if (usedChars + node.content.length > charBudget) break;
+      trimmed.push(node.id);
+      usedChars += node.content.length;
+    }
+    finalNodeIds = trimmed;
+    StructuredLogger.info('EXPLORE_BUDGET_TRIM', {
+      before: nodeIds.length,
+      after: trimmed.length,
+      chars_used: usedChars,
+      budget: charBudget
+    });
+  }
+
+  const nodes = await fetchNodes(finalNodeIds);
 
   StructuredLogger.info('EXPLORE_DONE', { nodes: nodes.length, edges: edges.length, strategy });
 
+  const charsUsed = nodes.reduce((sum, n) => sum + n.content.length, 0);
+
   if (format === 'graph') {
-    // Filter edges to only include pairs within our result set
-    const nodeSet = new Set(nodeIds);
+    const nodeSet = new Set(finalNodeIds);
     const filteredEdges = edges.filter(e => nodeSet.has(e.source) && nodeSet.has(e.target));
     return {
       nodes,
@@ -291,19 +376,22 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
         edges_count: filteredEdges.length,
         seed_nodes: actualSeedCount,
         max_depth_achieved: maxDepth,
-        strategy
+        strategy,
+        chars_used: charsUsed,
+        ...(charBudget !== undefined && { char_budget: charBudget })
       }
     };
   }
 
-  // Flat format
   return {
     nodes,
     stats: {
       nodes_count: nodes.length,
       seed_nodes: actualSeedCount,
       max_depth_achieved: maxDepth,
-      strategy
+      strategy,
+      chars_used: charsUsed,
+      ...(charBudget !== undefined && { char_budget: charBudget })
     }
   };
 }
