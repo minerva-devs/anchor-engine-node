@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.5.2] - 2026-03-08 — Illuminate Content Pass, Explore/Illuminate Semantic Split
+
+### Features
+
+#### Illuminate Global Mode — Three-Phase Content Pull
+- `illuminate:` (empty query) now returns **actual content atoms**, not tag stubs
+- Phase 1: weighted degree centrality selects top-hub compounds from `edges` table
+- Phase 2: BFS reaches dominant tag atoms (the concept spine)
+- Phase 3: content pull — finds all atoms sharing top tags, ranked by thematic centrality (how many core themes each atom touches)
+- With `auto_budget: true` the output scales proportionally to corpus size (default 1000:1 compression)
+
+#### Explore vs Illuminate — Distinct Semantic Roles
+- **`explore: <topic>`** — concept skeleton: tag-hub map showing what topics exist; orients LLM to data shape without reading content
+- **`illuminate:`** — corpus narrative: most thematically central real passages; 1000:1 compressed corpus summary
+- Standard 128 updated to v2.0 documenting both modes, their three-phase architecture, and LLM usage patterns
+- `Search_Protocol.md` section 5 rewritten with full semantic split table
+
+### Bug Fixes
+- Fixed `mem_` compound IDs passing through `fetchNodes` (atoms-only query) — BFS now filters to `atom_` IDs after traversal
+- Fixed budget trim always running `rankNodesBySubgraphDegree` even in illuminate mode (edges cleared); illuminate path uses pre-ranked IDs directly
+- Removed incorrect `&& edges.length > 0` guard on budget trim — illuminate mode clears edges but still needs trimming
+
+### PGlite Stability
+- Split `PGLITE_MAX_PARAMS = 200` into `PGLITE_CHUNK_IDS = 100` and `PGLITE_CHUNK_CONTENT = 25`
+- Content queries at 200 rows cause WASM heap corruption (result data marshaling, not just param count)
+- `fetchNodes` now uses separate loops: content at chunk=25 (~25KB/batch), tags at chunk=100
+
+---
+
 ## [4.5.1] - 2026-03-08 — Illuminate, MCP Generalization, Batch Overflow Fix
 
 ### Features
