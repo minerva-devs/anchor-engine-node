@@ -1,6 +1,6 @@
 # Anchor Engine (Node.js)
 
-**Version:** 4.5.2 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready  
+**Version:** 4.5.3 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready  
 **Platform:** ✅ ARM64 Windows | ✅ x64 Windows | ✅ Linux | ✅ macOS
 
 The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Semantic Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
