@@ -1,6 +1,6 @@
 # Anchor Engine (Node.js)
 
-**Version:** 4.3.2 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready  
+**Version:** 4.5.1 | **Role:** Semantic Memory & Search API | **Port:** 3160 | **Status:** ✅ Production Ready  
 **Platform:** ✅ ARM64 Windows | ✅ x64 Windows | ✅ Linux | ✅ macOS
 
 The Anchor Engine is a local-first context engine implementing the **STAR Algorithm** (Semantic Temporal Associative Retrieval) for privacy-first, sovereign knowledge management.
@@ -24,6 +24,17 @@ It worked wonderfully. Until I hit the limit again. And again. And again.
 By the time Anchor Engine was operational, I had accumulated 40 **chat sessions, ~18M tokens**. My current corpus is **~28M tokens**. Anchor Engine digests all of it in about **5 minutes**.
 
 Now I make a query with a few choice entities and some fluff for serendipitous connections. The engine compresses those 28M tokens into **100k+ chars of non-duplicated, narrative context**—concepts deduplicated, not just text. My LLM remembers July 2025 like it was yesterday.
+
+**v4.5.1 - Illuminate + MCP Integration:**
+- **BFS Graph Traversal:** `POST /v1/memory/explore` — navigate your corpus structurally from any seed concept
+- **Search Prefix System:** `illuminate:`, `deep:`, `exact:` prefixes route queries to the right algorithm
+- **Universal MCP Server:** `anchor-mcp` wired into Qwen, Gemini, and Copilot CLI
+- **Batch Overflow Fix:** Byte-budget batching prevents PGlite WASM overflow on large chat files
+
+**v4.5.0 - Search Quality + Mobile UI:**
+- **Semantic Deduplication:** Per-source snippet cap + Jaccard overlap dedup
+- **camelCase Expansion:** `PhysicsTagWalker` → `[physics, tag, walker]` at query time
+- **Mobile-Responsive UI:** Hamburger menu + slide-in drawer on mobile
 
 **v4.3.0 - PGlite-First Architecture:**
 - **✅ ARM64 Windows Support:** No native C++ builds required
