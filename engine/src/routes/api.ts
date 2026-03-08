@@ -17,6 +17,7 @@ import { setupAdminRoutes } from './v1/admin.js';
 import { setupSystemRoutes } from './v1/system.js';
 import { setupSettingsRoutes } from './v1/settings.js';
 import { setupEnhancedRoutes } from './enhanced-api.js';
+import { setupMemoryRoutes } from './v1/memory.js';
 
 export function setupRoutes(app: Application) {
   // Core data routes
@@ -37,4 +38,5 @@ export function setupRoutes(app: Application) {
 
   // Enhanced/experimental routes
   setupEnhancedRoutes(app);
+  setupMemoryRoutes(app);
 }

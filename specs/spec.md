@@ -509,6 +509,7 @@ See `specs/standards/` for complete standards index.
 GET  /health                     # System status
 POST /v1/ingest                  # Ingest content
 POST /v1/memory/search           # Search memory
+POST /v1/memory/explore          # BFS graph traversal (illuminate)
 GET  /v1/buckets                 # List buckets
 GET  /v1/tags                    # List tags
 ```

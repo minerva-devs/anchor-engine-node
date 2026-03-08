@@ -2,7 +2,7 @@
 
 **Status:** LIVING | **Domain:** Search & Retrieval
 **Maintained By:** Anchor Engine Team
-**Last Updated:** 2026-02-10 (Standard 104)
+**Last Updated:** 2026-03-08 (Standard 128)
 
 ## 1. Overview
 The **Universal Semantic Search** protocol unifies all retrieval operations under a single, permissive, and context-aware strategy. It prioritizes recall and relevance over exact keyword matching, using a "Semantic First" approach.
@@ -44,6 +44,35 @@ Search acts as an entry point to the Knowledge Graph:
 1.  **Input**: Natural Language Query.
 2.  **Atom Retrieval**: FTS finds initial Entry Nodes.
 3.  **Graph Walk**: System traverses `simhash` and `tag` edges to find related content (The "30%" Budget).
+
+## 5. Illuminate — BFS Graph Traversal (Standard 128)
+
+**Illuminate** is a separate mode that returns the full connected subgraph from seed concepts rather than ranked results. It is exposed via `POST /v1/memory/explore`.
+
+### When to use
+
+| Mode | Question answered |
+|---|---|
+| Search (`/v1/memory/search`) | "What's the most relevant content for this query?" |
+| Illuminate (`/v1/memory/explore`) | "What is everything connected to this concept?" |
+
+Illuminate is suited for structural corpus exploration, topic mapping, and compressing large ingested corpora into navigable spines.
+
+### Search Prefix System (UI)
+
+The search input accepts prefixes to override the default routing:
+
+| Prefix | Mode | Endpoint |
+|---|---|---|
+| *(none)* | Auto STAR search | `/v1/memory/search` |
+| `illuminate:` | BFS graph traversal | `/v1/memory/explore` |
+| `explore:` | BFS graph traversal (alias) | `/v1/memory/explore` |
+| `deep:` | Max-recall multi-hop | `/v1/memory/search` with `deep: true` |
+| `exact:` / `fast:` | FTS only | `/v1/memory/search` with strict FTS |
+
+Prefix parsing is client-side in `engine/public/index.html` (`parseQuery()`). The prefix is stripped before the cleaned query is forwarded to the endpoint.
+
+See [Standard 128](128-illuminate-bfs-traversal.md) for full BFS specification.
 
 ## HISTORY & DEPRECATIONS
 *   **Standard 104 (2026-02-10)**: Introduced Universal Semantic Search, 70/30 Split, and Smart Weighting. Deprecated "Smart Search" (094) and "Tag Walker" (086).

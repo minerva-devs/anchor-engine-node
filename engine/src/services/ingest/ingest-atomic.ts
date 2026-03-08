@@ -214,15 +214,28 @@ export class AtomicIngestService {
         await flush();
     }
 
-    // O(n/b) bulk INSERT - b=50 rows per query instead of O(n) individual queries
+    // O(n/b) bulk INSERT — byte-budget batching to avoid PGlite WASM wire buffer overflow.
+    // PGlite has an ~1MB wire message limit; large chat molecules can overflow with fixed row counts.
     private async batchWriteMolecules(molecules: Molecule[]) {
-        const batchSize = 50; // Rows per INSERT statement
+        const MAX_BATCH_ROWS = 50;
+        const MAX_BATCH_BYTES = 512 * 1024; // 512KB per INSERT message (safe margin under PGlite's ~1MB limit)
         const total = molecules.length;
         const logInterval = Math.max(1000, Math.floor(total / 10));
         const molStart = Date.now();
+        let i = 0;
 
-        for (let i = 0; i < molecules.length; i += batchSize) {
-            const batch = molecules.slice(i, Math.min(i + batchSize, molecules.length));
+        while (i < molecules.length) {
+            // Build batch: add rows until we hit row limit OR byte budget
+            const batch: Molecule[] = [];
+            let batchBytes = 0;
+            while (i < molecules.length && batch.length < MAX_BATCH_ROWS) {
+                const m = molecules[i];
+                const rowBytes = (m.content?.length ?? 0) + (m.id?.length ?? 0) + 200; // 200 = overhead estimate
+                if (batch.length > 0 && batchBytes + rowBytes > MAX_BATCH_BYTES) break;
+                batch.push(m);
+                batchBytes += rowBytes;
+                i++;
+            }
 
             // Progress logging for large batches
             if (total > 1000 && i % logInterval === 0 && i > 0) {

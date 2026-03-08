@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.5.1] - 2026-03-08 — Illuminate, MCP Generalization, Batch Overflow Fix
+
+### Features
+
+#### Illuminate BFS Graph Traversal (Standard 128)
+- New `POST /v1/memory/explore` endpoint — BFS traversal from seed concepts
+- Auto-selects strategy: edge-BFS (via `edges` table) with tag-BFS fallback
+- Configurable: `max_depth`, `min_weight`, `max_nodes`, `format` (flat | graph)
+- Response includes both `results` and `nodes` fields for MCP compatibility
+- `engine/src/services/search/explore.ts` + `engine/src/routes/v1/memory.ts` (new files)
+
+#### Search Prefix System (UI)
+- Search box prefix routing: `illuminate:` / `explore:` → BFS; `deep:` → max-recall; `exact:` / `fast:` → FTS-only; no prefix → STAR
+- `?` tooltip in search input lists all available prefixes
+- Prefix stripped from query before forwarding to endpoint
+
+#### MCP Generalization (anchor-mcp v1.1.0)
+- `anchor-qwen-mcp` renamed to `anchor-mcp` package; wired into Qwen, Gemini, and Copilot CLI
+- New `anchor_explore` tool — calls `/v1/memory/explore` with deep search fallback
+- New `anchor_ingest` tool — calls `/v1/ingest`
+- Fixed `anchor_health` missing `name` field in tool definition
+- Copilot CLI config: `~/.copilot/mcp.json` (new file)
+
+### Bug Fixes
+
+#### PGlite WASM Batch Overflow (byte-budget batching)
+- Fixed `batchWriteMolecules()` in `ingest-atomic.ts`: replaced fixed 50-row batching with byte-budget approach
+- `MAX_BATCH_BYTES = 512KB` — batch grows until 50 rows OR 512KB, whichever comes first
+- Prevents `received invalid response: 2e` WASM buffer overflow on large chat files (1-4KB molecules)
+
+#### UI Babel Parse Error
+- Fixed dangling `const` keyword in `index.html` left by prior edit — caused Babel syntax error in browser
+- All prefix-system declarations now correctly scoped as component-level constants
+
+---
+
 ## [4.5.0] - 2026-03-07 — Search Quality + Mobile UI Release
 
 ### Features
