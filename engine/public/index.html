@@ -328,18 +328,27 @@
             const copyResultsAsYaml = async (resultsToCopy) => {
                 if (!resultsToCopy || resultsToCopy.length === 0) return;
 
-                // Mirror the search token budget: tokenBudget * 4 chars (same formula as API call).
-                // Molecules can be up to 100KB each, so budget across results rather than per-result.
-                const MAX_RESULTS = 20;
-                const TOTAL_CHAR_BUDGET = tokenBudget * 4;
-                const capped = resultsToCopy.slice(0, MAX_RESULTS);
-                const perResultBudget = Math.floor(TOTAL_CHAR_BUDGET / capped.length);
+                // Illuminate results are pre-budget-trimmed server-side — copy all of them.
+                // Search results use the token budget slider to cap and truncate.
+                const isIlluminate = resultsToCopy.some(r => r._algo?.includes('illuminate'));
+
+                let capped, perResultBudget;
+                if (isIlluminate) {
+                    // Server already applied corpus-proportional budget; copy everything as-is.
+                    capped = resultsToCopy;
+                    perResultBudget = Infinity; // no per-result truncation
+                } else {
+                    const MAX_RESULTS = 20;
+                    const TOTAL_CHAR_BUDGET = tokenBudget * 4;
+                    capped = resultsToCopy.slice(0, MAX_RESULTS);
+                    perResultBudget = Math.floor(TOTAL_CHAR_BUDGET / capped.length);
+                }
 
                 try {
                     // Convert to YAML format (more compact than JSON)
                     const yamlContent = capped.map((result, index) => {
                         const rawContent = result.content || '';
-                        const preview = rawContent.length > perResultBudget
+                        const preview = (perResultBudget !== Infinity && rawContent.length > perResultBudget)
                             ? rawContent.slice(0, perResultBudget) + '…'
                             : rawContent;
 
@@ -372,9 +381,12 @@
                     }).join('\n\n');
 
                     const totalChar = yamlContent.length;
-                    const truncNote = resultsToCopy.length > MAX_RESULTS
-                        ? `\n# (showing ${MAX_RESULTS} of ${resultsToCopy.length} results; ~${perResultBudget} chars/result, ${TOTAL_CHAR_BUDGET} total budget)`
-                        : `\n# (${capped.length} results; ~${perResultBudget} chars/result, ${TOTAL_CHAR_BUDGET} total budget)`;
+                    const avgChars = Math.round(totalChar / capped.length);
+                    const truncNote = isIlluminate
+                        ? `\n# (${capped.length} results; ~${avgChars} chars/result, ${totalChar} total chars)`
+                        : resultsToCopy.length > capped.length
+                            ? `\n# (showing ${capped.length} of ${resultsToCopy.length} results; ~${avgChars} chars/result, ${tokenBudget * 4} total budget)`
+                            : `\n# (${capped.length} results; ~${avgChars} chars/result, ${tokenBudget * 4} total budget)`;
 
                     await navigator.clipboard.writeText(yamlContent + truncNote);
                     setCopyFeedback(`✅ Copied! (~${Math.round(totalChar/1024)}KB)`);
