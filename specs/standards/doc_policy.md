@@ -375,14 +375,23 @@ specs/spec.md                   # LLM-optimized
 
 ## Versioning
 
-Documents are versioned with the code:
+**Single source of truth:** root `package.json`
+
+To release a new version run `npm version patch|minor|major` from the repository root. The `postversion` hook (`scripts/sync-version.mjs`) automatically propagates the new version to:
+
+- `engine/package.json`
+- `README.md` (**Version:** badge line)
+
+**Never manually edit** the version in `engine/package.json` or `README.md`.
 
 | Document | Version Strategy |
 |----------|------------------|
-| whitepaper.md | Updated every arXiv release |
-| CHANGELOG.md | Per-release |
-| standards/* | Updated as needed |
-| ARCHITECTURE_DIAGRAMS.md | When architecture changes |
+| `package.json` (root) | **Authoritative source** — bump with `npm version` |
+| `engine/package.json` | Auto-synced by `postversion` hook |
+| `README.md` | Auto-synced by `postversion` hook |
+| `CHANGELOG.md` | Per-release, manually authored |
+| `standards/*` | Updated as needed |
+| `whitepaper.md` | Updated every arXiv release |
 
 ---
 

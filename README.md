@@ -53,6 +53,26 @@ This isn't a RAG tool I built because it sounded cool. This is the tool I built 
 
 ---
 
+## 🔢 Versioning
+
+**Single source of truth:** `package.json` (root)
+
+To release a new version:
+
+```bash
+npm version patch   # 4.5.1 → 4.5.2
+npm version minor   # 4.5.1 → 4.6.0
+npm version major   # 4.5.1 → 5.0.0
+```
+
+The `postversion` hook runs `scripts/sync-version.mjs` automatically, which propagates the new version to:
+- `engine/package.json`
+- `README.md` (the **Version:** badge line)
+
+**Never manually edit the version number** in `engine/package.json` or `README.md` — always bump via `npm version`.
+
+---
+
 ## 🚀 Quick Start
 
 ```bash
