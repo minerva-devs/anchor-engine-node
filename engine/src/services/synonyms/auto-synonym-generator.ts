@@ -333,8 +333,8 @@ export class AutoSynonymGenerator {
 
     // Helper to add synonyms
     const addSynonym = (term1: string, term2: string) => {
-      if (!synonymRings[term1]) synonymRings[term1] = [];
-      if (!synonymRings[term2]) synonymRings[term2] = [];
+      if (!Array.isArray(synonymRings[term1])) synonymRings[term1] = [];
+      if (!Array.isArray(synonymRings[term2])) synonymRings[term2] = [];
       
       if (!synonymRings[term1].includes(term2) && synonymRings[term1].length < this.TOP_SYNONYMS_PER_TERM) {
         synonymRings[term1].push(term2);
