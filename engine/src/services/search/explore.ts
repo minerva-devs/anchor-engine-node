@@ -336,6 +336,7 @@ async function fetchContentAtomsByHubs(
       `SELECT id FROM atoms
        WHERE compound_id IN (${placeholders})
          AND source_path != 'atom_source'
+         AND id NOT LIKE 'mem_%'
        ORDER BY start_byte`,
       chunk
     );
