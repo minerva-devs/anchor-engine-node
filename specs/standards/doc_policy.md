@@ -49,7 +49,38 @@ anchor-engine-node/
 
 ---
 
-## Document Types
+## LLM Developer Orientation 🤖
+
+**If you are an LLM being asked to work on this codebase, read these files first in order:**
+
+### 1. `specs/standards/Database_Schema.md` — READ THIS FIRST for any DB work
+The database has a **three-tier atoms model** that causes non-obvious bugs if misunderstood:
+
+| Tier | ID prefix | source_path | What it is |
+|---|---|---|---|
+| Tag stub | `atom_xxx` | `'atom_source'` | Tag vocabulary node — NOT content |
+| **Content** | `mol_xxx` | real file path | **The content you want** |
+| Document body | `mem_xxx` | real file path | Full doc — too large for results |
+
+The `tags` table only indexes tag stubs. Content atom tags live in `atoms.tags` (JSONB).  
+Edges connect `mem_` → `atom_` only. To get content from a hub, use `atoms.compound_id`.
+
+**If your query returns 0 results, tag stubs, or full documents:** re-read `Database_Schema.md`.
+
+### 2. `specs/standards/Search_Protocol.md` — for search and illuminate work
+Defines the explore/illuminate semantic split, BFS traversal strategy, and prefix routing.
+
+### 3. `specs/standards/128-illuminate-bfs-traversal.md` — for explore/illuminate specifically
+Full three-phase illuminate architecture, PGlite WASM chunk limits, and query patterns.
+
+### 4. `specs/standards/105-api-contracts.md` — for API work
+All endpoint contracts with request/response shapes.
+
+### 5. `specs/spec.md` — for overall system understanding
+LLM-optimized system overview, architecture, and component map.
+
+---
+
 
 ### 1. Whitepaper (docs/whitepaper.md)
 
@@ -397,13 +428,15 @@ To release a new version run `npm version patch|minor|major` from the repository
 
 ## Related Standards
 
+- **Database_Schema.md:** Full ERD, three-tier atoms model, query patterns ← **start here for DB work**
 - **Standard 086:** Dual-Strategy Search
 - **Standard 113:** Automatic Max-Recall
 - **Standard 116:** Phoenix Protocol
 - **Standard 117:** arXiv Submission
+- **Standard 128:** Illuminate/Explore BFS traversal
 
 ---
 
 **Maintained by:** Anchor Engine Team  
-**Last Updated:** February 23, 2026  
+**Last Updated:** 2026-03-08  
 **Next Review:** After arXiv submission
