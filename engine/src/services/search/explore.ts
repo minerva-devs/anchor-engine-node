@@ -19,6 +19,10 @@ export interface ExploreRequest {
     query?: string;
     atom_ids?: string[];
     limit_seeds?: number;
+    /** Global mode: use top-degree nodes as seeds, no query required */
+    global?: boolean;
+    /** How many top-degree nodes to use as seeds (global mode only, default 10) */
+    seed_count?: number;
   };
   max_depth?: number;
   min_weight?: number;
@@ -198,33 +202,60 @@ async function edgesTableHasData(): Promise<boolean> {
   }
 }
 
+/**
+ * Global mode: return the top N atom IDs by weighted degree centrality.
+ * These are the most interconnected nodes in the entire corpus — the spine.
+ */
+async function globalTopNodes(seedCount: number, minWeight: number): Promise<string[]> {
+  const result = await db.run(
+    `SELECT id, SUM(weight) AS total_weight
+     FROM (
+       SELECT source_id AS id, weight FROM edges WHERE weight >= $1
+       UNION ALL
+       SELECT target_id AS id, weight FROM edges WHERE weight >= $1
+     ) all_edges
+     GROUP BY id
+     ORDER BY total_weight DESC
+     LIMIT $2`,
+    [minWeight, seedCount]
+  );
+  return (result.rows as any[]).map(r => r.id);
+}
+
 export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult> {
   const maxDepth = Math.min(req.max_depth ?? 2, 4);
   const minWeight = req.min_weight ?? 0.1;
   const maxNodes = Math.min(req.max_nodes ?? 50, 200);
   const limitSeeds = req.seed.limit_seeds ?? 5;
+  const seedCount = req.seed.seed_count ?? 10;
   const format = req.format ?? 'flat';
 
   // 1. Resolve seeds
   let seedIds: string[] = [];
-  if (req.seed.atom_ids?.length) {
-    seedIds = req.seed.atom_ids;
-  }
-  if (req.seed.query && seedIds.length < limitSeeds) {
-    const fromQuery = await resolveSeedsByQuery(req.seed.query, limitSeeds - seedIds.length);
-    seedIds = [...new Set([...seedIds, ...fromQuery])];
+
+  if (req.seed.global) {
+    // Global mode: top-degree nodes, no query needed
+    seedIds = await globalTopNodes(seedCount, minWeight);
+  } else {
+    if (req.seed.atom_ids?.length) {
+      seedIds = req.seed.atom_ids;
+    }
+    if (req.seed.query && seedIds.length < limitSeeds) {
+      const fromQuery = await resolveSeedsByQuery(req.seed.query, limitSeeds - seedIds.length);
+      seedIds = [...new Set([...seedIds, ...fromQuery])];
+    }
   }
 
   if (seedIds.length === 0) {
-    StructuredLogger.warn('EXPLORE_NO_SEEDS', { query: req.seed.query });
+    StructuredLogger.warn('EXPLORE_NO_SEEDS', { query: req.seed.query, global: req.seed.global });
     return {
       nodes: [],
       stats: { nodes_count: 0, seed_nodes: 0, max_depth_achieved: 0, strategy: 'none' }
     };
   }
 
-  const seedCount = seedIds.length;
-  StructuredLogger.info('EXPLORE_START', { seeds: seedCount, max_depth: maxDepth, max_nodes: maxNodes });
+  const actualSeedCount = seedIds.length;
+  StructuredLogger.info('EXPLORE_START', { seeds: actualSeedCount, max_depth: maxDepth, max_nodes: maxNodes });
 
   // 2. BFS traversal — prefer edges table, fall back to tag-based
   let nodeIds: string[];
@@ -258,7 +289,7 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
       stats: {
         nodes_count: nodes.length,
         edges_count: filteredEdges.length,
-        seed_nodes: seedCount,
+        seed_nodes: actualSeedCount,
         max_depth_achieved: maxDepth,
         strategy
       }
@@ -270,7 +301,7 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
     nodes,
     stats: {
       nodes_count: nodes.length,
-      seed_nodes: seedCount,
+      seed_nodes: actualSeedCount,
       max_depth_achieved: maxDepth,
       strategy
     }
