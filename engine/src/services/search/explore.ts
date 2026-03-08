@@ -17,13 +17,16 @@ import { StructuredLogger } from '../../utils/structured-logger.js';
 /** PGlite WASM has a practical call-stack limit on large parameter arrays
  *  AND on large result payloads (result data is marshaled through WASM stack).
  *
- *  Two separate limits:
- *  - CHUNK_IDS: for ID-only or small-column queries (edges, tags, id lookups)
- *  - CHUNK_CONTENT: for queries that return content columns (~1KB avg per row)
- *    50 rows × ~1KB = ~50KB through WASM — safe margin below ~100KB limit.
+ *  Three limits:
+ *  - CHUNK_IDS: INPUT parameter count for ID/tag queries
+ *  - CHUNK_CONTENT: rows returned when query includes content column (~1KB/row)
+ *  - CHUNK_RESULT_IDS: rows returned for ID-only queries (large fan-out joins)
+ *    e.g. 100 hub IN-params → potentially 10K molecule rows — must cap output.
+ *    ~500 × 20 bytes ≈ 10KB per batch — well below WASM limit.
  */
-const PGLITE_CHUNK_IDS     = 100;  // ID-only / lightweight result rows
-const PGLITE_CHUNK_CONTENT =  25;  // Rows that include content column
+const PGLITE_CHUNK_IDS        = 100;  // IN-param count for lightweight queries
+const PGLITE_CHUNK_CONTENT    =  25;  // Rows returned when content column included
+const PGLITE_CHUNK_RESULT_IDS = 500;  // Rows returned for ID-only fan-out queries
 
 export interface ExploreRequest {
   seed: {
@@ -332,17 +335,19 @@ async function fetchContentAtomsByHubs(
   for (let i = 0; i < hubIds.length && allIds.length < maxCount; i += PGLITE_CHUNK_IDS) {
     const chunk = hubIds.slice(i, i + PGLITE_CHUNK_IDS);
     const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
+    const remaining = maxCount - allIds.length;
     const result = await db.run(
       `SELECT id FROM atoms
        WHERE compound_id IN (${placeholders})
          AND source_path != 'atom_source'
          AND id NOT LIKE 'mem_%'
-       ORDER BY start_byte`,
+       ORDER BY start_byte
+       LIMIT ${Math.min(remaining, PGLITE_CHUNK_RESULT_IDS)}`,
       chunk
     );
     allIds.push(...(result.rows as any[]).map((r: any) => r.id));
   }
-  return allIds.slice(0, maxCount);
+  return allIds;
 }
 
 
