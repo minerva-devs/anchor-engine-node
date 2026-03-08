@@ -356,6 +356,7 @@
                             `- id: "${result.id || index}"`,
                             `  source: "${(result.source || '').replace(/\\/g, '/').replace(/"/g, '\\"')}"`,
                             `  score: ${result.score?.toFixed(4) || 0}`,
+                            ...(result.timestamp ? [`  date: "${new Date(result.timestamp).toISOString().slice(0, 10)}"`] : []),
                             `  content: |`
                         ];
 

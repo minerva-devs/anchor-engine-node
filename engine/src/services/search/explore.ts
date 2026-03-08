@@ -66,6 +66,9 @@ export interface ExploreNode {
   /** Hub-rank score: 1.0 = most connected node, approaches 0 for least connected.
    *  Only present for illuminate-global results; undefined for BFS results. */
   score?: number;
+  /** Source content timestamp (epoch ms). Reflects date of original content,
+   *  not ingestion time. Use to reconstruct chronology. */
+  timestamp?: number;
 }
 
 export interface ExploreEdge {
@@ -223,7 +226,7 @@ async function fetchNodes(ids: string[]): Promise<ExploreNode[]> {
     const chunk = ids.slice(i, i + PGLITE_CHUNK_CONTENT);
     const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
     const aResult = await db.run(
-      `SELECT id, content, source_path FROM atoms WHERE id IN (${placeholders})`,
+      `SELECT id, content, source_path, timestamp FROM atoms WHERE id IN (${placeholders})`,
       chunk
     );
     atomRows.push(...(aResult.rows as any[]));
@@ -250,7 +253,8 @@ async function fetchNodes(ids: string[]): Promise<ExploreNode[]> {
     id: r.id,
     content: r.content,
     source: r.source_path || '',
-    tags: tagMap.get(r.id) || []
+    tags: tagMap.get(r.id) || [],
+    ...(r.timestamp != null && { timestamp: Number(r.timestamp) })
   }));
 }
 
