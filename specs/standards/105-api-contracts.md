@@ -84,6 +84,53 @@ Search for context matching query.
 
 ---
 
+## Memory Endpoints
+
+### POST /v1/memory/explore
+
+BFS graph traversal — returns the connected subgraph from seed concepts. See [Standard 128](128-illuminate-bfs-traversal.md) for full specification.
+
+**Request:**
+```json
+{
+  "seed": {
+    "query": "physics walker STAR algorithm",
+    "limit_seeds": 5
+  },
+  "max_depth": 2,
+  "min_weight": 0.1,
+  "max_nodes": 50,
+  "format": "flat"
+}
+```
+
+**Response (flat):**
+```json
+{
+  "results": [
+    {
+      "id": "atom_abc123",
+      "content": "PhysicsTagWalker traverses the co-occurrence graph...",
+      "source": "engine/src/services/search/physics-tag-walker.ts",
+      "tags": ["#function", "#STAR"],
+      "score": 1
+    }
+  ],
+  "nodes": [...],
+  "stats": {
+    "nodes_count": 30,
+    "seed_nodes": 5,
+    "max_depth_achieved": 2,
+    "strategy": "edge-bfs"
+  },
+  "duration_ms": 19
+}
+```
+
+**graph format** (set `"format": "graph"`): also returns `"edges": [{ "source": "atom_...", "target": "atom_...", "weight": 0.85 }]`.
+
+---
+
 ## Ingestion Endpoints
 
 ### POST /v1/ingest

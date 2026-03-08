@@ -1,12 +1,18 @@
 # Architecture Standards Index
 
-**Last Updated:** March 3, 2026 | **Total Standards:** 86
+**Last Updated:** March 8, 2026 | **Total Standards:** 87
 
 ---
 
 ## Active Standards (Current Implementation)
 
 These standards define the current production architecture:
+
+### v4.5.1 Standards (Illuminate + MCP Generalization)
+
+| # | Standard | Description | Status |
+|---|----------|-------------|--------|
+| **128** | [Illuminate BFS Traversal](128-illuminate-bfs-traversal.md) | BFS graph traversal from seed concepts; structural corpus compression | ✅ v1.0 |
 
 ### v4.4.2 Standards (Search Result Quality)
 
