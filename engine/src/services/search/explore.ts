@@ -156,8 +156,10 @@ async function bfsViaEdges(
     if (visited.size >= maxNodes) break;
   }
 
+  // visited contains both mem_ (compound hubs) and atom_ IDs — only atoms have content
+  const atomIds = [...visited].filter(id => id.startsWith('atom_')).slice(0, maxNodes);
   return {
-    nodeIds: [...visited].slice(0, maxNodes),
+    nodeIds: atomIds,
     edges: allEdges
   };
 }
@@ -294,9 +296,11 @@ function rankNodesBySubgraphDegree(
   nodeIds: string[],
   edges: ExploreEdge[]
 ): string[] {
+  // Edges connect mem_ hubs → atom_ nodes; score each atom by how many edges touch it
   const score = new Map<string, number>();
   for (const id of nodeIds) score.set(id, 0);
   for (const e of edges) {
+    // source may be mem_ or atom_; target is typically atom_
     if (score.has(e.source)) score.set(e.source, score.get(e.source)! + e.weight);
     if (score.has(e.target)) score.set(e.target, score.get(e.target)! + e.weight);
   }
