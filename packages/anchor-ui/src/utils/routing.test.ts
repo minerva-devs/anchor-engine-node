@@ -71,4 +71,54 @@ describe('Routing Utility', () => {
       complexPath
     );
   });
+
+  it('handles empty path', () => {
+    navigate('');
+
+    expect(pushStateSpy).toHaveBeenCalledWith({}, '', '');
+    expect(dispatchEventSpy).toHaveBeenCalled();
+  });
+
+  it('handles paths with hash fragments', () => {
+    navigate('/path#section');
+
+    expect(pushStateSpy).toHaveBeenCalledWith({}, '', '/path#section');
+  });
+
+  it('handles paths with special characters and Unicode', () => {
+    const path = '/folder with spaces/path/🌟';
+    navigate(path);
+
+    expect(pushStateSpy).toHaveBeenCalledWith({}, '', path);
+  });
+
+  it('handles absolute URLs', () => {
+    const absoluteUrl = 'https://example.com/page';
+    navigate(absoluteUrl);
+
+    expect(pushStateSpy).toHaveBeenCalledWith({}, '', absoluteUrl);
+  });
+
+  it('always passes exact state `{}` and title `\'\'`', () => {
+    navigate('/test-state-title');
+
+    expect(pushStateSpy).toHaveBeenCalledWith(
+      {},
+      '',
+      '/test-state-title'
+    );
+  });
+
+  it('does not throw when window is undefined (SSR scenario)', () => {
+    // Temporarily simulate an SSR environment where window is undefined
+    vi.stubGlobal('window', undefined);
+
+    try {
+      // Should not throw
+      expect(() => navigate('/ssr-test')).not.toThrow();
+    } finally {
+      // Restore all stubbed globals, including window
+      vi.unstubAllGlobals();
+    }
+  });
 });
