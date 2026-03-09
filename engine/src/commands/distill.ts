@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
  * Graph Distillation CLI
- * 
+ *
  * Usage:
  *   node --loader ts-node/esm src/commands/distill.ts [options] [seed_query]
- * 
+ *
  * Options:
  *   --seed-ids, -s    Comma-separated atom IDs to start from
  *   --max-nodes, -n   Maximum nodes to process (default: 1000)
  *   --batch-size, -b  Batch size for compression (default: 50)
- *   --use-llm, -l     Use local LLM for compression (requires remote/local provider)
  *   --output, -o      Output file path (default: ./reports/distill-report-<timestamp>.md)
- *   --json            Output as JSON instead of Markdown
+ *   --yaml            Output as YAML instead of Markdown
+ *   --export, -e      Export to inbox/distilled/ folder
  */
 
 import { db } from '../core/db.js';
@@ -22,7 +22,7 @@ import fs from 'fs';
 
 async function main() {
   const args = process.argv.slice(2);
-  
+
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
 Graph Distillation CLI
@@ -34,9 +34,9 @@ Options:
   --seed-ids, -s    Comma-separated atom IDs to start from
   --max-nodes, -n   Maximum nodes to process (default: 1000)
   --batch-size, -b  Batch size for compression (default: 50)
-  --use-llm, -l     Use local LLM for compression
   --output, -o      Output file path
-  --json            Output as JSON
+  --yaml            Output as YAML
+  --export, -e      Export to inbox/distilled/ folder
     `);
     process.exit(0);
   }
@@ -44,18 +44,17 @@ Options:
   // Parse arguments
   const seedIdsIndex = args.indexOf('--seed-ids') !== -1 ? args.indexOf('--seed-ids') : args.indexOf('-s');
   const seedIds = seedIdsIndex >= 0 ? args[seedIdsIndex + 1].split(',') : undefined;
-  
+
   const maxNodesIndex = args.indexOf('--max-nodes') !== -1 ? args.indexOf('--max-nodes') : args.indexOf('-n');
   const maxNodes = maxNodesIndex >= 0 ? parseInt(args[maxNodesIndex + 1]) : 1000;
-  
+
   const batchSizeIndex = args.indexOf('--batch-size') !== -1 ? args.indexOf('--batch-size') : args.indexOf('-b');
   const batchSize = batchSizeIndex >= 0 ? parseInt(args[batchSizeIndex + 1]) : 50;
-  
-  const useLlm = args.includes('--use-llm') || args.includes('-l');
+
   const asJson = args.includes('--json');
   const asYaml = args.includes('--yaml') || args.includes('-y');
   const exportToInbox = args.includes('--export') || args.includes('-e');
-  
+
   const outputIndex = args.indexOf('--output') !== -1 ? args.indexOf('--output') : args.indexOf('-o');
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const ext = asYaml ? 'yaml' : (asJson ? 'json' : 'md');
@@ -73,10 +72,10 @@ Options:
   try {
     // IMPORTANT: Do not wipe database on command run
     config.DATABASE.WIPE_ON_STARTUP = false;
-    
+
     console.log('Initializing database...');
     await db.init();
-    
+
     const request: DistillRequest = {
       seed: {
         query: seedQuery,
@@ -84,14 +83,13 @@ Options:
       },
       max_nodes: maxNodes,
       batch_size: batchSize,
-      use_llm: useLlm,
       export_to_inbox: exportToInbox
     };
 
     console.log('Distilling graph...');
     console.log(`  Target: ${seedQuery || (seedIds ? seedIds.join(',') : 'Global Roots')}`);
     console.log(`  Max Nodes: ${maxNodes}`);
-    console.log(`  Mode: ${useLlm ? 'LLM Semantic Compression' : 'Heuristic Compression'}`);
+    console.log(`  Mode: Deterministic Heuristic Compression`);
     if (exportToInbox) console.log(`  Export: Enabled (→ inbox/distilled/)`);
     console.log();
 

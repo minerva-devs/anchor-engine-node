@@ -1,6 +1,6 @@
 # Architecture Standards Index
 
-**Last Updated:** March 8, 2026 | **Total Standards:** 91
+**Last Updated:** March 9, 2026 | **Total Standards:** 92
 
 ---
 
@@ -12,6 +12,7 @@ These standards define the current production architecture:
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
+| **132** | [API Versioning Strategy](132-api-versioning.md) | URL-based versioning, deprecation process, breaking changes policy | ✅ v1.0 |
 | **131** | [Async File I/O](131-async-file-io.md) | Non-blocking API endpoints, event loop preservation | ✅ v1.0 |
 | **130** | [Test Coverage Requirements](130-test-coverage-requirements.md) | Minimum coverage targets, testing patterns, mock strategies | ✅ v1.0 |
 | **129** | [Command Injection Prevention](129-command-injection-prevention.md) | execFile whitelist, path validation, security patterns | ✅ v1.0 |
