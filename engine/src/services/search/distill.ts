@@ -4,11 +4,13 @@
  * Performs comprehensive traversal of the knowledge graph and compresses
  * it into a compact representation by merging semantically redundant nodes
  * and consolidating edges.
+ *
+ * PURELY DETERMINISTIC - No LLM dependencies. Uses graph-based deduplication
+ * and heuristic text compression for reliable, offline operation.
  */
 
 import { db } from '../../core/db.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
-import { runSideChannel } from '../llm/provider.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -21,7 +23,6 @@ export interface DistillRequest {
   };
   max_nodes?: number;
   batch_size?: number;
-  use_llm?: boolean;
   compression_ratio?: number; // Target ratio, e.g. 10 for 10:1
   export_to_inbox?: boolean;
 }
@@ -61,39 +62,54 @@ export interface DistillResult {
 const PGLITE_CHUNK_IDS = 100;
 const PGLITE_CHUNK_CONTENT = 25;
 
-/** Simple heuristic compressor for fallback when LLM is unavailable */
+/**
+ * Parse tags from PostgreSQL array or JSON format
+ * Handles both: {tag1,tag2} and ["tag1","tag2"]
+ */
+function parseTags(tagsText: string | null): string[] {
+  if (!tagsText) return [];
+  
+  // PostgreSQL array format: {tag1,tag2}
+  if (tagsText.startsWith('{') && tagsText.endsWith('}')) {
+    return tagsText
+      .slice(1, -1)
+      .split(',')
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+  }
+  
+  // JSON format: ["tag1","tag2"]
+  try {
+    const parsed = JSON.parse(tagsText);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Deterministic heuristic compressor - no LLM required
+ * Compresses text by removing redundancy while preserving facts
+ */
 function heuristicCompress(text: string): string {
   if (!text) return "";
-  // Remove boilerplate, multiple spaces, newlines
+  
+  // Remove multiple spaces, newlines, and normalize whitespace
   let compressed = text.replace(/\s+/g, ' ').trim();
-  // If still very long, take first 200 chars as a proxy (not truly lossless but works as fallback)
+  
+  // For long text, find natural sentence boundaries
   if (compressed.length > 500) {
-    // Try to find a sentence boundary
+    // Try to find a sentence boundary between 400-600 chars
     const end = compressed.indexOf('.', 400);
     if (end !== -1 && end < 600) {
       compressed = compressed.substring(0, end + 1);
     } else {
+      // Fallback: truncate at 500 chars with ellipsis
       compressed = compressed.substring(0, 500) + "...";
     }
   }
+  
   return compressed;
-}
-
-/** LLM-based semantic compression */
-async function llmCompress(text: string): Promise<string> {
-  const prompt = `Compress the following text to its minimal form, retaining all facts and relationships. Do not add or omit information. Return ONLY the compressed text.
-
-Text: ${text}`;
-
-  const systemInstruction = "You are a professional semantic compressor. Your goal is to reduce token count while preserving 100% of the factual content and relational data.";
-
-  try {
-    const result = await runSideChannel(prompt, systemInstruction, { temperature: 0.1, maxTokens: 512 });
-    return (result as string || heuristicCompress(text)).trim();
-  } catch (err) {
-    StructuredLogger.error('DISTILL_LLM_COMPRESSION_FAILED', err as Error);
-    return heuristicCompress(text);
-  }
 }
 
 /** Fetch all atom IDs reachable from seeds or all roots if no seeds */
@@ -178,15 +194,14 @@ export async function distillMemory(req: DistillRequest): Promise<DistillResult>
   const startTime = Date.now();
   const maxNodes = req.max_nodes ?? 1000;
   const batchSize = req.batch_size ?? 50;
-  const useLlm = req.use_llm ?? false;
 
-  StructuredLogger.info('DISTILL_START', { maxNodes, useLlm });
+  StructuredLogger.info('DISTILL_START', { maxNodes, batchSize });
 
   // 1. Traverse and collect all atom IDs
   const atomIds = await getAllReachableAtomIds(req.seed?.atom_ids, maxNodes);
   const originalNodeCount = atomIds.length;
 
-  // 2. Process and compress nodes in batches
+  // 2. Process and compress nodes in batches (deterministic heuristic compression)
   const distilledNodes: Map<string, DistillNode> = new Map(); // Hash -> DistillNode
   const idToHash: Map<string, string> = new Map(); // atomId -> Hash
 
@@ -200,22 +215,29 @@ export async function distillMemory(req: DistillRequest): Promise<DistillResult>
     );
 
     const compressionPromises = (result.rows as any[]).map(async (row) => {
-      const compressed = useLlm ? await llmCompress(row.content) : heuristicCompress(row.content);
+      // Deterministic compression - no LLM
+      const compressed = heuristicCompress(row.content);
       const hash = crypto.createHash('sha256').update(compressed).digest('hex');
 
       if (distilledNodes.has(hash)) {
+        // Merge duplicate: same compressed content = same node
         const existing = distilledNodes.get(hash)!;
         existing.originalIds.push(row.id);
         if (row.source_path && !existing.sources.includes(row.source_path)) {
             existing.sources.push(row.source_path);
         }
+        // Merge tags from duplicates
+        const newTags = parseTags(row.tags_text);
+        newTags.forEach((tag: string) => {
+          if (!existing.tags.includes(tag)) existing.tags.push(tag);
+        });
       } else {
         distilledNodes.set(hash, {
           id: `distill_${hash.substring(0, 12)}`,
           originalIds: [row.id],
           content: row.content,
           compressedContent: compressed,
-          tags: row.tags_text ? JSON.parse(row.tags_text) : [],
+          tags: parseTags(row.tags_text),
           sources: row.source_path ? [row.source_path] : []
         });
       }
@@ -223,7 +245,11 @@ export async function distillMemory(req: DistillRequest): Promise<DistillResult>
     });
 
     await Promise.all(compressionPromises);
-    StructuredLogger.info('DISTILL_BATCH_COMPLETE', { processed: Math.min(i + batchSize, atomIds.length), total: atomIds.length });
+    StructuredLogger.info('DISTILL_BATCH_COMPLETE', { 
+      processed: Math.min(i + batchSize, atomIds.length), 
+      total: atomIds.length,
+      distilled_so_far: distilledNodes.size 
+    });
   }
 
   // 3. Consolidate edges

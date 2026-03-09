@@ -22,10 +22,17 @@ console.log(`engine/package.json → ${version}`);
 // Sync README.md version badge line
 const readmePath = resolve(root, 'README.md');
 const readme = readFileSync(readmePath, 'utf8');
-const updated = readme.replace(
+let updated = readme.replace(
   /(\*\*Version:\*\* )\d+\.\d+\.\d+/,
   `$1${version}`
 );
+if (updated === readme) {
+  // Try alternate format
+  updated = readme.replace(
+    /(\[!\[Coverage\].*\n)/,
+    `$1[![Version](https://img.shields.io/badge/version-${version}-blue)](https://github.com/RSBalchII/anchor-engine-node)\n`
+  );
+}
 if (updated === readme) {
   console.warn('README.md: no version badge found to update');
 } else {
