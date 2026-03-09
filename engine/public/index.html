@@ -565,26 +565,28 @@
             return (
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Search Bar */}
-                    <div className="p-4 border-b border-white/10 space-y-3">
-                        <div className="flex gap-2">
+                    <div className="p-3 sm:p-4 border-b border-white/10 space-y-3">
+                        <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                             <input
                                 type="text"
                                 value={query}
                                 onChange={(e) => setQuery(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                placeholder="Search your memory... (illuminate: = corpus spine, illuminate: physics walker = topic BFS)"
-                                className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-cyan-500/50 outline-none transition-colors"
+                                placeholder="Search your memory..."
+                                className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 sm:px-4 py-2.5 focus:border-cyan-500/50 outline-none transition-colors text-sm sm:text-base"
                             />
-                            <div style={{position:'relative',display:'inline-block'}} title="Search prefixes&#10;illuminate:        — corpus spine (global BFS, auto-budget)&#10;illuminate: topic  — BFS from seed topic&#10;explore:           — same as illuminate&#10;deep:              — max-recall multi-hop&#10;exact:             — FTS only, no physics&#10;(none)             — automatic STAR search">
-                              <span style={{cursor:'help',opacity:0.5,fontSize:'0.8rem',padding:'0 6px'}}>?</span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                <div style={{position:'relative',display:'inline-block'}} title="Search prefixes&#10;illuminate:        — corpus spine (global BFS, auto-budget)&#10;illuminate: topic  — BFS from seed topic&#10;explore:           — same as illuminate&#10;deep:              — max-recall multi-hop&#10;exact:             — FTS only, no physics&#10;(none)             — automatic STAR search">
+                                  <span style={{cursor:'help',opacity:0.5,fontSize:'0.8rem',padding:'0 6px'}}>?</span>
+                                </div>
+                                <button onClick={handleSearch} disabled={loading} className="btn-primary min-w-[80px] sm:min-w-[100px] text-sm sm:text-base px-3 sm:px-4 py-2.5">
+                                    {loading ? '...' : 'Search'}
+                                </button>
                             </div>
-                            <button onClick={handleSearch} disabled={loading} className="btn-primary min-w-[100px]">
-                                {loading ? 'Searching...' : 'Search'}
-                            </button>
                         </div>
-                        
+
                         {/* Filters */}
-                        <div className="flex items-center gap-4 w-full px-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full px-3 sm:px-4">
                             <div className="flex items-center gap-2 text-sm min-w-[200px]">
                                 <i data-lucide="coins" width="14" className="text-cyan-400"></i>
                                 <span className="text-gray-400">Token budget:</span>
@@ -598,15 +600,15 @@
                                 step="1"
                                 value={getTokenPresetIndex(tokenBudget)}
                                 onChange={handleTokenSliderChange}
-                                className="flex-1 accent-cyan-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                className="w-full sm:flex-1 accent-cyan-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
                                 style={{
                                     background: `linear-gradient(to right, #06b6d4 0%, #06b6d4 ${(getTokenPresetIndex(tokenBudget) / (tokenPresets.length - 1)) * 100}%, rgba(255,255,255,0.1) ${(getTokenPresetIndex(tokenBudget) / (tokenPresets.length - 1)) * 100}%, rgba(255,255,255,0.1) 100%)`
                                 }}
                             />
                         </div>
-                        
+
                         {/* Slider scale markers */}
-                        <div className="flex justify-between px-4 text-xs text-gray-600 font-mono">
+                        <div className="flex justify-between px-3 sm:px-4 text-xs text-gray-600 font-mono">
                             <span>512</span>
                             <span>4K</span>
                             <span>16K</span>
@@ -614,10 +616,10 @@
                             <span>262K</span>
                             <span>1M</span>
                         </div>
-                        
+
                         {/* Bucket Filters */}
                         {buckets.length > 0 && (
-                            <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-2 flex-wrap px-3 sm:px-4">
                                 <span className="text-sm text-gray-400">Buckets:</span>
                                 {buckets.map(bucket => (
                                     <button
