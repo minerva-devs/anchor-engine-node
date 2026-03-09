@@ -278,7 +278,7 @@
                     </button>
                 </div>
             </header>
-        );
+            );
         };
 
         // Mobile Header with Hamburger
@@ -318,66 +318,69 @@
 
         // Mobile Drawer
         const MobileDrawer = ({ isOpen, onClose, route, navigate, onOpenGithub, onOpenResearch }) => {
-            if (!isOpen) return null;
             return (
                 <>
-                    <div className="drawer-overlay" onClick={onClose}></div>
-                    <div className={`drawer ${isOpen ? 'open' : ''}`}>
-                        <div className="flex items-center justify-between p-4 border-b border-white/10">
-                            <h2 className="text-lg font-semibold text-white">Menu</h2>
-                            <button
-                                onClick={onClose}
-                                className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400"
-                            >
-                                <i data-lucide="x" width="20"></i>
-                            </button>
-                        </div>
-                        <nav className="py-2">
-                            <button
-                                onClick={() => { navigate('/search'); onClose(); }}
-                                className={`drawer-nav-item ${route === '/search' ? 'active' : ''}`}
-                            >
-                                <i data-lucide="search" width="18"></i>
-                                Search
-                            </button>
-                            <button
-                                onClick={() => { navigate('/paths'); onClose(); }}
-                                className={`drawer-nav-item ${route === '/paths' ? 'active' : ''}`}
-                            >
-                                <i data-lucide="folder" width="18"></i>
-                                Paths
-                            </button>
-                            <div className="my-2 border-t border-white/10"></div>
-                            <button
-                                onClick={() => { onOpenResearch(); onClose(); }}
-                                className="drawer-nav-item"
-                            >
-                                <i data-lucide="globe" width="18"></i>
-                                Web Research
-                            </button>
-                            <button
-                                onClick={() => { onOpenGithub(); onClose(); }}
-                                className="drawer-nav-item"
-                            >
-                                <i data-lucide="github" width="18"></i>
-                                GitHub Ingestion
-                            </button>
-                            <button
-                                onClick={() => { navigate('/quarantine'); onClose(); }}
-                                className="drawer-nav-item"
-                            >
-                                <i data-lucide="shield-alert" width="18"></i>
-                                Quarantine
-                            </button>
-                            <button
-                                onClick={() => { navigate('/settings'); onClose(); }}
-                                className="drawer-nav-item"
-                            >
-                                <i data-lucide="settings" width="18"></i>
-                                Settings
-                            </button>
-                        </nav>
-                    </div>
+                    {isOpen && (
+                        <>
+                            <div className="drawer-overlay" onClick={onClose}></div>
+                            <div className={`drawer ${isOpen ? 'open' : ''}`}>
+                                <div className="flex items-center justify-between p-4 border-b border-white/10">
+                                    <h2 className="text-lg font-semibold text-white">Menu</h2>
+                                    <button
+                                        onClick={onClose}
+                                        className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400"
+                                    >
+                                        <i data-lucide="x" width="20"></i>
+                                    </button>
+                                </div>
+                                <nav className="py-2">
+                                    <button
+                                        onClick={() => { navigate('/search'); onClose(); }}
+                                        className={`drawer-nav-item ${route === '/search' ? 'active' : ''}`}
+                                    >
+                                        <i data-lucide="search" width="18"></i>
+                                        Search
+                                    </button>
+                                    <button
+                                        onClick={() => { navigate('/paths'); onClose(); }}
+                                        className={`drawer-nav-item ${route === '/paths' ? 'active' : ''}`}
+                                    >
+                                        <i data-lucide="folder" width="18"></i>
+                                        Paths
+                                    </button>
+                                    <div className="my-2 border-t border-white/10"></div>
+                                    <button
+                                        onClick={() => { onOpenResearch(); onClose(); }}
+                                        className="drawer-nav-item"
+                                    >
+                                        <i data-lucide="globe" width="18"></i>
+                                        Web Research
+                                    </button>
+                                    <button
+                                        onClick={() => { onOpenGithub(); onClose(); }}
+                                        className="drawer-nav-item"
+                                    >
+                                        <i data-lucide="github" width="18"></i>
+                                        GitHub Ingestion
+                                    </button>
+                                    <button
+                                        onClick={() => { navigate('/quarantine'); onClose(); }}
+                                        className="drawer-nav-item"
+                                    >
+                                        <i data-lucide="shield-alert" width="18"></i>
+                                        Quarantine
+                                    </button>
+                                    <button
+                                        onClick={() => { navigate('/settings'); onClose(); }}
+                                        className="drawer-nav-item"
+                                    >
+                                        <i data-lucide="settings" width="18"></i>
+                                        Settings
+                                    </button>
+                                </nav>
+                            </div>
+                        </>
+                    )}
                 </>
             );
         };
