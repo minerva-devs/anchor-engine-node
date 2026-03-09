@@ -69,6 +69,64 @@
             from { opacity: 0; transform: translateY(8px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        /* Mobile drawer */
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 280px;
+            max-width: 85vw;
+            height: 100vh;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-subtle);
+            z-index: 1000;
+            transform: translateX(100%);
+            transition: transform 0.3s ease-out;
+        }
+        .drawer.open {
+            transform: translateX(0);
+        }
+        .drawer-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 20px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+            width: 100%;
+            text-align: left;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .drawer-nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+        .drawer-nav-item.active {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--accent-cyan);
+            border-left: 3px solid var(--accent-cyan);
+        }
+        /* Mobile header */
+        .mobile-header {
+            display: none;
+        }
+        @media (max-width: 768px) {
+            .desktop-header {
+                display: none !important;
+            }
+            .mobile-header {
+                display: flex !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -131,12 +189,12 @@
             getStats: () => fetch('/v1/stats').then(r => r.json()).catch(() => ({ atoms: 0, molecules: 0 }))
         };
 
-        // Header Component
+        // Header Component (Desktop)
         const Header = ({ route, navigate, onOpenGithub, onOpenResearch, systemStatus, isDbEmpty }) => {
             const isIngesting = systemStatus?.isBusy;
             const statusMessage = systemStatus?.activeTask || '';
             return (
-            <header className="flex items-center justify-between px-6 py-3 border-b border-white/10 bg-black/20">
+            <header className="desktop-header flex items-center justify-between px-6 py-3 border-b border-white/10 bg-black/20">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
                         <i data-lucide="anchor" className="text-white" width="20" height="20"></i>
@@ -145,7 +203,7 @@
                         <h1 className="text-lg font-semibold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                             Anchor Engine
                         </h1>
-                        <p className="text-xs text-gray-500 font-mono">v4.3</p>
+                        <p className="text-xs text-gray-500 font-mono">v4.5</p>
                     </div>
                     {isDbEmpty && (
                         <div className="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30">
@@ -195,8 +253,8 @@
                     <button
                         onClick={() => navigate('/search')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            route === '/search' 
-                                ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-500/30' 
+                            route === '/search'
+                                ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-500/30'
                                 : 'text-gray-400 hover:text-white hover:bg-white/5'
                         }`}
                     >
@@ -208,8 +266,8 @@
                     <button
                         onClick={() => navigate('/paths')}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                            route === '/paths' 
-                                ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30' 
+                            route === '/paths'
+                                ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30'
                                 : 'text-gray-400 hover:text-white hover:bg-white/5'
                         }`}
                     >
@@ -221,6 +279,107 @@
                 </div>
             </header>
         );
+        };
+
+        // Mobile Header with Hamburger
+        const MobileHeader = ({ route, navigate, onOpenGithub, onOpenResearch, systemStatus, isDbEmpty, onMenuClick }) => {
+            const isIngesting = systemStatus?.isBusy;
+            const statusMessage = systemStatus?.activeTask || '';
+            return (
+            <header className="mobile-header flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/20">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={onMenuClick}
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400"
+                        title="Menu"
+                    >
+                        <i data-lucide="menu" width="24"></i>
+                    </button>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center">
+                        <i data-lucide="anchor" className="text-white" width="18" height="18"></i>
+                    </div>
+                    <div>
+                        <h1 className="text-base font-semibold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                            Anchor Engine
+                        </h1>
+                        <p className="text-xs text-gray-500 font-mono">v4.5</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    {isDbEmpty && (
+                        <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" title="Database Empty"></div>
+                    )}
+                    {isIngesting && (
+                        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title={statusMessage}></div>
+                    )}
+                </div>
+            </header>
+        );
+
+        // Mobile Drawer
+        const MobileDrawer = ({ isOpen, onClose, route, navigate, onOpenGithub, onOpenResearch }) => {
+            if (!isOpen) return null;
+            return (
+                <>
+                    <div className="drawer-overlay" onClick={onClose}></div>
+                    <div className={`drawer ${isOpen ? 'open' : ''}`}>
+                        <div className="flex items-center justify-between p-4 border-b border-white/10">
+                            <h2 className="text-lg font-semibold text-white">Menu</h2>
+                            <button
+                                onClick={onClose}
+                                className="p-2 rounded-lg hover:bg-white/5 transition-colors text-gray-400"
+                            >
+                                <i data-lucide="x" width="20"></i>
+                            </button>
+                        </div>
+                        <nav className="py-2">
+                            <button
+                                onClick={() => { navigate('/search'); onClose(); }}
+                                className={`drawer-nav-item ${route === '/search' ? 'active' : ''}`}
+                            >
+                                <i data-lucide="search" width="18"></i>
+                                Search
+                            </button>
+                            <button
+                                onClick={() => { navigate('/paths'); onClose(); }}
+                                className={`drawer-nav-item ${route === '/paths' ? 'active' : ''}`}
+                            >
+                                <i data-lucide="folder" width="18"></i>
+                                Paths
+                            </button>
+                            <div className="my-2 border-t border-white/10"></div>
+                            <button
+                                onClick={() => { onOpenResearch(); onClose(); }}
+                                className="drawer-nav-item"
+                            >
+                                <i data-lucide="globe" width="18"></i>
+                                Web Research
+                            </button>
+                            <button
+                                onClick={() => { onOpenGithub(); onClose(); }}
+                                className="drawer-nav-item"
+                            >
+                                <i data-lucide="github" width="18"></i>
+                                GitHub Ingestion
+                            </button>
+                            <button
+                                onClick={() => { navigate('/quarantine'); onClose(); }}
+                                className="drawer-nav-item"
+                            >
+                                <i data-lucide="shield-alert" width="18"></i>
+                                Quarantine
+                            </button>
+                            <button
+                                onClick={() => { navigate('/settings'); onClose(); }}
+                                className="drawer-nav-item"
+                            >
+                                <i data-lucide="settings" width="18"></i>
+                                Settings
+                            </button>
+                        </nav>
+                    </div>
+                </>
+            );
         };
 
         // Search Page
@@ -1469,6 +1628,7 @@
             const [showGithub, setShowGithub] = useState(false);
             const [systemStatus, setSystemStatus] = useState({ isBusy: false, state: 'idle' });
             const [isDbEmpty, setIsDbEmpty] = useState(true);
+            const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
             // Adaptive polling: 3s when ingesting, 30s when idle
             useEffect(() => {
@@ -1524,7 +1684,7 @@
 
             useEffect(() => {
                 setTimeout(() => lucide.createIcons(), 100);
-            }, [route, showResearch, showGithub]);
+            }, [route, showResearch, showGithub, isDrawerOpen]);
 
             if (isLoading) {
                 return (
@@ -1548,6 +1708,23 @@
                         systemStatus={systemStatus}
                         isDbEmpty={isDbEmpty}
                     />
+                    <MobileHeader
+                        route={route}
+                        navigate={navigate}
+                        onOpenResearch={() => setShowResearch(true)}
+                        onOpenGithub={() => setShowGithub(true)}
+                        systemStatus={systemStatus}
+                        isDbEmpty={isDbEmpty}
+                        onMenuClick={() => setIsDrawerOpen(true)}
+                    />
+                    <MobileDrawer
+                        isOpen={isDrawerOpen}
+                        onClose={() => setIsDrawerOpen(false)}
+                        route={route}
+                        navigate={navigate}
+                        onOpenGithub={() => setShowGithub(true)}
+                        onOpenResearch={() => setShowResearch(true)}
+                    />
                     <main className="flex-1 overflow-hidden">
                         {route === '/search' && <SearchPage />}
                         {route === '/paths' && <PathsPage />}
@@ -1555,7 +1732,7 @@
                         {route === '/settings' && <SettingsPage navigate={navigate} />}
                         {route === '/' && <SearchPage />}
                     </main>
-                    
+
                     {/* Modals */}
                     {showResearch && <ResearchModal onClose={() => setShowResearch(false)} />}
                     {showGithub && <GithubModal onClose={() => setShowGithub(false)} />}
