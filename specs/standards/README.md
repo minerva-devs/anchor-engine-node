@@ -1,6 +1,6 @@
 # Architecture Standards Index
 
-**Last Updated:** March 8, 2026 | **Total Standards:** 90
+**Last Updated:** March 8, 2026 | **Total Standards:** 91
 
 ---
 
@@ -8,10 +8,11 @@
 
 These standards define the current production architecture:
 
-### v4.5.4 Standards (Security Hardening + Test Coverage)
+### v4.5.4 Standards (Security Hardening + Test Coverage + Async I/O)
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
+| **131** | [Async File I/O](131-async-file-io.md) | Non-blocking API endpoints, event loop preservation | ✅ v1.0 |
 | **130** | [Test Coverage Requirements](130-test-coverage-requirements.md) | Minimum coverage targets, testing patterns, mock strategies | ✅ v1.0 |
 | **129** | [Command Injection Prevention](129-command-injection-prevention.md) | execFile whitelist, path validation, security patterns | ✅ v1.0 |
 
@@ -154,7 +155,7 @@ These documents provide overarching architecture guidance:
 
 ### OPS Domain (Operations & Safety)
 - 035-062: Logging, async handling, inference stability
-- **129-130: Security hardening, test coverage**
+- **129-131: Security hardening, test coverage, async I/O**
 
 ### BRIDGE Domain (APIs & Interfaces)
 - 058-103: Universal RAG API, UI architecture, extensions
@@ -179,7 +180,7 @@ Standards are numbered sequentially. Gaps indicate deprecated or merged standard
 - 051-080: Stabilization (October-November 2025)
 - 081-100: Acceleration (December 2025-January 2026)
 - 101-125: Production (February 2026)
-- 126-130: Security & Quality (March 2026)
+- 126-131: Security & Quality (March 2026)
 
 ---
 
