@@ -58,7 +58,7 @@ export async function restoreFromBackup(filename: string): Promise<RestoreStats>
         throw new Error(`Backup file not found: ${filename}`);
     }
 
-    console.log(`[Phoenix] 🔄 Starting full system restore from ${filename}...`);
+    console.log(`[Phoenix] ≡ƒöä Starting full system restore from ${filename}...`);
 
     const stats: RestoreStats = {
         memory_count: 0,
@@ -74,83 +74,110 @@ export async function restoreFromBackup(filename: string): Promise<RestoreStats>
     const backupData = await parseBackupFile(filePath);
 
     // Restore sources first (for reference integrity)
-    console.log(`[Phoenix] 📦 Restoring ${backupData.sources.length} sources...`);
-    for (const source of backupData.sources) {
-        await db.run(
-            `INSERT INTO sources (path, hash, total_atoms, last_ingest)
-             VALUES ($1, $2, $3, $4)
-             ON CONFLICT (path) DO UPDATE SET
-               hash = EXCLUDED.hash,
-               total_atoms = EXCLUDED.total_atoms,
-               last_ingest = EXCLUDED.last_ingest`,
-            [source.path, source.hash, source.total_atoms, source.last_ingest]
-        );
-        stats.source_count++;
+    console.log(`[Phoenix] ≡ƒôª Restoring ${backupData.sources.length} sources...`);
+    const SOURCE_BATCH_SIZE = 1000;
+    for (let i = 0; i < backupData.sources.length; i += SOURCE_BATCH_SIZE) {
+        const batch = backupData.sources.slice(i, i + SOURCE_BATCH_SIZE);
+
+        const placeholders = [];
+        const params: any[] = [];
+        let pIdx = 1;
+
+        for (const source of batch) {
+            placeholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++})`);
+            params.push(source.path, source.hash, source.total_atoms, source.last_ingest);
+            stats.source_count++;
+        }
+
+        if (placeholders.length > 0) {
+            await db.run(
+                `INSERT INTO sources (path, hash, total_atoms, last_ingest)
+                 VALUES ${placeholders.join(', ')}
+                 ON CONFLICT (path) DO UPDATE SET
+                   hash = EXCLUDED.hash,
+                   total_atoms = EXCLUDED.total_atoms,
+                   last_ingest = EXCLUDED.last_ingest`,
+                params
+            );
+        }
     }
 
     // Restore atoms
-    console.log(`[Phoenix] 🧠 Restoring ${backupData.atoms.length} atoms...`);
-    const BATCH_SIZE = 100;
-    for (let i = 0; i < backupData.atoms.length; i += BATCH_SIZE) {
-        const batch = backupData.atoms.slice(i, i + BATCH_SIZE);
+    console.log(`[Phoenix] ≡ƒºá Restoring ${backupData.atoms.length} atoms...`);
+    const ATOM_BATCH_SIZE = 500; // 500 atoms * 14 params = 7000 params (well below Postgres limit of ~65k)
+    for (let i = 0; i < backupData.atoms.length; i += ATOM_BATCH_SIZE) {
+        const batch = backupData.atoms.slice(i, i + ATOM_BATCH_SIZE);
 
-        if (batch.length === 0) continue;
-
-        const placeholders: string[] = [];
-        const values: any[] = [];
-        let paramIndex = 1;
+        const placeholders = [];
+        const params: any[] = [];
+        let pIdx = 1;
 
         for (const atom of batch) {
-            placeholders.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${paramIndex + 11}, $${paramIndex + 12}, $${paramIndex + 13})`);
-            values.push(
+            placeholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++})`);
+            params.push(
                 atom.id, atom.timestamp, atom.content, atom.source_path,
                 atom.source_id, atom.sequence, atom.type, atom.hash,
                 atom.buckets, atom.tags, atom.epochs, atom.provenance,
                 atom.simhash, atom.embedding
             );
-            paramIndex += 14;
+            stats.memory_count++;
         }
 
-        await db.run(
-            `INSERT INTO atoms (id, timestamp, content, source_path, source_id, sequence, type, hash, buckets, tags, epochs, provenance, simhash, embedding)
-             VALUES ${placeholders.join(', ')}
-             ON CONFLICT (id) DO UPDATE SET
-               content = EXCLUDED.content,
-               timestamp = EXCLUDED.timestamp,
-               source_path = EXCLUDED.source_path,
-               source_id = EXCLUDED.source_id,
-               sequence = EXCLUDED.sequence,
-               type = EXCLUDED.type,
-               hash = EXCLUDED.hash,
-               buckets = EXCLUDED.buckets,
-               tags = EXCLUDED.tags,
-               epochs = EXCLUDED.epochs,
-               provenance = EXCLUDED.provenance,
-               simhash = EXCLUDED.simhash,
-               embedding = EXCLUDED.embedding`,
-            values
-        );
-        stats.memory_count += batch.length;
+        if (placeholders.length > 0) {
+            await db.run(
+                `INSERT INTO atoms (id, timestamp, content, source_path, source_id, sequence, type, hash, buckets, tags, epochs, provenance, simhash, embedding)
+                 VALUES ${placeholders.join(', ')}
+                 ON CONFLICT (id) DO UPDATE SET
+                   content = EXCLUDED.content,
+                   timestamp = EXCLUDED.timestamp,
+                   source_path = EXCLUDED.source_path,
+                   source_id = EXCLUDED.source_id,
+                   sequence = EXCLUDED.sequence,
+                   type = EXCLUDED.type,
+                   hash = EXCLUDED.hash,
+                   buckets = EXCLUDED.buckets,
+                   tags = EXCLUDED.tags,
+                   epochs = EXCLUDED.epochs,
+                   provenance = EXCLUDED.provenance,
+                   simhash = EXCLUDED.simhash,
+                   embedding = EXCLUDED.embedding`,
+                params
+            );
+        }
     }
 
     // Restore engrams
-    console.log(`[Phoenix] 🧬 Restoring ${backupData.engrams.length} engrams...`);
-    for (const engram of backupData.engrams) {
-        await db.run(
-            `INSERT INTO engrams (key, value)
-             VALUES ($1, $2)
-             ON CONFLICT (key) DO UPDATE SET
-               value = EXCLUDED.value`,
-            [engram.key, engram.value]
-        );
-        stats.engram_count++;
+    console.log(`[Phoenix] ≡ƒº¼ Restoring ${backupData.engrams.length} engrams...`);
+    const ENGRAM_BATCH_SIZE = 1000;
+    for (let i = 0; i < backupData.engrams.length; i += ENGRAM_BATCH_SIZE) {
+        const batch = backupData.engrams.slice(i, i + ENGRAM_BATCH_SIZE);
+
+        const placeholders = [];
+        const params: any[] = [];
+        let pIdx = 1;
+
+        for (const engram of batch) {
+            placeholders.push(`($${pIdx++}, $${pIdx++})`);
+            params.push(engram.key, engram.value);
+            stats.engram_count++;
+        }
+
+        if (placeholders.length > 0) {
+            await db.run(
+                `INSERT INTO engrams (key, value)
+                 VALUES ${placeholders.join(', ')}
+                 ON CONFLICT (key) DO UPDATE SET
+                   value = EXCLUDED.value`,
+                params
+            );
+        }
     }
 
     // Rebuild inbox/external-inbox from sources
-    console.log(`[Phoenix] 📁 Rebuilding inbox/external-inbox folder structure...`);
+    console.log(`[Phoenix] ≡ƒôü Rebuilding inbox/external-inbox folder structure...`);
     await rebuildInboxFromSources(backupData.sources, backupData.atoms, stats);
 
-    console.log(`[Phoenix] ✅ Restore complete!`, stats);
+    console.log(`[Phoenix] Γ£à Restore complete!`, stats);
     return stats;
 }
 
@@ -237,9 +264,9 @@ async function rebuildInboxFromSources(
         try {
             fs.writeFileSync(targetPath, content, 'utf-8');
             stats.files_restored++;
-            console.log(`[Phoenix] 📄 Restored: ${targetPath}`);
+            console.log(`[Phoenix] ≡ƒôä Restored: ${targetPath}`);
         } catch (error: any) {
-            console.warn(`[Phoenix] ⚠️ Failed to write ${targetPath}: ${error.message}`);
+            console.warn(`[Phoenix] ΓÜá∩╕Å Failed to write ${targetPath}: ${error.message}`);
         }
     }
 }
@@ -337,11 +364,11 @@ async function parseBackupFile(filePath: string): Promise<{
 
                                 objectsParsed++;
                                 if (objectsParsed % 10000 === 0) {
-                                    console.log(`[Phoenix] 📊 Parsed ${objectsParsed} items...`);
+                                    console.log(`[Phoenix] ≡ƒôè Parsed ${objectsParsed} items...`);
                                 }
                             } catch (e) {
                                 // Skip malformed objects
-                                console.warn('[Phoenix] ⚠️ Failed to parse object:', e);
+                                console.warn('[Phoenix] ΓÜá∩╕Å Failed to parse object:', e);
                             }
                             currentObject = '';
                         }
@@ -370,11 +397,11 @@ async function parseBackupFile(filePath: string): Promise<{
             // Log memory usage periodically
             if (position % (512 * 1024 * 1024) === 0) {
                 const memUsage = process.memoryUsage();
-                console.log(`[Phoenix] 📊 Progress: ${(position / fileSize * 100).toFixed(1)}% | Heap: ${(memUsage.heapUsed / 1024 / 1024).toFixed(0)}MB`);
+                console.log(`[Phoenix] ≡ƒôè Progress: ${(position / fileSize * 100).toFixed(1)}% | Heap: ${(memUsage.heapUsed / 1024 / 1024).toFixed(0)}MB`);
             }
         }
 
-        console.log(`[Phoenix] 📊 Parse complete: ${atoms.length} atoms, ${sources.length} sources, ${engrams.length} engrams`);
+        console.log(`[Phoenix] ≡ƒôè Parse complete: ${atoms.length} atoms, ${sources.length} sources, ${engrams.length} engrams`);
 
     } finally {
         fs.closeSync(fd);
@@ -441,7 +468,7 @@ export async function validateBackup(filename: string): Promise<{
             return { valid: false, error: 'Invalid JSON structure' };
         }
         
-        // Check for required fields — accept both v1 ("memory") and v2 ("files") formats
+        // Check for required fields ΓÇö accept both v1 ("memory") and v2 ("files") formats
         const hasTimestamp = startContent.includes('"timestamp"');
         const hasContent = startContent.includes('"files"') || startContent.includes('"memory"');
         
