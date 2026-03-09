@@ -446,14 +446,14 @@
                         data = await api.distill({
                             seed: { query: q },
                             max_nodes: 500,
-                            use_llm: true
+                            batch_size: 50
                         });
                         // normalise to results array
                         data = { results: (data.nodes || []).map(n => ({
-                            id: n.id, 
-                            content: n.compressedContent, 
+                            id: n.id,
+                            content: n.compressedContent,
                             source: (n.sources || []).join(', '),
-                            tags: n.tags || [], 
+                            tags: n.tags || [],
                             score: 1.0,
                             _algo: '🧪 distill'
                         })) };
@@ -793,27 +793,28 @@
             };
 
             return (
-                <div className="flex-1 p-6 overflow-y-auto">
+                <div className="flex-1 p-3 sm:p-6 overflow-y-auto">
                     <div className="max-w-3xl mx-auto">
-                        <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 flex items-center gap-3">
                             <i data-lucide="folder" className="text-purple-400"></i>
-                            Knowledge Paths
+                            <span className="hidden sm:inline">Knowledge Paths</span>
+                            <span className="sm:hidden">Paths</span>
                         </h2>
-                        
+
                         {/* Add Path Form */}
-                        <div className="glass-panel p-4 mb-6">
+                        <div className="glass-panel p-3 sm:p-4 mb-4 sm:mb-6">
                             <label className="block text-sm text-gray-400 mb-2">Add New Path</label>
-                            <div className="flex gap-2">
+                            <div className="flex flex-col sm:flex-row gap-2">
                                 <input
                                     type="text"
                                     value={newPath}
                                     onChange={(e) => setNewPath(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddPath()}
-                                    placeholder="C:\Users\...\Documents or /home/user/docs"
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-purple-500/50 outline-none font-mono text-sm"
+                                    placeholder="/path/to/your/folder"
+                                    className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 sm:px-4 py-2.5 focus:border-purple-500/50 outline-none font-mono text-sm"
                                 />
-                                <button onClick={handleAddPath} disabled={loading} className="btn-primary">
-                                    Add
+                                <button onClick={handleAddPath} disabled={loading} className="btn-primary whitespace-nowrap">
+                                    Add Path
                                 </button>
                             </div>
                             {message && (
@@ -835,15 +836,14 @@
                                 paths.map((pathItem, i) => {
                                     const pathStr = typeof pathItem === 'string' ? pathItem : pathItem.path;
                                     return (
-                                        <div key={i} className="glass-panel p-3 flex items-center justify-between fade-in">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <i data-lucide="folder" width="18" className="text-gray-500 flex-shrink-0"></i>
-                                                <span className="font-mono text-sm truncate">{pathStr}</span>
-                                            </div>
+                                        <div key={i} className="glass-panel p-3 flex items-center gap-3 fade-in">
+                                            <i data-lucide="folder" width="18" className="text-gray-500 flex-shrink-0"></i>
+                                            <span className="font-mono text-sm truncate flex-1 min-w-0">{pathStr}</span>
                                             <button
                                                 onClick={() => handleRemovePath(pathStr)}
                                                 disabled={loading}
-                                                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-gray-400 hover:text-red-400"
+                                                className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-gray-400 hover:text-red-400 flex-shrink-0"
+                                                title="Remove path"
                                             >
                                                 <i data-lucide="trash-2" width="16"></i>
                                             </button>
