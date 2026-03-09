@@ -8,6 +8,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [4.5.4] - 2026-03-08 — Security Hardening, Test Coverage, Performance Optimizations
 
+### Performance Optimizations
+
+#### Async Settings API — Non-blocking File Reads
+- Replaced `fs.readFileSync` with `fs.promises.readFile` in `/v1/settings` and `/v1/settings/:category`
+- GET and PUT settings endpoints now non-blocking — concurrent requests don't block event loop
+- Benchmark: 500 concurrent settings requests + ping latency measurement
+- Prevents request queue buildup during high-concurrency settings access
+- New benchmark: `engine/tests/benchmarks/settings_concurrency_bench.ts`
+
+#### Backup Restore — Batch Inserts for Sources & Atoms
+- `SOURCE_BATCH_SIZE = 1000` — batch source inserts in Phoenix Protocol restore
+- `ATOM_BATCH_SIZE = 500` — 500 atoms × 14 params = 7000 params (well below Postgres 65k limit)
+- Legacy format restores also batched in `backup.ts`
+- Builds on v4.5.4 bulk insert improvements (17x faster for atoms)
+
+### Documentation Updates
+
+#### README — Updated RAM Requirements
+- Headline: `<3GB RAM` → `<1GB RAM`
+- Lightweight row: `<3GB RAM` → `<1GB RAM`
+- Memory Usage benchmark: `<3GB RAM peak` → `<1GB RAM peak`
+- Requirements: `Minimum 4GB RAM` → `Minimum 1GB RAM`
+- Fixed FTS5 reference → PostgreSQL `tsvector`/`tsquery`
+
 ### Security Fixes
 
 #### Command Injection Prevention — Git Route (#111)
@@ -96,6 +120,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Removed dead TODO comment in `scripts/github-ingester.js` (#100)
 
 ### Related PRs
+- perf/docs: merge remaining improvements from stale branches
+  - fix/readme-merge-6713857102582996644: README RAM requirements
+  - optimize-settings-reads-944971640614166397: Async settings API
+  - perf-backup-restore-batch-inserts-6066263857315178344: Batch inserts
 - #111: 🔒 Fix Command Injection in Git Route
 - #110: 🧪 test(anchor-ui): improve test coverage for routing utility
 - #113: perf: optimize getMasterTags with in-memory cache and watcher
