@@ -9,6 +9,7 @@
 import { Application, Request, Response } from 'express';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { exploreMemory, ExploreRequest } from '../../services/search/explore.js';
+import { distillMemory, DistillRequest } from '../../services/search/distill.js';
 
 export function setupMemoryRoutes(app: Application) {
   app.post('/v1/memory/explore', async (req: Request, res: Response) => {
@@ -52,6 +53,33 @@ export function setupMemoryRoutes(app: Application) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       StructuredLogger.error('EXPLORE_ERROR', err instanceof Error ? err : new Error(msg), { error: msg });
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  app.post('/v1/memory/distill', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    StructuredLogger.info('DISTILL_REQUEST', { endpoint: '/v1/memory/distill' });
+
+    try {
+      const body = req.body as DistillRequest;
+      const result = await distillMemory(body);
+      const duration = Date.now() - startTime;
+
+      StructuredLogger.info('DISTILL_COMPLETE', {
+        original_nodes: result.stats.original_node_count,
+        distilled_nodes: result.stats.distilled_node_count,
+        ratio: result.stats.compression_ratio,
+        duration_ms: duration
+      });
+
+      res.json({
+        ...result,
+        duration_ms: duration
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      StructuredLogger.error('DISTILL_ERROR', err instanceof Error ? err : new Error(msg), { error: msg });
       res.status(500).json({ error: msg });
     }
   });

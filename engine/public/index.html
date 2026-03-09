@@ -169,6 +169,14 @@
                 });
                 return res.json();
             },
+            distill: async (params) => {
+                const res = await fetch('/v1/memory/distill', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(params)
+                });
+                return res.json();
+            },
             getBuckets: () => fetch('/v1/buckets').then(r => r.json()),
             getTags: (buckets) => {
                 const query = buckets && buckets.length > 0 ? `?buckets=${buckets.join(',')}` : '';
@@ -410,6 +418,7 @@
 
             // Search prefixes: route query to the right algorithm
             const PREFIXES = {
+                'distill:':    { algo: 'distill',    label: 'Distill (semantic compression)' },
                 'illuminate:': { algo: 'illuminate', label: 'Illuminate (BFS graph traversal)' },
                 'explore:':    { algo: 'illuminate', label: 'Illuminate (BFS graph traversal)' },
                 'deep:':       { algo: 'deep',       label: 'Deep (max-recall multi-hop)' },
@@ -433,7 +442,22 @@
                 const { algo, q } = parseQuery(query);
                 try {
                     let data;
-                    if (algo === 'illuminate') {
+                    if (algo === 'distill') {
+                        data = await api.distill({
+                            seed: { query: q },
+                            max_nodes: 500,
+                            use_llm: true
+                        });
+                        // normalise to results array
+                        data = { results: (data.nodes || []).map(n => ({
+                            id: n.id, 
+                            content: n.compressedContent, 
+                            source: (n.sources || []).join(', '),
+                            tags: n.tags || [], 
+                            score: 1.0,
+                            _algo: '🧪 distill'
+                        })) };
+                    } else if (algo === 'illuminate') {
                         const isGlobal = q.length === 0;
                         data = await api.explore(isGlobal ? {
                             seed: { global: true, seed_count: 10 },
@@ -576,7 +600,7 @@
                                 className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-3 sm:px-4 py-2.5 focus:border-cyan-500/50 outline-none transition-colors text-sm sm:text-base"
                             />
                             <div className="flex items-center gap-2 flex-shrink-0">
-                                <div style={{position:'relative',display:'inline-block'}} title="Search prefixes&#10;illuminate:        — corpus spine (global BFS, auto-budget)&#10;illuminate: topic  — BFS from seed topic&#10;explore:           — same as illuminate&#10;deep:              — max-recall multi-hop&#10;exact:             — FTS only, no physics&#10;(none)             — automatic STAR search">
+                                <div style={{position:'relative',display:'inline-block'}} title="Search prefixes&#10;distill:           — lossless semantic compression (LLM)&#10;illuminate:        — corpus spine (global BFS, auto-budget)&#10;illuminate: topic  — BFS from seed topic&#10;explore:           — same as illuminate&#10;deep:              — max-recall multi-hop&#10;exact:             — FTS only, no physics&#10;(none)             — automatic STAR search">
                                   <span style={{cursor:'help',opacity:0.5,fontSize:'0.8rem',padding:'0 6px'}}>?</span>
                                 </div>
                                 <button onClick={handleSearch} disabled={loading} className="btn-primary min-w-[80px] sm:min-w-[100px] text-sm sm:text-base px-3 sm:px-4 py-2.5">
