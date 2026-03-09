@@ -202,6 +202,7 @@ export async function distillMemory(req: DistillRequest): Promise<DistillResult>
   const originalNodeCount = atomIds.length;
 
   // 2. Process and compress nodes in batches (deterministic heuristic compression)
+  // Filter out tag atoms (source_path = 'atom_source') - they're just index entries, not content
   const distilledNodes: Map<string, DistillNode> = new Map(); // Hash -> DistillNode
   const idToHash: Map<string, string> = new Map(); // atomId -> Hash
 
@@ -209,8 +210,9 @@ export async function distillMemory(req: DistillRequest): Promise<DistillResult>
     const batchIds = atomIds.slice(i, i + batchSize);
     const placeholders = batchIds.map((_, j) => `$${j + 1}`).join(', ');
 
+    // Exclude tag atoms (source_path = 'atom_source') - they're just index entries
     const result = await db.run(
-      `SELECT id, content, source_path, tags::text as tags_text, timestamp FROM atoms WHERE id IN (${placeholders})`,
+      `SELECT id, content, source_path, tags::text as tags_text, timestamp FROM atoms WHERE id IN (${placeholders}) AND source_path != 'atom_source'`,
       batchIds
     );
 
