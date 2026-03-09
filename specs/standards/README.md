@@ -1,6 +1,6 @@
 # Architecture Standards Index
 
-**Last Updated:** March 8, 2026 | **Total Standards:** 87
+**Last Updated:** March 8, 2026 | **Total Standards:** 90
 
 ---
 
@@ -8,11 +8,18 @@
 
 These standards define the current production architecture:
 
-### v4.5.1 Standards (Illuminate + MCP Generalization)
+### v4.5.4 Standards (Security Hardening + Test Coverage)
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
-| **128** | [Illuminate BFS Traversal](128-illuminate-bfs-traversal.md) | BFS graph traversal from seed concepts; structural corpus compression | ✅ v1.0 |
+| **130** | [Test Coverage Requirements](130-test-coverage-requirements.md) | Minimum coverage targets, testing patterns, mock strategies | ✅ v1.0 |
+| **129** | [Command Injection Prevention](129-command-injection-prevention.md) | execFile whitelist, path validation, security patterns | ✅ v1.0 |
+
+### v4.5.2 Standards (Illuminate + MCP Generalization)
+
+| # | Standard | Description | Status |
+|---|----------|-------------|--------|
+| **128** | [Illuminate BFS Traversal](128-illuminate-bfs-traversal.md) | BFS graph traversal from seed concepts; structural corpus compression (v2.0 with Explore/Illuminate split) | ✅ v2.0 |
 
 ### v4.4.2 Standards (Search Result Quality)
 
@@ -147,6 +154,7 @@ These documents provide overarching architecture guidance:
 
 ### OPS Domain (Operations & Safety)
 - 035-062: Logging, async handling, inference stability
+- **129-130: Security hardening, test coverage**
 
 ### BRIDGE Domain (APIs & Interfaces)
 - 058-103: Universal RAG API, UI architecture, extensions
@@ -170,7 +178,8 @@ Standards are numbered sequentially. Gaps indicate deprecated or merged standard
 - 001-050: Foundation (July-September 2025)
 - 051-080: Stabilization (October-November 2025)
 - 081-100: Acceleration (December 2025-January 2026)
-- 101-125: Production (February 2026-present)
+- 101-125: Production (February 2026)
+- 126-130: Security & Quality (March 2026)
 
 ---
 

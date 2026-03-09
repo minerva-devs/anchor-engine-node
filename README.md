@@ -81,6 +81,16 @@ We chose **PGlite (WASM-based PostgreSQL)** because it eliminates native compila
 
 We built Anchor Engine to handle real-world scale without needing a server rack.
 
+### v4.5.4 Improvements
+
+**Backup Restore:** 17x faster with bulk insert (14.4s → 847ms for 5000 atoms)
+
+**TagAuditor:** 11x faster with N+1 query resolution (500ms → 45ms for 100 atoms)
+
+**Master Tags:** Instant reads with in-memory cache + file watcher invalidation
+
+### Production Benchmarks
+
 - **Dataset Size:** Tested on ~25M tokens (~100MB chat history corpus)
 - **Restore Speed:** Restored 281,690 atoms in 13.8 minutes (340 atoms/second)
 - **Search Latency:** <200ms for typical queries (p95)
