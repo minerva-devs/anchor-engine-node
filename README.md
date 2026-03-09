@@ -1,6 +1,6 @@
 # Anchor Engine ⚓
 
-**Deterministic semantic memory for LLMs – local-first, graph traversal, <3GB RAM**
+**Deterministic semantic memory for LLMs – local-first, graph traversal, <1GB RAM**
 
 [![GitHub release](https://img.shields.io/github/v/release/RSBalchII/anchor-engine-node)](https://github.com/RSBalchII/anchor-engine-node/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
@@ -31,8 +31,8 @@ Instead of vectors, we use **graph traversal**. Instead of guessing, we give you
 | **Inspectable** | You can trace exactly why something was retrieved. Every edge in the graph has a reason. |
 | **Local‑first** | Runs entirely offline on your hardware. No API calls, no data leaving your machine. |
 | **Model‑agnostic** | Works with any LLM – local models, cloud APIs, or anything in between. |
-| **Lightweight** | <3GB RAM, runs on a Raspberry Pi or a $200 mini PC. |
-| **Cross-platform** | Built on PGlite (WASM PostgreSQL), it requires zero native compilation. Identical behavior on ARM64, x64, Linux, and macOS. |
+| **Lightweight** | <1GB RAM, runs on a Raspberry Pi or a $200 mini PC. |
+| **Cross-Platform** | Built on PGlite (WASM PostgreSQL), it requires zero native compilation. Identical behavior on ARM64, x64, Linux, and macOS. |
 | **Open source** | AGPL‑3.0 – no lock‑in, no license tracking, no proprietary binaries. |
 | **Recursive** | Used to build itself – if it's good enough for its own development, it's good enough for yours. |
 
@@ -94,7 +94,7 @@ We built Anchor Engine to handle real-world scale without needing a server rack.
 - **Dataset Size:** Tested on ~25M tokens (~100MB chat history corpus)
 - **Restore Speed:** Restored 281,690 atoms in 13.8 minutes (340 atoms/second)
 - **Search Latency:** <200ms for typical queries (p95)
-- **Memory Usage:** <3GB RAM peak, <600MB typical
+- **Memory Usage:** <1GB RAM peak, <600MB typical
 - **Ingestion Speed:** 8-15ms per chunk cleaning time, ~25M tokens in under 5 minutes
 
 Benchmarks against vector search are available in the [whitepaper](docs/STAR_Whitepaper.md).
@@ -112,7 +112,7 @@ Anchor Engine wasn't built in a vacuum. The entire codebase was developed **usin
 ### Requirements
 - Node.js v18+ (v20+ recommended)
 - PNPM package manager
-- Minimum 4GB RAM (8GB+ recommended)
+- Minimum 1GB RAM (4GB+ recommended)
 - 10GB free storage space
 
 ```bash
