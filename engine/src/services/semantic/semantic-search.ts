@@ -35,6 +35,34 @@ interface SearchResult {
   is_inflated?: boolean;
 }
 
+/**
+ * Detect if running in a mobile/memory-constrained environment
+ * Standard 134: Mobile Search Optimization
+ */
+function isMobileEnvironment(): boolean {
+  // Check for Android/Termux
+  if (process.platform === 'android') return true;
+
+  // Check for common mobile indicators
+  if (process.env.ANCHOR_MOBILE_MODE === '1') return true;
+
+  // Check available memory
+  try {
+    const os = require('os');
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+
+    // Mobile if < 2GB total or < 500MB free
+    if (totalMem < 2 * 1024 * 1024 * 1024) return true;
+    if (freeMem < 500 * 1024 * 1024) return true;
+  } catch {
+    // If os module fails, assume mobile to be safe
+    return false;
+  }
+
+  return false;
+}
+
 export async function executeSemanticSearch(
   query: string,
   buckets?: string[],
@@ -370,11 +398,22 @@ export async function executeSemanticSearch(
 
     // Cap at 32000 (massive context) but allow it to be at least 150
     // This allows "just scale" behavior up to very large windows
-    radiusPerTerm = Math.max(150, Math.min(32000, radiusPerTerm));
+    // Standard 134: Mobile optimization - cap radius on memory-constrained devices
+    const isMobile = isMobileEnvironment();
+    const maxRadius = isMobile ? 2000 : 32000; // 2KB mobile, 32KB desktop
+    radiusPerTerm = Math.max(150, Math.min(maxRadius, radiusPerTerm));
+
+    if (isMobile) {
+      console.log(`[SemanticSearch] Mobile mode detected: radius capped at ${radiusPerTerm}`);
+    }
 
     // Calculate max results based on this radius to fill the budget
     // If radius is 6000 (12k diameter), and budget is 50k, we get ~4 results.
-    const maxResultsPerTerm = Math.max(3, Math.floor(termBudget / (radiusPerTerm * 2)));
+    // Standard 134: Mobile optimization - limit results per term
+    let maxResultsPerTerm = Math.max(3, Math.floor(termBudget / (radiusPerTerm * 2)));
+    if (isMobile) {
+      maxResultsPerTerm = Math.min(maxResultsPerTerm, 5); // Cap at 5 results per term on mobile
+    }
 
     console.log(`[SemanticSearch] Inflation Strategy: Radius=${radiusPerTerm} chars, MaxResults=${maxResultsPerTerm}/term`);
 
@@ -382,24 +421,51 @@ export async function executeSemanticSearch(
     let inflatedResults: SearchResult[] = [];
     const maxWindowSize = radiusPerTerm * 4; // Allow merging of up to 4 consecutive windows
 
+    // Standard 134: Mobile optimization - use sequential inflation with GC hints
+    if (isMobile) {
+      console.log(`[SemanticSearch] Using sequential inflation for mobile (${termsToInflate.length} terms)`);
 
-    const inflationPromises = termsToInflate.map(term =>
-      ContextInflator.inflateFromAtomPositions(
-        term,
-        radiusPerTerm,
-        maxResultsPerTerm,
-        maxWindowSize,
-        { buckets, provenance } // Pass filters
-      ).then(results => ({ term, results }))
-    );
+      for (let i = 0; i < termsToInflate.length; i++) {
+        const term = termsToInflate[i];
+        const termResults = await ContextInflator.inflateFromAtomPositions(
+          term,
+          radiusPerTerm,
+          maxResultsPerTerm,
+          maxWindowSize,
+          { buckets, provenance }
+        );
 
-    const inflationResults = await Promise.all(inflationPromises);
+        if (termResults.length > 0) {
+          console.log(`[SemanticSearch] Term "${term}" inflated to ${termResults.length} results.`);
+        }
+        inflatedResults.push(...(termResults as unknown as SearchResult[]));
 
-    for (const { term, results: termResults } of inflationResults) {
-      if (termResults.length > 0) {
-        console.log(`[SemanticSearch] Term "${term}" inflated to ${termResults.length} results.`);
+        // Force GC after each term on mobile
+        if (global.gc && i % 1 === 0) {
+          global.gc();
+          console.log(`[SemanticSearch] GC triggered after term ${i + 1}/${termsToInflate.length}`);
+        }
       }
-      inflatedResults.push(...(termResults as unknown as SearchResult[]));
+    } else {
+      // Desktop: parallel inflation (original behavior)
+      const inflationPromises = termsToInflate.map(term =>
+        ContextInflator.inflateFromAtomPositions(
+          term,
+          radiusPerTerm,
+          maxResultsPerTerm,
+          maxWindowSize,
+          { buckets, provenance }
+        ).then(results => ({ term, results }))
+      );
+
+      const inflationResults = await Promise.all(inflationPromises);
+
+      for (const { term, results: termResults } of inflationResults) {
+        if (termResults.length > 0) {
+          console.log(`[SemanticSearch] Term "${term}" inflated to ${termResults.length} results.`);
+        }
+        inflatedResults.push(...(termResults as unknown as SearchResult[]));
+      }
     }
 
     // --- INTERSECTION SCORING ---
