@@ -43,6 +43,10 @@ function isMobileEnvironment(): boolean {
   // Check for Android/Termux
   if (process.platform === 'android') return true;
 
+  // Check for Termux specifically
+  if (process.env.TERMUX_VERSION || process.env.TERMUX_API_VERSION) return true;
+  if (process.cwd().includes('termux')) return true;
+
   // Check for common mobile indicators
   if (process.env.ANCHOR_MOBILE_MODE === '1') return true;
 
@@ -63,6 +67,18 @@ function isMobileEnvironment(): boolean {
   return false;
 }
 
+/**
+ * Log memory usage for debugging OOM issues
+ */
+function logMemoryUsage(label: string) {
+  try {
+    const mem = process.memoryUsage();
+    console.log(`[Memory:${label}] Heap: ${Math.floor(mem.heapUsed / 1024 / 1024)}MB / ${Math.floor(mem.heapTotal / 1024 / 1024)}MB, RSS: ${Math.floor(mem.rss / 1024 / 1024)}MB`);
+  } catch {
+    // Ignore
+  }
+}
+
 export async function executeSemanticSearch(
   query: string,
   buckets?: string[],
@@ -80,6 +96,15 @@ export async function executeSemanticSearch(
 }> {
 
   console.log(`[SemanticSearch] executeSemanticSearch called with query: "${query}", provenance: ${provenance}`);
+
+  // Standard 134: Detect mobile/Termux environment early
+  const isMobile = isMobileEnvironment();
+  const isTermux = process.env.TERMUX_VERSION || process.env.TERMUX_API_VERSION || process.cwd().includes('termux');
+
+  if (isMobile) {
+    console.log(`[SemanticSearch] Mobile environment detected${isTermux ? ' (Termux)' : ''}`);
+    logMemoryUsage('search-start');
+  }
 
   // Extract potential entities from the query
   const queryEntities = extractEntitiesFromQuery(query);
@@ -254,6 +279,9 @@ export async function executeSemanticSearch(
     pIdx++;
   }
 
+  // Standard 134: Mobile optimization - reduce initial result set
+  const initialLimit = isTermux ? 10 : (isMobile ? 20 : 50);
+
   searchQuery = `SELECT a.id, a.source_path as source, a.timestamp, a.buckets, a.tags, a.epochs, a.provenance, a.simhash,
          0 as score,
          COALESCE(m.compound_id, a.compound_id) as compound_id,
@@ -263,7 +291,7 @@ export async function executeSemanticSearch(
     FROM atoms a
     LEFT JOIN molecules m ON a.id = m.id
     ${whereStr}
-    ORDER BY timestamp DESC LIMIT 50`; // Sort by timestamp initially, we re-score in memory
+    ORDER BY timestamp DESC LIMIT ${initialLimit}`; // Sort by timestamp initially, we re-score in memory
 
   try {
     const result = await db.run(searchQuery, sqlParams);
@@ -399,19 +427,20 @@ export async function executeSemanticSearch(
     // Cap at 32000 (massive context) but allow it to be at least 150
     // This allows "just scale" behavior up to very large windows
     // Standard 134: Mobile optimization - cap radius on memory-constrained devices
-    const isMobile = isMobileEnvironment();
-    const maxRadius = isMobile ? 2000 : 32000; // 2KB mobile, 32KB desktop
+    const maxRadius = isTermux ? 500 : (isMobile ? 1000 : 32000); // 500B Termux, 1KB mobile, 32KB desktop
     radiusPerTerm = Math.max(150, Math.min(maxRadius, radiusPerTerm));
 
     if (isMobile) {
-      console.log(`[SemanticSearch] Mobile mode detected: radius capped at ${radiusPerTerm}`);
+      console.log(`[SemanticSearch] Mobile mode: radius=${radiusPerTerm}, limit=${initialLimit}`);
     }
 
     // Calculate max results based on this radius to fill the budget
     // If radius is 6000 (12k diameter), and budget is 50k, we get ~4 results.
     // Standard 134: Mobile optimization - limit results per term
     let maxResultsPerTerm = Math.max(3, Math.floor(termBudget / (radiusPerTerm * 2)));
-    if (isMobile) {
+    if (isTermux) {
+      maxResultsPerTerm = Math.min(maxResultsPerTerm, 3); // Cap at 3 results per term on Termux
+    } else if (isMobile) {
       maxResultsPerTerm = Math.min(maxResultsPerTerm, 5); // Cap at 5 results per term on mobile
     }
 
@@ -444,6 +473,11 @@ export async function executeSemanticSearch(
         if (global.gc && i % 1 === 0) {
           global.gc();
           console.log(`[SemanticSearch] GC triggered after term ${i + 1}/${termsToInflate.length}`);
+        }
+
+        // Log memory after each term
+        if (isMobile) {
+          logMemoryUsage(`term-${i + 1}`);
         }
       }
     } else {
