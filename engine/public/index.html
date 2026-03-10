@@ -448,15 +448,28 @@
                             max_nodes: 500,
                             batch_size: 50
                         });
-                        // normalise to results array
-                        data = { results: (data.nodes || []).map(n => ({
-                            id: n.id,
-                            content: n.compressedContent,
-                            source: (n.sources || []).join(', '),
-                            tags: n.tags || [],
+                        // Radial distillation returns stats and output path, not nodes
+                        // Display summary as a result
+                        const summary = `📊 Distillation Complete
+
+Compression: ${data.stats?.compression_ratio || 'N/A'}
+Lines: ${data.stats?.lines_unique || 0} unique / ${data.stats?.lines_total || 0} total
+Duration: ${((data.stats?.duration_ms || 0) / 1000).toFixed(1)}s
+Memory: ${data.stats?.memory_peak_mb || 0}MB
+
+Output: ${data.output?.path || 'N/A'}
+Format: ${data.output?.format || 'N/A'}
+Size: ${((data.output?.size_bytes || 0) / 1024).toFixed(1)}KB
+
+The distilled content has been saved and auto-ingested.`;
+                        data = { results: [{
+                            id: 'distill-summary',
+                            content: summary,
+                            source: data.output?.path || 'Radial Distiller',
+                            tags: ['distilled'],
                             score: 1.0,
                             _algo: '🧪 distill'
-                        })) };
+                        }] };
                     } else if (algo === 'illuminate') {
                         const isGlobal = q.length === 0;
                         data = await api.explore(isGlobal ? {
