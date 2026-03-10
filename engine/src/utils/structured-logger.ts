@@ -33,6 +33,47 @@ if (!fs.existsSync(LOGS_DIR)) {
   fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
+/**
+ * Truncate log files to last N lines to prevent unbounded growth
+ * Runs at startup to clean up existing logs
+ */
+function truncateLogFiles(maxLines: number = 10000): void {
+  try {
+    const files = fs.readdirSync(LOGS_DIR);
+    let totalTruncated = 0;
+
+    for (const file of files) {
+      if (!file.endsWith('.log') && !file.includes('.log.')) continue;
+
+      const filePath = path.join(LOGS_DIR, file);
+      const stats = fs.statSync(filePath);
+
+      // Skip if file is small (< 1MB)
+      if (stats.size < 1024 * 1024) continue;
+
+      // Read file and truncate to last N lines
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const lines = content.split('\n');
+
+      if (lines.length > maxLines) {
+        const truncated = lines.slice(-maxLines).join('\n');
+        fs.writeFileSync(filePath, truncated, 'utf-8');
+        totalTruncated++;
+        console.log(`[Logger] Truncated ${file} from ${lines.length} to ${maxLines} lines`);
+      }
+    }
+
+    if (totalTruncated > 0) {
+      console.log(`[Logger] Truncated ${totalTruncated} log files to ${maxLines} lines max`);
+    }
+  } catch (e) {
+    console.error('[Logger] Failed to truncate logs:', e);
+  }
+}
+
+// Truncate logs at startup
+truncateLogFiles(10000);
+
 // Custom format for structured logging
 const structuredFormat = winston.format.combine(
   winston.format.timestamp(),
