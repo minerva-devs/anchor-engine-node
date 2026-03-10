@@ -4,6 +4,7 @@ import { db } from '../../core/db.js';
 import { SearchResult } from './search.js';
 import { getMirrorPath, MIRRORED_BRAIN_PATH } from '../mirror/mirror.js';
 import { NOTEBOOK_DIR } from '../../config/paths.js';
+import { processWithAdaptiveConcurrency, getOptimalBatchSize } from '../../utils/adaptive-concurrency.js';
 
 interface ContextWindow {
     compoundId: string;
@@ -62,11 +63,12 @@ export class ContextInflator {
         const nextFortyPercent = Math.floor(results.length * 0.4);
 
         // Process in batches to limit concurrency (file handles/DB connections)
-        const BATCH_SIZE = 20;
+        // Use adaptive batch size based on available memory (Standard 132)
+        const BATCH_SIZE = getOptimalBatchSize();
 
         for (let i = 0; i < results.length; i += BATCH_SIZE) {
             const batch = results.slice(i, i + BATCH_SIZE);
-            const batchResults = await Promise.all(batch.map(async (res, indexInBatch) => {
+            const batchResults = await processWithAdaptiveConcurrency(batch, async (res, indexInBatch) => {
                 const globalIndex = i + indexInBatch;
                 // Progressive radius allocation based on rank
                 let radiusMultiplier = 1.0;
@@ -122,7 +124,7 @@ export class ContextInflator {
                     console.error(`[ContextInflator] Failed to inflate result for ${res.source}`, e);
                     return res;
                 }
-            }));
+            });
 
             processedResults.push(...batchResults);
         }
@@ -478,126 +480,122 @@ export class ContextInflator {
 
             // Radially inflate from each position, MERGING overlapping windows
             // Read content from MIRRORED FILES on disk, not from database
-            // Radially inflate from each position, MERGING overlapping windows
-            // Read content from MIRRORED FILES on disk, not from database
-            // [Optimization] Parallelize file I/O to reduce latency
-            const inflationPromises = Array.from(compoundPositions.entries()).map(async ([compoundId, data]) => {
-                // Resolve the file path - try mirrored file first, then original
-                const mirrorPath = getMirrorPath(data.filePath, data.provenance);
-                let absolutePath = mirrorPath;
+            // [Standard 132] Use adaptive concurrency based on available memory
+            const compoundEntries = Array.from(compoundPositions.entries());
+            
+            const resultsArrays = await processWithAdaptiveConcurrency(
+                compoundEntries,
+                async ([compoundId, data]) => {
+                    // Resolve the file path - try mirrored file first, then original
+                    const mirrorPath = getMirrorPath(data.filePath, data.provenance);
+                    let absolutePath = mirrorPath;
 
-                // If mirror doesn't exist, try original path
-                if (!fs.existsSync(mirrorPath)) {
-                    absolutePath = path.isAbsolute(data.filePath)
-                        ? data.filePath
-                        : path.join(NOTEBOOK_DIR, data.filePath);
-                }
+                    // If mirror doesn't exist, try original path
+                    if (!fs.existsSync(mirrorPath)) {
+                        absolutePath = path.isAbsolute(data.filePath)
+                            ? data.filePath
+                            : path.join(NOTEBOOK_DIR, data.filePath);
+                    }
 
-                // Skip if file doesn't exist
-                if (!fs.existsSync(absolutePath)) {
-                    // console.warn(`[ContextInflator] File not found: ${absolutePath}`);
-                    return [];
-                }
+                    // Skip if file doesn't exist
+                    if (!fs.existsSync(absolutePath)) {
+                        return [];
+                    }
 
-                // Read file stats to get size for window clamping
-                let fileSize = 0;
-                try {
-                    const stats = await fs.promises.stat(absolutePath);
-                    fileSize = stats.size;
-                } catch (e) {
-                    console.warn(`[ContextInflator] Failed to stat file: ${absolutePath}`);
-                    return [];
-                }
+                    // Read file stats to get size for window clamping
+                    let fileSize = 0;
+                    try {
+                        const stats = await fs.promises.stat(absolutePath);
+                        fileSize = stats.size;
+                    } catch (e) {
+                        console.warn(`[ContextInflator] Failed to stat file: ${absolutePath}`);
+                        return [];
+                    }
 
-                // Calculate raw windows for all positions using file size
-                const rawWindows = data.positions.map(byteOffset => ({
-                    start: Math.max(0, byteOffset - radius),
-                    end: Math.min(fileSize, byteOffset + radius),
-                    offset: byteOffset
-                }));
+                    // Calculate raw windows for all positions using file size
+                    const rawWindows = data.positions.map(byteOffset => ({
+                        start: Math.max(0, byteOffset - radius),
+                        end: Math.min(fileSize, byteOffset + radius),
+                        offset: byteOffset
+                    }));
 
-                // Sort by start position for merge algorithm
-                rawWindows.sort((a, b) => a.start - b.start);
+                    // Sort by start position for merge algorithm
+                    rawWindows.sort((a, b) => a.start - b.start);
 
-                // Merge overlapping OR ADJACENT windows
-                // Molecules from same compound within 500 bytes should be merged
-                const MERGE_GAP_THRESHOLD = 500; // Merge windows within 500 bytes of each other
-                
-                const mergedWindows: { start: number; end: number; offsets: number[] }[] = [];
-                for (const window of rawWindows) {
-                    const last = mergedWindows[mergedWindows.length - 1];
-                    // Merge if overlapping OR adjacent (within gap threshold)
-                    if (last && (window.start <= last.end || (window.start - last.end) < MERGE_GAP_THRESHOLD)) {
-                        const newEnd = Math.max(last.end, window.end);
-                        if ((newEnd - last.start) <= maxWindowSize) {
-                            last.end = newEnd;
-                            last.offsets.push(window.offset);
+                    // Merge overlapping OR ADJACENT windows
+                    const MERGE_GAP_THRESHOLD = 500;
+                    const mergedWindows: { start: number; end: number; offsets: number[] }[] = [];
+                    for (const window of rawWindows) {
+                        const last = mergedWindows[mergedWindows.length - 1];
+                        if (last && (window.start <= last.end || (window.start - last.end) < MERGE_GAP_THRESHOLD)) {
+                            const newEnd = Math.max(last.end, window.end);
+                            if ((newEnd - last.start) <= maxWindowSize) {
+                                last.end = newEnd;
+                                last.offsets.push(window.offset);
+                            } else {
+                                mergedWindows.push({ start: window.start, end: window.end, offsets: [window.offset] });
+                            }
                         } else {
                             mergedWindows.push({ start: window.start, end: window.end, offsets: [window.offset] });
                         }
-                    } else {
-                        mergedWindows.push({ start: window.start, end: window.end, offsets: [window.offset] });
                     }
-                }
 
-                const compoundResults: SearchResult[] = [];
-                let fd: fs.promises.FileHandle | null = null;
+                    const compoundResults: SearchResult[] = [];
+                    let fd: fs.promises.FileHandle | null = null;
 
-                try {
-                    fd = await fs.promises.open(absolutePath, 'r');
+                    try {
+                        fd = await fs.promises.open(absolutePath, 'r');
 
-                    for (const window of mergedWindows) {
-                        const chunkLength = window.end - window.start;
-                        if (chunkLength <= 0) continue;
+                        for (const window of mergedWindows) {
+                            const chunkLength = window.end - window.start;
+                            if (chunkLength <= 0) continue;
 
-                        const buffer = Buffer.alloc(chunkLength);
-                        // fs.promises.read returns { bytesRead, buffer }
-                        await fd.read(buffer, 0, chunkLength, window.start);
+                            const buffer = Buffer.alloc(chunkLength);
+                            await fd.read(buffer, 0, chunkLength, window.start);
 
-                        let inflatedContent = buffer.toString('utf-8');
+                            let inflatedContent = buffer.toString('utf-8');
 
-                        // Clean up partial words at boundaries
-                        if (window.start > 0) {
-                            const firstSpace = inflatedContent.indexOf(' ');
-                            if (firstSpace !== -1 && firstSpace < 50) {
-                                inflatedContent = inflatedContent.substring(firstSpace + 1);
+                            // Clean up partial words at boundaries
+                            if (window.start > 0) {
+                                const firstSpace = inflatedContent.indexOf(' ');
+                                if (firstSpace !== -1 && firstSpace < 50) {
+                                    inflatedContent = inflatedContent.substring(firstSpace + 1);
+                                }
                             }
-                        }
-                        if (window.end < fileSize) {
-                            const lastSpace = inflatedContent.lastIndexOf(' ');
-                            if (lastSpace > inflatedContent.length - 50) {
-                                inflatedContent = inflatedContent.substring(0, lastSpace);
+                            if (window.end < fileSize) {
+                                const lastSpace = inflatedContent.lastIndexOf(' ');
+                                if (lastSpace > inflatedContent.length - 50) {
+                                    inflatedContent = inflatedContent.substring(0, lastSpace);
+                                }
                             }
+
+                            if (inflatedContent.trim().length === 0) continue;
+
+                            compoundResults.push({
+                                id: `virtual_${compoundId}_${window.start}_${window.end}`,
+                                content: `...${inflatedContent}...`,
+                                source: data.filePath,
+                                timestamp: data.timestamp,
+                                buckets: ['core'],
+                                tags: [searchTerm],
+                                epochs: '',
+                                provenance: data.provenance,
+                                score: 500,
+                                compound_id: compoundId,
+                                start_byte: window.start,
+                                end_byte: window.end,
+                                is_inflated: true
+                            });
                         }
-
-                        if (inflatedContent.trim().length === 0) continue;
-
-                        compoundResults.push({
-                            id: `virtual_${compoundId}_${window.start}_${window.end}`,
-                            content: `...${inflatedContent}...`,
-                            source: data.filePath,
-                            timestamp: data.timestamp,
-                            buckets: ['core'],
-                            tags: [searchTerm],
-                            epochs: '',
-                            provenance: data.provenance,
-                            score: 500, // Partial score, sorted later
-                            compound_id: compoundId,
-                            start_byte: window.start,
-                            end_byte: window.end,
-                            is_inflated: true
-                        });
+                    } catch (err) {
+                        console.warn(`[ContextInflator] Error reading file ${absolutePath}:`, err);
+                    } finally {
+                        if (fd) await fd.close();
                     }
-                } catch (err) {
-                    console.warn(`[ContextInflator] Error reading file ${absolutePath}:`, err);
-                } finally {
-                    if (fd) await fd.close();
+
+                    return compoundResults;
                 }
-
-                return compoundResults;
-            });
-
-            const resultsArrays = await Promise.all(inflationPromises);
+            );
             // Flatten results
             resultsArrays.forEach(arr => results.push(...arr));
 

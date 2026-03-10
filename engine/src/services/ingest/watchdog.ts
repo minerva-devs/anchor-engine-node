@@ -121,20 +121,20 @@ export async function addWatchPath(newPath: string): Promise<boolean> {
         throw new Error(`Path does not exist: ${newPath}`);
     }
 
-    if (!watcher) {
-        throw new Error("Watchdog not started");
+    // Add to watcher if it's running
+    if (watcher) {
+        watcher.add(newPath);
+        console.log(`[Watchdog] Added dynamic watch path: ${newPath}`);
+    } else {
+        console.log(`[Watchdog] Path saved for later (watchdog not running): ${newPath}`);
     }
-
-    // Add to watcher
-    watcher.add(newPath);
-    console.log(`[Watchdog] Added dynamic watch path: ${newPath}`);
 
     // Update Config (In-Memory)
     if (!config.WATCHER_EXTRA_PATHS) config.WATCHER_EXTRA_PATHS = [];
     if (!config.WATCHER_EXTRA_PATHS.includes(newPath)) {
         config.WATCHER_EXTRA_PATHS.push(newPath);
 
-        // Persist to user_settings.json
+        // Persist to user_settings.json (always do this, even if watchdog isn't running)
         try {
             const settingsPath = path.join(process.cwd(), 'user_settings.json');
             if (fs.existsSync(settingsPath)) {
@@ -420,10 +420,22 @@ async function processFile(filePath: string, event: string) {
         console.log(`[Watchdog] Sync Complete: ${relativePath}`);
 
         // Trigger Mirror: write cleaned content directly (O(1) vs full rebuild)
+        console.log(`[Watchdog] Preparing mirror write...`);
+        console.log(`[Watchdog] compound exists: ${!!compound}`);
+        console.log(`[Watchdog] compound.compound_body exists: ${!!compound?.compound_body}`);
+        console.log(`[Watchdog] compound.compound_body length: ${compound?.compound_body?.length || 0}`);
+        console.log(`[Watchdog] provenance: ${provenance}`);
+
         try {
+            console.log(`[Watchdog] Importing mirror module...`);
             const { writeMirroredFile } = await import('../mirror/mirror.js');
+            console.log(`[Watchdog] Mirror module imported, calling writeMirroredFile...`);
             await writeMirroredFile(relativePath, compound.compound_body, provenance);
-        } catch (e: any) { console.error(`[Watchdog] Mirror write failed:`, e.message); }
+            console.log(`[Watchdog] ✓ Mirror write completed successfully`);
+        } catch (e: any) {
+            console.error(`[Watchdog] ✗ Mirror write failed:`, e.message);
+            console.error(`[Watchdog] Stack trace:`, e.stack);
+        }
 
         // Trigger post-ingestion synonym generation (debounced)
         triggerPostIngestionSynonyms();

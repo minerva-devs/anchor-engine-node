@@ -74,6 +74,25 @@ const DEFAULT_SETTINGS = {
     debounce_ms: 2000,
     stability_threshold_ms: 2000,
     extra_paths: []
+  },
+  // Standard 132: Adaptive Concurrency Control
+  // Automatically adjusts parallel processing based on available memory
+  adaptive_concurrency: {
+    // Environment detection: 'auto', 'low_memory', 'high_memory'
+    // 'auto' = detect based on free RAM
+    // 'low_memory' = force sequential processing (Termux/mobile)
+    // 'high_memory' = force parallel processing (desktop/server)
+    environment: 'auto',
+    // Memory threshold in MB below which to use sequential processing (default: 2048)
+    sequential_threshold_mb: 2048,
+    // Memory threshold in MB above which to use full parallel processing (default: 8192)
+    parallel_threshold_mb: 8192,
+    // Maximum concurrent operations in adaptive mode (default: 5)
+    max_concurrency: 5,
+    // Batch size for low-memory mode (default: 1)
+    low_memory_batch_size: 1,
+    // Batch size for high-memory mode (default: 20)
+    high_memory_batch_size: 20
   }
 };
 

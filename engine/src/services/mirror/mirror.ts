@@ -107,11 +107,26 @@ export async function writeMirroredFile(
     cleanedContent: string,
     provenance: 'internal' | 'external' | 'quarantine' = 'internal'
 ): Promise<void> {
+    console.log(`[MirrorWrite] Starting write for: ${relativePath}`);
+    console.log(`[MirrorWrite] Content length: ${cleanedContent?.length || 0} chars`);
+    console.log(`[MirrorWrite] Provenance: ${provenance}`);
+    console.log(`[MirrorWrite] MIRRORED_BRAIN_PATH: ${MIRRORED_BRAIN_PATH}`);
+
     if (!fs.existsSync(MIRRORED_BRAIN_PATH)) {
+        console.log(`[MirrorWrite] Creating mirrored_brain directory...`);
         fs.mkdirSync(MIRRORED_BRAIN_PATH, { recursive: true });
+        console.log(`[MirrorWrite] ✓ Directory created`);
     }
     const mirrorPath = getMirrorPath(relativePath, provenance);
-    await writeFile(mirrorPath, cleanedContent);
+    console.log(`[MirrorWrite] Target path: ${mirrorPath}`);
+
+    try {
+        await writeFile(mirrorPath, cleanedContent);
+        console.log(`[MirrorWrite] ✓ SUCCESS: Written ${cleanedContent?.length || 0} chars to ${mirrorPath}`);
+    } catch (error: any) {
+        console.error(`[MirrorWrite] ✗ FAILED: ${error.message}`);
+        throw error;
+    }
 }
 
 /**

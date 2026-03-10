@@ -199,6 +199,48 @@ LLM-optimized system overview, architecture, and component map.
 
 ---
 
+### 8. Build Process Documentation
+
+**Purpose:** Document build and deployment procedures
+
+**Audience:** Developers, deployers, CI/CD systems
+
+**Content:**
+- Build commands and scripts
+- Clean build procedures
+- Environment-specific configurations
+- Deployment checklists
+
+**Build Command:**
+```bash
+# pnpm build automatically cleans dist folder before compilation
+pnpm build
+```
+
+**Implementation:** The build script (`package.json`):
+```json
+{
+  "scripts": {
+    "build": "pnpm --filter anchor-engine build"
+  }
+}
+```
+
+**Engine build (engine/package.json):**
+```json
+{
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc"
+  }
+}
+```
+
+**Key Point:** The `pnpm build` command automatically removes the `dist` folder before TypeScript compilation, ensuring a clean build state. This prevents stale compiled code from causing issues.
+
+**Update Rule:** Update when build process changes
+
+---
+
 ## Relationship: arxiv/ vs specs/
 
 ### arxiv/ Directory (LaTeX Source)
