@@ -35,50 +35,6 @@ interface SearchResult {
   is_inflated?: boolean;
 }
 
-/**
- * Detect if running in a mobile/memory-constrained environment
- * Standard 134: Mobile Search Optimization
- */
-function isMobileEnvironment(): boolean {
-  // Check for Android/Termux
-  if (process.platform === 'android') return true;
-
-  // Check for Termux specifically
-  if (process.env.TERMUX_VERSION || process.env.TERMUX_API_VERSION) return true;
-  if (process.cwd().includes('termux')) return true;
-
-  // Check for common mobile indicators
-  if (process.env.ANCHOR_MOBILE_MODE === '1') return true;
-
-  // Check available memory
-  try {
-    const os = require('os');
-    const totalMem = os.totalmem();
-    const freeMem = os.freemem();
-
-    // Mobile if < 2GB total or < 500MB free
-    if (totalMem < 2 * 1024 * 1024 * 1024) return true;
-    if (freeMem < 500 * 1024 * 1024) return true;
-  } catch {
-    // If os module fails, assume mobile to be safe
-    return false;
-  }
-
-  return false;
-}
-
-/**
- * Log memory usage for debugging OOM issues
- */
-function logMemoryUsage(label: string) {
-  try {
-    const mem = process.memoryUsage();
-    console.log(`[Memory:${label}] Heap: ${Math.floor(mem.heapUsed / 1024 / 1024)}MB / ${Math.floor(mem.heapTotal / 1024 / 1024)}MB, RSS: ${Math.floor(mem.rss / 1024 / 1024)}MB`);
-  } catch {
-    // Ignore
-  }
-}
-
 export async function executeSemanticSearch(
   query: string,
   buckets?: string[],
@@ -96,15 +52,6 @@ export async function executeSemanticSearch(
 }> {
 
   console.log(`[SemanticSearch] executeSemanticSearch called with query: "${query}", provenance: ${provenance}`);
-
-  // Standard 134: Detect mobile/Termux environment early
-  const isMobile = isMobileEnvironment();
-  const isTermux = process.env.TERMUX_VERSION || process.env.TERMUX_API_VERSION || process.cwd().includes('termux');
-
-  if (isMobile) {
-    console.log(`[SemanticSearch] Mobile environment detected${isTermux ? ' (Termux)' : ''}`);
-    logMemoryUsage('search-start');
-  }
 
   // Extract potential entities from the query
   const queryEntities = extractEntitiesFromQuery(query);
@@ -279,9 +226,6 @@ export async function executeSemanticSearch(
     pIdx++;
   }
 
-  // Standard 134: Mobile optimization - reduce initial result set
-  const initialLimit = isTermux ? 10 : (isMobile ? 20 : 50);
-
   searchQuery = `SELECT a.id, a.source_path as source, a.timestamp, a.buckets, a.tags, a.epochs, a.provenance, a.simhash,
          0 as score,
          COALESCE(m.compound_id, a.compound_id) as compound_id,
@@ -291,7 +235,7 @@ export async function executeSemanticSearch(
     FROM atoms a
     LEFT JOIN molecules m ON a.id = m.id
     ${whereStr}
-    ORDER BY timestamp DESC LIMIT ${initialLimit}`; // Sort by timestamp initially, we re-score in memory
+    ORDER BY timestamp DESC LIMIT 50`; // Sort by timestamp initially, we re-score in memory
 
   try {
     const result = await db.run(searchQuery, sqlParams);
@@ -426,23 +370,11 @@ export async function executeSemanticSearch(
 
     // Cap at 32000 (massive context) but allow it to be at least 150
     // This allows "just scale" behavior up to very large windows
-    // Standard 134: Mobile optimization - cap radius on memory-constrained devices
-    const maxRadius = isTermux ? 500 : (isMobile ? 1000 : 32000); // 500B Termux, 1KB mobile, 32KB desktop
-    radiusPerTerm = Math.max(150, Math.min(maxRadius, radiusPerTerm));
-
-    if (isMobile) {
-      console.log(`[SemanticSearch] Mobile mode: radius=${radiusPerTerm}, limit=${initialLimit}`);
-    }
+    radiusPerTerm = Math.max(150, Math.min(32000, radiusPerTerm));
 
     // Calculate max results based on this radius to fill the budget
     // If radius is 6000 (12k diameter), and budget is 50k, we get ~4 results.
-    // Standard 134: Mobile optimization - limit results per term
-    let maxResultsPerTerm = Math.max(3, Math.floor(termBudget / (radiusPerTerm * 2)));
-    if (isTermux) {
-      maxResultsPerTerm = Math.min(maxResultsPerTerm, 3); // Cap at 3 results per term on Termux
-    } else if (isMobile) {
-      maxResultsPerTerm = Math.min(maxResultsPerTerm, 5); // Cap at 5 results per term on mobile
-    }
+    const maxResultsPerTerm = Math.max(3, Math.floor(termBudget / (radiusPerTerm * 2)));
 
     console.log(`[SemanticSearch] Inflation Strategy: Radius=${radiusPerTerm} chars, MaxResults=${maxResultsPerTerm}/term`);
 
@@ -450,56 +382,24 @@ export async function executeSemanticSearch(
     let inflatedResults: SearchResult[] = [];
     const maxWindowSize = radiusPerTerm * 4; // Allow merging of up to 4 consecutive windows
 
-    // Standard 134: Mobile optimization - use sequential inflation with GC hints
-    if (isMobile) {
-      console.log(`[SemanticSearch] Using sequential inflation for mobile (${termsToInflate.length} terms)`);
 
-      for (let i = 0; i < termsToInflate.length; i++) {
-        const term = termsToInflate[i];
-        const termResults = await ContextInflator.inflateFromAtomPositions(
-          term,
-          radiusPerTerm,
-          maxResultsPerTerm,
-          maxWindowSize,
-          { buckets, provenance }
-        );
+    const inflationPromises = termsToInflate.map(term =>
+      ContextInflator.inflateFromAtomPositions(
+        term,
+        radiusPerTerm,
+        maxResultsPerTerm,
+        maxWindowSize,
+        { buckets, provenance } // Pass filters
+      ).then(results => ({ term, results }))
+    );
 
-        if (termResults.length > 0) {
-          console.log(`[SemanticSearch] Term "${term}" inflated to ${termResults.length} results.`);
-        }
-        inflatedResults.push(...(termResults as unknown as SearchResult[]));
+    const inflationResults = await Promise.all(inflationPromises);
 
-        // Force GC after each term on mobile
-        if (global.gc && i % 1 === 0) {
-          global.gc();
-          console.log(`[SemanticSearch] GC triggered after term ${i + 1}/${termsToInflate.length}`);
-        }
-
-        // Log memory after each term
-        if (isMobile) {
-          logMemoryUsage(`term-${i + 1}`);
-        }
+    for (const { term, results: termResults } of inflationResults) {
+      if (termResults.length > 0) {
+        console.log(`[SemanticSearch] Term "${term}" inflated to ${termResults.length} results.`);
       }
-    } else {
-      // Desktop: parallel inflation (original behavior)
-      const inflationPromises = termsToInflate.map(term =>
-        ContextInflator.inflateFromAtomPositions(
-          term,
-          radiusPerTerm,
-          maxResultsPerTerm,
-          maxWindowSize,
-          { buckets, provenance }
-        ).then(results => ({ term, results }))
-      );
-
-      const inflationResults = await Promise.all(inflationPromises);
-
-      for (const { term, results: termResults } of inflationResults) {
-        if (termResults.length > 0) {
-          console.log(`[SemanticSearch] Term "${term}" inflated to ${termResults.length} results.`);
-        }
-        inflatedResults.push(...(termResults as unknown as SearchResult[]));
-      }
+      inflatedResults.push(...(termResults as unknown as SearchResult[]));
     }
 
     // --- INTERSECTION SCORING ---
