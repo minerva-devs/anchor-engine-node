@@ -17,6 +17,18 @@ Define an adaptive concurrency system that automatically adjusts processing mode
 - **Adaptive processing** (batch=5) for 2-8GB free RAM
 - **Parallel processing** (batch=20, CPU count) for > 8GB free RAM
 
+### ⚠️ Limitations
+
+**Sequential mode prevents OOM from parallel processing, but cannot fix large file issues.**
+
+**Tested Results:**
+| File Structure | Size | Molecules | Result |
+|----------------|------|-----------|--------|
+| 143 individual files | ~1MB each | ~1,000-2,000 each | ✅ Works perfectly |
+| Single combined file | 98MB | 196,426 | ❌ Crash during inflation |
+
+**Lesson:** Adaptive concurrency helps with parallel processing overhead, but file size/molecule density must also be controlled. Keep files <10MB with <10,000 molecules each.
+
 ---
 
 ## 2. Architecture
