@@ -1,12 +1,19 @@
 # Architecture Standards Index
 
-**Last Updated:** March 9, 2026 | **Total Standards:** 92
+**Last Updated:** March 10, 2026 | **Total Standards:** 93
 
 ---
 
 ## Active Standards (Current Implementation)
 
 These standards define the current production architecture:
+
+### v4.5.5 Standards (Memory Optimization + Performance)
+
+| # | Standard | Description | Status |
+|---|----------|-------------|--------|
+| **135** | [Adaptive Concurrency Control](135-adaptive-concurrency-control.md) | Memory-aware processing modes (sequential/adaptive/parallel) | ✅ v1.0 |
+| **134** | [Mobile Search Optimization](134-mobile-search-optimization.md) | Memory-constrained retrieval for mobile/embedded devices | 🚧 DRAFT |
 
 ### v4.5.4 Standards (Security Hardening + Test Coverage + Async I/O)
 
@@ -156,7 +163,7 @@ These documents provide overarching architecture guidance:
 
 ### OPS Domain (Operations & Safety)
 - 035-062: Logging, async handling, inference stability
-- **129-131: Security hardening, test coverage, async I/O**
+- **129-135: Security hardening, test coverage, async I/O, performance**
 
 ### BRIDGE Domain (APIs & Interfaces)
 - 058-103: Universal RAG API, UI architecture, extensions
@@ -181,7 +188,7 @@ Standards are numbered sequentially. Gaps indicate deprecated or merged standard
 - 051-080: Stabilization (October-November 2025)
 - 081-100: Acceleration (December 2025-January 2026)
 - 101-125: Production (February 2026)
-- 126-131: Security & Quality (March 2026)
+- 126-135: Security, Quality & Performance (March 2026)
 
 ---
 

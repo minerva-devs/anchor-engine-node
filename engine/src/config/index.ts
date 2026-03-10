@@ -129,6 +129,17 @@ interface Config {
   DATABASE: {
     WIPE_ON_STARTUP: boolean; // Standard 051: Ephemeral Index (true = wipe & rebuild on each start)
   };
+
+  // Adaptive Concurrency (Standard 132)
+  ADAPTIVE_CONCURRENCY: {
+    SEQUENTIAL_THRESHOLD_MB: number;
+    PARALLEL_THRESHOLD_MB: number;
+    MAX_CONCURRENCY: number;
+    LOW_MEMORY_BATCH_SIZE: number;
+    HIGH_MEMORY_BATCH_SIZE: number;
+    FORCE_SEQUENTIAL: boolean;
+    FORCE_PARALLEL: boolean;
+  };
 }
 
 // Default configuration
@@ -195,8 +206,8 @@ const DEFAULT_CONFIG: Config = {
     strategy: "hybrid",
     hide_years_in_tags: true,
     whitelist: [],
-    max_chars_default: 524288,
-    max_chars_limit: 100000,
+    max_chars_default: 5000,   // 5k chars = ~1.25k tokens (mobile-friendly)
+    max_chars_limit: 20000,    // 20k chars max limit
     fts_window_size: 1500,
     fts_padding: 750
   },
@@ -248,6 +259,25 @@ const DEFAULT_CONFIG: Config = {
     // Default true: wipe PGlite index on each startup so it rebuilds from mirrored_brain/.
     // Set false to retain the index across restarts (faster startup, but risks stale/corrupt data).
     WIPE_ON_STARTUP: true
+  },
+
+  // Adaptive Concurrency (Standard 132)
+  // Automatically adjusts parallel processing based on available memory
+  ADAPTIVE_CONCURRENCY: {
+    // Memory threshold in MB below which to use sequential processing (default: 2048)
+    SEQUENTIAL_THRESHOLD_MB: parseInt(process.env['ANCHOR_SEQUENTIAL_THRESHOLD_MB'] || '2048', 10),
+    // Memory threshold in MB above which to use full parallel processing (default: 8192)
+    PARALLEL_THRESHOLD_MB: parseInt(process.env['ANCHOR_PARALLEL_THRESHOLD_MB'] || '8192', 10),
+    // Maximum concurrent operations in adaptive mode (default: 5)
+    MAX_CONCURRENCY: parseInt(process.env['ANCHOR_MAX_CONCURRENCY'] || '5', 10),
+    // Batch size for low-memory mode (default: 1)
+    LOW_MEMORY_BATCH_SIZE: parseInt(process.env['ANCHOR_LOW_MEMORY_BATCH_SIZE'] || '1', 10),
+    // Batch size for high-memory mode (default: 20)
+    HIGH_MEMORY_BATCH_SIZE: parseInt(process.env['ANCHOR_HIGH_MEMORY_BATCH_SIZE'] || '20', 10),
+    // Force sequential mode regardless of memory (default: false)
+    FORCE_SEQUENTIAL: process.env['ANCHOR_FORCE_SEQUENTIAL'] === 'true',
+    // Force parallel mode regardless of memory (default: false)
+    FORCE_PARALLEL: process.env['ANCHOR_FORCE_PARALLEL'] === 'true'
   }
 };
 

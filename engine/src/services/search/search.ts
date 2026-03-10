@@ -21,6 +21,7 @@ import { SemanticCategory } from '../../types/taxonomy.js';
 import { ContextInflator } from './context-inflator.js';
 import { Timer } from '../../utils/timer.js';
 import { systemStatus } from '../system-status.js';
+import { processWithAdaptiveConcurrency } from '../../utils/adaptive-concurrency.js';
 
 // --- Imports from extracted modules ---
 import {
@@ -224,9 +225,47 @@ function acquireSearchLock(): Promise<() => void> {
 
 // Memory thresholds for graceful degradation.
 // HEAP_PRESSURE_MB: if V8 heapUsed exceeds this, downgrade max-recall → standard
-const HEAP_PRESSURE_MB = 3200; // ~3.2 GB
+const HEAP_PRESSURE_MB = 500; // ~500MB for mobile (Android kills at ~1GB)
+
+// Throttling thresholds for memory-aware search pacing (AGGRESSIVE for mobile)
+const THROTTLE_START_MB = 800;    // Start slowing down at 800MB
+const THROTTLE_MAX_MB = 1200;     // Reject searches above 1.2GB
+const EMERGENCY_STOP_MB = 1500;   // Emergency stop at 1.5GB
+
 function heapUsedMB(): number {
   return Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+}
+
+/**
+ * Memory-aware throttling: slows down or blocks searches based on memory pressure
+ * Returns true if search should proceed, false if it should be rejected
+ */
+async function throttleSearchForMemory(): Promise<{ proceed: boolean; delayMs: number; reason?: string }> {
+  const heapMB = heapUsedMB();
+
+  // Emergency stop - reject search
+  if (heapMB >= EMERGENCY_STOP_MB) {
+    console.warn(`[Throttle] EMERGENCY: Heap at ${heapMB}MB >= ${EMERGENCY_STOP_MB}MB. Rejecting search.`);
+    return { proceed: false, delayMs: 0, reason: `Memory too high (${heapMB}MB)` };
+  }
+
+  // Throttle zone - reject if too high
+  if (heapMB >= THROTTLE_MAX_MB) {
+    console.warn(`[Throttle] Heap at ${heapMB}MB >= ${THROTTLE_MAX_MB}MB. Rejecting search temporarily.`);
+    return { proceed: false, delayMs: 0, reason: `Memory pressure (${heapMB}MB)` };
+  }
+
+  // Throttle zone - add delay based on memory pressure
+  if (heapMB >= THROTTLE_START_MB) {
+    const pressureRatio = (heapMB - THROTTLE_START_MB) / (THROTTLE_MAX_MB - THROTTLE_START_MB);
+    const delayMs = Math.round(pressureRatio * 10000); // Up to 10 second delay (more aggressive)
+    console.log(`[Throttle] Heap at ${heapMB}MB. Delaying search by ${delayMs}ms (pressure: ${(pressureRatio * 100).toFixed(0)}%)`);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    return { proceed: true, delayMs, reason: `Throttled (${heapMB}MB)` };
+  }
+
+  // Normal operation - no delay
+  return { proceed: true, delayMs: 0 };
 }
 
 /**
@@ -291,8 +330,10 @@ export async function findAnchors(
 
     if (terms.length > 0) {
       try {
-        const inflations = await Promise.all(
-          terms.map(term => ContextInflator.inflateFromAtomPositions(term, 150, 20, undefined, { buckets, provenance }))
+        // [Standard 132] Use adaptive concurrency based on available memory
+        const inflations = await processWithAdaptiveConcurrency(
+          terms,
+          async (term) => ContextInflator.inflateFromAtomPositions(term, 150, 20, undefined, { buckets, provenance })
         );
         let rawAtoms = inflations.flat();
         atomResults.push(...rawAtoms);
@@ -706,6 +747,12 @@ async function _executeSearchInternal(
   userContext?: UserContext,
   startTime: number = Date.now()
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
+  // Memory-aware throttling: slow down or reject searches based on memory pressure
+  const throttleResult = await throttleSearchForMemory();
+  if (!throttleResult.proceed) {
+    throw new Error(`Search rejected: ${throttleResult.reason}. Please wait and try again.`);
+  }
+
   // Memory pressure check: if heap is already near the limit, downgrade max-recall
   // to standard search to avoid OOM. Trades result depth for stability.
   const heapMB = heapUsedMB();
@@ -965,12 +1012,17 @@ export async function executeMoleculeSearch(
   query: string,
   bucket?: string,
   buckets?: string[],
-  maxChars: number = config.SEARCH.max_chars_default, // Use config default (512KB)
+  maxChars: number = config.SEARCH.max_chars_default,
   deep: boolean = false,
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   explicitTags: string[] = [],
   userContext?: UserContext
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
+  // Memory-aware throttling
+  const throttleResult = await throttleSearchForMemory();
+  if (!throttleResult.proceed) {
+    throw new Error(`Search rejected: ${throttleResult.reason}. Please wait and try again.`);
+  }
 
   // Split the query into molecules (sentence-like chunks)
   const molecules = splitQueryIntoMolecules(query);
@@ -1098,12 +1150,17 @@ async function hydrateFromMirror(results: SearchResult[]) {
 export async function iterativeSearch(
   query: string,
   buckets: string[] = [],
-  maxChars: number = config.SEARCH.max_chars_default, // Use config default (512KB)
+  maxChars: number = config.SEARCH.max_chars_default,
   tags: string[] = [],
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   useMaxRecall: boolean = false,
   userContext?: UserContext
 ): Promise<{ context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string }> {
+  // Memory-aware throttling
+  const throttleResult = await throttleSearchForMemory();
+  if (!throttleResult.proceed) {
+    throw new Error(`Search rejected: ${throttleResult.reason}. Please wait and try again.`);
+  }
 
   // 0. Extract Scope Tags (Hashtags) to preserve them across strategies
   // We want to make sure if user typed "#work", it stays even if we strip adjectives.

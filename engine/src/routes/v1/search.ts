@@ -27,7 +27,7 @@ export function setupSearchRoutes(app: Application) {
       // Standard 113: Dual-Strategy Search (Automatic Max-Recall for large budgets)
       // Automatically switch to max-recall for queries over 16k tokens (65k chars)
       const tokenBudget = (req.body as any).token_budget || 0;
-      const maxChars = body.max_chars || 100000;
+      const maxChars = body.max_chars || 5000;
       const estimatedTokens = maxChars / 4;
 
       let useMaxRecall = strategy === 'max-recall';
@@ -51,8 +51,8 @@ export function setupSearchRoutes(app: Application) {
       const bucketParam = (req.body as any).bucket;
       const buckets = body.buckets || [];
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
-      // Use config limit (default 100k) if no budget provided
-      const defaultLimit = 100000;
+      // Use config limit (default 5k chars = ~1.25k tokens) for mobile-friendly memory
+      const defaultLimit = 5000;
       const budget = (req.body as any).token_budget ? (req.body as any).token_budget * 4 : (body.max_chars || defaultLimit);
       const tags = (req.body as any).tags || [];
 
@@ -207,8 +207,8 @@ export function setupSearchRoutes(app: Application) {
       const bucketParam = body.bucket;
       const buckets = body.buckets || [];
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
-      // Default to 256K chars for max recall
-      const budget = body.token_budget ? body.token_budget * 4 : (body.max_chars || 262144);
+      // Default to 16K chars for max recall (mobile-friendly)
+      const budget = body.token_budget ? body.token_budget * 4 : (body.max_chars || 16384);
       const tags = body.tags || [];
 
       // Use max-recall configuration

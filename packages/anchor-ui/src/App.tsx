@@ -15,6 +15,132 @@ import { GithubModal } from './components/features/GithubModal';
 import { GitCommandsModal } from './components/features/GitCommandsModal';
 import { navigate } from './utils/routing';
 
+// Standard 132: Performance Mode Toggle Component
+interface PerformanceModeToggleProps {
+  onClose?: () => void;
+}
+
+const PerformanceModeToggle = ({ onClose }: PerformanceModeToggleProps) => {
+  const [mode, setMode] = useState<'auto' | 'low_memory' | 'high_memory'>('auto');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Load current setting from API
+    api.get('/v1/settings').then((res: any) => {
+      if (res.settings?.adaptive_concurrency?.environment) {
+        setMode(res.settings.adaptive_concurrency.environment);
+      }
+    }).catch(() => {
+      // Fallback to auto if API fails
+      setMode('auto');
+    });
+  }, []);
+
+  const handleModeChange = async (newMode: 'auto' | 'low_memory' | 'high_memory') => {
+    setLoading(true);
+    try {
+      await api.post('/v1/settings/adaptive_concurrency', {
+        environment: newMode
+      });
+      setMode(newMode);
+    } catch (error) {
+      console.error('Failed to update performance mode:', error);
+    } finally {
+      setLoading(false);
+      onClose?.();
+    }
+  };
+
+  const getModeIcon = () => {
+    switch (mode) {
+      case 'low_memory': return <span className="material-symbols-outlined" style={{ color: '#f87171' }}>battery_saver</span>;
+      case 'high_memory': return <span className="material-symbols-outlined" style={{ color: '#34d399' }}>speed</span>;
+      default: return <span className="material-symbols-outlined" style={{ color: '#fbbf24' }}>auto_mode</span>;
+    }
+  };
+
+  const getModeLabel = () => {
+    switch (mode) {
+      case 'low_memory': return 'Low Memory Mode';
+      case 'high_memory': return 'High Performance';
+      default: return 'Auto (Adaptive)';
+    }
+  };
+
+  const getModeDescription = () => {
+    switch (mode) {
+      case 'low_memory': return 'Sequential processing, minimal RAM usage';
+      case 'high_memory': return 'Parallel processing, maximum speed';
+      default: return 'Automatically adjusts based on available RAM';
+    }
+  };
+
+  return (
+    <div className="mobile-nav-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        {getModeIcon()}
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 500 }}>{getModeLabel()}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>{getModeDescription()}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', paddingLeft: '2.5rem' }}>
+        <button
+          onClick={() => handleModeChange('low_memory')}
+          disabled={loading || mode === 'low_memory'}
+          style={{
+            flex: 1,
+            padding: '0.4rem 0.8rem',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: mode === 'low_memory' ? 'rgba(248, 113, 113, 0.2)' : 'rgba(255,255,255,0.05)',
+            color: mode === 'low_memory' ? '#f87171' : 'var(--text-secondary)',
+            fontSize: '0.75rem',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1
+          }}
+        >
+          Low
+        </button>
+        <button
+          onClick={() => handleModeChange('auto')}
+          disabled={loading || mode === 'auto'}
+          style={{
+            flex: 1,
+            padding: '0.4rem 0.8rem',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: mode === 'auto' ? 'rgba(251, 191, 36, 0.2)' : 'rgba(255,255,255,0.05)',
+            color: mode === 'auto' ? '#fbbf24' : 'var(--text-secondary)',
+            fontSize: '0.75rem',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1
+          }}
+        >
+          Auto
+        </button>
+        <button
+          onClick={() => handleModeChange('high_memory')}
+          disabled={loading || mode === 'high_memory'}
+          style={{
+            flex: 1,
+            padding: '0.4rem 0.8rem',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: mode === 'high_memory' ? 'rgba(52, 211, 153, 0.2)' : 'rgba(255,255,255,0.05)',
+            color: mode === 'high_memory' ? '#34d399' : 'var(--text-secondary)',
+            fontSize: '0.75rem',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.6 : 1
+          }}
+        >
+          High
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Simple Router
 const Dashboard = () => (
   <div className="flex-col-center" style={{ height: '100%', justifyContent: 'center', alignItems: 'center', gap: '2rem' }}>
@@ -195,6 +321,9 @@ const SearchPage = () => {
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>Corpus directories</div>
               </div>
             </button>
+
+            {/* Performance Mode Toggle - Standard 132 */}
+            <PerformanceModeToggle onClose={() => setMobileDrawerOpen(false)} />
           </div>
         </div>
       </>
@@ -253,6 +382,11 @@ const SearchPage = () => {
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>Corpus directories</div>
               </div>
             </button>
+
+            {/* Performance Mode Toggle - Standard 132 */}
+            <div className="glass-card" style={{ padding: '1rem', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-md)' }}>
+              <PerformanceModeToggle />
+            </div>
           </div>
         </aside>
 
