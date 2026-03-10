@@ -403,6 +403,7 @@
             const [selectedBuckets, setSelectedBuckets] = useState([]);
             const [tokenBudget, setTokenBudget] = useState(4096);
             const [copyFeedback, setCopyFeedback] = useState('');
+            const [cachedDistillSummary, setCachedDistillSummary] = useState(null);
 
             // Token budget presets with finer granularity at lower values
             const tokenPresets = [
@@ -448,28 +449,67 @@
                             max_nodes: 500,
                             batch_size: 50
                         });
-                        // Radial distillation returns stats and output path, not nodes
-                        // Display summary as a result
-                        const summary = `📊 Distillation Complete
-
-Compression: ${data.stats?.compression_ratio || 'N/A'}
-Lines: ${data.stats?.lines_unique || 0} unique / ${data.stats?.lines_total || 0} total
-Duration: ${((data.stats?.duration_ms || 0) / 1000).toFixed(1)}s
-Memory: ${data.stats?.memory_peak_mb || 0}MB
-
-Output: ${data.output?.path || 'N/A'}
-Format: ${data.output?.format || 'N/A'}
-Size: ${((data.output?.size_bytes || 0) / 1024).toFixed(1)}KB
-
-The distilled content has been saved and auto-ingested.`;
-                        data = { results: [{
+                        // Fetch the actual distilled content from the output file
+                        let lines = [];
+                        try {
+                            const outputPath = data.output?.path;
+                            if (outputPath) {
+                                // Read the distilled file content
+                                const fileRes = await fetch(`/v1/files/read?path=${encodeURIComponent(outputPath)}`);
+                                if (fileRes.ok) {
+                                    const fileData = await fileRes.json();
+                                    const content = fileData.content || '';
+                                    // Parse YAML content to extract lines
+                                    const linesMatch = content.match(/^lines:\s*\n((?:  - content:.*\n(?:    .*\n)*))/m);
+                                    if (linesMatch) {
+                                        const linesSection = linesMatch[1];
+                                        const lineMatches = linesSection.match(/- content: "([^"]*)"/g);
+                                        if (lineMatches) {
+                                            lines = lineMatches.map((m, i) => ({
+                                                id: `distill-line-${i}`,
+                                                content: m.replace('- content: "', '').replace(/"$/, ''),
+                                                source: outputPath,
+                                                tags: ['distilled'],
+                                                score: 1.0,
+                                                _algo: '🧪 distill'
+                                            }));
+                                        }
+                                    }
+                                    // If parsing failed, show raw content preview
+                                    if (lines.length === 0) {
+                                        lines = [{
+                                            id: 'distill-raw',
+                                            content: content.substring(0, 5000) + (content.length > 5000 ? '\n\n[Content truncated...]' : ''),
+                                            source: outputPath,
+                                            tags: ['distilled'],
+                                            score: 1.0,
+                                            _algo: '🧪 distill'
+                                        }];
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Failed to fetch distilled content:', e);
+                        }
+                        // Add summary as first result
+                        const summaryText = `📊 Distillation Complete | Compression: ${data.stats?.compression_ratio || 'N/A'} | Lines: ${data.stats?.lines_unique || 0}/${data.stats?.lines_total || 0} | Duration: ${((data.stats?.duration_ms || 0) / 1000).toFixed(1)}s`;
+                        const summaryResult = {
                             id: 'distill-summary',
-                            content: summary,
+                            content: summaryText,
                             source: data.output?.path || 'Radial Distiller',
-                            tags: ['distilled'],
+                            tags: ['distilled', 'summary'],
                             score: 1.0,
                             _algo: '🧪 distill'
-                        }] };
+                        };
+                        // Cache the summary for Overview button
+                        setCachedDistillSummary({
+                            result: summaryResult,
+                            lines: lines,
+                            timestamp: Date.now(),
+                            stats: data.stats,
+                            output: data.output
+                        });
+                        data = { results: [summaryResult, ...lines] };
                     } else if (algo === 'illuminate') {
                         const isGlobal = q.length === 0;
                         data = await api.explore(isGlobal ? {
@@ -699,6 +739,18 @@ The distilled content has been saved and auto-ingested.`;
                                 <i data-lucide="copy" width="14"></i>
                                 Copy as YAML
                             </button>
+                            {cachedDistillSummary && (
+                                <button
+                                    onClick={() => {
+                                        setResults([cachedDistillSummary.result, ...cachedDistillSummary.lines]);
+                                    }}
+                                    className="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-colors flex items-center gap-2"
+                                    title="Show most recent distill summary"
+                                >
+                                    <i data-lucide="eye" width="14"></i>
+                                    Overview
+                                </button>
+                            )}
                         </div>
                     </div>
 
