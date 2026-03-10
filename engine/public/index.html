@@ -454,20 +454,42 @@
                         try {
                             const outputPath = data.output?.path;
                             if (outputPath) {
-                                // Read the distilled file content
+                                // Read the distilled file content via API
                                 const fileRes = await fetch(`/v1/files/read?path=${encodeURIComponent(outputPath)}`);
                                 if (fileRes.ok) {
                                     const fileData = await fileRes.json();
                                     const content = fileData.content || '';
-                                    // Parse YAML content to extract lines
-                                    const linesMatch = content.match(/^lines:\s*\n((?:  - content:.*\n(?:    .*\n)*))/m);
-                                    if (linesMatch) {
-                                        const linesSection = linesMatch[1];
-                                        const lineMatches = linesSection.match(/- content: "([^"]*)"/g);
-                                        if (lineMatches) {
-                                            lines = lineMatches.map((m, i) => ({
+                                    
+                                    // Try to parse YAML lines section
+                                    // Look for "lines:" followed by line entries
+                                    const linesSectionMatch = content.match(/lines:\s*\n((?:  - content:[\s\S]*?)(?=\n\w+:|$))/);
+                                    if (linesSectionMatch) {
+                                        const linesSection = linesSectionMatch[1];
+                                        // Extract each line's content
+                                        const lineEntries = linesSection.split(/\n  - /).slice(1); // Skip empty first
+                                        lines = lineEntries.map((entry, i) => {
+                                            const contentMatch = entry.match(/content: "([^"]*)"/);
+                                            const provenanceMatch = entry.match(/provenance:\s*\[([^\]]*)\]/);
+                                            const lineContent = contentMatch ? contentMatch[1] : entry;
+                                            const provenance = provenanceMatch ? provenanceMatch[1].split(',').map(s => s.trim().replace(/"/g, '')) : [];
+                                            return {
                                                 id: `distill-line-${i}`,
-                                                content: m.replace('- content: "', '').replace(/"$/, ''),
+                                                content: lineContent,
+                                                source: provenance[0] || outputPath,
+                                                tags: ['distilled'],
+                                                score: 1.0,
+                                                _algo: '🧪 distill'
+                                            };
+                                        });
+                                    }
+                                    
+                                    // If YAML parsing failed, try simple line-by-line
+                                    if (lines.length === 0 && content.includes('content:')) {
+                                        const simpleMatches = content.match(/content: "([^"]*)"/g);
+                                        if (simpleMatches) {
+                                            lines = simpleMatches.map((m, i) => ({
+                                                id: `distill-line-${i}`,
+                                                content: m.replace('content: "', '').replace(/"$/, ''),
                                                 source: outputPath,
                                                 tags: ['distilled'],
                                                 score: 1.0,
@@ -475,11 +497,12 @@
                                             }));
                                         }
                                     }
-                                    // If parsing failed, show raw content preview
+                                    
+                                    // Fallback: show raw content
                                     if (lines.length === 0) {
                                         lines = [{
                                             id: 'distill-raw',
-                                            content: content.substring(0, 5000) + (content.length > 5000 ? '\n\n[Content truncated...]' : ''),
+                                            content: content.substring(0, 8000) + (content.length > 8000 ? '\n\n[Content truncated...]' : ''),
                                             source: outputPath,
                                             tags: ['distilled'],
                                             score: 1.0,
