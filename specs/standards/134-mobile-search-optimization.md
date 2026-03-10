@@ -44,6 +44,18 @@ Query: "Rob and coda working on anchor"
 
 On Termux with 1-2GB RAM and Node.js overhead, this causes OOM.
 
+### ⚠️ Large File Warning
+
+**CRITICAL:** Files >10MB with >10,000 molecules cause OOM even with sequential processing.
+
+**Tested:**
+- ✅ **143 individual files** (~1MB each): Search works perfectly
+- ❌ **Single 98MB file** (196,426 molecules): Crash during context inflation
+
+**Root Cause:** Context inflation loads byte ranges from source files. Large files with high molecule density create memory pressure that exceeds Android limits.
+
+**Solution:** Keep files in natural directory structure. Do NOT combine into monolithic files.
+
 ---
 
 ## 3. Mobile Search Architecture
