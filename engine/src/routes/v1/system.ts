@@ -281,4 +281,31 @@ export function setupSystemRoutes(app: Application) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // File read endpoint for distilled content
+  app.get('/v1/files/read', async (req: Request, res: Response) => {
+    try {
+      const filePath = req.query.path as string;
+      if (!filePath) {
+        res.status(400).json({ error: 'Path parameter required' });
+        return;
+      }
+      
+      // Security: only allow reading from inbox/distilled directory
+      if (!filePath.includes('distilled') || !filePath.endsWith('.yaml')) {
+        res.status(403).json({ error: 'Access denied' });
+        return;
+      }
+      
+      const fs = await import('fs');
+      const content = await fs.promises.readFile(filePath, 'utf-8');
+      res.json({
+        status: 'success',
+        path: filePath,
+        content: content
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
