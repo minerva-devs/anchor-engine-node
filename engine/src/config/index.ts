@@ -140,6 +140,16 @@ interface Config {
     FORCE_SEQUENTIAL: boolean;
     FORCE_PARALLEL: boolean;
   };
+
+  // Memory Management (Standard 127/134/135)
+  MEMORY: {
+    HEAP_PRESSURE_MB: number;
+    THROTTLE_START_MB: number;
+    THROTTLE_MAX_MB: number;
+    EMERGENCY_STOP_MB: number;
+    SEARCH_RESULTS_BATCH_SIZE: number;
+    ENABLE_STREAMING_RESULTS: boolean;
+  };
 }
 
 // Default configuration
@@ -278,6 +288,23 @@ const DEFAULT_CONFIG: Config = {
     FORCE_SEQUENTIAL: process.env['ANCHOR_FORCE_SEQUENTIAL'] === 'true',
     // Force parallel mode regardless of memory (default: false)
     FORCE_PARALLEL: process.env['ANCHOR_FORCE_PARALLEL'] === 'true'
+  },
+
+  // Memory Management (Standard 127/134/135)
+  // Configurable memory thresholds for search throttling and streaming
+  MEMORY: {
+    // Heap pressure threshold for downgrading max-recall to standard (default: 500MB)
+    HEAP_PRESSURE_MB: parseInt(process.env['ANCHOR_HEAP_PRESSURE_MB'] || '500', 10),
+    // Start throttling searches at this heap size (default: 800MB)
+    THROTTLE_START_MB: parseInt(process.env['ANCHOR_THROTTLE_START_MB'] || '800', 10),
+    // Reject searches above this heap size (default: 1200MB)
+    THROTTLE_MAX_MB: parseInt(process.env['ANCHOR_THROTTLE_MAX_MB'] || '1200', 10),
+    // Emergency stop searches at this heap size (default: 1500MB)
+    EMERGENCY_STOP_MB: parseInt(process.env['ANCHOR_EMERGENCY_STOP_MB'] || '1500', 10),
+    // Batch size for streaming search results (default: 20)
+    SEARCH_RESULTS_BATCH_SIZE: parseInt(process.env['ANCHOR_SEARCH_RESULTS_BATCH_SIZE'] || '20', 10),
+    // Enable streaming results for memory efficiency (default: false)
+    ENABLE_STREAMING_RESULTS: process.env['ANCHOR_ENABLE_STREAMING_RESULTS'] === 'true'
   }
 };
 
@@ -397,6 +424,16 @@ function loadConfig(): Config {
         if (userSettings.limits.max_chunk_size_chars !== undefined) loadedConfig.LIMITS.MAX_CHUNK_SIZE_CHARS = userSettings.limits.max_chunk_size_chars;
         if (userSettings.limits.max_summary_length_chars !== undefined) loadedConfig.LIMITS.MAX_SUMMARY_LENGTH_CHARS = userSettings.limits.max_summary_length_chars;
         if (userSettings.limits.date_extractor_scan_limit !== undefined) loadedConfig.LIMITS.DATE_EXTRACTOR_SCAN_LIMIT = userSettings.limits.date_extractor_scan_limit;
+      }
+
+      // Load Memory Management Settings (Standard 127/134/135)
+      if (userSettings.memory) {
+        if (userSettings.memory.heap_pressure_mb !== undefined) loadedConfig.MEMORY.HEAP_PRESSURE_MB = userSettings.memory.heap_pressure_mb;
+        if (userSettings.memory.throttle_start_mb !== undefined) loadedConfig.MEMORY.THROTTLE_START_MB = userSettings.memory.throttle_start_mb;
+        if (userSettings.memory.throttle_max_mb !== undefined) loadedConfig.MEMORY.THROTTLE_MAX_MB = userSettings.memory.throttle_max_mb;
+        if (userSettings.memory.emergency_stop_mb !== undefined) loadedConfig.MEMORY.EMERGENCY_STOP_MB = userSettings.memory.emergency_stop_mb;
+        if (userSettings.memory.search_results_batch_size !== undefined) loadedConfig.MEMORY.SEARCH_RESULTS_BATCH_SIZE = userSettings.memory.search_results_batch_size;
+        if (userSettings.memory.enable_streaming_results !== undefined) loadedConfig.MEMORY.ENABLE_STREAMING_RESULTS = userSettings.memory.enable_streaming_results;
       }
 
     } catch (e) {
