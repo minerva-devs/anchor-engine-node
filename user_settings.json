@@ -127,7 +127,7 @@
         "max_tags_per_molecule": 20
     },
     "mcp": {
-        "enabled": false,
+        "enabled": true,
         "description": "Model Context Protocol server - exposes Anchor to AI clients (Claude, Cursor, Qwen)",
         "security_note": "Only enable when needed. MCP exposes your knowledge graph to connected AI clients.",
         "allowed_clients": [],
