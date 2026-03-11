@@ -565,6 +565,7 @@
                             rawYaml: content  // Store full YAML for copy/download
                         });
                         data = { results: [summaryResult, ...lines] };
+                        setResults(data.results);
                     } else if (algo === 'illuminate') {
                         const isGlobal = q.length === 0;
                         data = await api.explore(isGlobal ? {
@@ -584,6 +585,7 @@
                             tags: n.tags || [], score: n.score ?? 1,
                             _algo: '🌐 illuminate'
                         })) };
+                        setResults(data.results);
                     } else {
                         // Standard search with streaming (Standard 136)
                         setResults([]); // Clear results for streaming
