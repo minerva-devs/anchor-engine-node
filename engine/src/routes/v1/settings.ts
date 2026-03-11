@@ -13,7 +13,7 @@ import { PROJECT_ROOT, PATHS } from '../../config/paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const SETTINGS_PATH = path.join(__dirname, '../../../user_settings.json');
+const SETTINGS_PATH = path.join(PROJECT_ROOT, 'user_settings.json');
 
 // Default settings template
 const DEFAULT_SETTINGS = {
