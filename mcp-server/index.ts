@@ -1,0 +1,507 @@
+#!/usr/bin/env node
+/**
+ * Anchor Engine MCP Server
+ *
+ * Exposes Anchor's search, distill, and exploration capabilities
+ * to any MCP-compatible client (Claude, Cursor, Qwen Code, etc.)
+ *
+ * Tools:
+ * - anchor_query: Semantic search over the memory graph
+ * - anchor_distill: Run radial distillation on corpus
+ * - anchor_illuminate: BFS graph traversal
+ * - anchor_read_file: Read files with line ranges (token-efficient)
+ * - anchor_list_compounds: List available compounds
+ */
+
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+  Tool,
+  Resource,
+} from "@modelcontextprotocol/sdk/types.js";
+import { z } from "zod";
+
+// Anchor Engine API base URL
+const ANCHOR_API_URL = process.env.ANCHOR_API_URL || "http://localhost:3160";
+
+// Tool definitions
+const TOOLS: Tool[] = [
+  {
+    name: "anchor_query",
+    description: "Search the Anchor memory graph using semantic/graph search. Returns relevant atoms/molecules with content, source, and relevance scores.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Search query string",
+        },
+        max_results: {
+          type: "number",
+          description: "Maximum number of results to return (default: 20)",
+        },
+        buckets: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional bucket filters",
+        },
+        strategy: {
+          type: "string",
+          enum: ["standard", "max-recall"],
+          description: "Search strategy (default: standard)",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "anchor_distill",
+    description: "Run radial distillation on the corpus. Compresses knowledge into a deduplicated YAML/MD file that serves as a source of truth. Returns the output file path and compression stats.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        seed: {
+          type: "string",
+          description: "Seed query for radial distillation (optional, uses global if empty)",
+        },
+        radius: {
+          type: "number",
+          description: "Search radius in graph hops (default: 3)",
+        },
+        max_nodes: {
+          type: "number",
+          description: "Maximum nodes to process (default: 500)",
+        },
+        output_format: {
+          type: "string",
+          enum: ["yaml", "md"],
+          description: "Output format (default: yaml)",
+        },
+      },
+    },
+  },
+  {
+    name: "anchor_illuminate",
+    description: "Perform BFS graph traversal (illuminate) from a seed query. Explores connected concepts in the knowledge graph.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        seed: {
+          type: "string",
+          description: "Seed query or topic to explore",
+        },
+        depth: {
+          type: "number",
+          description: "Maximum traversal depth (default: 3)",
+        },
+        max_nodes: {
+          type: "number",
+          description: "Maximum nodes to explore (default: 50)",
+        },
+      },
+      required: ["seed"],
+    },
+  },
+  {
+    name: "anchor_read_file",
+    description: "Read a file (e.g., distilled output) with optional line range. Use this for token-efficient recursive search of large files.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description: "File path to read (relative to project root or absolute)",
+        },
+        start_line: {
+          type: "number",
+          description: "Starting line number (0-indexed, inclusive)",
+        },
+        end_line: {
+          type: "number",
+          description: "Ending line number (exclusive)",
+        },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "anchor_list_compounds",
+    description: "List available compounds (source files) in the Anchor database with metadata.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        filter: {
+          type: "string",
+          description: "Optional filter string for compound names",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum compounds to return (default: 50)",
+        },
+      },
+    },
+  },
+  {
+    name: "anchor_get_stats",
+    description: "Get Anchor Engine statistics including atom/molecule counts, database size, and system health.",
+    inputSchema: {
+      type: "object",
+      properties: {},
+    },
+  },
+];
+
+// Resource definitions
+const RESOURCES: Resource[] = [
+  {
+    uri: "anchor://stats",
+    name: "Anchor Statistics",
+    description: "Real-time statistics about the Anchor knowledge graph",
+    mimeType: "application/json",
+  },
+  {
+    uri: "anchor://compounds",
+    name: "Available Compounds",
+    description: "List of all compounds (source files) in the database",
+    mimeType: "application/json",
+  },
+];
+
+// Helper function for API calls
+async function callAnchorAPI(endpoint: string, method: string = "GET", body?: any): Promise<any> {
+  const url = `${ANCHOR_API_URL}${endpoint}`;
+  const options: RequestInit = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  if (body && method !== "GET") {
+    options.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(url, options);
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Anchor API error (${response.status}): ${error}`);
+  }
+
+  // Handle streaming responses (SSE)
+  const contentType = response.headers.get("content-type");
+  if (contentType?.includes("text/event-stream")) {
+    const text = await response.text();
+    // Parse SSE events
+    const events = text
+      .split("\n\n")
+      .filter((e) => e.trim())
+      .map((event) => {
+        const dataMatch = event.match(/data: (.+)/);
+        return dataMatch ? JSON.parse(dataMatch[1]) : null;
+      })
+      .filter(Boolean);
+    return events;
+  }
+
+  return response.json();
+}
+
+// Tool handlers
+async function handleQuery(args: any): Promise<string> {
+  const { query, max_results = 20, buckets = [], strategy = "standard" } = args;
+
+  const results = await callAnchorAPI("/v1/memory/search", "POST", {
+    query,
+    max_chars: max_results * 500,
+    token_budget: max_results * 125,
+    buckets,
+    strategy,
+    provenance: "all",
+  });
+
+  // Handle streaming results
+  if (Array.isArray(results)) {
+    const batches = results.filter((e: any) => e.type === "batch");
+    const allResults = batches.flatMap((b: any) => b.results || []);
+
+    if (allResults.length === 0) {
+      return "No results found for query.";
+    }
+
+    return allResults
+      .map(
+        (r: any, i: number) =>
+          `[${i + 1}] Score: ${(r.score || 0).toFixed(3)} | Source: ${r.source || "unknown"}\n${r.content?.substring(0, 500) || "[no content]"}${r.content?.length > 500 ? "..." : ""}`
+      )
+      .join("\n\n---\n\n");
+  }
+
+  return "Search completed but returned unexpected format.";
+}
+
+async function handleDistill(args: any): Promise<string> {
+  const { seed = "", radius = 3, max_nodes = 500, output_format = "yaml" } = args;
+
+  const result = await callAnchorAPI("/v1/memory/distill", "POST", {
+    seed: seed ? { query: seed } : { global: true },
+    radius,
+    max_nodes,
+    output_format,
+  });
+
+  if (result.status === "success" || result.output) {
+    const stats = result.stats || {};
+    return `✅ Distillation Complete
+
+📊 Stats:
+- Compression Ratio: ${stats.compression_ratio || "N/A"}
+- Lines: ${stats.lines_unique || 0} unique / ${stats.lines_total || 0} total
+- Duration: ${((stats.duration_ms || 0) / 1000).toFixed(1)}s
+
+📁 Output File: ${result.output?.path || "N/A"}
+
+💡 Use anchor_read_file to read this file efficiently.`;
+  }
+
+  return `Distillation result: ${JSON.stringify(result, null, 2)}`;
+}
+
+async function handleIlluminate(args: any): Promise<string> {
+  const { seed, depth = 3, max_nodes = 50 } = args;
+
+  const result = await callAnchorAPI("/v1/memory/explore", "POST", {
+    seed: { query: seed, limit_seeds: 8 },
+    max_depth: depth,
+    max_nodes,
+    format: "flat",
+  });
+
+  const nodes = result.results || result.nodes || [];
+
+  if (nodes.length === 0) {
+    return "No connected nodes found from seed.";
+  }
+
+  return nodes
+    .map(
+      (n: any, i: number) =>
+        `[${i + 1}] ${n.id}\nSource: ${n.source || "unknown"}\n${n.content?.substring(0, 400) || "[no content]"}${n.content?.length > 400 ? "..." : ""}`
+    )
+    .join("\n\n---\n\n");
+}
+
+async function handleReadFile(args: any): Promise<string> {
+  const { path: filePath, start_line, end_line } = args;
+
+  // Normalize path
+  const normalizedPath = filePath.startsWith("/")
+    ? filePath
+    : `${ANCHOR_API_URL}/v1/files/read?path=${encodeURIComponent(filePath)}`;
+
+  const result = await callAnchorAPI(
+    `/v1/files/read?path=${encodeURIComponent(filePath)}`,
+    "GET"
+  );
+
+  if (!result.content) {
+    return `Error: Could not read file ${filePath}`;
+  }
+
+  let content = result.content;
+  const lines = content.split("\n");
+
+  // Apply line range if specified
+  if (start_line !== undefined || end_line !== undefined) {
+    const start = start_line || 0;
+    const end = end_line || lines.length;
+    content = lines.slice(start, end).join("\n");
+  }
+
+  const lineInfo =
+    start_line !== undefined || end_line !== undefined
+      ? ` (lines ${start_line || 0}-${end_line || lines.length})`
+      : "";
+
+  return `📄 File: ${filePath}${lineInfo}\n${"=".repeat(40)}\n\n${content.substring(0, 10000)}${content.length > 10000 ? "\n\n[Content truncated...]" : ""}`;
+}
+
+async function handleListCompounds(args: any): Promise<string> {
+  const { filter = "", limit = 50 } = args;
+
+  const result = await callAnchorAPI("/v1/compounds/list", "GET");
+  let compounds = result.compounds || [];
+
+  if (filter) {
+    compounds = compounds.filter((c: any) =>
+      c.name?.toLowerCase().includes(filter.toLowerCase())
+    );
+  }
+
+  compounds = compounds.slice(0, limit);
+
+  if (compounds.length === 0) {
+    return "No compounds found.";
+  }
+
+  return compounds
+    .map(
+      (c: any) =>
+        `- ${c.name} (${c.molecule_count || 0} molecules, ${c.atom_count || 0} atoms)`
+    )
+    .join("\n");
+}
+
+async function handleGetStats(args: any): Promise<string> {
+  const result = await callAnchorAPI("/v1/stats", "GET");
+
+  return `📊 Anchor Engine Statistics
+
+🧠 Knowledge Graph:
+- Atoms: ${result.atoms?.toLocaleString() || 0}
+- Molecules: ${result.molecules?.toLocaleString() || 0}
+- Compounds: ${result.compounds?.toLocaleString() || 0}
+
+💾 Storage:
+- Database Size: ${result.dbSize || "N/A"}
+- Index Size: ${result.indexSize || "N/A"}
+
+⚡ System:
+- Status: ${result.status || "unknown"}
+- Uptime: ${result.uptime || "N/A"}
+`;
+}
+
+// Resource handlers
+async function handleResourceStats(): Promise<string> {
+  const result = await callAnchorAPI("/v1/stats", "GET");
+  return JSON.stringify(result, null, 2);
+}
+
+async function handleResourceCompounds(): Promise<string> {
+  const result = await callAnchorAPI("/v1/compounds/list", "GET");
+  return JSON.stringify(result.compounds || [], null, 2);
+}
+
+// Main server setup
+const server = new Server(
+  {
+    name: "anchor-engine-mcp",
+    version: "4.7.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+      resources: {},
+    },
+  }
+);
+
+// List available tools
+server.setRequestHandler(ListToolsRequestSchema, async () => {
+  return { tools: TOOLS };
+});
+
+// List available resources
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  return { resources: RESOURCES };
+});
+
+// Handle tool calls
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+
+  try {
+    let result: string;
+
+    switch (name) {
+      case "anchor_query":
+        result = await handleQuery(args);
+        break;
+      case "anchor_distill":
+        result = await handleDistill(args);
+        break;
+      case "anchor_illuminate":
+        result = await handleIlluminate(args);
+        break;
+      case "anchor_read_file":
+        result = await handleReadFile(args);
+        break;
+      case "anchor_list_compounds":
+        result = await handleListCompounds(args);
+        break;
+      case "anchor_get_stats":
+        result = await handleGetStats(args);
+        break;
+      default:
+        throw new Error(`Unknown tool: ${name}`);
+    }
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: result,
+        },
+      ],
+    };
+  } catch (error: any) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Error: ${error.message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+});
+
+// Handle resource requests
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const { uri } = request.params;
+
+  try {
+    let content: string;
+
+    switch (uri) {
+      case "anchor://stats":
+        content = await handleResourceStats();
+        break;
+      case "anchor://compounds":
+        content = await handleResourceCompounds();
+        break;
+      default:
+        throw new Error(`Unknown resource: ${uri}`);
+    }
+
+    return {
+      contents: [
+        {
+          uri,
+          mimeType: "application/json",
+          text: content,
+        },
+      ],
+    };
+  } catch (error: any) {
+    throw new Error(`Resource error: ${error.message}`);
+  }
+});
+
+// Start server
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("Anchor Engine MCP Server running on stdio");
+}
+
+main().catch((error) => {
+  console.error("Fatal error:", error);
+  process.exit(1);
+});
