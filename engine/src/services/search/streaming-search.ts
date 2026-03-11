@@ -156,9 +156,3 @@ export function formatSSE(event: StreamingSearchEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;
 }
 
-/**
- * Check if streaming is enabled in config
- */
-export function isStreamingEnabled(): boolean {
-  return config.MEMORY?.ENABLE_STREAMING_RESULTS ?? false;
-}

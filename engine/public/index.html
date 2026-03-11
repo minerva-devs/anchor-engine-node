@@ -156,17 +156,9 @@
 
         // API
         const api = {
-            search: async (params) => {
-                const res = await fetch('/v1/memory/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(params)
-                });
-                return res.json();
-            },
             searchStream: async function*(params, onBatch) {
-                // Streaming search with Server-Sent Events
-                const res = await fetch('/v1/memory/search/stream', {
+                // Streaming search with Server-Sent Events (Standard 136)
+                const res = await fetch('/v1/memory/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(params)
@@ -447,7 +439,6 @@
             const [tokenBudget, setTokenBudget] = useState(4096);
             const [copyFeedback, setCopyFeedback] = useState('');
             const [cachedDistillSummary, setCachedDistillSummary] = useState(null);
-            const [streamingMode, setStreamingMode] = useState(false);
             const [streamingProgress, setStreamingProgress] = useState({ batchNumber: 0, totalBatches: 0, resultsCount: 0 });
 
             // Token budget presets with finer granularity at lower values
@@ -592,8 +583,8 @@
                             tags: n.tags || [], score: n.score ?? 1,
                             _algo: '🌐 illuminate'
                         })) };
-                    } else if (streamingMode && algo === 'auto') {
-                        // Streaming search for memory-efficient results
+                    } else {
+                        // Standard search with streaming (Standard 136)
                         setResults([]); // Clear results for streaming
                         const allResults = [];
 
@@ -608,7 +599,7 @@
                             if (event.type === 'batch') {
                                 const batchResults = event.results.map(r => ({
                                     ...r,
-                                    _algo: '⚡ streaming'
+                                    _algo: '🔍 search'
                                 }));
                                 allResults.push(...batchResults);
                                 setResults([...allResults]);
@@ -623,19 +614,6 @@
                                 throw new Error(event.message);
                             }
                         }
-                    } else {
-                        data = await api.search({
-                            query: q,
-                            max_chars: tokenBudget * 4,
-                            token_budget: tokenBudget,
-                            provenance: 'all',
-                            buckets: selectedBuckets.length > 0 ? selectedBuckets : undefined,
-                            deep: algo === 'deep',
-                            strategy: algo === 'exact' || algo === 'fast' ? 'standard' : undefined,
-                        });
-                    }
-                    if (!streamingMode || algo !== 'auto') {
-                        setResults(data.results || []);
                     }
                 } catch (error) {
                     setResults([{ id: 'error', content: `Search failed: ${error.message}`, source: 'System', score: 0 }]);
@@ -770,14 +748,6 @@
                                 <div style={{position:'relative',display:'inline-block'}} title="Search prefixes&#10;distill:           — lossless semantic compression (LLM)&#10;illuminate:        — corpus spine (global BFS, auto-budget)&#10;illuminate: topic  — BFS from seed topic&#10;explore:           — same as illuminate&#10;deep:              — max-recall multi-hop&#10;exact:             — FTS only, no physics&#10;(none)             — automatic STAR search">
                                   <span style={{cursor:'help',opacity:0.5,fontSize:'0.8rem',padding:'0 6px'}}>?</span>
                                 </div>
-                                <button
-                                    onClick={() => setStreamingMode(!streamingMode)}
-                                    disabled={loading}
-                                    className={`px-2 py-2.5 rounded-lg text-sm transition-all ${streamingMode ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' : 'bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10'}`}
-                                    title={streamingMode ? 'Streaming mode ON (memory-efficient)' : 'Streaming mode OFF'}
-                                >
-                                    <i data-lucide={streamingMode ? 'zap' : 'zap-off'} width="16" height="16"></i>
-                                </button>
                                 <button onClick={handleSearch} disabled={loading} className="btn-primary min-w-[80px] sm:min-w-[100px] text-sm sm:text-base px-3 sm:px-4 py-2.5">
                                     {loading ? '...' : 'Search'}
                                 </button>

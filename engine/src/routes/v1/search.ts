@@ -3,140 +3,107 @@ import { validate, schemas } from '../../middleware/validate.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { smartChatSearch, executeMoleculeSearch } from '../../services/search/search.js';
 import { SearchRequest } from '../../types/api.js';
-import { executeStreamingSearch, formatSSE, isStreamingEnabled } from '../../services/search/streaming-search.js';
+import { executeStreamingSearch, formatSSE } from '../../services/search/streaming-search.js';
 
 export function setupSearchRoutes(app: Application) {
-  // POST Search endpoint (Standard UniversalRAG + Iterative Logic)
-  // Supports strategy parameter: 'standard' (default) or 'max-recall'
+  // POST Search endpoint (Standard 136: Streaming Search)
+  // Memory-efficient streaming search with Server-Sent Events
   app.post('/v1/memory/search', validate(schemas.memorySearch), async (req: Request, res: Response) => {
     const startTime = Date.now();
-    StructuredLogger.info('SEARCH_REQUEST', {
-      endpoint: '/v1/memory/search',
-      method: 'POST'
-    });
 
     try {
       const body = req.body as SearchRequest;
       if (!body.query) {
-        StructuredLogger.warn('SEARCH_INVALID_REQUEST', { error: 'Query is required' });
         res.status(400).json({ error: 'Query is required' });
         return;
       }
 
       const strategy = (req.body as any).strategy || 'standard';
-
-      // Standard 113: Dual-Strategy Search (Automatic Max-Recall for large budgets)
-      // Automatically switch to max-recall for queries over 16k tokens (65k chars)
-      const tokenBudget = (req.body as any).token_budget || 0;
       const maxChars = body.max_chars || 5000;
       const estimatedTokens = maxChars / 4;
+      const batchSize = (req.body as any).batch_size || 20;
 
+      // Auto-switch to max-recall for large budgets
       let useMaxRecall = strategy === 'max-recall';
       if (!useMaxRecall && estimatedTokens > 16000) {
         useMaxRecall = true;
-        StructuredLogger.info('SEARCH_AUTO_MAX_RECALL', {
-          reason: 'token_budget > 16k',
-          estimated_tokens: estimatedTokens,
-          max_chars: maxChars
-        });
       }
 
-      StructuredLogger.info('SEARCH_PROCESSING', {
+      StructuredLogger.info('STREAMING_SEARCH_REQUEST', {
         query: body.query.substring(0, 100),
-        query_length: body.query.length,
         strategy: useMaxRecall ? 'max-recall' : 'standard',
-        estimated_tokens: estimatedTokens
+        batchSize
       });
+
+      // Set up SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
 
       // Handle legacy params
       const bucketParam = (req.body as any).bucket;
       const buckets = body.buckets || [];
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
-      // Use config limit (default 5k chars = ~1.25k tokens) for mobile-friendly memory
-      const defaultLimit = 5000;
-      const budget = (req.body as any).token_budget ? (req.body as any).token_budget * 4 : (body.max_chars || defaultLimit);
       const tags = (req.body as any).tags || [];
 
-      // Enhanced Search Strategy (Standard 086)
-      // Support both standard and max-recall strategies
-      StructuredLogger.info('SEARCH_STRATEGY', { strategy: useMaxRecall ? 'max-recall' : 'standard' });
-
-      let result;
-      if (useMaxRecall) {
-        // Max Recall Strategy: Zero temporal decay, 3 hops, no relevance filtering
-        result = await smartChatSearch(
-          body.query,
-          allBuckets,
-          budget,
-          tags,
-          (req.body as any).provenance || 'all',
-          true,  // useMaxRecall = true
-          body.user_context
-        );
-      } else {
-        // Standard Strategy: Balanced 70/30 budget with temporal decay
-        result = await smartChatSearch(
-          body.query,
-          allBuckets,
-          budget,
-          tags,
-          (req.body as any).provenance || 'all',
-          false,  // useMaxRecall = false
-          body.user_context
-        );
-      }
-
-      const duration = Date.now() - startTime;
-      const resultCount = result.results.length;
-
-      // Log search completion with metrics
-      StructuredLogger.search(body.query, resultCount, duration, {
-        strategy: strategy || 'enhanced_tag_walker',
+      // Execute streaming search
+      const stream = executeStreamingSearch({
+        query: body.query,
         buckets: allBuckets,
-        budget
+        maxChars,
+        tags,
+        provenance: (req.body as any).provenance || 'all',
+        useMaxRecall,
+        userContext: body.user_context,
+        batchSize
       });
 
-      StructuredLogger.info('SEARCH_RESPONSE', {
-        query: body.query.substring(0, 50),
-        results_count: resultCount,
-        duration_ms: duration,
-        strategy: strategy || 'enhanced_tag_walker'
-      });
+      // Stream results to client
+      for await (const event of stream) {
+        res.write(formatSSE(event));
 
-      // Construct standard response
-      if (!res.headersSent) {
-        res.status(200).json({
-          status: 'success',
-          context: result.context,
-          results: result.results,
-          strategy: strategy || 'enhanced_tag_walker',
-          attempt: (result as any).attempt || 1,
-          split_queries: result.splitQueries || [],
-          metadata: {
-            engram_hits: 0,
-            vector_latency: 0,
-            provenance_boost_active: true,
-            search_type: strategy === 'max-recall' ? 'max_recall' : 'enhanced',
-            temporal_decay: strategy === 'max-recall' ? 0.0 : 0.00001,
-            max_hops: strategy === 'max-recall' ? 3 : 1,
-            damping: strategy === 'max-recall' ? 1.0 : 0.85,
-            min_relevance: strategy === 'max-recall' ? 0.0 : 0.1,
-            ...((result as any).metadata || {})
-          }
-        });
+        if (event.type === 'error') {
+          res.end();
+          return;
+        }
       }
+
+      // Send final completion event
+      const duration = Date.now() - startTime;
+      res.write(formatSSE({
+        type: 'metadata',
+        strategy: useMaxRecall ? 'max-recall' : 'standard',
+        totalResults: 0,
+        query: body.query,
+        durationMs: duration
+      }));
+
+      res.end();
+
+      StructuredLogger.info('STREAMING_SEARCH_COMPLETE', {
+        query: body.query.substring(0, 100),
+        durationMs: duration
+      });
+
     } catch (error: any) {
       const duration = Date.now() - startTime;
-      StructuredLogger.error('SEARCH_ERROR', error, {
-        duration_ms: duration
+      StructuredLogger.error('STREAMING_SEARCH_ERROR', error, {
+        durationMs: duration
       });
 
-      // Check if headers have already been sent to avoid duplicate responses
       if (!res.headersSent) {
         res.status(500).json({
-          error: 'Internal server error during search',
+          error: 'Internal server error during streaming search',
           details: error.message
         });
+      } else {
+        res.write(formatSSE({
+          type: 'error',
+          message: error.message,
+          details: error.stack
+        }));
+        res.end();
       }
     }
   });
@@ -243,120 +210,6 @@ export function setupSearchRoutes(app: Application) {
     } catch (error: any) {
       console.error('Max Recall Search error:', error);
       res.status(500).json({ error: error.message });
-    }
-  });
-
-  // POST Streaming Search endpoint (Standard 127/134/135)
-  // Server-Sent Events for memory-efficient result streaming
-  app.post('/v1/memory/search/stream', validate(schemas.memorySearch), async (req: Request, res: Response) => {
-    const startTime = Date.now();
-
-    try {
-      const body = req.body as SearchRequest;
-      if (!body.query) {
-        res.status(400).json({ error: 'Query is required' });
-        return;
-      }
-
-      // Check if streaming is enabled
-      if (!isStreamingEnabled()) {
-        res.status(503).json({
-          error: 'Streaming search not enabled',
-          message: 'Set enable_streaming_results: true in user_settings.json memory section'
-        });
-        return;
-      }
-
-      const strategy = (req.body as any).strategy || 'standard';
-      const maxChars = body.max_chars || 5000;
-      const estimatedTokens = maxChars / 4;
-      const batchSize = (req.body as any).batch_size || 20;
-
-      // Auto-switch to max-recall for large budgets
-      let useMaxRecall = strategy === 'max-recall';
-      if (!useMaxRecall && estimatedTokens > 16000) {
-        useMaxRecall = true;
-      }
-
-      StructuredLogger.info('STREAMING_SEARCH_REQUEST', {
-        query: body.query.substring(0, 100),
-        strategy: useMaxRecall ? 'max-recall' : 'standard',
-        batchSize
-      });
-
-      // Set up SSE headers
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
-
-      // Handle legacy params
-      const bucketParam = (req.body as any).bucket;
-      const buckets = body.buckets || [];
-      const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
-      const tags = (req.body as any).tags || [];
-
-      // Execute streaming search
-      const stream = executeStreamingSearch({
-        query: body.query,
-        buckets: allBuckets,
-        maxChars,
-        tags,
-        provenance: (req.body as any).provenance || 'all',
-        useMaxRecall,
-        userContext: body.user_context,
-        batchSize
-      });
-
-      // Stream results to client
-      for await (const event of stream) {
-        res.write(formatSSE(event));
-
-        // If it's an error, end the stream
-        if (event.type === 'error') {
-          res.end();
-          return;
-        }
-      }
-
-      // Send final completion event
-      const duration = Date.now() - startTime;
-      res.write(formatSSE({
-        type: 'metadata',
-        strategy: useMaxRecall ? 'max-recall' : 'standard',
-        totalResults: 0, // Will be in previous metadata
-        query: body.query,
-        durationMs: duration
-      }));
-
-      res.end();
-
-      StructuredLogger.info('STREAMING_SEARCH_COMPLETE', {
-        query: body.query.substring(0, 100),
-        durationMs: duration
-      });
-
-    } catch (error: any) {
-      const duration = Date.now() - startTime;
-      StructuredLogger.error('STREAMING_SEARCH_ERROR', error, {
-        durationMs: duration
-      });
-
-      // Try to send error via SSE if headers not sent
-      if (!res.headersSent) {
-        res.status(500).json({
-          error: 'Internal server error during streaming search',
-          details: error.message
-        });
-      } else {
-        // Send error via SSE
-        res.write(formatSSE({
-          type: 'error',
-          message: error.message,
-          details: error.stack
-        }));
-        res.end();
-      }
     }
   });
 }
