@@ -265,14 +265,22 @@ function acquireSearchLock(): Promise<() => void> {
   return acquired;
 }
 
-// Memory thresholds for graceful degradation.
-// HEAP_PRESSURE_MB: if V8 heapUsed exceeds this, downgrade max-recall → standard
-const HEAP_PRESSURE_MB = 500; // ~500MB for mobile (Android kills at ~1GB)
-
-// Throttling thresholds for memory-aware search pacing (AGGRESSIVE for mobile)
-const THROTTLE_START_MB = 800;    // Start slowing down at 800MB
-const THROTTLE_MAX_MB = 1200;     // Reject searches above 1.2GB
-const EMERGENCY_STOP_MB = 1500;   // Emergency stop at 1.5GB
+// Memory thresholds - loaded from user_settings.json with defaults
+// Standard 127/134/135: Configurable memory management
+function getMemoryThresholds() {
+  const userSettings = (config as any).MEMORY || {};
+  return {
+    // HEAP_PRESSURE_MB: if V8 heapUsed exceeds this, downgrade max-recall → standard
+    HEAP_PRESSURE_MB: userSettings.heap_pressure_mb ?? 500,
+    // Throttling thresholds for memory-aware search pacing
+    THROTTLE_START_MB: userSettings.throttle_start_mb ?? 800,
+    THROTTLE_MAX_MB: userSettings.throttle_max_mb ?? 1200,
+    EMERGENCY_STOP_MB: userSettings.emergency_stop_mb ?? 1500,
+    // Streaming results configuration
+    RESULTS_BATCH_SIZE: userSettings.search_results_batch_size ?? 20,
+    ENABLE_STREAMING: userSettings.enable_streaming_results ?? false
+  };
+}
 
 function heapUsedMB(): number {
   return Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
@@ -281,26 +289,28 @@ function heapUsedMB(): number {
 /**
  * Memory-aware throttling: slows down or blocks searches based on memory pressure
  * Returns true if search should proceed, false if it should be rejected
+ * Standard 127/134/135: Configurable memory thresholds
  */
 async function throttleSearchForMemory(): Promise<{ proceed: boolean; delayMs: number; reason?: string }> {
   const heapMB = heapUsedMB();
+  const thresholds = getMemoryThresholds();
 
   // Emergency stop - reject search
-  if (heapMB >= EMERGENCY_STOP_MB) {
-    console.warn(`[Throttle] EMERGENCY: Heap at ${heapMB}MB >= ${EMERGENCY_STOP_MB}MB. Rejecting search.`);
+  if (heapMB >= thresholds.EMERGENCY_STOP_MB) {
+    console.warn(`[Throttle] EMERGENCY: Heap at ${heapMB}MB >= ${thresholds.EMERGENCY_STOP_MB}MB. Rejecting search.`);
     return { proceed: false, delayMs: 0, reason: `Memory too high (${heapMB}MB)` };
   }
 
   // Throttle zone - reject if too high
-  if (heapMB >= THROTTLE_MAX_MB) {
-    console.warn(`[Throttle] Heap at ${heapMB}MB >= ${THROTTLE_MAX_MB}MB. Rejecting search temporarily.`);
+  if (heapMB >= thresholds.THROTTLE_MAX_MB) {
+    console.warn(`[Throttle] Heap at ${heapMB}MB >= ${thresholds.THROTTLE_MAX_MB}MB. Rejecting search temporarily.`);
     return { proceed: false, delayMs: 0, reason: `Memory pressure (${heapMB}MB)` };
   }
 
   // Throttle zone - add delay based on memory pressure
-  if (heapMB >= THROTTLE_START_MB) {
-    const pressureRatio = (heapMB - THROTTLE_START_MB) / (THROTTLE_MAX_MB - THROTTLE_START_MB);
-    const delayMs = Math.round(pressureRatio * 10000); // Up to 10 second delay (more aggressive)
+  if (heapMB >= thresholds.THROTTLE_START_MB) {
+    const pressureRatio = (heapMB - thresholds.THROTTLE_START_MB) / (thresholds.THROTTLE_MAX_MB - thresholds.THROTTLE_START_MB);
+    const delayMs = Math.round(pressureRatio * 10000); // Up to 10 second delay
     console.log(`[Throttle] Heap at ${heapMB}MB. Delaying search by ${delayMs}ms (pressure: ${(pressureRatio * 100).toFixed(0)}%)`);
     await new Promise(resolve => setTimeout(resolve, delayMs));
     return { proceed: true, delayMs, reason: `Throttled (${heapMB}MB)` };

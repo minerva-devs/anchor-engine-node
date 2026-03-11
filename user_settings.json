@@ -99,6 +99,13 @@
         "low_memory_batch_size": 1,
         "high_memory_batch_size": 20
     },
+    "memory": {
+        "throttle_start_mb": 1500,
+        "throttle_max_mb": 2500,
+        "emergency_stop_mb": 3500,
+        "search_results_batch_size": 20,
+        "enable_streaming_results": true
+    },
     "tagging": {
         "modulation_level": 50,
         "atom_as_tag": false,
