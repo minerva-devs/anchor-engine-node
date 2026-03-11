@@ -36,10 +36,8 @@ export function setupEnhancedRoutes(app: Application) {
       // Perform standard search
       const searchResults = await executeSearch(
         searchQuery,
-        undefined,
         searchBuckets,
         maxCharacters,
-        false,
         searchProvenance,
         [], // explicitTags
         undefined, // filters

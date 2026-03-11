@@ -761,23 +761,20 @@ export async function findAnchors(
 
 /**
  * Execute search with Intelligent Expansion and Physics Tag-Walker Protocol (GCP)
- * 
+ *
  * @param query - Search query string
- * @param _bucket - Legacy bucket parameter (deprecated)
  * @param buckets - Array of buckets to search
  * @param maxChars - Maximum characters to return
- * @param _deep - Legacy deep search flag (deprecated)
  * @param provenance - Provenance filter (internal/external/quarantine/all)
  * @param explicitTags - Explicit tags to filter by
  * @param filters - Additional filters
  * @param useMaxRecall - If true, uses MAX_RECALL_CONFIG for comprehensive retrieval
+ * @param userContext - User context for personalization
  */
 export async function executeSearch(
   query: string,
-  _bucket?: string,
   buckets?: string[],
   maxChars: number = config.SEARCH.max_chars_default,
-  _deep: boolean = false,
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   explicitTags: string[] = [],
   filters?: { type?: string; minVal?: number; maxVal?: number; },
@@ -792,7 +789,7 @@ export async function executeSearch(
   const release = await acquireSearchLock();
   try {
     return await _executeSearchInternal(
-      query, _bucket, buckets, maxChars, _deep, provenance,
+      query, buckets, maxChars, provenance,
       explicitTags, filters, useMaxRecall, userContext, startTime
     );
   } finally {
@@ -803,10 +800,8 @@ export async function executeSearch(
 
 async function _executeSearchInternal(
   query: string,
-  _bucket?: string,
   buckets?: string[],
   maxChars: number = config.SEARCH.max_chars_default,
-  _deep: boolean = false,
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   explicitTags: string[] = [],
   filters?: { type?: string; minVal?: number; maxVal?: number; },
@@ -823,7 +818,8 @@ async function _executeSearchInternal(
   // Memory pressure check: if heap is already near the limit, downgrade max-recall
   // to standard search to avoid OOM. Trades result depth for stability.
   const heapMB = heapUsedMB();
-  if (useMaxRecall && heapMB > HEAP_PRESSURE_MB) {
+  const thresholds = getMemoryThresholds();
+  if (useMaxRecall && heapMB > thresholds.HEAP_PRESSURE_MB) {
     console.warn(`[Search] Memory pressure detected (${heapMB}MB heap). Downgrading max-recall → standard search.`);
     useMaxRecall = false;
     maxChars = Math.min(maxChars, config.SEARCH.max_chars_default);
@@ -1106,10 +1102,8 @@ export async function executeMoleculeSearch(
       // Execute search for this specific molecule
       const result = await executeSearch(
         molecule,
-        bucket,
         buckets,
         maxChars,
-        deep,
         provenance,
         explicitTags,
         undefined,
@@ -1240,7 +1234,7 @@ export async function iterativeSearch(
 
   // Strategy 1: Standard Expanded Search (All Nouns, Verbs, Dates + Expansion)
   console.log(`[IterativeSearch] Strategy 1: Standard Execution`);
-  let results = await executeSearch(query, undefined, buckets, maxChars, false, provenance, tags, undefined, useMaxRecall, userContext);
+  let results = await executeSearch(query, buckets, maxChars, provenance, tags, undefined, useMaxRecall, userContext);
   if (results.results.length > 0) return { ...results, attempt: 1 };
 
   // Strategy 2: Strict "Subjects & Time" (Strip Verbs/Adjectives, keep Nouns + Dates)
@@ -1257,7 +1251,7 @@ export async function iterativeSearch(
     // Re-inject scope tags
     const strictQuery = Array.from(uniqueTokens).join(' ') + ' ' + tagsString;
     console.log(`[IterativeSearch] Fallback Query 1: "${strictQuery.trim()}"`);
-    results = await executeSearch(strictQuery, undefined, buckets, maxChars, false, provenance, tags, undefined, undefined, userContext);
+    results = await executeSearch(strictQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
     if (results.results.length > 0) return { ...results, attempt: 2 };
   }
 
@@ -1271,7 +1265,7 @@ export async function iterativeSearch(
 
   if (entityQuery.trim().length > 0 && entityQuery.trim() !== (Array.from(uniqueTokens).join(' ') + ' ' + tagsString).trim()) {
     console.log(`[IterativeSearch] Fallback Query 2: "${entityQuery.trim()}"`);
-    results = await executeSearch(entityQuery, undefined, buckets, maxChars, false, provenance, tags, undefined, undefined, userContext);
+    results = await executeSearch(entityQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
     if (results.results.length > 0) return { ...results, attempt: 3 };
   }
 
@@ -1368,7 +1362,7 @@ export async function smartChatSearch(
   const parallelResults: Awaited<ReturnType<typeof executeSearch>>[] = [];
   for (const entity of splitQueries) {
     parallelResults.push(
-      await executeSearch(entity, undefined, buckets, budgetPerQuery, false, provenance, tags, undefined, useMaxRecall, userContext)
+      await executeSearch(entity, buckets, budgetPerQuery, provenance, tags, undefined, useMaxRecall, userContext)
     );
   }
 

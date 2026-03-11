@@ -3,6 +3,7 @@ import { validate, schemas } from '../../middleware/validate.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { smartChatSearch, executeMoleculeSearch } from '../../services/search/search.js';
 import { SearchRequest } from '../../types/api.js';
+import { executeStreamingSearch, formatSSE, isStreamingEnabled } from '../../services/search/streaming-search.js';
 
 export function setupSearchRoutes(app: Application) {
   // POST Search endpoint (Standard UniversalRAG + Iterative Logic)
@@ -242,6 +243,120 @@ export function setupSearchRoutes(app: Application) {
     } catch (error: any) {
       console.error('Max Recall Search error:', error);
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST Streaming Search endpoint (Standard 127/134/135)
+  // Server-Sent Events for memory-efficient result streaming
+  app.post('/v1/memory/search/stream', validate(schemas.memorySearch), async (req: Request, res: Response) => {
+    const startTime = Date.now();
+
+    try {
+      const body = req.body as SearchRequest;
+      if (!body.query) {
+        res.status(400).json({ error: 'Query is required' });
+        return;
+      }
+
+      // Check if streaming is enabled
+      if (!isStreamingEnabled()) {
+        res.status(503).json({
+          error: 'Streaming search not enabled',
+          message: 'Set enable_streaming_results: true in user_settings.json memory section'
+        });
+        return;
+      }
+
+      const strategy = (req.body as any).strategy || 'standard';
+      const maxChars = body.max_chars || 5000;
+      const estimatedTokens = maxChars / 4;
+      const batchSize = (req.body as any).batch_size || 20;
+
+      // Auto-switch to max-recall for large budgets
+      let useMaxRecall = strategy === 'max-recall';
+      if (!useMaxRecall && estimatedTokens > 16000) {
+        useMaxRecall = true;
+      }
+
+      StructuredLogger.info('STREAMING_SEARCH_REQUEST', {
+        query: body.query.substring(0, 100),
+        strategy: useMaxRecall ? 'max-recall' : 'standard',
+        batchSize
+      });
+
+      // Set up SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+
+      // Handle legacy params
+      const bucketParam = (req.body as any).bucket;
+      const buckets = body.buckets || [];
+      const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
+      const tags = (req.body as any).tags || [];
+
+      // Execute streaming search
+      const stream = executeStreamingSearch({
+        query: body.query,
+        buckets: allBuckets,
+        maxChars,
+        tags,
+        provenance: (req.body as any).provenance || 'all',
+        useMaxRecall,
+        userContext: body.user_context,
+        batchSize
+      });
+
+      // Stream results to client
+      for await (const event of stream) {
+        res.write(formatSSE(event));
+
+        // If it's an error, end the stream
+        if (event.type === 'error') {
+          res.end();
+          return;
+        }
+      }
+
+      // Send final completion event
+      const duration = Date.now() - startTime;
+      res.write(formatSSE({
+        type: 'metadata',
+        strategy: useMaxRecall ? 'max-recall' : 'standard',
+        totalResults: 0, // Will be in previous metadata
+        query: body.query,
+        durationMs: duration
+      }));
+
+      res.end();
+
+      StructuredLogger.info('STREAMING_SEARCH_COMPLETE', {
+        query: body.query.substring(0, 100),
+        durationMs: duration
+      });
+
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+      StructuredLogger.error('STREAMING_SEARCH_ERROR', error, {
+        durationMs: duration
+      });
+
+      // Try to send error via SSE if headers not sent
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: 'Internal server error during streaming search',
+          details: error.message
+        });
+      } else {
+        // Send error via SSE
+        res.write(formatSSE({
+          type: 'error',
+          message: error.message,
+          details: error.stack
+        }));
+        res.end();
+      }
     }
   });
 }
