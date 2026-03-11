@@ -1,6 +1,6 @@
 # Anchor Engine Search Test Report
 
-**Generated:** 2026-03-10T16:44:40.991Z
+**Generated:** 2026-03-11T00:59:03.954Z
 **Engine URL:** http://localhost:3160
 **Test Count:** 9
 
@@ -9,8 +9,8 @@
 | Metric | Value |
 |--------|-------|
 | Total Memory | 7573 MB |
-| Free Memory | 2838 MB |
-| Used Memory | 4735 MB (63%) |
+| Free Memory | 1354 MB |
+| Used Memory | 6219 MB (82%) |
 | Platform | android arm64 |
 | Node Version | v25.3.0 |
 | CPUs | 0 |
@@ -33,23 +33,23 @@
 | **Passed** | 9 |
 | **Failed** | 0 |
 | **Success Rate** | 100.0% |
-| **Avg Duration** | 876ms |
-| **Min Duration** | 490ms |
-| **Max Duration** | 1219ms |
+| **Avg Duration** | 873ms |
+| **Min Duration** | 514ms |
+| **Max Duration** | 1166ms |
 
 ## Detailed Results
 
 | Test | Query | Duration | Results | Memory Δ | Status |
 |------|-------|----------|---------|----------|--------|
-| Single Word | `test` | 490ms | 0 | +16MB | ✅ PASS |
-| Two Words | `rob coda` | 521ms | 0 | +3MB | ✅ PASS |
-| Simple Phrase | `music education` | 739ms | 0 | -18MB | ✅ PASS |
-| Three Terms | `graph nodes consciousness` | 906ms | 0 | +9MB | ✅ PASS |
-| Technical Query | `async file processing` | 745ms | 0 | -7MB | ✅ PASS |
-| Long Phrase | `College Music education` | 1019ms | 0 | -8MB | ✅ PASS |
-| Complex Technical | `context inflation radial expansion` | 1048ms | 0 | -16MB | ✅ PASS |
-| Many Terms | `search memory database query optimization performance` | 1219ms | 0 | +17MB | ✅ PASS |
-| Max Recall Style | `Rob and coda music education graph nodes` | 1199ms | 0 | -19MB | ✅ PASS |
+| Single Word | `test` | 583ms | 0 | +16MB | ✅ PASS |
+| Two Words | `rob coda` | 514ms | 0 | -3MB | ✅ PASS |
+| Simple Phrase | `music education` | 737ms | 0 | +2MB | ✅ PASS |
+| Three Terms | `graph nodes consciousness` | 914ms | 0 | 0MB | ✅ PASS |
+| Technical Query | `async file processing` | 722ms | 0 | +6MB | ✅ PASS |
+| Long Phrase | `College Music education` | 1022ms | 0 | +5MB | ✅ PASS |
+| Complex Technical | `context inflation radial expansion` | 1044ms | 0 | +4MB | ✅ PASS |
+| Many Terms | `search memory database query optimization performance` | 1166ms | 0 | +4MB | ✅ PASS |
+| Max Recall Style | `Rob and coda music education graph nodes` | 1157ms | 0 | +14MB | ✅ PASS |
 
 ## Failed Tests
 
@@ -59,14 +59,14 @@ None
 
 ### Duration Distribution
 - **Fast (< 100ms):** 0 tests
-- **Normal (100-500ms):** 1 tests
-- **Slow (500-1000ms):** 4 tests
+- **Normal (100-500ms):** 0 tests
+- **Slow (500-1000ms):** 5 tests
 - **Very Slow (> 1000ms):** 4 tests
 
 ### Memory Impact
-- **Tests with memory increase:** 4
-- **Tests with memory decrease:** 5
-- **Average memory delta:** -2.6 MB
+- **Tests with memory increase:** 7
+- **Tests with memory decrease:** 1
+- **Average memory delta:** 5.3 MB
 
 ## Conclusion
 
