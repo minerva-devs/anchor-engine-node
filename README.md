@@ -2,7 +2,7 @@
 
 **Deterministic semantic memory for LLMs – local-first, graph traversal, <1GB RAM**
 
-**Version:** 4.6.0
+**Version:** 4.7.0
 
 [![GitHub release](https://img.shields.io/github/v/release/RSBalchII/anchor-engine-node)](https://github.com/RSBalchII/anchor-engine-node/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
@@ -34,6 +34,7 @@ Instead of vectors, we use **graph traversal**. Instead of guessing, we give you
 | **Local‑first** | Runs entirely offline on your hardware. No API calls, no data leaving your machine. |
 | **Model‑agnostic** | Works with any LLM – local models, cloud APIs, or anything in between. |
 | **Lightweight** | <1GB RAM, runs on a Raspberry Pi or a $200 mini PC. |
+| **Streaming** | Memory-efficient result streaming prevents OOM on large searches. Results arrive progressively. |
 | **Cross-Platform** | Built on PGlite (WASM PostgreSQL), it requires zero native compilation. Identical behavior on ARM64, x64, Linux, and macOS. |
 | **Open source** | AGPL‑3.0 – no lock‑in, no license tracking, no proprietary binaries. |
 | **Recursive** | Used to build itself – if it's good enough for its own development, it's good enough for yours. |

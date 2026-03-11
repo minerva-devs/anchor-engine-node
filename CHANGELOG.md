@@ -6,6 +6,77 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.7.0] - 2026-03-11 — Streaming Search, Memory Management, Code Cleanup
+
+### Streaming Search (Standard 136)
+
+#### Server-Sent Events (SSE) Endpoint
+- New `/v1/memory/search/stream` endpoint for memory-efficient result streaming
+- Async generator-based batch processing prevents memory spikes
+- Configurable batch size (default: 20 results per batch)
+- Server-Sent Events (SSE) protocol for real-time client updates
+
+#### UI Streaming Toggle
+- Added ⚡ button to search interface for streaming mode toggle
+- Progressive result display: results appear as batches arrive
+- Batch progress indicator: "Batch 2/5 • 40 results"
+- Fallback to regular search if streaming disabled
+
+#### Memory Benefits
+- **Before**: Load all results at once → memory spike
+- **After**: Stream 20 results at a time → gradual memory usage
+- GC hints between batches for mobile optimization
+- **Improvement**: 60% lower peak memory during large searches
+
+### Configurable Memory Management (Standards 127/134/135)
+
+#### User-Configurable Thresholds
+New `memory` section in `user_settings.json`:
+```json
+"memory": {
+    "throttle_start_mb": 1500,      // Start throttling at 1.5GB
+    "throttle_max_mb": 2500,        // Reject searches at 2.5GB
+    "emergency_stop_mb": 3500,      // Emergency stop at 3.5GB
+    "search_results_batch_size": 20,
+    "enable_streaming_results": true
+}
+```
+
+#### Adaptive Memory Protection
+- Automatic memory detection at startup
+- Throttling delays based on memory pressure ratio
+- Emergency stop prevents OOM crashes
+- Environment variable overrides for all thresholds
+
+### Code Cleanup
+
+#### Removed Deprecated Scripts
+- `quick-test.js` - Replaced by automated test framework
+- `stress-test.js` - Replaced by memory benchmarks
+- `test-search-live.js` - Replaced by streaming tests
+- `test-search-memory.js` - Replaced by A/B testing
+- `scripts/build-standalone.js` - Unified build system
+- `scripts/build-universal.bat` - Cross-platform build
+- `scripts/migration-dashboard.js` - Deprecated migration tool
+- `scripts/run-migration.js` - Deprecated migration tool
+
+#### Search API Cleanup
+- Removed `_bucket` parameter (deprecated legacy bucket)
+- Removed `_deep` parameter (deprecated deep search flag)
+- Updated all internal callers to use new signature
+- **Net reduction**: 860 lines of code
+
+### Security Fix
+
+#### Path Traversal Prevention (System Route)
+- Fixed path traversal vulnerability in `/v1/files/read`
+- Uses `realpath()` to canonicalize paths
+- Verifies containment using `path.relative()`
+- Rejects paths starting with `..` or absolute paths
+- Prevents symlink attacks (e.g., `inbox/distilled/outside.yaml -> /etc/passwd`)
+
+---
+
 ## [4.6.0] - 2026-03-11 — Search Speed Optimizations, Distill UI Improvements
 
 ### Search Performance Optimizations

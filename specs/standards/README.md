@@ -1,6 +1,6 @@
 # Architecture Standards Index
 
-**Last Updated:** March 10, 2026 | **Total Standards:** 93
+**Last Updated:** March 11, 2026 | **Total Standards:** 94
 
 ---
 
@@ -8,12 +8,19 @@
 
 These standards define the current production architecture:
 
+### v4.7.0 Standards (Streaming Search + Memory Management)
+
+| # | Standard | Description | Status |
+|---|----------|-------------|--------|
+| **136** | [Streaming Search](136-streaming-search.md) | Memory-efficient result streaming with Server-Sent Events | ✅ v1.0 |
+
 ### v4.5.5 Standards (Memory Optimization + Performance)
 
 | # | Standard | Description | Status |
 |---|----------|-------------|--------|
 | **135** | [Adaptive Concurrency Control](135-adaptive-concurrency-control.md) | Memory-aware processing modes (sequential/adaptive/parallel) | ✅ v1.0 |
-| **134** | [Mobile Search Optimization](134-mobile-search-optimization.md) | Memory-constrained retrieval for mobile/embedded devices | 🚧 DRAFT |
+| **134** | [Mobile Search Optimization](134-mobile-search-optimization.md) | Memory-constrained retrieval for mobile/embedded devices | ✅ v1.0 |
+| **127** | [PGlite Memory Optimization](127-pglite-memory-optimization.md) | Database-level memory management for PGlite | ✅ v1.0 |
 
 ### v4.5.4 Standards (Security Hardening + Test Coverage + Async I/O)
 
