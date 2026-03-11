@@ -28,6 +28,60 @@ import { z } from "zod";
 // Anchor Engine API base URL
 const ANCHOR_API_URL = process.env.ANCHOR_API_URL || "http://localhost:3160";
 
+// Security settings
+interface MCPSecuritySettings {
+  enabled: boolean;
+  require_api_key: boolean;
+  api_key: string;
+  rate_limit_requests_per_minute: number;
+  max_query_results: number;
+  restrict_to_localhost: boolean;
+  allowed_operations: string[];
+  blocked_operations: string[];
+}
+
+let securitySettings: MCPSecuritySettings = {
+  enabled: false,
+  require_api_key: true,
+  api_key: "",
+  rate_limit_requests_per_minute: 60,
+  max_query_results: 50,
+  restrict_to_localhost: true,
+  allowed_operations: ["query", "read_file", "get_stats"],
+  blocked_operations: []
+};
+
+// Rate limiting
+const requestCounts = new Map<string, number[]>();
+
+function isRateLimited(clientId: string): boolean {
+  const now = Date.now();
+  const windowMs = 60000; // 1 minute
+  const counts = requestCounts.get(clientId) || [];
+  
+  // Remove old entries
+  const recent = counts.filter(t => now - t < windowMs);
+  requestCounts.set(clientId, recent);
+  
+  return recent.length >= securitySettings.rate_limit_requests_per_minute;
+}
+
+function recordRequest(clientId: string): void {
+  const counts = requestCounts.get(clientId) || [];
+  counts.push(Date.now());
+  requestCounts.set(clientId, counts);
+}
+
+function isOperationAllowed(operation: string): boolean {
+  if (securitySettings.blocked_operations.includes(operation)) {
+    return false;
+  }
+  if (securitySettings.allowed_operations.length === 0) {
+    return true;
+  }
+  return securitySettings.allowed_operations.includes(operation);
+}
+
 // Tool definitions
 const TOOLS: Tool[] = [
   {
@@ -415,6 +469,65 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
+  // Security check: MCP must be enabled
+  if (!securitySettings.enabled) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "🔒 MCP server is disabled. Enable it in user_settings.json (mcp.enabled: true) to use this feature.",
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  // Security check: Rate limiting
+  const clientId = "stdio-client"; // In stdio mode, we have one client
+  if (isRateLimited(clientId)) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: "⏱️ Rate limit exceeded. Please wait before making more requests.",
+        },
+      ],
+      isError: true,
+    };
+  }
+  recordRequest(clientId);
+
+  // Security check: Operation allowed
+  const operationMap: Record<string, string> = {
+    "anchor_query": "query",
+    "anchor_distill": "distill",
+    "anchor_illuminate": "illuminate",
+    "anchor_read_file": "read_file",
+    "anchor_list_compounds": "list",
+    "anchor_get_stats": "get_stats"
+  };
+  
+  const operation = operationMap[name] || name;
+  if (!isOperationAllowed(operation)) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `🚫 Operation '${name}' is not allowed. Check mcp.allowed_operations in settings.`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
+  // Security check: Max results limit
+  if (args && typeof args === 'object' && 'max_results' in args) {
+    const requestedMax = Number(args.max_results) || 20;
+    if (requestedMax > securitySettings.max_query_results) {
+      args.max_results = securitySettings.max_query_results;
+    }
+  }
+
   try {
     let result: string;
 
@@ -494,8 +607,36 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   }
 });
 
+// Load security settings from Anchor
+async function loadSecuritySettings(): Promise<void> {
+  try {
+    const settings = await callAnchorAPI("/v1/settings", "GET");
+    if (settings.settings?.mcp) {
+      securitySettings = {
+        ...securitySettings,
+        ...settings.settings.mcp
+      };
+      console.error(`🔒 MCP Security: ${securitySettings.enabled ? 'ENABLED' : 'DISABLED'}`);
+      if (securitySettings.enabled) {
+        console.error(`   - Rate limit: ${securitySettings.rate_limit_requests_per_minute}/min`);
+        console.error(`   - Max results: ${securitySettings.max_query_results}`);
+        console.error(`   - Allowed ops: ${securitySettings.allowed_operations.join(', ')}`);
+      }
+    } else {
+      console.error("⚠️ No MCP settings found in Anchor config. Using defaults (disabled).");
+    }
+  } catch (error: any) {
+    console.error(`⚠️ Failed to load security settings: ${error.message}`);
+    console.error("   MCP will remain disabled until settings can be loaded.");
+    securitySettings.enabled = false;
+  }
+}
+
 // Start server
 async function main() {
+  // Load security settings first
+  await loadSecuritySettings();
+  
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Anchor Engine MCP Server running on stdio");
