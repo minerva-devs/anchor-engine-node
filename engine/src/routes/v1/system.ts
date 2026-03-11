@@ -290,15 +290,51 @@ export function setupSystemRoutes(app: Application) {
         res.status(400).json({ error: 'Path parameter required' });
         return;
       }
-      
-      // Security: only allow reading from inbox/distilled directory
-      if (!filePath.includes('distilled') || !filePath.endsWith('.yaml')) {
-        res.status(403).json({ error: 'Access denied' });
+
+      const fs = await import('fs');
+      const path = await import('path');
+
+      // Security: Canonicalize paths to prevent symlink traversal attacks
+      // Get realpath of base directory (inbox/distilled)
+      const baseDir = path.resolve(process.cwd(), 'inbox', 'distilled');
+      let realBaseDir: string;
+      try {
+        realBaseDir = await fs.promises.realpath(baseDir);
+      } catch {
+        res.status(500).json({ error: 'Base directory not accessible' });
         return;
       }
-      
-      const fs = await import('fs');
-      const content = await fs.promises.readFile(filePath, 'utf-8');
+
+      // Resolve and canonicalize requested path
+      const resolvedPath = path.resolve(filePath);
+      let realFilePath: string;
+      try {
+        realFilePath = await fs.promises.realpath(resolvedPath);
+      } catch {
+        res.status(404).json({ error: 'File not found' });
+        return;
+      }
+
+      // Verify file is within allowed directory using path.relative
+      const relativePath = path.relative(realBaseDir, realFilePath);
+      if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        res.status(403).json({ error: 'Access denied: file outside allowed directory' });
+        return;
+      }
+
+      // Additional checks: must end with .yaml and be a file
+      if (!realFilePath.endsWith('.yaml')) {
+        res.status(403).json({ error: 'Access denied: only .yaml files allowed' });
+        return;
+      }
+
+      const stats = await fs.promises.stat(realFilePath);
+      if (!stats.isFile()) {
+        res.status(403).json({ error: 'Access denied: not a regular file' });
+        return;
+      }
+
+      const content = await fs.promises.readFile(realFilePath, 'utf-8');
       res.json({
         status: 'success',
         path: filePath,
