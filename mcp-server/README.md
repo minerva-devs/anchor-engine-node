@@ -59,7 +59,7 @@ Add to `~/.cursor/mcp.json`:
 
 ### For Qwen Code / Quinn CLI
 
-Add to your Qwen config:
+Add to your Qwen config (usually `~/.config/qwen/mcp.json` or similar):
 
 ```json
 {
@@ -67,11 +67,29 @@ Add to your Qwen config:
     "anchor": {
       "type": "stdio",
       "command": "node",
-      "args": ["/path/to/anchor-engine-node/mcp-server/dist/index.js"],
+      "args": ["/data/data/com.termux/files/home/projects/anchor-engine-node/mcp-server/dist/index.js"],
       "env": {
         "ANCHOR_API_URL": "http://localhost:3160"
       }
     }
+  }
+}
+```
+
+Or in your `.qwen/settings.json`:
+
+```json
+{
+  "mcp": {
+    "servers": [
+      {
+        "name": "anchor",
+        "command": "node /data/data/com.termux/files/home/projects/anchor-engine-node/mcp-server/dist/index.js",
+        "env": {
+          "ANCHOR_API_URL": "http://localhost:3160"
+        }
+      }
+    ]
   }
 }
 ```
@@ -138,6 +156,51 @@ List available source files.
 ### `anchor_get_stats`
 
 Get system statistics.
+
+## 🔒 Security Configuration
+
+MCP is **disabled by default**. Enable it in `user_settings.json`:
+
+```json
+{
+  "mcp": {
+    "enabled": true,
+    "require_api_key": true,
+    "api_key": "your-secure-key-here",
+    "rate_limit_requests_per_minute": 60,
+    "max_query_results": 50,
+    "restrict_to_localhost": true,
+    "allowed_operations": ["query", "read_file", "get_stats"],
+    "blocked_operations": []
+  }
+}
+```
+
+### Security Features
+
+- **Toggle**: Enable/disable MCP entirely
+- **Rate limiting**: Configurable requests per minute
+- **Operation filtering**: Allow/block specific operations
+- **Result limits**: Cap max results returned
+- **Localhost restriction**: Only accept local connections
+
+### Recommended Security Setup
+
+For client data protection:
+
+```json
+{
+  "mcp": {
+    "enabled": false,  // Only enable when needed
+    "require_api_key": true,
+    "api_key": "<generate-random-key>",
+    "rate_limit_requests_per_minute": 30,
+    "max_query_results": 20,
+    "allowed_operations": ["query", "get_stats"],  // Restrict dangerous ops
+    "blocked_operations": ["distill", "illuminate"]
+  }
+}
+```
 
 ## Token-Efficient Workflow
 
