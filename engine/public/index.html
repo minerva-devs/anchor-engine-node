@@ -487,6 +487,7 @@
                         });
                         // Fetch the actual distilled content from the output file
                         let lines = [];
+                        let content = ''; // Declare content here for wider scope
                         try {
                             const outputPath = data.output?.path;
                             if (outputPath) {
@@ -494,7 +495,7 @@
                                 const fileRes = await fetch(`/v1/files/read?path=${encodeURIComponent(outputPath)}`);
                                 if (fileRes.ok) {
                                     const fileData = await fileRes.json();
-                                    const content = fileData.content || '';
+                                    content = fileData.content || '';
                                     
                                     // Parse COMPOUND format (markdown with <!-- Source: --> comments)
                                     // Split by source markers and extract content
