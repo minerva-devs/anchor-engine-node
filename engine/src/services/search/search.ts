@@ -46,6 +46,48 @@ export type { BrightNode, BrightNodeRelationship } from './bright-nodes.js';
 export { getBrightNodes, getStructuredGraph } from './bright-nodes.js';
 
 /**
+ * Lightweight semantic scoring for two-pass search (Standard 134)
+ * Scores candidates without expensive context inflation
+ */
+function calculateLightweightScore(
+  result: SearchResult,
+  queryTerms: string[],
+  query: string
+): number {
+  if (!result.content) return result.score || 0;
+
+  const content = result.content.toLowerCase();
+  const contentWords = new Set(content.split(/\s+/).filter(w => w.length > 2));
+
+  // Term overlap score (0-1)
+  let termMatches = 0;
+  for (const term of queryTerms) {
+    const termLower = term.toLowerCase();
+    if (content.includes(termLower)) termMatches++;
+  }
+  const termScore = queryTerms.length > 0 ? termMatches / queryTerms.length : 0;
+
+  // Exact phrase bonus
+  const phraseBonus = content.includes(query.toLowerCase()) ? 0.3 : 0;
+
+  // Tag relevance bonus
+  const tagBonus = result.tags && result.tags.length > 0
+    ? result.tags.filter(t => queryTerms.some(qt => t.toLowerCase().includes(qt.toLowerCase()))).length * 0.1
+    : 0;
+
+  // Recency bonus (newer = higher score, decay over 30 days)
+  let recencyBonus = 0;
+  if (result.timestamp) {
+    const ageDays = (Date.now() - result.timestamp) / (1000 * 60 * 60 * 24);
+    recencyBonus = Math.max(0, 0.2 * (1 - ageDays / 30));
+  }
+
+  // Combine scores (base score + term overlap + bonuses)
+  const baseScore = result.score || 0.5;
+  return Math.min(1.0, baseScore * 0.3 + termScore * 0.5 + phraseBonus + tagBonus + recencyBonus);
+}
+
+/**
  * Create or update an engram (lexical sidecar) for fast entity lookup
  */
 export async function createEngram(key: string, memoryIds: string[]): Promise<void> {
@@ -336,8 +378,23 @@ export async function findAnchors(
           async (term) => ContextInflator.inflateFromAtomPositions(term, 150, 20, undefined, { buckets, provenance })
         );
         let rawAtoms = inflations.flat();
-        atomResults.push(...rawAtoms);
-        console.log(`[Search] Atom search found ${rawAtoms.length} atoms for terms: ${terms.join(', ')}`);
+
+        // [Standard 134] Two-pass scoring: score candidates before expensive processing
+        // This avoids inflating low-quality candidates, saving memory and time
+        const scoredAtoms = rawAtoms.map(atom => ({
+          ...atom,
+          score: calculateLightweightScore(atom, terms, sanitizedQuery)
+        }));
+
+        // Sort by score and keep only top N (mobile: 5, desktop: 10 per term)
+        const isMobile = process.platform === 'android' || (await import('os')).totalmem() < 2 * 1024 * 1024 * 1024;
+        const maxResultsPerTerm = isMobile ? 5 : 10;
+        const topAtoms = scoredAtoms
+          .sort((a, b) => (b.score || 0) - (a.score || 0))
+          .slice(0, maxResultsPerTerm * terms.length);
+
+        atomResults.push(...topAtoms);
+        console.log(`[Search] Atom search found ${rawAtoms.length} atoms, kept top ${topAtoms.length} after scoring for terms: ${terms.join(', ')}`);
       } catch (e) {
         console.error(`[Search] Atom Search failed:`, e);
       }

@@ -502,7 +502,8 @@
                                             source: outputPath,
                                             tags: ['distilled'],
                                             score: 1.0,
-                                            _algo: '🧪 distill'
+                                            _algo: '🧪 distill',
+                                            _rawContent: content  // Store full content for copy
                                         }];
                                     }
                                 }
@@ -526,7 +527,8 @@
                             lines: lines,
                             timestamp: Date.now(),
                             stats: data.stats,
-                            output: data.output
+                            output: data.output,
+                            rawYaml: content  // Store full YAML for copy/download
                         });
                         data = { results: [summaryResult, ...lines] };
                     } else if (algo === 'illuminate') {
@@ -587,6 +589,22 @@
             const copyResultsAsYaml = async (resultsToCopy) => {
                 if (!resultsToCopy || resultsToCopy.length === 0) return;
 
+                // Check for distill results - use full YAML from cache if available
+                const isDistill = resultsToCopy.some(r => r._algo?.includes('distill'));
+                if (isDistill && cachedDistillSummary?.rawYaml) {
+                    try {
+                        await navigator.clipboard.writeText(cachedDistillSummary.rawYaml);
+                        setCopyFeedback(`✅ Copied full YAML! (~${Math.round(cachedDistillSummary.rawYaml.length/1024)}KB)`);
+                        setTimeout(() => setCopyFeedback(''), 3000);
+                        return;
+                    } catch (error) {
+                        setCopyFeedback('❌ Copy failed');
+                        setTimeout(() => setCopyFeedback(''), 2000);
+                        console.error('Failed to copy:', error);
+                        return;
+                    }
+                }
+
                 // Illuminate results are pre-budget-trimmed server-side — copy all of them.
                 // Search results use the token budget slider to cap and truncate.
                 const isIlluminate = resultsToCopy.some(r => r._algo?.includes('illuminate'));
@@ -606,7 +624,8 @@
                 try {
                     // Convert to YAML format (more compact than JSON)
                     const yamlContent = capped.map((result, index) => {
-                        const rawContent = result.content || '';
+                        // Use _rawContent if available (for distill fallback), otherwise use content
+                        const rawContent = result._rawContent || result.content || '';
                         const preview = (perResultBudget !== Infinity && rawContent.length > perResultBudget)
                             ? rawContent.slice(0, perResultBudget) + '…'
                             : rawContent;

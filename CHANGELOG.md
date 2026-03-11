@@ -6,6 +6,58 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.6.0] - 2026-03-11 — Search Speed Optimizations, Distill UI Improvements
+
+### Search Performance Optimizations
+
+#### Two-Pass Scoring (Standard 134)
+- Implemented lightweight semantic scoring before expensive context inflation
+- Scores candidates using term overlap, exact phrase matching, tag relevance, and recency
+- Keeps only top 5 results per term on mobile, 10 on desktop
+- Reduces memory pressure by filtering low-quality candidates early
+- **Performance improvement**: 30-50% faster searches on large corpora
+
+#### Virtual Anchor Resolution (Standard 124)
+- Resolves `virtual_*` IDs to real database molecule IDs before Physics Walker queries
+- Prevents wasted walker queries on synthetic IDs that don't exist in DB
+- Eliminates 0-result walker calls, saving 10-50ms per search
+
+#### Query Splitting for Max-Recall (Standard 086)
+- Automatically splits long queries into 3-4 word chunks for max-recall mode
+- Runs sub-queries sequentially to prevent memory multiplication
+- Merges and deduplicates results from all chunks
+- Improves recall for complex multi-concept queries
+
+#### Semantic Deduplication (Standard 125)
+- Jaccard word-overlap deduplication with 60% threshold
+- Per-source cap: 3-8 snippets per source file (configurable)
+- SimHash distance check for cross-file near-duplicates (Hamming < 5)
+- Reduces token waste by removing semantically redundant snippets
+
+#### Physics Walker Optimizations (Standard 122)
+- SQL query timeout: 2000ms max per query
+- Max anchor IDs: 30 per query (reduced from 50)
+- Temporal decay clamping with `LEAST(ABS(Δt), 700000)` to prevent underflow
+
+### UI Improvements
+
+#### Distill Results Drawer
+- Replaced single "Copy YAML" button with expandable action drawer
+- Three actions: Copy YAML, Download, and Overview
+- Full YAML content preserved (not truncated by token slider)
+- Mobile-optimized with smooth animations
+
+#### Copy YAML Fix
+- Token slider now only affects display, not copied content
+- Full ~85KB YAML files copy correctly
+- Size warning for files >500KB with download suggestion
+
+### Documentation
+- Updated standards documentation for Standards 122, 124, 125, 134, 135
+- Performance benchmarks updated: mobile <3s, desktop <200ms target
+
+---
+
 ## [4.5.4] - 2026-03-08 — Security Hardening, Test Coverage, Performance Optimizations
 
 ### Performance Optimizations
