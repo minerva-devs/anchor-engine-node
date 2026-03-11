@@ -45,7 +45,7 @@ export async function getBrightNodes(
     console.log(`[BrightNode] Illuminating graph for query: "${query}"`);
 
     // First, get relevant search results using the enhanced Tag-Walker (via executeSearch)
-    const { results: searchResults } = await executeSearch(query, undefined, buckets, maxNodes * config.SEARCH.fts_window_size, false, 'all');
+    const { results: searchResults } = await executeSearch(query, buckets, maxNodes * config.SEARCH.fts_window_size, 'all');
 
     if (searchResults.length === 0) {
         console.log('[BrightNode] No results found for query.');
