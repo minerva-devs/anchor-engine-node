@@ -261,41 +261,77 @@ import { assembleAndSerialize, assembleContextPackage } from './graph-context-se
 import { UserContext } from '../../types/context.js';
 
 // ---------------------------------------------------------------------------
-// Search serialization lock — only one search runs at a time to prevent
-// concurrent searches from doubling peak heap usage.
+// Search concurrency control — manages concurrent searches to prevent
+// excessive memory usage while allowing some parallelism.
 // ---------------------------------------------------------------------------
-// Fixed: Use simple boolean flag instead of promise chain to prevent memory leak
-let _searchLockHeld = false;
-let _searchLockWaiters: Array<() => void> = [];
+// Updated: Use configurable concurrency pool instead of single lock
+let _concurrentSearches = 0;
+const _maxConcurrentSearches = Math.max(1, Math.floor((config.ADAPTIVE_CONCURRENCY.MAX_CONCURRENCY || 5) / 2)); // Allow up to half of max concurrency for searches
+let _searchWaiters: Array<(release: () => void) => void> = [];
 
 function acquireSearchLock(): Promise<() => void> {
   return new Promise<() => void>((resolve) => {
-    if (!_searchLockHeld) {
-      // Lock is free, acquire it immediately
-      _searchLockHeld = true;
+    if (_concurrentSearches < _maxConcurrentSearches) {
+      // There's capacity, acquire immediately
+      _concurrentSearches++;
       resolve(() => {
-        _searchLockHeld = false;
+        _concurrentSearches--;
         // Release next waiter if any
-        const next = _searchLockWaiters.shift();
-        if (next) {
-          _searchLockHeld = true;
-          next();
+        if (_searchWaiters.length > 0 && _concurrentSearches < _maxConcurrentSearches) {
+          const nextWaiter = _searchWaiters.shift();
+          if (nextWaiter) {
+            _concurrentSearches++;
+            nextWaiter(() => {
+              _concurrentSearches--;
+              // Check if there are more waiters
+              if (_searchWaiters.length > 0 && _concurrentSearches < _maxConcurrentSearches) {
+                setImmediate(() => {
+                  // Process next waiter in a new event loop cycle
+                  const nextNextWaiter = _searchWaiters.shift();
+                  if (nextNextWaiter) {
+                    _concurrentSearches++;
+                    nextNextWaiter(() => {
+                      _concurrentSearches--;
+                      // Continue processing waiters if needed
+                      if (_searchWaiters.length > 0 && _concurrentSearches < _maxConcurrentSearches) {
+                        setImmediate(() => {
+                          // Schedule processing of remaining waiters
+                          processWaiters();
+                        });
+                      }
+                    });
+                  }
+                });
+              }
+            });
+          }
         }
       });
     } else {
-      // Lock is held, queue this waiter
-      _searchLockWaiters.push(() => {
-        resolve(() => {
-          _searchLockHeld = false;
-          const next = _searchLockWaiters.shift();
-          if (next) {
-            _searchLockHeld = true;
-            next();
-          }
-        });
+      // No capacity, add to waiters
+      _searchWaiters.push((release) => {
+        resolve(release);
       });
     }
   });
+}
+
+// Helper function to process waiters
+function processWaiters(): void {
+  while (_searchWaiters.length > 0 && _concurrentSearches < _maxConcurrentSearches) {
+    const nextWaiter = _searchWaiters.shift();
+    if (nextWaiter) {
+      _concurrentSearches++;
+      // Call the waiter with a release function
+      nextWaiter(() => {
+        _concurrentSearches--;
+        // Process more waiters if available and capacity allows
+        if (_searchWaiters.length > 0 && _concurrentSearches < _maxConcurrentSearches) {
+          setImmediate(processWaiters);
+        }
+      });
+    }
+  }
 }
 
 // Memory thresholds - loaded from user_settings.json with defaults

@@ -34,7 +34,7 @@ Instead of vectors, we use **graph traversal**. Instead of guessing, we give you
 | **Local‑first** | Runs entirely offline on your hardware. No API calls, no data leaving your machine. |
 | **Model‑agnostic** | Works with any LLM – local models, cloud APIs, or anything in between. |
 | **Lightweight** | <1GB RAM, runs on a Raspberry Pi or a $200 mini PC. |
-| **Streaming** | Memory-efficient result streaming prevents OOM on large searches. Results arrive progressively. |
+| **Streaming** | Memory-efficient result streaming prevents OOM on large searches. Results arrive progressively. Large file ingestion also streamed. |
 | **Cross-Platform** | Built on PGlite (WASM PostgreSQL), it requires zero native compilation. Identical behavior on ARM64, x64, Linux, and macOS. |
 | **Open source** | AGPL‑3.0 – no lock‑in, no license tracking, no proprietary binaries. |
 | **Recursive** | Used to build itself – if it's good enough for its own development, it's good enough for yours. |
@@ -202,6 +202,7 @@ Anchor Engine provides different endpoints for different needs. Here's a quick g
 | **🧭 Explore Routes** | Discover connections | "Show me books by this author + related authors" | `POST /v1/memory/explore` |
 | **📦 Distill Routes** | Compress knowledge | "Summarize all dragon lore across all books" | `POST /v1/memory/distill` |
 | **📥 Ingest Routes** | Add new content | "Add this new book to the library" | `POST /v1/ingest` |
+| **📥 Streaming Ingest Routes** | Add large content with progress tracking | "Add this huge book with progress" | `POST /v1/ingest/streaming` |
 | **📂 File Routes** | Read/upload files | "Read this specific book" | `GET /v1/files/read` |
 | **⚙️ System Routes** | Management | "Is the library open?" | `GET /v1/system/status` |
 | **🐙 Git Routes** | GitHub integration | "Import from GitHub" | `POST /v1/github/repos` |

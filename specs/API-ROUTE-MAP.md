@@ -10,6 +10,7 @@ Complete reference for Anchor Engine API endpoints.
 | **🧭 Explore Routes** | Discover connections | "Show me books by this author + related authors" | `/v1/memory/explore` |
 | **📦 Distill Routes** | Compress knowledge | "Summarize all dragon lore across all books" | `/v1/memory/distill` |
 | **📥 Ingest Routes** | Add new content | "Add this new book to the library" | `/v1/ingest` |
+| **📥 Streaming Ingest Routes** | Add large content with progress tracking | "Add this huge book with progress" | `/v1/ingest/streaming` |
 | **📂 File Routes** | Read/upload files | "Read this specific book" | `/v1/files/read` |
 | **⚙️ System Routes** | Management | "Is the library open?" | `/v1/system/status` |
 | **🐙 Git Routes** | GitHub integration | "Import from GitHub" | `/v1/github/repos` |
@@ -20,9 +21,10 @@ Complete reference for Anchor Engine API endpoints.
 **Need to...?** → **Use this route:**
 
 - Find specific content → `/v1/memory/search` (Standard 136: Streaming Search)
-- Explore connections → `/v1/memory/explore` (Standard 128: BFS Traversal) 
+- Explore connections → `/v1/memory/explore` (Standard 128: BFS Traversal)
 - Compress knowledge → `/v1/memory/distill` (Standard 133: Radial Distillation)
 - Add new content → `/v1/ingest` (Standard 115: Atomic Ingestion)
+- Add large content with progress tracking → `/v1/ingest/streaming` (Streaming Ingestion)
 - Read files → `/v1/files/read` (Standard 101: Byte Offset Protocol)
 - Monitor system → `/v1/system/*` (Standard 102: Centralized Config)
 - GitHub integration → `/v1/github/*` (Standard 115: GitHub Ingestion)
@@ -161,6 +163,37 @@ Complete reference for Anchor Engine API endpoints.
 ```
 
 **Schema:** `ingestSchema`
+
+---
+
+### `POST /v1/ingest/streaming`
+
+**Purpose:** Add large content with progress tracking and memory-efficient processing
+
+**Use when:** You have large files (>1MB) to index without memory issues
+
+**Request:**
+```json
+{
+  "content": "Large text content here...",
+  "source": "large_document.pdf",
+  "type": "pdf",
+  "bucket": "documents",
+  "tags": ["large_file", "pdf"],
+  "chunk_size": 1048576,  // 1MB chunks (optional)
+  "batch_size": 50        // Items per batch (optional)
+}
+```
+
+**Response:** Progress updates and final result
+
+**Schema:** `ingestSchema` (same as regular ingest)
+
+**Features:**
+- Processes large files in configurable chunks
+- Provides progress tracking via callbacks
+- Memory-efficient to prevent OOM errors
+- Automatically falls back to regular ingestion for smaller files
 
 ---
 

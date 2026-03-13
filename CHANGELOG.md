@@ -38,6 +38,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - GC hints between batches for mobile optimization
 - **Improvement**: 60% lower peak memory during large searches
 
+### Streaming Ingestion for Large Files
+
+#### New Streaming Ingestion Endpoint
+- New `/v1/ingest/streaming` endpoint for processing large files in chunks
+- Automatically processes files >1MB in configurable chunks (default: 1MB)
+- Provides progress tracking with callbacks for monitoring ingestion progress
+- Includes fallback to regular ingestion for smaller files (<1MB threshold)
+- Memory-efficient processing to prevent OOM errors with large files
+
+#### Performance Improvements
+- **Before**: Large files loaded entirely into memory before processing
+- **After**: Files processed in chunks to minimize memory footprint
+- Configurable chunk size and batch processing parameters
+- **Improvement**: Can now handle files of any size without memory issues
+
+### Enhanced Performance Monitoring
+
+#### New Performance Monitoring Service
+- **New:** `engine/src/services/monitoring/performance-monitor.ts` - Comprehensive system monitoring
+- Tracks memory usage (RSS, heap, percentage), CPU usage, system metrics
+- Monitors engine status (active searches, ingestions) and database connection
+- Configurable alert thresholds for memory and CPU usage
+- Historical metrics tracking with averaging capabilities
+- Automatic start-up integration in main application lifecycle
+
+#### Improved Concurrency Control
+- Enhanced search locking mechanism to allow configurable concurrent searches
+- Instead of single lock that serialized all searches, system now allows up to half of max concurrency
+- Queue system for when concurrency limit is reached
+- Better resource management for concurrent operations
+
 ### Configurable Memory Management (Standards 127/134/135)
 
 #### User-Configurable Thresholds

@@ -523,6 +523,21 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
+// Initialize Performance Monitor
+import { PerformanceMonitor } from './services/monitoring/performance-monitor.js';
+const perfMonitor = PerformanceMonitor.getInstance({
+  intervalMs: 10000, // Every 10 seconds
+  logLevel: 'info',
+  collectDetailedMetrics: true,
+  alertThresholds: {
+    memoryUsage: 80,
+    cpuUsage: 80,
+    responseTime: 5000
+  }
+});
+perfMonitor.start();
+StructuredLogger.info('PERFORMANCE_MONITOR', { message: '[PerformanceMonitor] Service initialized and started' });
+
 // Initialize Idle Manager for automatic memory cleanup during inactivity
 import { idleManager } from './services/idle-manager.js';
 StructuredLogger.info('IDLE_MANAGER', { message: '[IdleManager] Service initialized' });
