@@ -583,7 +583,7 @@ async function reassembleCompounds(
   } else if (request.output_format === 'compound') {
     outputPath = path.join(process.cwd(), 'mirrored_brain', 'distilled', `distilled_${timestamp}.md`);
   } else {
-    outputPath = path.join(process.cwd(), 'inbox', 'distilled', `distilled_${timestamp}.${request.output_format || 'yaml'}`);
+    outputPath = path.join(process.cwd(), 'distills', `distilled_${timestamp}.${request.output_format || 'yaml'}`);
   }
 
   // Ensure directory exists

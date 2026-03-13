@@ -32,6 +32,8 @@ models/
 *.pth
 
 # Code Dependencies
+distills/
+coverage/
 node_modules/
 dist/
 build/

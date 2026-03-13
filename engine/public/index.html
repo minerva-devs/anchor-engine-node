@@ -439,7 +439,7 @@
         };
 
         // Search Page
-        const SearchPage = () => {
+        const SearchPage = ({ stats }) => {
             const [query, setQuery] = useState('');
             const [results, setResults] = useState([]);
             const [loading, setLoading] = useState(false);
@@ -747,6 +747,17 @@
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Search Bar */}
                     <div className="p-3 sm:p-4 border-b border-white/10 space-y-3">
+                        {/* Live Database Stats */}
+                        <div className="flex items-center gap-4 text-xs font-mono text-gray-400 mb-1 px-1">
+                            <div className="flex items-center gap-1" title="Total atoms (atomic chunks of knowledge) in the database">
+                                <i data-lucide="database" width="12"></i>
+                                <span>{stats?.atoms?.toLocaleString() || 0} Atoms</span>
+                            </div>
+                            <div className="flex items-center gap-1" title="Total molecules (source files) in the database">
+                                <i data-lucide="file-text" width="12"></i>
+                                <span>{stats?.molecules?.toLocaleString() || 0} Molecules</span>
+                            </div>
+                        </div>
                         <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                             <input
                                 type="text"
@@ -1465,6 +1476,20 @@
                 setTimeout(() => setMessage(''), 4000);
             };
 
+            const clearDatabase = async () => {
+                if (!confirm('Are you sure you want to completely clear the database? This will stop the Watchdog and wipe all ingested data.')) return;
+                
+                setMessage('');
+                try {
+                    const result = await fetch('/v1/system/clear-db', { method: 'POST' }).then(r => r.json());
+                    await loadWatchdogStatus();
+                    setMessage(`✅ ${result.message || 'Database cleared'}`);
+                } catch (error) {
+                    setMessage('❌ Failed to clear database');
+                }
+                setTimeout(() => setMessage(''), 4000);
+            };
+
             if (loading) {
                 return (
                     <div className="flex-1 flex items-center justify-center">
@@ -1797,20 +1822,33 @@
                                 <i data-lucide="database"></i>
                                 Database
                             </h3>
-                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
-                                <div>
-                                    <p className="font-semibold">Wipe Index on Startup</p>
-                                    <p className="text-sm text-gray-400">
-                                        Standard 051: Ephemeral Index. Rebuild PGlite from mirrored_brain/ on each restart.
-                                        Disable for faster startup (risks stale data if inbox changed while stopped).
-                                    </p>
+                            <div className="flex flex-col gap-4">
+                                <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                                    <div>
+                                        <p className="font-semibold">Wipe Index on Startup</p>
+                                        <p className="text-sm text-gray-400">
+                                            Standard 051: Ephemeral Index. Rebuild PGlite from mirrored_brain/ on each restart.
+                                            Disable for faster startup (risks stale data if inbox changed while stopped).
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={settings?.database?.wipe_on_startup ?? true}
+                                        onChange={(e) => updateSetting('database', 'wipe_on_startup', e.target.checked)}
+                                        className="w-5 h-5 accent-red-500 flex-shrink-0 ml-4"
+                                    />
                                 </div>
-                                <input
-                                    type="checkbox"
-                                    checked={settings?.database?.wipe_on_startup ?? true}
-                                    onChange={(e) => updateSetting('database', 'wipe_on_startup', e.target.checked)}
-                                    className="w-5 h-5 accent-red-500 flex-shrink-0 ml-4"
-                                />
+                                <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-red-500/10 border border-red-500/30 rounded-lg gap-4">
+                                    <div>
+                                        <p className="font-semibold text-red-400">Danger Zone</p>
+                                        <p className="text-sm text-gray-400">
+                                            Stop the Watchdog and permanently delete all ingested data. You will need to re-trigger ingestion to rebuild the index.
+                                        </p>
+                                    </div>
+                                    <button onClick={clearDatabase} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors whitespace-nowrap">
+                                        Clear Database
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -1851,6 +1889,7 @@
             const [showResearch, setShowResearch] = useState(false);
             const [showGithub, setShowGithub] = useState(false);
             const [systemStatus, setSystemStatus] = useState({ isBusy: false, state: 'idle' });
+            const [stats, setStats] = useState({ atoms: 0, molecules: 0 });
             const [isDbEmpty, setIsDbEmpty] = useState(true);
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -1861,8 +1900,10 @@
                 const fetchAll = async () => {
                     try {
                         const statusRes = await fetch('/v1/system/status');
+                        let isBusy = false;
                         if (statusRes.ok) {
                             const statusData = await statusRes.json();
+                            isBusy = statusData.isBusy;
                             setSystemStatus(prev => {
                                 // Re-schedule when busy state changes
                                 if ((prev.isBusy) !== (statusData.isBusy)) {
@@ -1873,11 +1914,12 @@
                             });
                         }
 
-                        // Stats only need to refresh occasionally
+                        // When busy, we want to see live stats updates
                         const statsRes = await fetch('/v1/stats');
                         if (statsRes.ok) {
-                            const stats = await statsRes.json();
-                            setIsDbEmpty(!stats.atoms && !stats.molecules);
+                            const statsData = await statsRes.json();
+                            setStats(statsData);
+                            setIsDbEmpty(!statsData.atoms && !statsData.molecules);
                         }
                     } catch (error) {
                         // Silently fail - will retry on next interval
@@ -1950,11 +1992,11 @@
                         onOpenResearch={() => setShowResearch(true)}
                     />
                     <main className="flex-1 overflow-hidden">
-                        {route === '/search' && <SearchPage />}
+                        {route === '/search' && <SearchPage stats={stats} />}
                         {route === '/paths' && <PathsPage />}
                         {route === '/quarantine' && <QuarantinePage navigate={navigate} />}
                         {route === '/settings' && <SettingsPage navigate={navigate} />}
-                        {route === '/' && <SearchPage />}
+                        {route === '/' && <SearchPage stats={stats} />}
                     </main>
 
                     {/* Modals */}

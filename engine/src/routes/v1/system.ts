@@ -315,6 +315,21 @@ export function setupSystemRoutes(app: Application) {
     }
   });
 
+  // Clear DB endpoint
+  app.post('/v1/system/clear-db', async (_req: Request, res: Response) => {
+    try {
+      const { stopWatchdog } = await import('../../services/ingest/watchdog.js');
+      await stopWatchdog();
+      
+      const { db } = await import('../../core/db.js');
+      await db.run('TRUNCATE TABLE atoms, molecules, edges, sources, tags, compounds, engrams, atom_positions, summary_nodes, github_repos, synonyms CASCADE');
+      
+      res.json({ status: 'success', message: 'Database cleared and Watchdog stopped' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // File read endpoint for distilled content
   app.get('/v1/files/read', async (req: Request, res: Response) => {
     try {
@@ -328,8 +343,11 @@ export function setupSystemRoutes(app: Application) {
       const path = await import('path');
 
       // Security: Canonicalize paths to prevent symlink traversal attacks
-      // Get realpath of base directory (inbox/distilled)
-      const baseDir = path.resolve(process.cwd(), 'inbox', 'distilled');
+      // Get realpath of base directory (distills)
+      let baseDir = path.resolve(process.cwd(), 'distills');
+      if (!fs.existsSync(baseDir)) {
+          fs.mkdirSync(baseDir, { recursive: true });
+      }
       let realBaseDir: string;
       try {
         realBaseDir = await fs.promises.realpath(baseDir);
