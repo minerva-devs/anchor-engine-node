@@ -58,10 +58,18 @@ test-physics-db-*/
 # Temporary/User Specific
 codebase
 codebase/*
-external-inbox/*
-inbox/*
+external-inbox/
+external-inbox/**/*
+engine/inbox/
+engine/inbox/**/*
+scripts/external-inbox/
+scripts/external-inbox/**/*
+inbox/
+inbox/**/*
 notebook/
+notebook/**/*
 mirrored_brain/
+mirrored_brain/**/*
 user_settings.json
 context/
 
