@@ -231,3 +231,83 @@ export const researchWebSearchSchema = z.object({
 });
 
 export type ResearchWebSearchRequest = z.infer<typeof researchWebSearchSchema>;
+
+// ============================================
+// Atom Schemas
+// ============================================
+
+export const atomUpdateContentSchema = z.object({
+  content: z.string().min(1, "Content is required").max(10 * 1024 * 1024, "Content too large (max 10MB)")
+});
+
+export type AtomUpdateContentRequest = z.infer<typeof atomUpdateContentSchema>;
+
+// ============================================
+// Git Schemas
+// ============================================
+
+export const gitRunSchema = z.object({
+  command: z.enum([
+    'status',
+    'log --oneline -20',
+    'log --graph --oneline -15',
+    'diff',
+    'diff --cached',
+    'branch -a',
+    'remote -v'
+  ]),
+  working_dir: z.string().min(1, "Working directory is required")
+});
+
+export type GitRunRequest = z.infer<typeof gitRunSchema>;
+
+// ============================================
+// Research Schemas
+// ============================================
+
+export const researchGithubSchema = z.object({
+  repo: z.string().url("Repository URL must be valid").optional(),
+  url: z.string().url("Repository URL must be valid").optional(),
+  bucket: z.string().default('code'),
+  branch: z.string().default('main')
+}).refine(
+  (data) => data.repo || data.url,
+  { message: "Either 'repo' or 'url' field is required", path: ["repo"] }
+);
+
+export type ResearchGithubRequest = z.infer<typeof researchGithubSchema>;
+
+// ============================================
+// System Schemas
+// ============================================
+
+export const systemPathSchema = z.object({
+  path: z.string().min(1, "Path is required")
+});
+
+export type SystemPathRequest = z.infer<typeof systemPathSchema>;
+
+// ============================================
+// Graph Schemas
+// ============================================
+
+export const graphDataSchema = z.object({
+  query: z.string().min(1, "Query is required"),
+  limit: z.number().int().positive().max(100).default(20)
+});
+
+export type GraphDataRequest = z.infer<typeof graphDataSchema>;
+
+// ============================================
+// Extended Search Schemas (for legacy params)
+// ============================================
+
+export const extendedSearchSchema = searchSchema.extend({
+  strategy: z.enum(['standard', 'max-recall']).default('standard'),
+  batch_size: z.number().int().positive().max(100).default(20),
+  bucket: z.string().optional(),  // Legacy param
+  tags: z.array(z.string()).default([]),
+  provenance: z.enum(['internal', 'external', 'all', 'quarantine']).default('all')
+});
+
+export type ExtendedSearchRequest = z.infer<typeof extendedSearchSchema>;

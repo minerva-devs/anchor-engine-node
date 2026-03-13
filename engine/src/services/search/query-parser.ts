@@ -76,13 +76,23 @@ export async function expandQuery(originalQuery: string): Promise<string[]> {
 
 /**
  * Helper to sanitize queries for FTS engine
+ * Properly escapes special characters to prevent SQL injection
  */
 export function sanitizeFtsQuery(query: string): string {
-    return query
-        .replace(/[^a-zA-Z0-9\s]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .toLowerCase();
+    // First, remove any existing escape sequences to prevent double-encoding
+    let cleanQuery = query.replace(/\\/g, '');
+    
+    // Remove special characters that could be used for SQL injection
+    // Allow only alphanumeric characters, spaces, and basic punctuation
+    cleanQuery = cleanQuery
+        .replace(/[^\w\s\-'"().,!?:;]/g, ' ')  // Remove dangerous characters
+        .replace(/\s+/g, ' ')  // Normalize whitespace
+        .trim();
+    
+    // Escape any remaining single quotes to prevent quote-based injection
+    cleanQuery = cleanQuery.replace(/'/g, "''");
+    
+    return cleanQuery.toLowerCase();
 }
 
 /**

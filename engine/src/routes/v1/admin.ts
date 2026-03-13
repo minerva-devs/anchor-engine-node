@@ -1,7 +1,7 @@
 import { Application, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../../core/db.js';
-import { terminalExecSchema } from '../../schemas/api-schemas.js';
+import { terminalExecSchema, graphDataSchema } from '../../schemas/api-schemas.js';
 
 export function setupAdminRoutes(app: Application) {
   // Terminal Command Execution Endpoint
@@ -224,8 +224,20 @@ export function setupAdminRoutes(app: Application) {
 
   // Graph Data Endpoint for Context Visualization
   app.post('/v1/graph/data', async (req: Request, res: Response) => {
+    // Validate request body with Zod
+    const validation = graphDataSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid graph data request',
+        details: validation.error.issues.map((e: any) => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+
     try {
-      const { query, limit = 20 } = req.body;
+      const { query, limit = 20 } = validation.data;
 
       if (!query) {
         return res.status(400).json({ error: 'Query is required' });

@@ -23,6 +23,7 @@ import { Timer } from '../../utils/timer.js';
 import { systemStatus } from '../system-status.js';
 import { processWithAdaptiveConcurrency } from '../../utils/adaptive-concurrency.js';
 import { sanitizeTagsForWrite } from '../../utils/tag-sanitizer.js';
+import { StructuredLogger } from '../../utils/structured-logger.js';
 
 // --- Imports from extracted modules ---
 import {
@@ -343,7 +344,12 @@ async function throttleSearchForMemory(): Promise<{ proceed: boolean; delayMs: n
   if (heapMB >= thresholds.THROTTLE_START_MB) {
     const pressureRatio = (heapMB - thresholds.THROTTLE_START_MB) / (thresholds.THROTTLE_MAX_MB - thresholds.THROTTLE_START_MB);
     const delayMs = Math.round(pressureRatio * 10000); // Up to 10 second delay
-    console.log(`[Throttle] Heap at ${heapMB}MB. Delaying search by ${delayMs}ms (pressure: ${(pressureRatio * 100).toFixed(0)}%)`);
+    StructuredLogger.info('THROTTLE', { 
+      message: `[Throttle] Heap at ${heapMB}MB. Delaying search by ${delayMs}ms (pressure: ${(pressureRatio * 100).toFixed(0)}%)`,
+      heapMB,
+      delayMs,
+      pressureRatio: pressureRatio * 100
+    });
     await new Promise(resolve => setTimeout(resolve, delayMs));
     return { proceed: true, delayMs, reason: `Throttled (${heapMB}MB)` };
   }
@@ -374,7 +380,11 @@ export async function findAnchors(
     const avgTokensPerAtom = 60; // Tuned for better density
     const targetAtomCount = Math.max(10, Math.ceil(tokenBudget / avgTokensPerAtom));
 
-    console.log(`[Search] Dynamic Scaling: Budget=${tokenBudget}t -> Target=${targetAtomCount} atoms`);
+    StructuredLogger.info('SEARCH_SCALING', { 
+      message: `[Search] Dynamic Scaling: Budget=${tokenBudget}t -> Target=${targetAtomCount} atoms`,
+      tokenBudget,
+      targetAtomCount
+    });
 
     // Construct Query String for FTS
     // Use OR ( | ) by default so multi-word queries find documents containing
@@ -440,7 +450,12 @@ export async function findAnchors(
           .slice(0, maxResultsPerTerm * terms.length);
 
         atomResults.push(...topAtoms);
-        console.log(`[Search] Atom search found ${rawAtoms.length} atoms, kept top ${topAtoms.length} after scoring for terms: ${terms.join(', ')}`);
+        StructuredLogger.info('ATOM_SEARCH', { 
+          message: `[Search] Atom search found ${rawAtoms.length} atoms, kept top ${topAtoms.length} after scoring for terms: ${terms.join(', ')}`,
+          rawAtomsCount: rawAtoms.length,
+          topAtomsCount: topAtoms.length,
+          terms: terms.join(', ')
+        });
       } catch (e) {
         console.error(`[Search] Atom Search failed:`, e);
       }
@@ -487,7 +502,9 @@ export async function findAnchors(
 
       // Strategy 1.1: If AND fails and query has multiple terms, retry with OR (Fuzzy Fallback)
       if (molResult.rows.length === 0 && tsQueryString.includes('&')) {
-        console.log('[Search] Initial AND query yielded 0 results. Retrying with OR-fuzzy logic...');
+        StructuredLogger.info('SEARCH_RETRY', { 
+        message: '[Search] Initial AND query yielded 0 results. Retrying with OR-fuzzy logic...'
+      });
 
         // To prevent massive Cartesian product explosions in SQL, we limit the OR fallback
         // to the top 8 longest words (which are statistically more likely to be unique/important).
@@ -498,7 +515,10 @@ export async function findAnchors(
 
         if (topTerms.length > 0) {
           const orQueryString = topTerms.join(' | ');
-          console.log(`[Search] OR-fuzzy fallback using terms: ${orQueryString}`);
+          StructuredLogger.info('SEARCH_FALLBACK', { 
+            message: `[Search] OR-fuzzy fallback using terms: ${orQueryString}`,
+            queryString: orQueryString
+          });
           const orQuery = moleculeQuery.replace(/\$1/g, '$1'); // Keep same param index
           const orParams = [orQueryString, ...moleculeParams.slice(1)];
           molResult = await db.run(orQuery, orParams);
@@ -743,9 +763,19 @@ export async function findAnchors(
 
       const originalCount = anchors.length;
       anchors = distinctAnchors;
-      console.log(`[Search] Final Dedup: ${originalCount} -> ${anchors.length} items. Removed ${originalCount - anchors.length} duplicates.`);
+      StructuredLogger.info('SEARCH_DEDUPLICATION', { 
+        message: `[Search] Final Dedup: ${originalCount} -> ${anchors.length} items. Removed ${originalCount - anchors.length} duplicates.`,
+        originalCount,
+        finalCount: anchors.length,
+        removedCount: originalCount - anchors.length
+      });
 
-      console.log(`[Search] Anchors found: ${atomResults.length} Atoms, ${molecules.length} Molecules. Final Unique: ${anchors.length}`);
+      StructuredLogger.info('SEARCH_ANCHORS', { 
+        message: `[Search] Anchors found: ${atomResults.length} Atoms, ${molecules.length} Molecules. Final Unique: ${anchors.length}`,
+        atomResultsCount: atomResults.length,
+        moleculesCount: molecules.length,
+        uniqueCount: anchors.length
+      });
 
     } catch (e) {
       console.error('[Search] Molecule search failed:', e);
@@ -818,7 +848,10 @@ export async function executeSearch(
   useMaxRecall: boolean = false,
   userContext?: UserContext
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
-  console.log(`[Search] executeSearch (Physics Engine V2) called with provenance: ${provenance}`);
+  StructuredLogger.info('SEARCH_EXECUTION', { 
+    message: `[Search] executeSearch (Physics Engine V2) called with provenance: ${provenance}`,
+    provenance
+  });
   const startTime = Date.now();
 
   // Serialize searches — only one at a time to keep peak heap predictable.
@@ -871,7 +904,10 @@ async function _executeSearchInternal(
     const maxWaitMs = 180_000; // 3 minutes
     const pollMs = 1_000;
     let waited = 0;
-    console.log(`[Search] System busy (${status.state}), waiting for idle before proceeding...`);
+    StructuredLogger.info('SEARCH_WAIT', { 
+      message: `[Search] System busy (${status.state}), waiting for idle before proceeding...`,
+      state: status.state
+    });
     while (systemStatus.getStatus().isBusy && waited < maxWaitMs) {
       await new Promise(r => setTimeout(r, pollMs));
       waited += pollMs;
@@ -879,14 +915,20 @@ async function _executeSearchInternal(
     if (systemStatus.getStatus().isBusy) {
       console.warn(`[Search] System still busy after ${waited}ms, proceeding with risk.`);
     } else {
-      console.log(`[Search] System became idle after ${waited}ms, proceeding with search.`);
+      StructuredLogger.info('SEARCH_RESUME', { 
+        message: `[Search] System became idle after ${waited}ms, proceeding with search.`,
+        waited
+      });
     }
   }
 
   // 1. Parse & Prepare
   const cleanQuery = query; // Simplified for now, real NLP parsing happens in findAnchors/query-parser calls if needed
   const realBuckets = new Set(buckets || []);
-  if (explicitTags.length > 0) console.log(`[Search] Explicit tags: ${explicitTags.join(', ')}`);
+  if (explicitTags.length > 0) StructuredLogger.info('SEARCH_TAGS', { 
+    message: `[Search] Explicit tags: ${explicitTags.join(', ')}`,
+    tags: explicitTags.join(', ')
+  });
 
   // 2. Find Anchors (Planets)
   // Combine Engram Lookup + FTS + Molecule Search
@@ -896,7 +938,10 @@ async function _executeSearchInternal(
 
   // Tag-Aware Fallback (if low precision/recall on initial anchors)
   if (primaryAnchors.length < 5) {
-    console.log(`[Search] Low recall (${primaryAnchors.length} anchors). Attempting Tag-Aware Fallback.`);
+    StructuredLogger.info('SEARCH_FALLBACK', { 
+      message: `[Search] Low recall (${primaryAnchors.length} anchors). Attempting Tag-Aware Fallback.`,
+      anchorCount: primaryAnchors.length
+    });
     const words = cleanQuery.split(/[\s,]+/);
     // Very naive tag extraction: words > 4 chars, capitalize or check if exists in a tag format.
     // Usually, users type things like "graph nodes consciousness". We can try to use these as tags via LIKE query.
@@ -1026,12 +1071,20 @@ async function _executeSearchInternal(
         0.2,                         // temperature
         0.001                        // gravityThreshold (lowered from 0.005 for sparser graphs)
       );
-      console.log(`[Search] PhysicsTagWalker found ${walkerResults.length} associations`);
+      StructuredLogger.info('PHYSICS_WALKER', { 
+        message: `[Search] PhysicsTagWalker found ${walkerResults.length} associations`,
+        associationCount: walkerResults.length
+      });
     } else {
-      console.log(`[Search] No valid anchor IDs for Physics Walker`);
+      StructuredLogger.info('PHYSICS_WALKER', { 
+      message: `[Search] No valid anchor IDs for Physics Walker`
+    });
     }
   } catch (e: any) {
-    console.log(`[Search] Physics Walker failed, skipping: ${e.message}`);
+    StructuredLogger.warn('PHYSICS_WALKER', { 
+      message: `[Search] Physics Walker failed, skipping: ${e.message}`,
+      error: e.message
+    });
     walkerResults = [];
   }
 
@@ -1061,7 +1114,10 @@ async function _executeSearchInternal(
     charBudget: maxChars
   });
 
-  console.log(`[Search] Search completed in ${Date.now() - startTime}ms`);
+  StructuredLogger.info('SEARCH_COMPLETED', { 
+    message: `[Search] Search completed in ${Date.now() - startTime}ms`,
+    duration: Date.now() - startTime
+  });
 
   // Map back to SearchResult[] for legacy API compatibility
   // Combine Anchors + Walker Results, sorted by score desc
@@ -1094,7 +1150,11 @@ async function _executeSearchInternal(
   const enableCoalescing = maxChars > 16000; // Only coalesce for budgets > 16k chars
   const proximityThreshold = maxChars > 100000 ? 800 : 500; // Larger threshold for max-recall
 
-  console.log(`[Search] Coalescing: ${enableCoalescing ? 'enabled' : 'disabled'} (threshold: ${proximityThreshold}px)`);
+  StructuredLogger.info('SEARCH_COALESCING', { 
+    message: `[Search] Coalescing: ${enableCoalescing ? 'enabled' : 'disabled'} (threshold: ${proximityThreshold}px)`,
+    enabled: enableCoalescing,
+    threshold: proximityThreshold
+  });
 
   const formatted = await formatResults(cappedResults, maxChars, {
     enableCoalescing,
@@ -1130,14 +1190,23 @@ export async function executeMoleculeSearch(
 
   // Split the query into molecules (sentence-like chunks)
   const molecules = splitQueryIntoMolecules(query);
-  console.log(`[MoleculeSearch] Split query into ${molecules.length} molecules:`, molecules);
+  StructuredLogger.info('MOLECULE_SEARCH', { 
+    message: `[MoleculeSearch] Split query into ${molecules.length} molecules`,
+    moleculeCount: molecules.length,
+    molecules
+  });
 
   // Search each molecule separately
   const allResults: SearchResult[] = [];
   const includedIds = new Set<string>();
 
   for (const [index, molecule] of molecules.entries()) {
-    console.log(`[MoleculeSearch] Searching molecule ${index + 1}/${molecules.length}: "${molecule}"`);
+    StructuredLogger.info('MOLECULE_SEARCH_PROGRESS', { 
+      message: `[MoleculeSearch] Searching molecule ${index + 1}/${molecules.length}: "${molecule}"`,
+      currentIndex: index + 1,
+      totalCount: molecules.length,
+      molecule
+    });
 
     try {
       // Execute search for this specific molecule
@@ -1168,7 +1237,11 @@ export async function executeMoleculeSearch(
   // Sort results by score
   allResults.sort((a, b) => b.score - a.score);
 
-  console.log(`[MoleculeSearch] Combined results from ${molecules.length} molecules: ${allResults.length} total results`);
+  StructuredLogger.info('MOLECULE_SEARCH_COMPLETION', { 
+    message: `[MoleculeSearch] Combined results from ${molecules.length} molecules: ${allResults.length} total results`,
+    moleculeCount: molecules.length,
+    resultCount: allResults.length
+  });
 
   return await formatResults(allResults, maxChars); // Use original maxChars to maintain token budget
 }
@@ -1274,12 +1347,16 @@ export async function iterativeSearch(
   const tagsString = scopeTags.join(' ');
 
   // Strategy 1: Standard Expanded Search (All Nouns, Verbs, Dates + Expansion)
-  console.log(`[IterativeSearch] Strategy 1: Standard Execution`);
+  StructuredLogger.info('ITERATIVE_SEARCH', { 
+    message: `[IterativeSearch] Strategy 1: Standard Execution`
+  });
   let results = await executeSearch(query, buckets, maxChars, provenance, tags, undefined, useMaxRecall, userContext);
   if (results.results.length > 0) return { ...results, attempt: 1 };
 
   // Strategy 2: Strict "Subjects & Time" (Strip Verbs/Adjectives, keep Nouns + Dates)
-  console.log(`[IterativeSearch] Strategy 2: Strict Nouns/Dates`);
+  StructuredLogger.info('ITERATIVE_SEARCH', { 
+    message: `[IterativeSearch] Strategy 2: Strict Nouns/Dates`
+  });
   const temporalContext = extractTemporalContext(query);
   const doc = nlp.readDoc(query);
   const nouns = doc.tokens().filter((t: any) => {
@@ -1291,7 +1368,9 @@ export async function iterativeSearch(
   if (uniqueTokens.size > 0) {
     // Re-inject scope tags
     const strictQuery = Array.from(uniqueTokens).join(' ') + ' ' + tagsString;
-    console.log(`[IterativeSearch] Fallback Query 1: "${strictQuery.trim()}"`);
+    StructuredLogger.info('ITERATIVE_SEARCH_FALLBACK', { 
+      message: `[IterativeSearch] Fallback Query 1: "${strictQuery.trim()}"`
+    });
     results = await executeSearch(strictQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
     if (results.results.length > 0) return { ...results, attempt: 2 };
   }
@@ -1305,7 +1384,9 @@ export async function iterativeSearch(
   const entityQuery = [...new Set([...propNouns, ...temporalContext])].join(' ') + ' ' + tagsString;
 
   if (entityQuery.trim().length > 0 && entityQuery.trim() !== (Array.from(uniqueTokens).join(' ') + ' ' + tagsString).trim()) {
-    console.log(`[IterativeSearch] Fallback Query 2: "${entityQuery.trim()}"`);
+    StructuredLogger.info('ITERATIVE_SEARCH_FALLBACK', { 
+      message: `[IterativeSearch] Fallback Query 2: "${entityQuery.trim()}"`
+    });
     results = await executeSearch(entityQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
     if (results.results.length > 0) return { ...results, attempt: 3 };
   }
@@ -1353,7 +1434,9 @@ export async function smartChatSearch(
     }
   }
 
-  console.log(`[SmartSearch] Triggering Multi-Query Split...`);
+  StructuredLogger.info('SMART_SEARCH_SPLIT', { 
+    message: `[SmartSearch] Triggering Multi-Query Split...`
+  });
 
   // 2. Extract Entities for Split Search
   let splitQueries: string[] = [];
@@ -1394,7 +1477,10 @@ export async function smartChatSearch(
     return { ...initial, strategy: 'shallow', splitQueries: [] };
   }
 
-  console.log(`[SmartSearch] Split Entities/Chunks: ${JSON.stringify(splitQueries)}`);
+  StructuredLogger.info('SMART_SEARCH_SPLIT', { 
+    message: `[SmartSearch] Split Entities/Chunks: ${JSON.stringify(splitQueries)}`,
+    splitQueries: JSON.stringify(splitQueries)
+  });
 
   // 3. Sequential Execution
   // Run each split sub-query one at a time to prevent concurrent heap exhaustion.
@@ -1425,14 +1511,22 @@ export async function smartChatSearch(
   });
 
   const mergedResults = Array.from(mergedMap.values());
-  console.log(`[SmartSearch] Merged Total: ${mergedResults.length} atoms.`);
+  StructuredLogger.info('SMART_SEARCH_MERGE', { 
+    message: `[SmartSearch] Merged Total: ${mergedResults.length} atoms.`,
+    atomCount: mergedResults.length
+  });
 
   // 4.5. Context Inflation — Expand each atom with surrounding context (n-1, n+1)
   // For max-recall searches, read full context from disk to fill the budget
   if (useMaxRecall && mergedResults.length > 0) {
     // Calculate per-atom budget to fill ~90% of total budget
     const budgetPerAtom = Math.floor(maxChars * 0.9 / mergedResults.length);
-    console.log(`[SmartSearch] Inflating ${mergedResults.length} atoms with ${budgetPerAtom} chars each (total budget: ${maxChars})...`);
+    StructuredLogger.info('SMART_SEARCH_INFLATION', { 
+      message: `[SmartSearch] Inflating ${mergedResults.length} atoms with ${budgetPerAtom} chars each (total budget: ${maxChars})...`,
+      atomCount: mergedResults.length,
+      budgetPerAtom,
+      totalBudget: maxChars
+    });
 
     const inflatedResults = await ContextInflator.inflate(
       mergedResults,
@@ -1445,7 +1539,11 @@ export async function smartChatSearch(
     mergedResults.push(...inflatedResults);
 
     const avgChars = Math.round(inflatedResults.reduce((sum, a) => sum + a.content.length, 0) / inflatedResults.length);
-    console.log(`[SmartSearch] Inflation complete: ${inflatedResults.length} atoms with avg ${avgChars} chars each`);
+    StructuredLogger.info('SMART_SEARCH_INFLATION_COMPLETE', { 
+      message: `[SmartSearch] Inflation complete: ${inflatedResults.length} atoms with avg ${avgChars} chars each`,
+      atomCount: inflatedResults.length,
+      avgChars
+    });
   }
 
   // 5. Re-Format using GCP (Standard 086)

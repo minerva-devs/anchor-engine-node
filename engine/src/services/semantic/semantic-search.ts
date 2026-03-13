@@ -210,7 +210,9 @@ export async function executeSemanticSearch(
       }
 
       // Calculate semantic relevance score using actual content
-      let semanticScore = calculateSemanticScore(contentForScoring, queryEntities, searchTerms, entityPairs);
+      // Skip scoring if content is empty to avoid meaningless scores
+      let semanticScore = contentForScoring && contentForScoring.trim() ? 
+        calculateSemanticScore(contentForScoring, queryEntities, searchTerms, entityPairs) : 0;
 
       // Calculate Vector Score
       let vectorScore = 0;

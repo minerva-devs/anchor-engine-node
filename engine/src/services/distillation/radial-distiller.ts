@@ -664,6 +664,25 @@ async function reassembleCompounds(
     }
   }
 
+  // If export_to_inbox is true, copy the output to the inbox/distilled folder
+  if (request.export_to_inbox) {
+    const inboxDistilledDir = path.join(process.cwd(), 'inbox', 'distilled');
+    if (!fs.existsSync(inboxDistilledDir)) {
+      fs.mkdirSync(inboxDistilledDir, { recursive: true });
+    }
+    
+    const fileName = path.basename(outputPath);
+    const inboxOutputPath = path.join(inboxDistilledDir, fileName);
+    
+    // Copy the file to inbox/distilled
+    fs.copyFileSync(outputPath, inboxOutputPath);
+    StructuredLogger.info('DISTILL_EXPORT_TO_INBOX', {
+      source: outputPath,
+      destination: inboxOutputPath,
+      size_bytes: fs.statSync(outputPath).size
+    });
+  }
+
   const stats = fs.statSync(outputPath);
 
   StructuredLogger.info('DISTILL_REASSEMBLE_COMPLETE', {

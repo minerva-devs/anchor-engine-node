@@ -192,6 +192,23 @@ Anchor Engine is built with rigorous architecture standards to ensure predictabi
 - [API Reference](docs/api.md) – all endpoints
 - [Standards](specs/standards/) – detailed design documents
 
+## 📚 API Route Categories
+
+Anchor Engine provides different endpoints for different needs. Here's a quick guide:
+
+| Category | Purpose | Library Analogy | Example |
+|----------|---------|-----------------|---------|
+| **🔍 Search Routes** | Find specific content | "Find books about dragons" | `POST /v1/memory/search` |
+| **🧭 Explore Routes** | Discover connections | "Show me books by this author + related authors" | `POST /v1/memory/explore` |
+| **📦 Distill Routes** | Compress knowledge | "Summarize all dragon lore across all books" | `POST /v1/memory/distill` |
+| **📥 Ingest Routes** | Add new content | "Add this new book to the library" | `POST /v1/ingest` |
+| **📂 File Routes** | Read/upload files | "Read this specific book" | `GET /v1/files/read` |
+| **⚙️ System Routes** | Management | "Is the library open?" | `GET /v1/system/status` |
+| **🐙 Git Routes** | GitHub integration | "Import from GitHub" | `POST /v1/github/repos` |
+| **🛡️ Admin Routes** | Security tools | "Admin panel" | `POST /v1/terminal/exec` |
+
+**Complete API Reference:** See [specs/API-ROUTE-MAP.md](specs/API-ROUTE-MAP.md) for detailed documentation of all routes, schemas, and usage examples.
+
 ---
 
 ## Community & Feedback

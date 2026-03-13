@@ -1,6 +1,8 @@
 import { Application, Request, Response } from 'express';
+import { z } from 'zod';
 import { db } from '../../core/db.js';
 import { getState, clearState } from '../../services/scribe/scribe.js';
+import { systemPathSchema } from '../../schemas/api-schemas.js';
 
 export function setupSystemRoutes(app: Application) {
   // GET /v1/stats - System statistics (anchor_stats tool)
@@ -107,12 +109,20 @@ export function setupSystemRoutes(app: Application) {
 
   // POST /v1/system/paths - Add a new path to watch
   app.post('/v1/system/paths', async (req: Request, res: Response) => {
+    // Validate request body with Zod
+    const validation = systemPathSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid system path request',
+        details: validation.error.issues.map(e => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+
     try {
-      const { path } = req.body;
-      if (!path) {
-        res.status(400).json({ error: 'Path is required' });
-        return;
-      }
+      const { path } = validation.data;
 
       const { addWatchPath } = await import('../../services/ingest/watchdog.js');
       const success = await addWatchPath(path);
@@ -130,12 +140,20 @@ export function setupSystemRoutes(app: Application) {
 
   // DELETE /v1/system/paths - Remove a watched path
   app.delete('/v1/system/paths', async (req: Request, res: Response) => {
+    // Validate request body with Zod
+    const validation = systemPathSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid system path request',
+        details: validation.error.issues.map(e => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+
     try {
-      const { path } = req.body;
-      if (!path) {
-        res.status(400).json({ error: 'Path is required' });
-        return;
-      }
+      const { path } = validation.data;
 
       const { removeWatchPath } = await import('../../services/ingest/watchdog.js');
       const success = await removeWatchPath(path);
@@ -153,12 +171,20 @@ export function setupSystemRoutes(app: Application) {
 
   // POST /v1/system/explorer - Open file explorer at specified path
   app.post('/v1/system/explorer', async (req: Request, res: Response) => {
+    // Validate request body with Zod
+    const validation = systemPathSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid system explorer request',
+        details: validation.error.issues.map(e => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+
     try {
-      const { path } = req.body;
-      if (!path) {
-        res.status(400).json({ error: 'Path is required' });
-        return;
-      }
+      const { path } = validation.data;
 
       const { execFile } = await import('child_process');
       const util = await import('util');
@@ -338,6 +364,15 @@ export function setupSystemRoutes(app: Application) {
       const stats = await fs.promises.stat(realFilePath);
       if (!stats.isFile()) {
         res.status(403).json({ error: 'Access denied: not a regular file' });
+        return;
+      }
+
+      // Additional security check: ensure the file is under the expected directory
+      const normalizedRealPath = path.normalize(realFilePath);
+      const normalizedBaseDir = path.normalize(realBaseDir);
+      
+      if (!normalizedRealPath.startsWith(normalizedBaseDir)) {
+        res.status(403).json({ error: 'Access denied: file outside allowed directory' });
         return;
       }
 

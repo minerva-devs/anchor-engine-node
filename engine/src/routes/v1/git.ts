@@ -1,6 +1,6 @@
 import { Application, Request, Response } from 'express';
 import { z } from 'zod';
-import { githubRepoSchema } from '../../schemas/api-schemas.js';
+import { githubRepoSchema, gitRunSchema } from '../../schemas/api-schemas.js';
 
 export function setupGitRoutes(app: Application) {
   // GitHub Repository Ingestion Endpoints (Standard 115)
@@ -291,12 +291,20 @@ export function setupGitRoutes(app: Application) {
 
   // POST /v1/git/run - Execute git command
   app.post('/v1/git/run', async (req: Request, res: Response) => {
-    try {
-      const { command, working_dir } = req.body;
+    // Validate request body with Zod
+    const validation = gitRunSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid git command request',
+        details: validation.error.issues.map((e: any) => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
 
-      if (!command || !working_dir) {
-        return res.status(400).json({ error: 'command and working_dir are required' });
-      }
+    try {
+      const { command, working_dir } = validation.data;
 
       const { execFile } = await import('child_process');
       const util = await import('util');

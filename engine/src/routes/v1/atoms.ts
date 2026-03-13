@@ -1,6 +1,8 @@
 import { Application, Request, Response } from 'express';
+import { z } from 'zod';
 import * as crypto from 'crypto';
 import { db } from '../../core/db.js';
+import { atomUpdateContentSchema } from '../../schemas/api-schemas.js';
 
 export function setupAtomRoutes(app: Application) {
   // POST Quarantine Atom (Standard 073)
@@ -76,7 +78,20 @@ export function setupAtomRoutes(app: Application) {
   app.put('/v1/atoms/:id/content', async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      const { content } = req.body;
+      
+      // Validate request body with Zod
+      const validation = atomUpdateContentSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({
+          error: 'Invalid atom update request',
+          details: validation.error.issues.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      
+      const { content } = validation.data;
 
       console.log(`[API] Updating Atom Content: ${id}`);
 

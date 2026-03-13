@@ -31,10 +31,11 @@ export function setupSearchRoutes(app: Application) {
         return;
       }
 
-      const strategy = (req.body as any).strategy || 'standard';
+      // Extract additional optional parameters with defaults (these aren't in the main schema)
+      const strategy = req.body.strategy || 'standard';
       const maxChars = body.max_chars || 5000;
       const estimatedTokens = maxChars / 4;
-      const batchSize = (req.body as any).batch_size || 20;
+      const batchSize = req.body.batch_size || 20;
 
       // Auto-switch to max-recall for large budgets
       let useMaxRecall = strategy === 'max-recall';
@@ -55,10 +56,11 @@ export function setupSearchRoutes(app: Application) {
       res.setHeader('X-Accel-Buffering', 'no');
 
       // Handle legacy params
-      const bucketParam = (req.body as any).bucket;
+      const bucketParam = req.body.bucket;
       const buckets = body.buckets || [];
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
-      const tags = (req.body as any).tags || [];
+      const tags = req.body.tags || [];
+      const provenance = req.body.provenance || 'all';
 
       // Execute streaming search
       const stream = executeStreamingSearch({
@@ -66,7 +68,7 @@ export function setupSearchRoutes(app: Application) {
         buckets: allBuckets,
         maxChars,
         tags,
-        provenance: (req.body as any).provenance || 'all',
+        provenance,
         useMaxRecall,
         userContext: body.user_context,
         batchSize
@@ -128,19 +130,31 @@ export function setupSearchRoutes(app: Application) {
 
   // POST Molecule Search endpoint - splits query into sentence-like chunks
   app.post('/v1/memory/molecule-search', async (req: Request, res: Response) => {
+    // Validate request body with Zod
+    const validation = moleculeSearchSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid molecule search request',
+        details: validation.error.issues.map(e => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+
     try {
-      const body = req.body;
+      const body = validation.data;
       if (!body.query) {
         res.status(400).json({ error: 'Query is required' });
         return;
       }
 
       // Handle legacy params
-      const bucketParam = body.bucket;
+      const bucketParam = req.body.bucket;
       const buckets = body.buckets || [];
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
       const budget = body.token_budget ? body.token_budget * 4 : (body.max_chars || 2400); // Default to 2400 as specified
-      const tags = body.tags || [];
+      const tags = req.body.tags || [];
 
       // Use Molecule Search Strategy - split query into sentence-like chunks
       const result = await executeMoleculeSearch(
@@ -148,8 +162,8 @@ export function setupSearchRoutes(app: Application) {
         undefined, // bucket
         allBuckets,
         budget,
-        false, // deep
-        'all', // provenance
+        body.deep || false, // deep
+        body.provenance || 'all', // provenance
         tags,
         body.user_context
       );
@@ -177,20 +191,32 @@ export function setupSearchRoutes(app: Application) {
 
   // POST Maximum Recall Search - uses MAX_RECALL_CONFIG for comprehensive retrieval
   app.post('/v1/memory/search-max-recall', async (req: Request, res: Response) => {
+    // Validate request body with Zod
+    const validation = maxRecallSearchSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid max-recall search request',
+        details: validation.error.issues.map(e => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+
     try {
-      const body = req.body;
+      const body = validation.data;
       if (!body.query) {
         res.status(400).json({ error: 'Query is required' });
         return;
       }
 
       // Handle legacy params
-      const bucketParam = body.bucket;
+      const bucketParam = req.body.bucket;
       const buckets = body.buckets || [];
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
       // Default to 16K chars for max recall (mobile-friendly)
       const budget = body.token_budget ? body.token_budget * 4 : (body.max_chars || 16384);
-      const tags = body.tags || [];
+      const tags = req.body.tags || [];
 
       // Use max-recall configuration
       const result = await smartChatSearch(

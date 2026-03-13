@@ -5,7 +5,7 @@ import fs from 'fs';
 import { validate, schemas } from '../../middleware/validate.js';
 import { fetchAndProcess, searchWeb } from '../../services/research/researcher.js';
 import { ENGINE_PLUGINS } from '../../config/paths.js';
-import { researchScrapeSchema, researchUploadRawSchema, researchWebSearchSchema } from '../../schemas/api-schemas.js';
+import { researchScrapeSchema, researchUploadRawSchema, researchWebSearchSchema, researchGithubSchema } from '../../schemas/api-schemas.js';
 
 export function setupResearchRoutes(app: Application) {
   // Research Plugin Endpoint
@@ -118,12 +118,24 @@ export function setupResearchRoutes(app: Application) {
   });
 
   app.post('/v1/research/github', async (req: Request, res: Response) => {
+    // Validate request body with Zod
+    const validation = researchGithubSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Invalid GitHub research request',
+        details: validation.error.issues.map((e: any) => ({
+          field: e.path.join('.'),
+          message: e.message
+        }))
+      });
+    }
+
     try {
-      const body = req.body as any;
+      const body = validation.data;
       // UI sends 'repo', but we also support 'url' for compatibility
-      const repoUrl = body.repo || body.url as string;
-      const bucket = body.bucket as string || 'code';
-      const branch = body.branch as string || 'main';
+      const repoUrl = body.repo || body.url;
+      const bucket = body.bucket || 'code';
+      const branch = body.branch || 'main';
 
       if (!repoUrl) {
         res.status(400).json({ error: 'repo (or url) and bucket are required' });

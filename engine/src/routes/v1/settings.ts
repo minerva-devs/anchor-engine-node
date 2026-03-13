@@ -13,6 +13,15 @@ import { config } from '../../config/index.js';
 import { PROJECT_ROOT, PATHS } from '../../config/paths.js';
 import { settingsUpdateSchema } from '../../schemas/api-schemas.js';
 
+// Helper function to validate IP addresses
+function isValidIp(ip: string): boolean {
+  // Regular expression for validating IP addresses (both IPv4 and IPv6)
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
+  
+  return ipv4Regex.test(ip) || ipv6Regex.test(ip);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const SETTINGS_PATH = path.join(PROJECT_ROOT, 'user_settings.json');
@@ -132,7 +141,7 @@ export function setupSettingsRoutes(app: Application) {
 
     try {
       const newSettings = validation.data;
-      
+
       // Validate settings structure
       if (!newSettings || typeof newSettings !== 'object') {
         return res.status(400).json({
@@ -141,9 +150,22 @@ export function setupSettingsRoutes(app: Application) {
         });
       }
 
+      // Additional validation: ensure the settings don't contain potentially dangerous configurations
+      // Check for potentially dangerous paths in settings
+      if (newSettings.server && newSettings.server.host) {
+        // Ensure host is a valid IP or localhost
+        const validHosts = ['localhost', '127.0.0.1', '0.0.0.0', '::1'];
+        if (!validHosts.includes(newSettings.server.host) && !isValidIp(newSettings.server.host)) {
+          return res.status(400).json({
+            status: 'error',
+            error: 'Invalid host value'
+          });
+        }
+      }
+
       // Write to file
       fs.writeFileSync(SETTINGS_PATH, JSON.stringify(newSettings, null, 4), 'utf-8');
-      
+
       res.status(200).json({
         status: 'success',
         message: 'Settings updated successfully'

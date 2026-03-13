@@ -1,6 +1,6 @@
 {
   "name": "anchor-engine",
-  "version": "4.6.0",
+  "version": "4.7.0",
   "description": "Anchor - Knowledge Database Engine (WASM-accelerated, PGlite on Port 3160)",
   "main": "index.js",
   "type": "module",

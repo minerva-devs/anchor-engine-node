@@ -165,7 +165,7 @@ interface Config {
 const DEFAULT_CONFIG: Config = {
   // Core
   PORT: 3160,
-  HOST: "0.0.0.0",
+  HOST: "127.0.0.1",
   API_KEY: "",  // Empty by default - must be explicitly configured
   LOG_LEVEL: "INFO",
   OVERLAY_PORT: 3002,

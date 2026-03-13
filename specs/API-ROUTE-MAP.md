@@ -1,27 +1,34 @@
 # API Route Map
 
-**Complete reference for Anchor Engine API endpoints**
+Complete reference for Anchor Engine API endpoints.
 
-**Version:** 4.7.0 | **Last Updated:** March 12, 2026
-
----
-
-## 📚 API Route Categories
-
-Anchor Engine provides different endpoints for different needs. Here's a quick guide:
+## Route Categories
 
 | Category | Purpose | Library Analogy | Example |
 |----------|---------|-----------------|---------|
-| **🔍 Search** | Find specific content | "Find books about dragons" | `POST /v1/memory/search` |
-| **🧭 Explore** | Discover connections | "Show me books by this author + related authors" | `POST /v1/memory/explore` |
-| **📦 Distill** | Compress knowledge | "Summarize all dragon lore across all books" | `POST /v1/memory/distill` |
-| **📥 Ingest** | Add new content | "Add this new book to the library" | `POST /v1/ingest` |
-| **📂 Files** | Read/upload files | "Read this specific book" | `GET /v1/files/read` |
-| **⚙️ System** | Management | "Is the library open?" | `GET /v1/system/status` |
+| **🔍 Search Routes** | Find specific content | "Find books about dragons" | `/v1/memory/search` |
+| **🧭 Explore Routes** | Discover connections | "Show me books by this author + related authors" | `/v1/memory/explore` |
+| **📦 Distill Routes** | Compress knowledge | "Summarize all dragon lore across all books" | `/v1/memory/distill` |
+| **📥 Ingest Routes** | Add new content | "Add this new book to the library" | `/v1/ingest` |
+| **📂 File Routes** | Read/upload files | "Read this specific book" | `/v1/files/read` |
+| **⚙️ System Routes** | Management | "Is the library open?" | `/v1/system/status` |
+| **🐙 Git Routes** | GitHub integration | "Import from GitHub" | `/v1/github/repos` |
+| **🛡️ Admin Routes** | Security/monitoring | "Admin panel" | `/v1/terminal/exec` |
 
----
+## Route Decision Tree
 
-## 🔍 Search Routes
+**Need to...?** → **Use this route:**
+
+- Find specific content → `/v1/memory/search` (Standard 136: Streaming Search)
+- Explore connections → `/v1/memory/explore` (Standard 128: BFS Traversal) 
+- Compress knowledge → `/v1/memory/distill` (Standard 133: Radial Distillation)
+- Add new content → `/v1/ingest` (Standard 115: Atomic Ingestion)
+- Read files → `/v1/files/read` (Standard 101: Byte Offset Protocol)
+- Monitor system → `/v1/system/*` (Standard 102: Centralized Config)
+- GitHub integration → `/v1/github/*` (Standard 115: GitHub Ingestion)
+- Security tools → `/v1/terminal/exec` (Standard 129: Command Injection Prevention)
+
+## Search Routes
 
 ### `POST /v1/memory/search`
 
@@ -41,14 +48,7 @@ Anchor Engine provides different endpoints for different needs. Here's a quick g
 }
 ```
 
-**Response (SSE):**
-```
-event: result
-data: {"results": [...], "context": "..."}
-
-event: metadata
-data: {"strategy": "standard", "totalResults": 42, "durationMs": 156}
-```
+**Response:** Server-Sent Events (SSE) stream
 
 **Schema:** `searchSchema` (see `engine/src/schemas/api-schemas.ts`)
 
@@ -91,7 +91,7 @@ data: {"strategy": "standard", "totalResults": 42, "durationMs": 156}
 
 ---
 
-## 🧭 Explore Routes
+## Explore Routes
 
 ### `POST /v1/memory/explore`
 
@@ -116,7 +116,7 @@ data: {"strategy": "standard", "totalResults": 42, "durationMs": 156}
 
 ---
 
-## 📦 Distill Routes
+## Distill Routes
 
 ### `POST /v1/memory/distill`
 
@@ -141,7 +141,7 @@ data: {"strategy": "standard", "totalResults": 42, "durationMs": 156}
 
 ---
 
-## 📥 Ingest Routes
+## Ingest Routes
 
 ### `POST /v1/ingest`
 
@@ -164,7 +164,7 @@ data: {"strategy": "standard", "totalResults": 42, "durationMs": 156}
 
 ---
 
-## 📂 File Routes
+## File Routes
 
 ### `GET /v1/files/read`
 
@@ -181,7 +181,7 @@ GET /v1/files/read?path=/path/to/file.ts&start_line=0&end_line=100
 
 ---
 
-## ⚙️ System Routes
+## System Routes
 
 ### `GET /v1/system/status`
 
@@ -211,22 +211,49 @@ GET /v1/files/read?path=/path/to/file.ts&start_line=0&end_line=100
 
 ---
 
-## 🎯 Decision Tree
+## Git Routes
 
-**Need to...?**
+### `POST /v1/github/repos`
 
-- **Find specific content?** → `POST /v1/memory/search`
-- **See related concepts?** → `POST /v1/memory/explore`
-- **Summarize a topic?** → `POST /v1/memory/distill`
-- **Add new documents?** → `POST /v1/ingest`
-- **Read a specific file?** → `GET /v1/files/read`
-- **Check system health?** → `GET /v1/system/status`
+**Purpose:** Register GitHub repository for ingestion
+
+**Use when:** You want to ingest an entire GitHub repository
+
+**Request:**
+```json
+{
+  "url": "https://github.com/username/repo",
+  "bucket": "repo-name",
+  "include_history": false
+}
+```
+
+**Schema:** `githubRepoSchema`
 
 ---
 
-## 📋 Shared Schemas
+## Admin Routes
 
-All request validation uses shared Zod schemas from `engine/src/schemas/api-schemas.ts`:
+### `POST /v1/terminal/exec`
+
+**Purpose:** Execute terminal commands (secure sandbox)
+
+**Use when:** You need to run system commands safely
+
+**Request:**
+```json
+{
+  "command": "ls -la"
+}
+```
+
+**Schema:** `terminalExecSchema`
+
+---
+
+## Shared Schemas
+
+All validation uses shared Zod schemas from `engine/src/schemas/api-schemas.ts`:
 
 | Schema | Used By |
 |--------|---------|
@@ -242,13 +269,9 @@ All request validation uses shared Zod schemas from `engine/src/schemas/api-sche
 
 ---
 
-## 🔗 Related Standards
+## Related Standards
 
 - **Standard 104:** Universal Semantic Search
 - **Standard 128:** Illuminate BFS Traversal
 - **Standard 133:** Radial Distillation
 - **Standard 136:** Streaming Search
-
----
-
-**See also:** [README.md](../README.md) for quick start guide

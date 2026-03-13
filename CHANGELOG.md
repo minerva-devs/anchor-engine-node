@@ -6,7 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [4.7.0] - 2026-03-11 — Streaming Search, Memory Management, Code Cleanup
+## [4.7.0] - 2026-03-12 — Zod Validation, Streaming Search, Memory Management
+
+### Zod Validation Framework
+
+#### Shared Schema Definitions
+- **New:** `engine/src/schemas/api-schemas.ts` - Centralized Zod schemas
+- **Feature:** Shared schemas across all API routes (search, ingest, explore, distill)
+- **Feature:** PostgreSQL array format conversion (`toPgArray` helper)
+- **Fix:** Invalid input syntax errors for tags/buckets in database
+- **Fix:** Consistent validation and error messages across all routes
+- **Docs:** Complete API route map in `specs/API-ROUTE-MAP.md`
 
 ### Streaming Search (Standard 136)
 
