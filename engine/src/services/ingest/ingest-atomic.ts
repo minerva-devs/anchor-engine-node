@@ -400,8 +400,8 @@ export class AtomicIngestService {
                         compound.timestamp,
                         compound.provenance,
                         compound.molecular_signature || '0',
-                        JSON.stringify(atoms),
-                        JSON.stringify(molecules),
+                        toPgArray(atoms),
+                        toPgArray(molecules),
                         JSON.stringify(this.zeroVector())
                     ]
                 );

@@ -6,7 +6,7 @@ import { executeStreamingSearch, formatSSE } from '../../services/search/streami
 import { searchSchema, moleculeSearchSchema, maxRecallSearchSchema } from '../../schemas/api-schemas.js';
 
 export function setupSearchRoutes(app: Application) {
-  // POST Search endpoint (Standard 136: Streaming Search)
+  // POST Search endpoint (Standard 004: Streaming Search)
   // Memory-efficient streaming search with Server-Sent Events
   app.post('/v1/memory/search', async (req: Request, res: Response) => {
     const startTime = Date.now();

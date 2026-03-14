@@ -63,7 +63,7 @@ export class ContextInflator {
         const nextFortyPercent = Math.floor(results.length * 0.4);
 
         // Process in batches to limit concurrency (file handles/DB connections)
-        // Use adaptive batch size based on available memory (Standard 132)
+        // Use adaptive batch size based on available memory (Standard 005)
         const BATCH_SIZE = getOptimalBatchSize();
 
         for (let i = 0; i < results.length; i += BATCH_SIZE) {
@@ -480,7 +480,7 @@ export class ContextInflator {
 
             // Radially inflate from each position, MERGING overlapping windows
             // Read content from MIRRORED FILES on disk, not from database
-            // [Standard 132] Use adaptive concurrency based on available memory
+            // [Standard 005] Use adaptive concurrency based on available memory
             const compoundEntries = Array.from(compoundPositions.entries());
             
             const resultsArrays = await processWithAdaptiveConcurrency(

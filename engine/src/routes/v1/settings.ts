@@ -86,7 +86,7 @@ const DEFAULT_SETTINGS = {
     stability_threshold_ms: 2000,
     extra_paths: []
   },
-  // Standard 132: Adaptive Concurrency Control
+  // Standard 005: Adaptive Concurrency Control
   // Automatically adjusts parallel processing based on available memory
   adaptive_concurrency: {
     // Environment detection: 'auto', 'low_memory', 'high_memory'

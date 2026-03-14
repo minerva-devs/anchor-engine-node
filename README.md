@@ -174,14 +174,16 @@ docker-compose down -v
 
 ## Built with Standards
 
-Anchor Engine is built with rigorous architecture standards to ensure predictability and maintainability. You can review our active design documents in the [`specs/standards/`](specs/standards/) directory.
+Anchor Engine is built with rigorous architecture standards to ensure predictability and maintainability. You can review our active design documents in the [`specs/current-standards/`](specs/current-standards/) directory.
 
 | Standard | Description |
 |----------|-------------|
-| **104** | Universal Semantic Search |
-| **110** | Ephemeral Index (Disposable database pattern) |
-| **094** | Smart Search Protocol |
-| **065** | Graph Associative Retrieval |
+| **001** | Memory‑Safe File Ingestion |
+| **002** | Reproducible Benchmarking |
+| **003** | MCP Tool Interface |
+| **004** | Streaming Search |
+| **005** | Adaptive Concurrency Control |
+| **008** | Radial Distillation |
 
 ---
 
@@ -190,7 +192,8 @@ Anchor Engine is built with rigorous architecture standards to ensure predictabi
 - [Whitepaper](docs/STAR_Whitepaper.md) – deep dive into the STAR algorithm and benchmarks
 - [Architecture Diagrams](docs/ARCHITECTURE_DIAGRAMS.md) – visual overview
 - [API Reference](docs/api.md) – all endpoints
-- [Standards](specs/standards/) – detailed design documents
+- [Active Standards](specs/current-standards/) – current architecture rules
+- [Distilled Archive History](specs/archive-standards/MASTER_DISTILLED_HISTORY.yaml) – A compressed, deduplicated summary of all 94 historical standards (Proof of Concept)
 
 ## 📚 API Route Categories
 

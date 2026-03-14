@@ -174,23 +174,24 @@ export class PerformanceMonitor {
    */
   private collectAndLogMetrics(): void {
     const metrics = this.collectMetrics();
-    
+
     // Log based on configured level
     switch (this.config.logLevel) {
       case 'debug':
-        StructuredLogger.debug('PERFORMANCE_METRICS', metrics);
+        StructuredLogger.debug('PERFORMANCE_METRICS', { metrics, context: 'performance_monitor' });
         break;
       case 'info':
-        StructuredLogger.info('PERFORMANCE_METRICS', metrics);
+        StructuredLogger.info('PERFORMANCE_METRICS', { metrics, context: 'performance_monitor' });
         break;
       case 'warn':
         if (this.shouldAlert(metrics)) {
-          StructuredLogger.warn('PERFORMANCE_ALERT', metrics);
+          StructuredLogger.warn('PERFORMANCE_ALERT', { metrics, context: 'performance_monitor' });
         }
         break;
       case 'error':
         if (this.isCritical(metrics)) {
-          StructuredLogger.error('PERFORMANCE_CRITICAL', metrics);
+          const error = new Error(`Critical performance metrics: CPU ${metrics.cpu.usagePercent}%, Memory ${metrics.memory.percentageUsed}%`);
+          StructuredLogger.error('PERFORMANCE_CRITICAL', error, { metrics, context: 'performance_monitor' });
         }
         break;
     }

@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Fix:** Consistent validation and error messages across all routes
 - **Docs:** Complete API route map in `specs/API-ROUTE-MAP.md`
 
-### Streaming Search (Standard 136)
+### Streaming Search (Standard 004)
 
 #### Server-Sent Events (SSE) Endpoint
 - New `/v1/memory/search/stream` endpoint for memory-efficient result streaming
@@ -69,7 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Queue system for when concurrency limit is reached
 - Better resource management for concurrent operations
 
-### Configurable Memory Management (Standards 127/134/135)
+### Configurable Memory Management (Standards 007/006/005)
 
 #### User-Configurable Thresholds
 New `memory` section in `user_settings.json`:
@@ -122,7 +122,7 @@ New `memory` section in `user_settings.json`:
 
 ### Search Performance Optimizations
 
-#### Two-Pass Scoring (Standard 134)
+#### Two-Pass Scoring (Standard 006)
 - Implemented lightweight semantic scoring before expensive context inflation
 - Scores candidates using term overlap, exact phrase matching, tag relevance, and recency
 - Keeps only top 5 results per term on mobile, 10 on desktop
@@ -275,7 +275,7 @@ New `memory` section in `user_settings.json`:
 ### Documentation
 
 #### Standards Added
-- **Standard 128:** Illuminate & Explore — Corpus Traversal Modes (v2.0 with Explore/Illuminate semantic split)
+- **Standard 009:** Illuminate & Explore — Corpus Traversal Modes (v2.0 with Explore/Illuminate semantic split)
 
 ### Maintenance
 
@@ -365,7 +365,7 @@ New `memory` section in `user_settings.json`:
 #### Explore vs Illuminate — Distinct Semantic Roles
 - **`explore: <topic>`** — concept skeleton: tag-hub map showing what topics exist; orients LLM to data shape without reading content
 - **`illuminate:`** — corpus narrative: most thematically central real passages; 1000:1 compressed corpus summary
-- Standard 128 updated to v2.0 documenting both modes, their three-phase architecture, and LLM usage patterns
+- Standard 009 updated to v2.0 documenting both modes, their three-phase architecture, and LLM usage patterns
 - `Search_Protocol.md` section 5 rewritten with full semantic split table
 
 ### Bug Fixes
@@ -384,7 +384,7 @@ New `memory` section in `user_settings.json`:
 
 ### Features
 
-#### Illuminate BFS Graph Traversal (Standard 128)
+#### Illuminate BFS Graph Traversal (Standard 009)
 - New `POST /v1/memory/explore` endpoint — BFS traversal from seed concepts
 - Auto-selects strategy: edge-BFS (via `edges` table) with tag-BFS fallback
 - Configurable: `max_depth`, `min_weight`, `max_nodes`, `format` (flat | graph)

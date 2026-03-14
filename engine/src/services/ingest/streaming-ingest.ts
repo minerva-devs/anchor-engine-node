@@ -158,9 +158,8 @@ export class StreamingIngestService {
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      StructuredLogger.error('STREAMING_INGEST_FAILED', {
-        message: `Streaming ingestion failed: ${errorMessage}`,
-        error: errorMessage
+      StructuredLogger.error('STREAMING_INGEST_FAILED', error instanceof Error ? error : errorMessage, {
+        message: `Streaming ingestion failed: ${errorMessage}`
       });
 
       const errorProgress: StreamingIngestProgress = {
@@ -172,7 +171,7 @@ export class StreamingIngestService {
         message: `Streaming ingestion failed: ${errorMessage}`,
         progressPercentage: 0
       };
-      
+
       onProgress?.(errorProgress);
 
       return {

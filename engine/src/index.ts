@@ -307,10 +307,27 @@ async function startServer() {
 
     // ============================================
     // Standard 110: Regenerate Derived Data
+    // Standard 116: Phoenix Protocol
     // ============================================
-    // On startup: regenerate all derived data from inbox/ (source of truth)
+    // On startup: wipe ALL derived data, then regenerate from inbox/ (source of truth)
+    // This ensures clean state even after crash (SIGKILL) where shutdown handler didn't run
 
-    // 1. Create mirror from inbox/ files
+    // 0. Defensive: Wipe mirrored_brain/ on startup (Phoenix Protocol)
+    const { MIRRORED_BRAIN_PATH } = await import('./services/mirror/mirror.js');
+    if (existsSync(MIRRORED_BRAIN_PATH)) {
+      StructuredLogger.info('STARTUP_TASK', { message: '[Startup] Phoenix Protocol: Wiping mirrored_brain/ (ensures clean state after crash)...' });
+      try {
+        rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
+        StructuredLogger.info('STARTUP_TASK', { message: '[Startup] ✓ mirrored_brain/ wiped.' });
+      } catch (e: any) {
+        StructuredLogger.warn('STARTUP_TASK', {
+          message: `[Startup] ⚠ Could not wipe mirrored_brain/: ${e.message}`,
+          error_message: e.message
+        });
+      }
+    }
+
+    // 1. Create mirror from inbox/ files (regenerate from source of truth)
     StructuredLogger.info('STARTUP_TASK', { message: '[Startup] Regenerating mirrored_brain/ from inbox/ (Standard 110)...' });
     const { createMirror } = await import('./services/mirror/mirror.js');
     await createMirror();
@@ -376,17 +393,26 @@ async function startServer() {
   }
 }
 
-// Windows graceful shutdown fix
-process.on("SIGINT", async () => {
+// ============================================
+// Graceful Shutdown Handlers (SIGINT + SIGTERM)
+// Standard 110: Ephemeral Index Architecture
+// ============================================
+
+/**
+ * Shared cleanup function for graceful shutdown
+ * Wipes all derived data (database, mirrored_brain, caches)
+ * Source of truth (inbox/, external-inbox/) is preserved
+ */
+async function performShutdownCleanup(signalName: string): Promise<void> {
   // Safety net: force exit if cleanup hangs (e.g., db.close deadlock)
   const forceExitTimer = setTimeout(() => {
-    console.error('[Shutdown] ⚠ Cleanup timed out after 10s — forcing exit');
+    console.error(`[Shutdown] ⚠ Cleanup timed out after 10s — forcing exit (${signalName})`);
     process.exit(1);
   }, 10_000);
   forceExitTimer.unref();
 
   try {
-    StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] Starting graceful shutdown...` });
+    StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] Starting graceful shutdown (${signalName})...` });
 
     const { ProcessManager } = await import("./utils/process-manager.js");
     ProcessManager.getInstance().stopAll();
@@ -406,12 +432,12 @@ process.on("SIGINT", async () => {
         rmSync(dbPath, { recursive: true, force: true });
         StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] ✓ PGlite database wiped.` });
       } catch (e: any) {
-        StructuredLogger.warn('SHUTDOWN', { 
+        StructuredLogger.warn('SHUTDOWN', {
           message: `[Shutdown] ⚠ Could not wipe PGlite database: ${e.message}`,
           error_message: e.message
         });
-        StructuredLogger.warn('SHUTDOWN', { 
-          message: `[Shutdown] Will be wiped on next startup` 
+        StructuredLogger.warn('SHUTDOWN', {
+          message: `[Shutdown] Will be wiped on next startup`
         });
       }
     }
@@ -424,27 +450,31 @@ process.on("SIGINT", async () => {
         rmSync(contextDbPath, { force: true });
         StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] ✓ SQLite3 context.db wiped.` });
       } catch (e: any) {
-        StructuredLogger.warn('SHUTDOWN', { 
+        StructuredLogger.warn('SHUTDOWN', {
           message: `[Shutdown] ⚠ Could not wipe SQLite3 context.db: ${e.message}`,
           error_message: e.message
         });
-        StructuredLogger.warn('SHUTDOWN', { 
-          message: `[Shutdown] Will be wiped on next startup` 
+        StructuredLogger.warn('SHUTDOWN', {
+          message: `[Shutdown] Will be wiped on next startup`
         });
       }
     }
 
-    // 3. Clear mirrored_brain/ (extracted from inbox/, regenerated on start)
+    // 3. Wipe mirrored_brain/ (extracted from inbox/, regenerated on start)
+    // Standard 116: Phoenix Protocol - mirrored_brain is disposable cache
     const { MIRRORED_BRAIN_PATH } = await import('./services/mirror/mirror.js');
     if (existsSync(MIRRORED_BRAIN_PATH)) {
-      StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] Clearing mirrored_brain/ (regenerated from inbox/ on start)...` });
+      StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] Wiping mirrored_brain/ (Phoenix Protocol - regenerated from inbox/ on start)...` });
       try {
         rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
-        StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] ✓ mirrored_brain/ cleared.` });
+        StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] ✓ mirrored_brain/ wiped.` });
       } catch (e: any) {
-        StructuredLogger.warn('SHUTDOWN', { 
-          message: `[Shutdown] ⚠ Could not clear mirrored_brain/: ${e.message}`,
+        StructuredLogger.warn('SHUTDOWN', {
+          message: `[Shutdown] ⚠ Could not wipe mirrored_brain/: ${e.message}`,
           error_message: e.message
+        });
+        StructuredLogger.warn('SHUTDOWN', {
+          message: `[Shutdown] Will be wiped on next startup`
         });
       }
     }
@@ -457,7 +487,7 @@ process.on("SIGINT", async () => {
         rmSync(synonymPath, { force: true });
         StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] ✓ Synonym rings cleared.` });
       } catch (e: any) {
-        StructuredLogger.warn('SHUTDOWN', { 
+        StructuredLogger.warn('SHUTDOWN', {
           message: `[Shutdown] ⚠ Could not clear synonym rings: ${e.message}`,
           error_message: e.message
         });
@@ -472,7 +502,7 @@ process.on("SIGINT", async () => {
         rmSync(tagAuditPath, { force: true });
         StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] ✓ Tag audit cache cleared.` });
       } catch (e: any) {
-        StructuredLogger.warn('SHUTDOWN', { 
+        StructuredLogger.warn('SHUTDOWN', {
           message: `[Shutdown] ⚠ Could not clear tag audit cache: ${e.message}`,
           error_message: e.message
         });
@@ -481,16 +511,24 @@ process.on("SIGINT", async () => {
 
     StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] ✓ Cleanup complete.` });
     StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] Source of truth preserved: inbox/ + external-inbox/` });
-    StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] On restart: mirror + index + synonyms regenerated from inbox/` });
+    StructuredLogger.info('SHUTDOWN', { message: `[Shutdown] On restart: database + mirror + synonyms regenerated from inbox/` });
 
+    clearTimeout(forceExitTimer);
     process.exit(0);
   } catch (e) {
     StructuredLogger.error('[Shutdown] Error during cleanup:', e instanceof Error ? e.message : String(e), {
       event: 'SHUTDOWN'
     });
+    clearTimeout(forceExitTimer);
     process.exit(1);
   }
-});
+}
+
+// SIGINT handler (Ctrl+C)
+process.on("SIGINT", () => performShutdownCleanup("SIGINT"));
+
+// SIGTERM handler (docker stop, systemctl stop, kill)
+process.on("SIGTERM", () => performShutdownCleanup("SIGTERM"));
 
 // Memory warning event handler
 import { resourceManager } from './utils/resource-manager.js';

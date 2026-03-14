@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Graph Distillation CLI - Standard 133 Radial Distillation
+ * Graph Distillation CLI - Standard 008 Radial Distillation
  *
  * Usage:
  *   node --loader ts-node/esm src/commands/distill.ts [options] [seed_query]
@@ -27,7 +27,7 @@ async function main() {
 
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
-Graph Distillation CLI - Standard 133 Radial Distillation
+Graph Distillation CLI - Standard 008 Radial Distillation
 
 Usage:
   node --loader ts-node/esm src/commands/distill.ts [options] [seed_query]
@@ -85,7 +85,7 @@ Examples:
     console.log('Initializing database...');
     await db.init();
 
-    // Standard 133: Radial Distillation
+    // Standard 008: Radial Distillation
     const radialRequest: RadialDistillRequest = {
       seed: {
         query: seedQuery,
@@ -98,7 +98,7 @@ Examples:
       export_to_inbox: exportToInbox
     };
 
-    console.log('Radial Distilling (Standard 133)...');
+    console.log('Radial Distilling (Standard 008)...');
     console.log(`  Target: ${seedQuery || (seedIds ? seedIds.join(',') : 'All Compounds')}`);
     console.log(`  Radius: ${radius} chars`);
     console.log(`  Normalization: ${radialRequest.normalization}`);

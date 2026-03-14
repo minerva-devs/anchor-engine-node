@@ -1,5 +1,5 @@
 /**
- * Radial Distiller — Standard 133 Implementation
+ * Radial Distiller — Standard 008 Implementation
  *
  * Three-phase pipeline for lossless corpus compression:
  * 1. COLLECT: Radially inflate all compounds
@@ -18,7 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 
-// Configuration from Standard 133
+// Configuration from Standard 008
 const PGLITE_CHUNK_IDS = 100;
 const MOBILE_MEMORY_THRESHOLD = 500 * 1024 * 1024; // 500MB
 
@@ -79,7 +79,7 @@ export interface RadialDistillResult {
 
 /**
  * Detect if running in mobile/memory-constrained environment
- * Reuses logic from Standard 134
+ * Reuses logic from Standard 006
  */
 function isMobileEnvironment(): boolean {
   if (process.platform === 'android') return true;
@@ -141,7 +141,7 @@ function checkMemorySafety(currentLines: number, estimatedNewLines: number): voi
 
 /**
  * Normalize a line for deduplication
- * Standard 133: strict vs lenient normalization
+ * Standard 008: strict vs lenient normalization
  */
 function normalizeLine(line: string, mode: 'strict' | 'lenient'): string {
   if (mode === 'lenient') {
@@ -696,7 +696,7 @@ async function reassembleCompounds(
 
 /**
  * Main entry point: Radial Distillation
- * Standard 133 implementation with memory safety
+ * Standard 008 implementation with memory safety
  */
 export async function radialDistill(
   request: RadialDistillRequest

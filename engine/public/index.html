@@ -157,7 +157,7 @@
         // API
         const api = {
             searchStream: async function*(params, onBatch) {
-                // Streaming search with Server-Sent Events (Standard 136)
+                // Streaming search with Server-Sent Events (Standard 004)
                 const res = await fetch('/v1/memory/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -596,7 +596,7 @@
                         })) };
                         setResults(data.results);
                     } else {
-                        // Standard search with streaming (Standard 136)
+                        // Standard search with streaming (Standard 004)
                         setResults([]); // Clear results for streaming
                         const allResults = [];
 

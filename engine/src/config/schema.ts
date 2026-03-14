@@ -83,7 +83,7 @@ const DatabaseSchema = z.object({
   WIPE_ON_STARTUP: z.boolean().default(true)
 });
 
-// Adaptive Concurrency schema (Standard 132)
+// Adaptive Concurrency schema (Standard 005)
 const AdaptiveConcurrencySchema = z.object({
   SEQUENTIAL_THRESHOLD_MB: z.number().int().positive().default(2048),
   PARALLEL_THRESHOLD_MB: z.number().int().positive().default(8192),

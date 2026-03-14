@@ -20,9 +20,9 @@ Complete reference for Anchor Engine API endpoints.
 
 **Need to...?** → **Use this route:**
 
-- Find specific content → `/v1/memory/search` (Standard 136: Streaming Search)
-- Explore connections → `/v1/memory/explore` (Standard 128: BFS Traversal)
-- Compress knowledge → `/v1/memory/distill` (Standard 133: Radial Distillation)
+- Find specific content → `/v1/memory/search` (Standard 004: Streaming Search)
+- Explore connections → `/v1/memory/explore` (Standard 009: BFS Traversal)
+- Compress knowledge → `/v1/memory/distill` (Standard 008: Radial Distillation)
 - Add new content → `/v1/ingest` (Standard 115: Atomic Ingestion)
 - Add large content with progress tracking → `/v1/ingest/streaming` (Streaming Ingestion)
 - Read files → `/v1/files/read` (Standard 101: Byte Offset Protocol)
@@ -305,6 +305,6 @@ All validation uses shared Zod schemas from `engine/src/schemas/api-schemas.ts`:
 ## Related Standards
 
 - **Standard 104:** Universal Semantic Search
-- **Standard 128:** Illuminate BFS Traversal
-- **Standard 133:** Radial Distillation
-- **Standard 136:** Streaming Search
+- **Standard 009:** Illuminate BFS Traversal
+- **Standard 008:** Radial Distillation
+- **Standard 004:** Streaming Search

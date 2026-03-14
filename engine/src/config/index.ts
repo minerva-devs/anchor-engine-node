@@ -139,7 +139,7 @@ interface Config {
     WIPE_ON_STARTUP: boolean; // Standard 051: Ephemeral Index (true = wipe & rebuild on each start)
   };
 
-  // Adaptive Concurrency (Standard 132)
+  // Adaptive Concurrency (Standard 005)
   ADAPTIVE_CONCURRENCY: {
     SEQUENTIAL_THRESHOLD_MB: number;
     PARALLEL_THRESHOLD_MB: number;
@@ -150,7 +150,7 @@ interface Config {
     FORCE_PARALLEL: boolean;
   };
 
-  // Memory Management (Standard 127/134/135)
+  // Memory Management (Standard 007/006/005)
   MEMORY: {
     HEAP_PRESSURE_MB: number;
     THROTTLE_START_MB: number;
@@ -280,7 +280,7 @@ const DEFAULT_CONFIG: Config = {
     WIPE_ON_STARTUP: true
   },
 
-  // Adaptive Concurrency (Standard 132)
+  // Adaptive Concurrency (Standard 005)
   // Automatically adjusts parallel processing based on available memory
   ADAPTIVE_CONCURRENCY: {
     // Memory threshold in MB below which to use sequential processing (default: 2048)
@@ -299,7 +299,7 @@ const DEFAULT_CONFIG: Config = {
     FORCE_PARALLEL: process.env['ANCHOR_FORCE_PARALLEL'] === 'true'
   },
 
-  // Memory Management (Standard 127/134/135)
+  // Memory Management (Standard 007/006/005)
   // Configurable memory thresholds for search throttling and streaming
   MEMORY: {
     // Heap pressure threshold for downgrading max-recall to standard (default: 500MB)
@@ -435,7 +435,7 @@ function loadConfig(): Config {
         if (userSettings.limits.date_extractor_scan_limit !== undefined) loadedConfig.LIMITS.DATE_EXTRACTOR_SCAN_LIMIT = userSettings.limits.date_extractor_scan_limit;
       }
 
-      // Load Memory Management Settings (Standard 127/134/135)
+      // Load Memory Management Settings (Standard 007/134/135)
       if (userSettings.memory) {
         if (userSettings.memory.heap_pressure_mb !== undefined) loadedConfig.MEMORY.HEAP_PRESSURE_MB = userSettings.memory.heap_pressure_mb;
         if (userSettings.memory.throttle_start_mb !== undefined) loadedConfig.MEMORY.THROTTLE_START_MB = userSettings.memory.throttle_start_mb;

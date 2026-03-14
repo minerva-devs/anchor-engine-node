@@ -48,7 +48,7 @@ export type { BrightNode, BrightNodeRelationship } from './bright-nodes.js';
 export { getBrightNodes, getStructuredGraph } from './bright-nodes.js';
 
 /**
- * Lightweight semantic scoring for two-pass search (Standard 134)
+ * Lightweight semantic scoring for two-pass search (Standard 006)
  * Scores candidates without expensive context inflation
  */
 function calculateLightweightScore(
@@ -335,7 +335,7 @@ function processWaiters(): void {
 }
 
 // Memory thresholds - loaded from user_settings.json with defaults
-// Standard 127/134/135: Configurable memory management
+// Standard 007/134/135: Configurable memory management
 function getMemoryThresholds() {
   const userSettings = (config as any).MEMORY || {};
   return {
@@ -358,7 +358,7 @@ function heapUsedMB(): number {
 /**
  * Memory-aware throttling: slows down or blocks searches based on memory pressure
  * Returns true if search should proceed, false if it should be rejected
- * Standard 127/134/135: Configurable memory thresholds
+ * Standard 007/134/135: Configurable memory thresholds
  */
 async function throttleSearchForMemory(): Promise<{ proceed: boolean; delayMs: number; reason?: string }> {
   const heapMB = heapUsedMB();
@@ -464,14 +464,14 @@ export async function findAnchors(
 
     if (terms.length > 0) {
       try {
-        // [Standard 132] Use adaptive concurrency based on available memory
+        // [Standard 005] Use adaptive concurrency based on available memory
         const inflations = await processWithAdaptiveConcurrency(
           terms,
           async (term) => ContextInflator.inflateFromAtomPositions(term, 150, 20, undefined, { buckets, provenance })
         );
         let rawAtoms = inflations.flat();
 
-        // [Standard 134] Two-pass scoring: score candidates before expensive processing
+        // [Standard 006] Two-pass scoring: score candidates before expensive processing
         // This avoids inflating low-quality candidates, saving memory and time
         const scoredAtoms = rawAtoms.map(atom => ({
           ...atom,

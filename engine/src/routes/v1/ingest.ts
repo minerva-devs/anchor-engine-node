@@ -214,7 +214,7 @@ export function setupIngestRoutes(app: Application) {
       const duration = Date.now() - startTime;
 
       if (result.success) {
-        StructuredLogger.ingestion('streaming_success', {
+        StructuredLogger.info('STREAMING_INGEST_SUCCESS', {
           source: source || 'api_upload',
           compound_id: result.compoundId,
           message: result.message,
@@ -229,11 +229,10 @@ export function setupIngestRoutes(app: Application) {
           progress_updates: progressUpdates // Include progress updates in response
         });
       } else {
-        StructuredLogger.error('STREAMING_INGEST_ERROR', {
-          error: result.message,
+        StructuredLogger.error('STREAMING_INGEST_ERROR', result.message, {
           duration_ms: duration
         });
-        
+
         res.status(500).json({
           status: 'error',
           message: result.message,

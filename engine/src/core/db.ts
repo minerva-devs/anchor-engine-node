@@ -122,7 +122,7 @@ export class Database {
       try {
         console.log(`[DB] Initializing PGlite at: ${dbPath}`);
         
-        // Initialize PGlite with optimized memory settings (Standard 127)
+        // Initialize PGlite with optimized memory settings (Standard 007)
         // Memory reduction tactics for embedded deployment (phones + laptops)
         this.dbInstance = await new PGlite(dbPath, {
           // Don't set maxMemory limit - let Node.js GC manage heap (6GB from --max-old-space-size)
@@ -328,10 +328,21 @@ export class Database {
             molecular_signature TEXT,
             embedding TEXT,
             timestamp REAL,
-            tags JSONB,
+            tags TEXT[],
             entities JSONB
           );
         `);
+
+      // Migration: Ensure tags column is TEXT[] if it was previously JSONB
+      try {
+        await this.run(`
+          ALTER TABLE molecules 
+          ALTER COLUMN tags TYPE TEXT[] 
+          USING tags::text::text[];
+        `);
+      } catch (e) {
+        // Migration might fail if already converted or table is empty, which is fine
+      }
 
       // Add indices for molecules
       try {

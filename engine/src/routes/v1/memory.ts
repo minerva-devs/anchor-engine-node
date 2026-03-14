@@ -6,7 +6,7 @@
  *   Returns the connected subgraph as structural corpus compression.
  *
  * POST /v1/memory/distill
- *   Standard 133: Radial Distillation
+ *   Standard 008: Radial Distillation
  *   Line-level deduplication with radial inflation.
  */
 
@@ -99,7 +99,7 @@ export function setupMemoryRoutes(app: Application) {
     });
 
     try {
-      // Standard 133: Radial Distillation (only mode supported)
+      // Standard 008: Radial Distillation (only mode supported)
       const body = validation.data as RadialDistillRequest;
       const result = await radialDistill(body);
       const duration = Date.now() - startTime;
