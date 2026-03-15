@@ -178,6 +178,7 @@
             background: #f7fafc;
             border-radius: 8px;
             overflow-x: auto;
+            min-height: 100px;
         }
 
         #graph-placeholder {
@@ -185,6 +186,10 @@
             font-size: 0.875rem;
             text-align: center;
             padding: 2rem;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .results {
@@ -956,14 +961,22 @@
 
                 console.log('[Graph] Def length:', graphDef.length);
 
-                // Render
+                // Render with timeout
                 placeholder.style.display = 'none';
+                var renderTimeout = setTimeout(function() {
+                    console.warn('[Graph] Timeout after 5s');
+                    placeholder.style.display = 'block';
+                    placeholder.textContent = '📊 (Graph timeout - too complex)';
+                }, 5000);
+
                 mermaid.render('search-graph-' + Date.now(), graphDef)
                     .then(function(result) {
+                        clearTimeout(renderTimeout);
                         console.log('[Graph] Success!');
                         document.getElementById('graph-placeholder').innerHTML = result.svg;
                     })
                     .catch(function(error) {
+                        clearTimeout(renderTimeout);
                         console.error('[Graph] Error:', error.message);
                         console.error('[Graph] Def:', graphDef.substring(0, 500));
                         placeholder.style.display = 'block';
