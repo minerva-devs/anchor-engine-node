@@ -432,7 +432,7 @@
             this.atomCounter = 0;
         }
 
-        STAREngine.prototype.atomize = function(text) {
+        STAREngine.prototype.atomize = function(text, bookTitle) {
             // Split into sentences and create atoms for meaningful content
             var sentences = text.split(/[.!?]+/);
             var atoms = [];
@@ -450,12 +450,12 @@
 
             sentences.forEach(function(sentence, idx) {
                 var trimmed = sentence.trim();
-                
+
                 // Skip if too short
                 if (trimmed.length < 15) {
                     return;
                 }
-                
+
                 // Skip if matches obvious non-content patterns
                 for (var i = 0; i < nonContentPatterns.length; i++) {
                     if (nonContentPatterns[i].test(trimmed)) {
@@ -465,12 +465,13 @@
 
                 var atomId = 'atom_' + (++self.atomCounter);
                 var tags = self.extractTags(trimmed);
-                
+
                 var atom = {
                     id: atomId,
                     content: trimmed,
                     tags: tags,
-                    timestamp: Date.now() - (sentences.length - idx) * 1000
+                    timestamp: Date.now() - (sentences.length - idx) * 1000,
+                    bookTitle: bookTitle || 'Unknown'
                 };
 
                 self.atoms.set(atomId, atom);
@@ -560,7 +561,8 @@
                     content: atom.content,
                     tags: atom.tags,
                     score: score * timeDecay,
-                    type: 'anchor'
+                    type: 'anchor',
+                    bookTitle: atom.bookTitle
                 });
             });
 
@@ -572,7 +574,8 @@
                     content: atom.content,
                     tags: atom.tags,
                     score: score * timeDecay,
-                    type: 'neighbor'
+                    type: 'neighbor',
+                    bookTitle: atom.bookTitle
                 });
             });
 
@@ -639,25 +642,36 @@
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
                     var books = data.results.slice(0, 24);
-                    bookList.innerHTML = '';
-                    books.forEach(function(book) {
-                        var card = document.createElement('div');
-                        card.className = 'book-card';
-                        card.innerHTML = '<div class="book-title">' + book.title + '</div><div class="book-author">' + book.authors.map(function(a) { return a.name; }).join(', ') + '</div>';
-                        card.onclick = function() { ingestBook(book); };
-                        bookList.appendChild(card);
-                    });
+                    displayBookSelection(books);
                 })
                 .catch(function(error) {
-                    bookList.innerHTML = '';
-                    GUTENBERG_BOOKS.forEach(function(book) {
-                        var card = document.createElement('div');
-                        card.className = 'book-card';
-                        card.innerHTML = '<div class="book-title">' + book.title + '</div><div class="book-author">' + book.author + '</div>';
-                        card.onclick = function() { ingestBook(book); };
-                        bookList.appendChild(card);
-                    });
+                    displayBookSelection(GUTENBERG_BOOKS);
                 });
+        }
+
+        function displayBookSelection(books) {
+            var bookList = document.getElementById('bookList');
+            bookList.innerHTML = '';
+            
+            // Add info about multi-book search
+            var infoDiv = document.createElement('div');
+            infoDiv.className = 'info-box';
+            infoDiv.style.cssText = 'margin-bottom: 1rem; background: #f0f9ff; border-color: #667eea;';
+            infoDiv.innerHTML = '<strong>💡 Pro Tip:</strong> Select multiple books to search across them simultaneously and discover cross-book patterns!';
+            bookList.appendChild(infoDiv);
+            
+            // Add book grid
+            var bookGrid = document.createElement('div');
+            bookGrid.className = 'book-grid';
+            
+            books.forEach(function(book) {
+                var card = document.createElement('div');
+                card.className = 'book-card';
+                card.innerHTML = '<div class="book-title">' + book.title + '</div><div class="book-author">' + (book.authors ? book.authors.map(function(a) { return a.name; }).join(', ') : book.author) + '</div>';
+                card.onclick = function() { ingestBook(book); };
+                bookGrid.appendChild(card);
+            });
+            bookList.appendChild(bookGrid);
         }
 
         function ingestBook(book) {
@@ -729,7 +743,7 @@
             
             if (progressFill) progressFill.style.width = '30%';
             
-            var atoms = engine.atomize(text);
+            var atoms = engine.atomize(text, currentBookTitle);
             console.log('[STAR Demo] Atoms created:', atoms.length);
             
             if (progressFill) progressFill.style.width = '100%';
@@ -745,10 +759,80 @@
             updateSearchHint();
 
             currentBook = { title: title };
-            
+            currentBookTitle = title;
+            ingestedBooks = [{ title: title }]; // Track single book too
+
             resultsDiv.innerHTML = '<div class="info-box"><strong>✅ Ingestion Complete!</strong><br>"' + title + '" has been atomized into ' + stats.atoms.toLocaleString() + ' atoms with ' + stats.tags.toLocaleString() + ' tags and ' + stats.edges.toLocaleString() + ' edges.<br><br>Try searching for themes, characters, or concepts from the book.</div><h3 style="margin-bottom: 1rem; color: #2d3748;">Example Searches:</h3><div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">' + getExampleSearches(title).map(function(q) { return '<button class="btn-secondary" onclick="document.getElementById(\'searchInput\').value=\'' + q + '\'; performSearch()">' + q + '</button>'; }).join('') + '</div>';
-            
+
             if (progressBar) setTimeout(function() { progressBar.style.display = 'none'; }, 1000);
+        }
+
+        // Track multiple books
+        var ingestedBooks = [];
+        var currentBookTitle = '';
+
+        function ingestMultipleBooks(books) {
+            var resultsDiv = document.getElementById('results');
+            var totalBooks = books.length;
+            var currentBookIndex = 0;
+
+            resultsDiv.innerHTML = '<div class="info-box"><strong>📚 Multi-Book Ingestion</strong><br>Ingesting ' + totalBooks + ' books... This will take 2-3 minutes.<br><br><div id="multiBookProgress" style="margin-top: 1rem; font-weight: bold;">Book 0 of ' + totalBooks + '</div></div>';
+
+            function ingestNext() {
+                if (currentBookIndex >= totalBooks) {
+                    // All done!
+                    var stats = engine.getStats();
+                    resultsDiv.innerHTML = '<div class="info-box"><strong>✅ All Books Ingested!</strong><br>Ingested ' + totalBooks + ' books:<br><ul style="margin: 1rem 0; padding-left: 1.5rem;">' + ingestedBooks.map(function(b) { return '<li>' + b.title + '</li>'; }).join('') + '</ul><br>Total: ' + stats.atoms.toLocaleString() + ' atoms, ' + stats.tags.toLocaleString() + ' tags, ' + stats.edges.toLocaleString() + ' edges.<br><br><strong>Now search to find patterns across books!</strong></div>';
+                    updateSearchHint();
+                    return;
+                }
+
+                var book = books[currentBookIndex];
+                currentBookIndex++;
+
+                document.getElementById('multiBookProgress').textContent = 'Book ' + currentBookIndex + ' of ' + totalBooks + ': ' + book.title;
+
+                var corsProxies = [
+                    'https://api.allorigins.win/raw?url=',
+                    'https://corsproxy.io/?',
+                    'https://api.codetabs.com/v1/proxy?quest='
+                ];
+
+                var gutenbergUrl = 'https://www.gutenberg.org/files/' + book.id + '/' + book.id + '-0.txt';
+
+                tryProxy(0);
+
+                function tryProxy(proxyIndex) {
+                    if (proxyIndex >= corsProxies.length) {
+                        ingestNext(); // Skip this book, continue with next
+                        return;
+                    }
+
+                    var proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(gutenbergUrl);
+
+                    fetch(proxyUrl)
+                        .then(function(response) {
+                            if (!response.ok) throw new Error('HTTP ' + response.status);
+                            return response.text();
+                        })
+                        .then(function(text) {
+                            if (text.length < 1000) throw new Error('Content too short');
+
+                            // Ingest this book
+                            text = extractBookContent(text);
+                            engine.atomize(text, book.title);
+                            ingestedBooks.push(book);
+
+                            // Move to next book
+                            setTimeout(ingestNext, 500);
+                        })
+                        .catch(function(error) {
+                            tryProxy(proxyIndex + 1);
+                        });
+                }
+            }
+
+            ingestNext();
         }
         
         function showError(message) {
@@ -825,7 +909,8 @@
                 }
 
                 resultsDiv.innerHTML = '<h3 style="margin-bottom: 1rem; color: #2d3748;">Search Results for "' + query + '" (' + results.length + ' results)</h3>' + results.map(function(result, idx) {
-                    return '<div class="result-item"><div class="result-score">Score: ' + result.score.toFixed(4) + ' | Type: ' + result.type + ' | Tags: ' + result.tags.slice(0, 5).join(', ') + '</div><div class="result-content">' + highlightMatch(result.content, query) + '</div><div class="result-tags">' + result.tags.slice(0, 8).map(function(tag) { return '<span class="tag">' + tag + '</span>'; }).join('') + '</div></div>';
+                    var bookBadge = ingestedBooks.length > 1 ? '<span style="display: inline-block; padding: 0.125rem 0.5rem; background: #667eea; color: white; border-radius: 9999px; font-size: 0.75rem; margin-left: 0.5rem;">' + result.bookTitle + '</span>' : '';
+                    return '<div class="result-item"><div class="result-score">Score: ' + result.score.toFixed(4) + ' | Type: ' + result.type + ' | Tags: ' + result.tags.slice(0, 5).join(', ') + bookBadge + '</div><div class="result-content">' + highlightMatch(result.content, query) + '</div><div class="result-tags">' + result.tags.slice(0, 8).map(function(tag) { return '<span class="tag">' + tag + '</span>'; }).join('') + '</div></div>';
                 }).join('');
             }, 50);
         }
