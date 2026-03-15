@@ -112,22 +112,49 @@ Anchor Engine wasn't built in a vacuum. The entire codebase was developed **usin
 
 ## Quick Start
 
-### Requirements
-- Node.js v18+ (v20+ recommended)
-- PNPM package manager
-- Minimum 1GB RAM (4GB+ recommended)
-- 10GB free storage space
+### Option 1: npm Install (Recommended)
 
 ```bash
+# Install globally
+npm install -g anchor-engine
+
+# Start the engine
+anchor start
+
+# Open in browser
+open http://localhost:3160
+```
+
+### Option 2: From Source
+
+```bash
+# Clone repo
 git clone https://github.com/RSBalchII/anchor-engine-node.git
 cd anchor-engine-node
+
+# Install and build
 pnpm install
 pnpm build
+
+# Start
 pnpm start
 ```
 
-Then open `http://localhost:3160` and start ingesting your data.  
-Full instructions in the [docs](docs/).
+### Commands
+
+```bash
+anchor start       # Start the engine
+anchor status      # Check if engine is running
+anchor init        # Initialize config in current directory
+anchor help        # Show all commands
+anchor --version   # Show version
+```
+
+### Configuration
+
+- **Config file:** `~/.config/anchor/user_settings.json`
+- **Data directory:** `~/.local/share/anchor/`
+- **Default port:** 3160
 
 ---
 
