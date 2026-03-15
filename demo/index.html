@@ -52,14 +52,14 @@
             padding: 1rem;
             background: #f7fafc;
             border-radius: 8px;
+            overflow: auto;
         }
 
-        #graph-canvas {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            background: white;
+        #graph-container-inner {
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .graph-placeholder {
@@ -374,9 +374,10 @@
             </div>
 
             <div class="graph-container">
-                <canvas id="graph-canvas" width="600" height="300"></canvas>
-                <div id="graph-placeholder" class="graph-placeholder">
-                    📊 Graph visualization will appear here after book ingestion
+                <div id="graph-container-inner">
+                    <div id="graph-placeholder" class="graph-placeholder">
+                        📊 Graph visualization will appear here after book ingestion
+                    </div>
                 </div>
             </div>
 
@@ -449,44 +450,50 @@
         </div>
     </div>
 
-    <!-- D3.js for graph visualization -->
-    <script src="https://d3js.org/d3.v7.min.js" crossorigin="anonymous"></script>
+    <!-- Mermaid.js for simple graph visualization (lighter than D3) -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: false,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                curve: 'basis'
+            }
+        });
+        window.mermaid = mermaid;
+    </script>
     
     <script>
         // ============================================
-        // Graph Visualization - Static Force Layout
+        // Graph Visualization - Mermaid.js (Simple & Lightweight)
         // ============================================
         
-        function drawGraph(nodes, edges) {
-            const canvas = document.getElementById('graph-canvas');
+        async function drawGraph(nodes, edges) {
+            const container = document.getElementById('graph-container-inner');
             const placeholder = document.getElementById('graph-placeholder');
-            
-            // Check if D3 loaded
-            if (typeof d3 === 'undefined') {
-                console.warn('[Graph] D3.js not loaded, skipping graph visualization');
-                placeholder.style.display = 'block';
-                placeholder.textContent = '📊 Graph visualization requires D3.js (check internet connection)';
-                return;
-            }
-            
-            const ctx = canvas.getContext('2d');
-            const width = canvas.width;
-            const height = canvas.height;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, width, height);
             
             // Show placeholder if not enough nodes
             if (!nodes || nodes.length < 2) {
                 placeholder.style.display = 'block';
-                canvas.style.display = 'none';
+                placeholder.textContent = '📊 Graph visualization will appear here after book ingestion';
+                container.innerHTML = '';
+                container.appendChild(placeholder);
                 return;
             }
             
-            placeholder.style.display = 'none';
-            canvas.style.display = 'block';
+            // Check if Mermaid loaded
+            if (typeof mermaid === 'undefined') {
+                placeholder.style.display = 'block';
+                placeholder.textContent = '📊 Loading graph library...';
+                container.innerHTML = '';
+                container.appendChild(placeholder);
+                // Try again in 2 seconds
+                setTimeout(() => drawGraph(nodes, edges), 2000);
+                return;
+            }
             
-            // Limit to top 50 nodes by degree for clarity
+            // Limit to top 20 nodes for clean visualization
             const nodeDegree = {};
             edges.forEach(edge => {
                 nodeDegree[edge.source] = (nodeDegree[edge.source] || 0) + 1;
@@ -495,67 +502,51 @@
             
             const sortedNodes = Object.keys(nodeDegree)
                 .sort((a, b) => nodeDegree[b] - nodeDegree[a])
-                .slice(0, 50);
+                .slice(0, 20);  // Top 20 hubs
             
             const filteredNodes = nodes.filter(n => sortedNodes.includes(n.id));
             const filteredEdges = edges.filter(e => 
                 sortedNodes.includes(e.source) && sortedNodes.includes(e.target)
             );
             
-            // Create node map for edge resolution
-            const nodeMap = {};
+            // Build Mermaid graph definition
+            let graphDef = 'graph TD\\n';
+            
+            // Add nodes with styling
             filteredNodes.forEach(node => {
-                nodeMap[node.id] = { ...node, x: width/2, y: height/2 };
+                const nodeId = node.id.replace(/[^a-zA-Z0-9]/g, '_');
+                const degree = nodeDegree[node.id] || 1;
+                const size = degree >= 5 ? 'XL' : degree >= 3 ? 'L' : 'M';
+                graphDef += `    ${nodeId}["${node.id.length > 15 ? node.id.substring(0, 12) + '...' : node.id}"]:::node${size}\\n`;
             });
             
-            // Set up D3 force simulation
-            const simulation = d3.forceSimulation(Object.values(nodeMap))
-                .force('link', d3.forceLink(filteredEdges)
-                    .id(d => d.id)
-                    .distance(60))
-                .force('charge', d3.forceManyBody().strength(-200))
-                .force('center', d3.forceCenter(width/2, height/2))
-                .force('collide', d3.forceCollide(15))
-                .stop();
-            
-            // Run simulation for 300 ticks
-            for (let i = 0; i < 300; ++i) {
-                simulation.tick();
-            }
-            
-            // Draw edges
-            ctx.beginPath();
-            ctx.strokeStyle = '#cbd5e0';
-            ctx.lineWidth = 1;
+            // Add edges (limit to 50 for clarity)
+            let edgeCount = 0;
             filteredEdges.forEach(edge => {
-                const source = nodeMap[edge.source];
-                const target = nodeMap[edge.target];
-                if (source && target) {
-                    ctx.moveTo(source.x, source.y);
-                    ctx.lineTo(target.x, target.y);
-                }
+                if (edgeCount >= 50) return;
+                const sourceId = edge.source.replace(/[^a-zA-Z0-9]/g, '_');
+                const targetId = edge.target.replace(/[^a-zA-Z0-9]/g, '_');
+                graphDef += `    ${sourceId} --- ${targetId}\\n`;
+                edgeCount++;
             });
-            ctx.stroke();
             
-            // Draw nodes
-            Object.values(nodeMap).forEach(node => {
-                // Node circle
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI);
-                ctx.fillStyle = '#667eea';
-                ctx.fill();
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // Node label (only for high-degree nodes)
-                if (nodeDegree[node.id] >= 3) {
-                    ctx.fillStyle = '#2d3748';
-                    ctx.font = '10px -apple-system, sans-serif';
-                    const label = node.id.length > 12 ? node.id.substring(0, 10) + '...' : node.id;
-                    ctx.fillText(label, node.x + 10, node.y - 10);
-                }
-            });
+            // Add styles
+            graphDef += '    classDef XL fill:#667eea,color:white,stroke:#333,stroke-width:2px\\n';
+            graphDef += '    classDef L fill:#764ba2,color:white,stroke:#333,stroke-width:2px\\n';
+            graphDef += '    classDef M fill:#e2e8f0,color:#2d3748,stroke:#cbd5e0,stroke-width:1px\\n';
+            
+            // Render with Mermaid
+            placeholder.style.display = 'none';
+            try {
+                const { svg } = await mermaid.render('mermaid-graph-' + Date.now(), graphDef);
+                container.innerHTML = svg;
+            } catch (error) {
+                console.warn('[Graph] Mermaid render error:', error);
+                placeholder.style.display = 'block';
+                placeholder.textContent = '📊 Graph rendering unavailable';
+                container.innerHTML = '';
+                container.appendChild(placeholder);
+            }
         }
         
         // ============================================
