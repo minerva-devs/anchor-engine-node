@@ -450,7 +450,7 @@
     </div>
 
     <!-- D3.js for graph visualization -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js" crossorigin="anonymous"></script>
     
     <script>
         // ============================================
@@ -460,6 +460,15 @@
         function drawGraph(nodes, edges) {
             const canvas = document.getElementById('graph-canvas');
             const placeholder = document.getElementById('graph-placeholder');
+            
+            // Check if D3 loaded
+            if (typeof d3 === 'undefined') {
+                console.warn('[Graph] D3.js not loaded, skipping graph visualization');
+                placeholder.style.display = 'block';
+                placeholder.textContent = '📊 Graph visualization requires D3.js (check internet connection)';
+                return;
+            }
+            
             const ctx = canvas.getContext('2d');
             const width = canvas.width;
             const height = canvas.height;
@@ -847,7 +856,10 @@
                 var proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(gutenbergUrl);
                 console.log('[STAR Demo] Trying proxy:', proxyIndex + 1, '/', corsProxies.length);
                 
-                fetch(proxyUrl)
+                fetch(proxyUrl, { 
+                    mode: 'cors',
+                    credentials: 'omit'
+                })
                     .then(function(response) {
                         console.log('[STAR Demo] Response status:', response.status);
                         if (!response.ok) {
