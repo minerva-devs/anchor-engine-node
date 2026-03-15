@@ -660,76 +660,81 @@
             infoDiv.innerHTML = '<strong>💡 Pro Tip:</strong> Select multiple books to search across them simultaneously and discover cross-book patterns!';
             bookList.appendChild(infoDiv);
             
-            // Add book grid
+            // Add Select All checkbox
+            var selectAllDiv = document.createElement('div');
+            selectAllDiv.style.cssText = 'margin-bottom: 1rem; padding: 0.75rem; background: #f7fafc; border-radius: 8px; display: flex; align-items: center; gap: 0.5rem;';
+            selectAllDiv.innerHTML = '<input type="checkbox" id="selectAllBooks" onchange="toggleAllBooks(this.checked)" style="width: 20px; height: 20px;"><label for="selectAllBooks" style="cursor: pointer; font-weight: 600; flex: 1;">Select All ' + books.length + ' Books</label><span style="color: #718096; font-size: 0.875rem;">(~2-3 min)</span>';
+            bookList.appendChild(selectAllDiv);
+            
+            // Add book grid with checkboxes
             var bookGrid = document.createElement('div');
             bookGrid.className = 'book-grid';
+            bookGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 0.75rem; margin-bottom: 1rem;';
             
-            books.forEach(function(book) {
+            books.forEach(function(book, idx) {
                 var card = document.createElement('div');
                 card.className = 'book-card';
-                card.innerHTML = '<div class="book-title">' + book.title + '</div><div class="book-author">' + (book.authors ? book.authors.map(function(a) { return a.name; }).join(', ') : book.author) + '</div>';
-                card.onclick = function() { ingestBook(book); };
+                card.style.cssText = 'cursor: pointer; border: 2px solid #e2e8f0; border-radius: 8px; padding: 0.75rem; transition: all 0.2s; display: flex; align-items: flex-start; gap: 0.5rem;';
+                card.onmouseover = function() { this.style.borderColor = '#667eea'; this.style.background = '#f7fafc'; };
+                card.onmouseout = function() { this.style.borderColor = '#e2e8f0'; this.style.background = 'white'; };
+                
+                var checkboxId = 'book_' + book.id;
+                card.innerHTML = '<input type="checkbox" id="' + checkboxId + '" value="' + book.id + '" onchange="updateIngestButton()" style="width: 18px; height: 18px; margin-top: 0.125rem;"><label for="' + checkboxId + '" style="cursor: pointer; flex: 1;"><div class="book-title" style="font-size: 0.875rem;">' + book.title + '</div><div class="book-author" style="font-size: 0.75rem;">' + (book.authors ? book.authors[0].name.split(' ').slice(-1)[0] : book.author) + '</div></label>';
                 bookGrid.appendChild(card);
             });
             bookList.appendChild(bookGrid);
+            
+            // Add action buttons
+            var actionDiv = document.createElement('div');
+            actionDiv.style.cssText = 'display: flex; gap: 0.5rem; flex-wrap: wrap;';
+            actionDiv.innerHTML = '<button id="ingestSelectedBtn" class="btn-primary" onclick="ingestCheckedBooks()" disabled style="flex: 1;">📚 Ingest Selected (0)</button><button class="btn-secondary" onclick="closeBookModal()">Cancel</button>';
+            bookList.appendChild(actionDiv);
+        }
+
+        function toggleAllBooks(checked) {
+            document.querySelectorAll('.book-card input[type="checkbox"]').forEach(function(cb) {
+                cb.checked = checked;
+            });
+            updateIngestButton();
+        }
+
+        function updateIngestButton() {
+            var checked = document.querySelectorAll('.book-card input[type="checkbox"]:checked').length;
+            var btn = document.getElementById('ingestSelectedBtn');
+            if (btn) {
+                btn.disabled = checked === 0;
+                btn.textContent = '📚 Ingest Selected (' + checked + ')';
+                btn.style.opacity = checked === 0 ? '0.5' : '1';
+            }
+        }
+
+        function ingestCheckedBooks() {
+            var checkedBoxes = document.querySelectorAll('.book-card input[type="checkbox"]:checked');
+            var selectedBooks = [];
+            
+            checkedBoxes.forEach(function(cb) {
+                var book = GUTENBERG_BOOKS.find(function(b) { return b.id == cb.value; });
+                if (book) selectedBooks.push(book);
+            });
+            
+            if (selectedBooks.length === 0) {
+                alert('Please select at least one book');
+                return;
+            }
+            
+            closeBookModal();
+            ingestMultipleBooks(selectedBooks);
         }
 
         function ingestBook(book) {
-            closeBookModal();
-            
-            var resultsDiv = document.getElementById('results');
-            var progressBar = document.getElementById('ingestProgress');
-            var progressFill = document.getElementById('progressFill');
-            
-            resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Ingesting "' + book.title + '"...</p></div>';
-            progressBar.style.display = 'block';
-            progressFill.style.width = '0%';
-
-            console.log('[STAR Demo] Fetching book:', book.title, 'ID:', book.id);
-
-            // Multiple CORS proxies for reliability (some get rate limited)
-            var corsProxies = [
-                'https://api.allorigins.win/raw?url=',
-                'https://corsproxy.io/?',
-                'https://api.codetabs.com/v1/proxy?quest='
-            ];
-            
-            var gutenbergUrl = 'https://www.gutenberg.org/files/' + book.id + '/' + book.id + '-0.txt';
-            
-            // Try proxies in sequence until one works
-            tryProxy(0);
-            
-            function tryProxy(proxyIndex) {
-                if (proxyIndex >= corsProxies.length) {
-                    showError('All CORS proxies failed. Please try another book.');
-                    return;
-                }
-                
-                var proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(gutenbergUrl);
-                console.log('[STAR Demo] Trying proxy:', proxyIndex + 1, '/', corsProxies.length);
-                
-                fetch(proxyUrl)
-                    .then(function(response) {
-                        console.log('[STAR Demo] Response status:', response.status);
-                        if (!response.ok) {
-                            throw new Error('HTTP ' + response.status);
-                        }
-                        return response.text();
-                    })
-                    .then(function(text) {
-                        console.log('[STAR Demo] Raw text length:', text.length);
-                        
-                        if (text.length < 1000) {
-                            throw new Error('Content too short, trying next proxy');
-                        }
-                        
-                        processIngestedText(text, book.title, progressBar, progressFill, resultsDiv);
-                    })
-                    .catch(function(error) {
-                        console.warn('[STAR Demo] Proxy', proxyIndex + 1, 'failed:', error.message);
-                        tryProxy(proxyIndex + 1);
-                    });
+            // Single book ingestion - check it in the UI
+            var checkbox = document.getElementById('book_' + book.id);
+            if (checkbox) {
+                checkbox.checked = true;
+                updateIngestButton();
             }
+            closeBookModal();
+            ingestMultipleBooks([book]);
         }
         
         function processIngestedText(text, title, progressBar, progressFill, resultsDiv) {
