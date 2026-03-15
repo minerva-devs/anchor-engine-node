@@ -850,15 +850,19 @@
                     })
                     .then(function(text) {
                         console.log('[STAR Demo] Raw text length:', text.length);
-                        
+
                         if (text.length < 1000) {
                             throw new Error('Content too short, trying next proxy');
                         }
-                        
+
+                        // Success! Process and DON'T try more proxies
+                        console.log('[STAR Demo] ✅ Proxy', proxyIndex + 1, 'succeeded!');
                         processIngestedText(text, book.title, progressBar, progressFill, resultsDiv);
                     })
                     .catch(function(error) {
                         console.warn('[STAR Demo] Proxy', proxyIndex + 1, 'failed:', error.message);
+                        // Only try next proxy if not already processing
+                        if (!progressBar || !progressBar.parentElement) return;
                         tryProxy(proxyIndex + 1);
                     });
             }
