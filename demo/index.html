@@ -911,68 +911,66 @@
         function drawSearchGraph(results) {
             try {
                 const placeholder = document.getElementById('graph-placeholder');
-                
-                if (!results || results.length === 0 || typeof mermaid === 'undefined') {
+
+                if (!results || results.length === 0) {
                     placeholder.textContent = '📊 Graph visualization will appear here after search';
                     return;
                 }
-
-                // Extract unique tags from results
-                const tagMap = {};
-                const atomTags = {};
                 
-                results.forEach(function(result, idx) {
-                    if (idx >= 10) return; // Limit to top 10 results
-                    const atomId = 'atom_' + idx;
-                    atomTags[atomId] = result.tags.slice(0, 5); // Top 5 tags per atom
-                    
-                    result.tags.slice(0, 5).forEach(function(tag) {
-                        tagMap[tag] = (tagMap[tag] || 0) + 1;
-                    });
-                });
+                if (typeof mermaid === 'undefined') {
+                    placeholder.textContent = '📊 Loading graph...';
+                    setTimeout(function() { drawSearchGraph(results); }, 1000);
+                    return;
+                }
 
                 // Build Mermaid graph
-                let graphDef = 'graph LR\\n';
-                graphDef += '    classDef atom fill:#667eea,color:white,stroke:#333,stroke-width:2px,rx:10,ry:10\\n';
-                graphDef += '    classDef tag fill:#e2e8f0,color:#2d3748,stroke:#cbd5e0,stroke-width:1px,rx:15,ry:15\\n';
-                
-                // Add atom nodes (rounded rectangles)
-                results.forEach(function(result, idx) {
-                    if (idx >= 10) return;
-                    const atomId = 'A' + idx;
-                    const label = result.content.substring(0, 30).replace(/"/g, "'") + '...';
-                    graphDef += `    ${atomId}["${label}"]:::atom\\n`;
-                });
-                
+                let graphDef = 'graph LR\n';
+                graphDef += '    classDef atom fill:#667eea,color:white,stroke:#333,stroke-width:2px,rx:10,ry:10\n';
+                graphDef += '    classDef tag fill:#e2e8f0,color:#2d3748,stroke:#cbd5e0,stroke-width:1px,rx:15,ry:15\n';
+
+                // Add atom nodes (rounded rectangles) - limit to 8
+                for (var i = 0; i < results.length && i < 8; i++) {
+                    var result = results[i];
+                    var atomId = 'A' + i;
+                    // Remove ALL special chars that break Mermaid
+                    var label = result.content.substring(0, 25).replace(/["\(\)\[\]\\]/g, '').replace(/'/g, '') + '...';
+                    graphDef += '    ' + atomId + '["' + label + '"]:::atom\n';
+                }
+
                 // Add tag nodes and edges
-                const addedTags = {};
-                results.forEach(function(result, idx) {
-                    if (idx >= 10) return;
-                    const atomId = 'A' + idx;
-                    
-                    result.tags.slice(0, 5).forEach(function(tag) {
-                        const tagId = 'T_' + tag.replace(/[^a-zA-Z0-9]/g, '_');
+                var addedTags = {};
+                for (var i = 0; i < results.length && i < 8; i++) {
+                    var result = results[i];
+                    var atomId = 'A' + i;
+
+                    for (var j = 0; j < result.tags.length && j < 4; j++) {
+                        var tag = result.tags[j];
+                        var tagId = 'T' + tag.replace(/[^a-zA-Z0-9]/g, '');
                         if (!addedTags[tagId]) {
-                            graphDef += `    ${tagId}("${tag}"):::tag\\n`;
+                            graphDef += '    ' + tagId + '("' + tag + '"):::tag\n';
                             addedTags[tagId] = true;
                         }
-                        graphDef += `    ${atomId} --- ${tagId}\\n`;
-                    });
-                });
+                        graphDef += '    ' + atomId + '---' + tagId + '\n';
+                    }
+                }
+
+                console.log('[Graph] Def length:', graphDef.length);
 
                 // Render
                 placeholder.style.display = 'none';
                 mermaid.render('search-graph-' + Date.now(), graphDef)
-                    .then(function({ svg }) {
-                        document.getElementById('graph-placeholder').innerHTML = svg;
+                    .then(function(result) {
+                        console.log('[Graph] Success!');
+                        document.getElementById('graph-placeholder').innerHTML = result.svg;
                     })
                     .catch(function(error) {
-                        console.warn('[Graph] Render error:', error);
+                        console.error('[Graph] Error:', error.message);
+                        console.error('[Graph] Def:', graphDef.substring(0, 500));
                         placeholder.style.display = 'block';
-                        placeholder.textContent = '📊 (Graph unavailable)';
+                        placeholder.textContent = '📊 (Error: ' + error.message.substring(0, 60) + ')';
                     });
             } catch (error) {
-                console.warn('[Graph] drawSearchGraph error:', error);
+                console.error('[Graph] Fatal:', error);
             }
         }
 
