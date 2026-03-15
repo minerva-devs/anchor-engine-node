@@ -919,9 +919,9 @@
             // Update search hint with top tags
             updateSearchHint();
             
-            // Draw graph visualization
-            var graphData = engine.getGraphData();
-            drawGraph(graphData.nodes, graphData.edges);
+            // Graph visualization temporarily disabled for debugging
+            // var graphData = engine.getGraphData();
+            // drawGraph(graphData.nodes, graphData.edges);
 
             currentBook = { title: title };
             
@@ -1032,8 +1032,8 @@
             document.getElementById('results').innerHTML = '<div class="loading"><p>Select a book to begin ingestion and search</p></div>';
             document.getElementById('searchHint').style.display = 'none';
             
-            // Clear graph visualization
-            drawGraph([], []);
+            // Graph visualization temporarily disabled
+            // drawGraph([], []);
         }
 
         function updateSearchHint() {
