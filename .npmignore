@@ -1,0 +1,61 @@
+# Development
+.git
+.gitignore
+.qwen
+node_modules
+*.log
+logs/
+coverage/
+.nyc_output/
+
+# Build artifacts (keep dist, remove engine/dist for clean install)
+engine/dist/
+engine/node_modules/
+
+# Tests
+tests/
+*.test.ts
+*.test.js
+jest.config.cjs
+vitest.config.ts
+
+# Documentation
+docs/
+*.md
+!README.md
+CHANGELOG.md
+TESTING.md
+paper.md
+paper.bib
+
+# Config and data (user provides these)
+inbox/
+mirrored_brain/
+engine/inbox/
+engine/mirrored_brain/
+engine/context_data/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Scripts (keep postinstall, remove dev scripts)
+scripts/*.js
+!scripts/postinstall.js
+scripts/*.ts
+scripts/external-inbox/
+
+# Samples
+sample-data/
+backups/
+reports/
+benchmarks/
+
+# Legacy
+specs/archive-legacy/

@@ -4,6 +4,10 @@
   "description": "Anchor - Knowledge Database Engine (WASM-accelerated, PGlite on Port 3160)",
   "main": "index.js",
   "type": "module",
+  "bin": {
+    "anchor": "./bin/anchor.js",
+    "anchor-engine": "./bin/anchor.js"
+  },
   "scripts": {
     "start": "node --expose-gc --max-old-space-size=6144 engine/dist/index.js",
     "dev": "pnpm --filter anchor-engine dev",
@@ -15,7 +19,7 @@
     "test:all": "pnpm test && pnpm test:standalone",
     "lint": "eslint . --ext .ts,.js",
     "clean": "rimraf dist engine/dist",
-    "postinstall": "cd engine && pnpm install --ignore-scripts && pnpm run build",
+    "postinstall": "node scripts/postinstall.js",
     "start-with-logging": "node --expose-gc engine/dist/index.js > ../../logs/anchor_engine.log 2>&1",
     "postversion": "node scripts/sync-version.mjs && git add engine/package.json README.md && git commit --amend --no-edit"
   },
