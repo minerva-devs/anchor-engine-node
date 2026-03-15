@@ -376,13 +376,17 @@
             </div>
 
             <div class="search-box">
-                <input 
-                    type="text" 
-                    id="searchInput" 
+                <input
+                    type="text"
+                    id="searchInput"
                     placeholder="Search the ingested book... (e.g., 'love', 'war', 'time')"
                     onkeypress="if(event.key === 'Enter') performSearch()"
                 >
                 <button class="btn-primary" onclick="performSearch()">🔍 Search</button>
+            </div>
+
+            <div id="searchHint" style="margin-bottom: 1rem; font-size: 0.875rem; color: #718096; display: none;">
+                <strong>💡 Try searching:</strong> <span id="hintTags"></span>
             </div>
 
             <div class="results" id="results">
@@ -736,7 +740,10 @@
             document.getElementById('atomCount').textContent = stats.atoms.toLocaleString();
             document.getElementById('tagCount').textContent = stats.tags.toLocaleString();
             document.getElementById('edgesCount').textContent = stats.edges.toLocaleString();
-            
+
+            // Update search hint with top tags
+            updateSearchHint();
+
             currentBook = { title: title };
             
             resultsDiv.innerHTML = '<div class="info-box"><strong>✅ Ingestion Complete!</strong><br>"' + title + '" has been atomized into ' + stats.atoms.toLocaleString() + ' atoms with ' + stats.tags.toLocaleString() + ' tags and ' + stats.edges.toLocaleString() + ' edges.<br><br>Try searching for themes, characters, or concepts from the book.</div><h3 style="margin-bottom: 1rem; color: #2d3748;">Example Searches:</h3><div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">' + getExampleSearches(title).map(function(q) { return '<button class="btn-secondary" onclick="document.getElementById(\'searchInput\').value=\'' + q + '\'; performSearch()">' + q + '</button>'; }).join('') + '</div>';
@@ -844,6 +851,21 @@
             document.getElementById('edgesCount').textContent = '0';
             document.getElementById('searchTime').textContent = '0ms';
             document.getElementById('results').innerHTML = '<div class="loading"><p>Select a book to begin ingestion and search</p></div>';
+            document.getElementById('searchHint').style.display = 'none';
+        }
+
+        function updateSearchHint() {
+            var tags = Array.from(engine.tags.entries())
+                .sort(function(a, b) { return b[1] - a[1]; })  // Sort by count
+                .slice(0, 10)  // Top 10 tags
+                .map(function(entry) { return entry[0]; });
+
+            if (tags.length > 0) {
+                document.getElementById('hintTags').textContent = tags.slice(0, 5).join(', ') + (tags.length > 5 ? '...' : '');
+                document.getElementById('searchHint').style.display = 'block';
+            } else {
+                document.getElementById('searchHint').style.display = 'none';
+            }
         }
 
         document.getElementById('bookModal').addEventListener('click', function(e) {
