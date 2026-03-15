@@ -775,6 +775,27 @@
         // Track multiple books
         var ingestedBooks = [];
         var currentBookTitle = '';
+        var tagColorCache = {}; // Cache for consistent tag colors
+
+        // Generate consistent color for a tag (based on tag name)
+        function getTagColor(tag) {
+            if (tagColorCache[tag]) return tagColorCache[tag];
+            
+            // Generate color from tag string (consistent per tag)
+            var hash = 0;
+            for (var i = 0; i < tag.length; i++) {
+                hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            
+            // Use HSL for pleasant, distinct colors
+            var hue = hash % 360;
+            var saturation = 65 + (hash % 20); // 65-85%
+            var lightness = 45 + (hash % 20);  // 45-65%
+            
+            var color = 'hsl(' + hue + ', ' + saturation + '%, ' + lightness + '%)';
+            tagColorCache[tag] = color;
+            return color;
+        }
 
         function ingestMultipleBooks(books) {
             var resultsDiv = document.getElementById('results');
@@ -915,7 +936,14 @@
 
                 resultsDiv.innerHTML = '<h3 style="margin-bottom: 1rem; color: #2d3748;">Search Results for "' + query + '" (' + results.length + ' results)</h3>' + results.map(function(result, idx) {
                     var bookBadge = ingestedBooks.length > 1 ? '<span style="display: inline-block; padding: 0.125rem 0.5rem; background: #667eea; color: white; border-radius: 9999px; font-size: 0.75rem; margin-left: 0.5rem;">' + result.bookTitle + '</span>' : '';
-                    return '<div class="result-item"><div class="result-score">Score: ' + result.score.toFixed(4) + ' | Type: ' + result.type + ' | Tags: ' + result.tags.slice(0, 5).join(', ') + bookBadge + '</div><div class="result-content">' + highlightMatch(result.content, query) + '</div><div class="result-tags">' + result.tags.slice(0, 8).map(function(tag) { return '<span class="tag">' + tag + '</span>'; }).join('') + '</div></div>';
+                    
+                    // Color-code tags based on tag name (consistent across results)
+                    var tagSpans = result.tags.slice(0, 8).map(function(tag) {
+                        var color = getTagColor(tag);
+                        return '<span class="tag" style="background: ' + color + '; color: white; border: none;">' + tag + '</span>';
+                    }).join('');
+                    
+                    return '<div class="result-item"><div class="result-score">Score: ' + result.score.toFixed(4) + ' | Type: ' + result.type + ' | Tags: ' + result.tags.slice(0, 5).join(', ') + bookBadge + '</div><div class="result-content">' + highlightMatch(result.content, query) + '</div><div class="result-tags">' + tagSpans + '</div></div>';
                 }).join('');
             }, 50);
         }
@@ -935,6 +963,9 @@
         function resetDemo() {
             engine.clear();
             currentBook = null;
+            currentBookTitle = '';
+            ingestedBooks = [];
+            tagColorCache = {}; // Clear tag colors
             document.getElementById('searchInput').value = '';
             document.getElementById('atomCount').textContent = '0';
             document.getElementById('tagCount').textContent = '0';
