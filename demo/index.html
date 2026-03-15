@@ -828,16 +828,22 @@
             ];
             
             var gutenbergUrl = 'https://www.gutenberg.org/files/' + book.id + '/' + book.id + '-0.txt';
-            
-            // Try proxies in sequence until one works
-            tryProxy(0);
-            
+
+            // Track if already processing to avoid showing errors after success
+            var alreadyProcessed = false;
+
             function tryProxy(proxyIndex) {
+                // Stop if already processed a successful response
+                if (alreadyProcessed) return;
+                
                 if (proxyIndex >= corsProxies.length) {
-                    showError('All CORS proxies failed. Please try another book.');
+                    // Only show error if we haven't processed anything
+                    if (!alreadyProcessed) {
+                        showError('All CORS proxies failed. Please try another book.');
+                    }
                     return;
                 }
-                
+
                 var proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(gutenbergUrl);
                 console.log('[STAR Demo] Trying proxy:', proxyIndex + 1, '/', corsProxies.length);
                 
@@ -851,14 +857,20 @@
                     })
                     .then(function(text) {
                         console.log('[STAR Demo] Raw text length:', text.length);
-                        
+
                         if (text.length < 1000) {
                             throw new Error('Content too short, trying next proxy');
                         }
-                        
+
+                        // Success! Mark as processed and DON'T try more proxies
+                        alreadyProcessed = true;
+                        console.log('[STAR Demo] ✅ Proxy', proxyIndex + 1, 'succeeded!');
                         processIngestedText(text, book.title, progressBar, progressFill, resultsDiv);
                     })
                     .catch(function(error) {
+                        // Don't try next proxy if already processed success
+                        if (alreadyProcessed) return;
+                        
                         console.warn('[STAR Demo] Proxy', proxyIndex + 1, 'failed:', error.message);
                         tryProxy(proxyIndex + 1);
                     });
