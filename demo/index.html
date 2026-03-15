@@ -171,6 +171,22 @@
             }
         }
 
+        /* Graph Visualization */
+        .graph-container {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+
+        #graph-placeholder {
+            color: #718096;
+            font-size: 0.875rem;
+            text-align: center;
+            padding: 2rem;
+        }
+
         .results {
             background: #f7fafc;
             border-radius: 8px;
@@ -389,6 +405,12 @@
                 <strong>💡 Try searching:</strong> <span id="hintTags"></span>
             </div>
 
+            <div class="graph-container">
+                <div id="graph-placeholder">
+                    📊 Graph visualization will appear here after search
+                </div>
+            </div>
+
             <div class="results" id="results">
                 <div class="loading">
                     <p>Select a book to begin ingestion and search</p>
@@ -419,6 +441,19 @@
             </div>
         </div>
     </div>
+
+    <!-- Mermaid.js for graph visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" crossorigin="anonymous"></script>
+    <script>
+        // Initialize Mermaid when loaded
+        if (typeof mermaid !== 'undefined') {
+            mermaid.initialize({ 
+                startOnLoad: false,
+                theme: 'default',
+                flowchart: { curve: 'basis' }
+            });
+        }
+    </script>
 
     <script>
         // ============================================
@@ -827,6 +862,9 @@
                 resultsDiv.innerHTML = '<h3 style="margin-bottom: 1rem; color: #2d3748;">Search Results for "' + query + '" (' + results.length + ' results)</h3>' + results.map(function(result, idx) {
                     return '<div class="result-item"><div class="result-score">Score: ' + result.score.toFixed(4) + ' | Type: ' + result.type + ' | Tags: ' + result.tags.slice(0, 5).join(', ') + '</div><div class="result-content">' + highlightMatch(result.content, query) + '</div><div class="result-tags">' + result.tags.slice(0, 8).map(function(tag) { return '<span class="tag">' + tag + '</span>'; }).join('') + '</div></div>';
                 }).join('');
+                
+                // Draw graph visualization
+                drawSearchGraph(results);
             }, 50);
         }
 
@@ -852,6 +890,7 @@
             document.getElementById('searchTime').textContent = '0ms';
             document.getElementById('results').innerHTML = '<div class="loading"><p>Select a book to begin ingestion and search</p></div>';
             document.getElementById('searchHint').style.display = 'none';
+            document.getElementById('graph-placeholder').textContent = '📊 Graph visualization will appear here after search';
         }
 
         function updateSearchHint() {
@@ -865,6 +904,75 @@
                 document.getElementById('searchHint').style.display = 'block';
             } else {
                 document.getElementById('searchHint').style.display = 'none';
+            }
+        }
+
+        // Simple graph visualization for search results
+        function drawSearchGraph(results) {
+            try {
+                const placeholder = document.getElementById('graph-placeholder');
+                
+                if (!results || results.length === 0 || typeof mermaid === 'undefined') {
+                    placeholder.textContent = '📊 Graph visualization will appear here after search';
+                    return;
+                }
+
+                // Extract unique tags from results
+                const tagMap = {};
+                const atomTags = {};
+                
+                results.forEach(function(result, idx) {
+                    if (idx >= 10) return; // Limit to top 10 results
+                    const atomId = 'atom_' + idx;
+                    atomTags[atomId] = result.tags.slice(0, 5); // Top 5 tags per atom
+                    
+                    result.tags.slice(0, 5).forEach(function(tag) {
+                        tagMap[tag] = (tagMap[tag] || 0) + 1;
+                    });
+                });
+
+                // Build Mermaid graph
+                let graphDef = 'graph LR\\n';
+                graphDef += '    classDef atom fill:#667eea,color:white,stroke:#333,stroke-width:2px,rx:10,ry:10\\n';
+                graphDef += '    classDef tag fill:#e2e8f0,color:#2d3748,stroke:#cbd5e0,stroke-width:1px,rx:15,ry:15\\n';
+                
+                // Add atom nodes (rounded rectangles)
+                results.forEach(function(result, idx) {
+                    if (idx >= 10) return;
+                    const atomId = 'A' + idx;
+                    const label = result.content.substring(0, 30).replace(/"/g, "'") + '...';
+                    graphDef += `    ${atomId}["${label}"]:::atom\\n`;
+                });
+                
+                // Add tag nodes and edges
+                const addedTags = {};
+                results.forEach(function(result, idx) {
+                    if (idx >= 10) return;
+                    const atomId = 'A' + idx;
+                    
+                    result.tags.slice(0, 5).forEach(function(tag) {
+                        const tagId = 'T_' + tag.replace(/[^a-zA-Z0-9]/g, '_');
+                        if (!addedTags[tagId]) {
+                            graphDef += `    ${tagId}("${tag}"):::tag\\n`;
+                            addedTags[tagId] = true;
+                        }
+                        graphDef += `    ${atomId} --- ${tagId}\\n`;
+                    });
+                });
+
+                // Render
+                placeholder.style.display = 'none';
+                mermaid.render('search-graph-' + Date.now(), graphDef)
+                    .then(function({ svg }) {
+                        document.getElementById('graph-placeholder').innerHTML = svg;
+                    })
+                    .catch(function(error) {
+                        console.warn('[Graph] Render error:', error);
+                        placeholder.style.display = 'block';
+                        placeholder.textContent = '📊 (Graph unavailable)';
+                    });
+            } catch (error) {
+                console.warn('[Graph] drawSearchGraph error:', error);
             }
         }
 
