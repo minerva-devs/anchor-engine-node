@@ -97,7 +97,7 @@ export const distillSchema = contextOptionsSchema.extend({
   seed: distillSeedSchema.optional(),
   radius: z.number().int().positive().max(10).default(3),
   max_nodes: z.number().int().positive().max(5000).default(500),
-  output_format: z.enum(['yaml', 'md']).default('yaml'),
+  output_format: z.enum(['yaml', 'md', 'json', 'decision-records']).default('yaml'),
   normalization: z.enum(['strict', 'lenient']).default('strict')
 });
 

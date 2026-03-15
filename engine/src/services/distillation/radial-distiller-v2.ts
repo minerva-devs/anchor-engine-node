@@ -13,6 +13,7 @@ import { db } from '../../core/db.js';
 import { ContextInflator } from '../search/context-inflator.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { getMirrorPath } from '../mirror/mirror.js';
+import { pathManager } from '../../utils/path-manager.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -341,15 +342,15 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
     let compoundQuery = 'SELECT id, path FROM compounds';
     const params: any[] = [];
     
-    if (request.seed?.compound_ids) {
+    if (request.seed?.compound_ids && request.seed.compound_ids.length > 0) {
       compoundQuery += ' WHERE id IN (' + request.seed.compound_ids.map(() => '?').join(',') + ')';
       params.push(...request.seed.compound_ids);
-    } else if (request.seed?.buckets) {
+    } else if (request.seed?.buckets && request.seed.buckets.length > 0) {
       compoundQuery += ' WHERE provenance IN (' + request.seed.buckets.map(() => '?').join(',') + ')';
       params.push(...request.seed.buckets);
     }
     
-    const compounds = await db.select(compoundQuery, params);
+    const compounds = (await db.run(compoundQuery, params)).results || [];
     
     for (const compound of compounds) {
       // Skip distillation outputs (prevent self-contamination)
@@ -361,15 +362,15 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       
       // Get content from mirrored_brain or compound body
       let content = '';
-      const mirrorPath = await getMirrorPath();
+      const mirrorPath = getMirrorPath(path.join(process.cwd(), 'mirrored_brain'));
       const localPath = path.join(mirrorPath, compound.path);
       
       if (fs.existsSync(localPath)) {
         content = fs.readFileSync(localPath, 'utf-8');
       } else {
         // Fallback to database
-        const result = await db.select('SELECT compound_body FROM compounds WHERE id = ?', [compound.id]);
-        content = result[0]?.compound_body || '';
+        const result = await db.run('SELECT compound_body FROM compounds WHERE id = ?', [compound.id]);
+        content = result.results?.[0]?.compound_body || '';
       }
       
       // Get file mtime

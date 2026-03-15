@@ -118,7 +118,7 @@ export function setupMemoryRoutes(app: Application) {
       const duration = Date.now() - startTime;
 
       StructuredLogger.info('DISTILL_COMPLETE', {
-        records: result.stats.decision_records || result.stats.lines_unique,
+        records: 'decision_records' in result.stats ? result.stats.decision_records : result.stats.lines_unique,
         compression: result.stats.compression_ratio,
         duration_ms: duration
       });
