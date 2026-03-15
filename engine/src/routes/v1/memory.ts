@@ -93,29 +93,37 @@ export function setupMemoryRoutes(app: Application) {
       });
     }
 
-    StructuredLogger.info('DISTILL_REQUEST', {
-      endpoint: '/v1/memory/distill',
-      mode: 'radial'
-    });
+    StructuredLogger.info('DISTILL_REQUEST', { endpoint: '/v1/memory/distill' });
 
     try {
-      // Standard 008: Radial Distillation (only mode supported)
-      const body = validation.data as RadialDistillRequest;
-      const result = await radialDistill(body);
+      const body = validation.data as any;
+
+      // Support v2 distiller with decision-records output
+      const useV2 = body.format === 'decision-records' || body.output_format === 'decision-records';
+      
+      let result;
+      if (useV2) {
+        const { radialDistill } = await import('../../services/distillation/radial-distiller-v2.js');
+        result = await radialDistill({
+          seed: body.seed,
+          radius: body.radius || 3,
+          output_format: 'decision-records',
+          output_path: body.output_path
+        });
+      } else {
+        const { radialDistill } = await import('../../services/distillation/radial-distiller.js');
+        result = await radialDistill(body);
+      }
+      
       const duration = Date.now() - startTime;
 
-      StructuredLogger.info('RADIAL_DISTILL_COMPLETE', {
-        compounds_processed: result.stats.compounds_processed,
-        lines_total: result.stats.lines_total,
-        lines_unique: result.stats.lines_unique,
-        compression_ratio: result.stats.compression_ratio,
+      StructuredLogger.info('DISTILL_COMPLETE', {
+        records: result.stats.decision_records || result.stats.lines_unique,
+        compression: result.stats.compression_ratio,
         duration_ms: duration
       });
 
-      res.json({
-        ...result,
-        duration_ms: duration
-      });
+      res.json({ ...result, duration_ms: duration });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       StructuredLogger.error('DISTILL_ERROR', err instanceof Error ? err : new Error(msg), { error: msg });

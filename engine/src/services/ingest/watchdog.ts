@@ -17,7 +17,7 @@ import { pathManager } from '../../utils/path-manager.js';
 import { systemStatus } from '../system-status.js';
 
 let watcher: chokidar.FSWatcher | null = null;
-const IGNORE_PATTERNS = /(^|[\/\\])\../; // Ignore dotfiles
+const IGNORE_PATTERNS = /(^|[\/\\])\..*|distilled_.*\.yaml$|MASTER_DISTILLED_.*\.yaml$|_distilled_.*\.(yaml|json|md)$/; // Ignore dotfiles and distillation outputs
 
 // Post-ingestion synonym generation
 let ingestionTimeout: NodeJS.Timeout | null = null;
