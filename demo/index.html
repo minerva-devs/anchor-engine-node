@@ -402,6 +402,8 @@
 
             <div class="action-bar">
                 <button class="btn-primary" onclick="openBookModal()">📚 Select Book from Gutenberg</button>
+                <button class="btn-secondary" onclick="loadSampleBook()">📖 Load Sample Book (No CORS)</button>
+                <button class="btn-secondary" onclick="openPasteModal()">📝 Paste Text</button>
                 <button class="btn-secondary" onclick="resetDemo()">🔄 Reset Demo</button>
             </div>
 
@@ -821,39 +823,22 @@
             var corsProxies = [
                 'https://api.allorigins.win/raw?url=',
                 'https://corsproxy.io/?',
-                'https://api.codetabs.com/v1/proxy?quest=',
-                'https://cors.bridged.cc/',
-                'https://proxy.cors.sh/',
-                'https://cors-anywhere.herokuapp.com/'
+                'https://api.codetabs.com/v1/proxy?quest='
             ];
 
             var gutenbergUrl = 'https://www.gutenberg.org/files/' + book.id + '/' + book.id + '-0.txt';
-            var fallbackUrl = 'https://www.gutenberg.org/cache/epub/' + book.id + '/pg' + book.id + '.txt';
 
             // Try proxies in sequence until one works
             tryProxy(0);
 
             function tryProxy(proxyIndex) {
                 if (proxyIndex >= corsProxies.length) {
-                    // Last resort: try direct fetch (works if CORS disabled or running locally)
-                    console.log('[STAR Demo] All proxies failed, trying direct fetch...');
-                    fetch(gutenbergUrl)
-                        .then(function(response) {
-                            if (!response.ok) throw new Error('HTTP ' + response.status);
-                            return response.text();
-                        })
-                        .then(function(text) {
-                            if (text.length < 1000) throw new Error('Content too short');
-                            processIngestedText(text, book.title, progressBar, progressFill, resultsDiv);
-                        })
-                        .catch(function(error) {
-                            showError('All CORS proxies failed. Please try:<br>1. Use a different browser<br>2. Install a CORS disable extension<br>3. Try another book<br><br>Error: ' + error.message);
-                        });
+                    showError('All CORS proxies failed. Please try:<br>1. Wait a moment and try again<br>2. Try a different book<br>3. Use "Load Sample Book" button<br><br>Error: Network timeout or CORS restriction');
                     return;
                 }
 
                 var proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(gutenbergUrl);
-                console.log('[STAR Demo] Trying proxy:', proxyIndex + 1, '/', corsProxies.length, proxyUrl);
+                console.log('[STAR Demo] Trying proxy:', proxyIndex + 1, '/', corsProxies.length);
                 
                 fetch(proxyUrl)
                     .then(function(response) {
