@@ -46,28 +46,6 @@
             opacity: 0.9;
         }
 
-        .graph-container {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            background: #f7fafc;
-            border-radius: 8px;
-            overflow: auto;
-        }
-
-        #graph-container-inner {
-            min-height: 200px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .graph-placeholder {
-            color: #718096;
-            font-size: 0.875rem;
-            padding: 2rem;
-        }
-
         .demo-card {
             background: white;
             border-radius: 12px;
@@ -373,14 +351,6 @@
                 Select a book from Project Gutenberg, and it will be atomized into a concept graph for deterministic retrieval.
             </div>
 
-            <div class="graph-container">
-                <div id="graph-container-inner">
-                    <div id="graph-placeholder" class="graph-placeholder">
-                        📊 Graph visualization will appear here after book ingestion
-                    </div>
-                </div>
-            </div>
-
             <div class="stats-bar">
                 <div class="stat">
                     <div class="stat-value" id="atomCount">0</div>
@@ -450,118 +420,7 @@
         </div>
     </div>
 
-    <!-- Mermaid.js for simple graph visualization (lighter than D3) -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <script>
-        // Initialize Mermaid when loaded
-        if (typeof mermaid !== 'undefined') {
-            mermaid.initialize({ 
-                startOnLoad: false,
-                theme: 'default',
-                flowchart: {
-                    useMaxWidth: true,
-                    curve: 'basis'
-                }
-            });
-            console.log('[Graph] Mermaid.js loaded successfully');
-        } else {
-            console.warn('[Graph] Mermaid.js failed to load');
-        }
-    </script>
-    
-    <script>
-        // ============================================
-        // Graph Visualization - Mermaid.js (Simple & Lightweight)
-        // ============================================
-        
-        async function drawGraph(nodes, edges) {
-            try {
-                const container = document.getElementById('graph-container-inner');
-                const placeholder = document.getElementById('graph-placeholder');
-                
-                // Show placeholder if not enough nodes
-                if (!nodes || nodes.length < 2) {
-                    placeholder.style.display = 'block';
-                    placeholder.textContent = '📊 Graph visualization will appear here after book ingestion';
-                    container.innerHTML = '';
-                    container.appendChild(placeholder);
-                    return;
-                }
-                
-                // Check if Mermaid loaded
-                if (typeof mermaid === 'undefined') {
-                    placeholder.style.display = 'block';
-                    placeholder.textContent = '📊 Graph library loading...';
-                    container.innerHTML = '';
-                    container.appendChild(placeholder);
-                    // Try again in 2 seconds
-                    setTimeout(() => drawGraph(nodes, edges), 2000);
-                    return;
-                }
-                
-                // Limit to top 20 nodes for clean visualization
-                const nodeDegree = {};
-                edges.forEach(edge => {
-                    nodeDegree[edge.source] = (nodeDegree[edge.source] || 0) + 1;
-                    nodeDegree[edge.target] = (nodeDegree[edge.target] || 0) + 1;
-                });
-                
-                const sortedNodes = Object.keys(nodeDegree)
-                    .sort((a, b) => nodeDegree[b] - nodeDegree[a])
-                    .slice(0, 20);  // Top 20 hubs
-                
-                const filteredNodes = nodes.filter(n => sortedNodes.includes(n.id));
-                const filteredEdges = edges.filter(e => 
-                    sortedNodes.includes(e.source) && sortedNodes.includes(e.target)
-                );
-                
-                // Build Mermaid graph definition
-                let graphDef = 'graph TD\\n';
-                
-                // Add nodes with styling
-                filteredNodes.forEach(node => {
-                    const nodeId = node.id.replace(/[^a-zA-Z0-9]/g, '_');
-                    const degree = nodeDegree[node.id] || 1;
-                    const size = degree >= 5 ? 'XL' : degree >= 3 ? 'L' : 'M';
-                    const label = node.id.length > 15 ? node.id.substring(0, 12) + '...' : node.id;
-                    graphDef += `    ${nodeId}["${label}"]:::node${size}\\n`;
-                });
-                
-                // Add edges (limit to 50 for clarity)
-                let edgeCount = 0;
-                filteredEdges.forEach(edge => {
-                    if (edgeCount >= 50) return;
-                    const sourceId = edge.source.replace(/[^a-zA-Z0-9]/g, '_');
-                    const targetId = edge.target.replace(/[^a-zA-Z0-9]/g, '_');
-                    graphDef += `    ${sourceId} --- ${targetId}\\n`;
-                    edgeCount++;
-                });
-                
-                // Add styles
-                graphDef += '    classDef XL fill:#667eea,color:white,stroke:#333,stroke-width:2px\\n';
-                graphDef += '    classDef L fill:#764ba2,color:white,stroke:#333,stroke-width:2px\\n';
-                graphDef += '    classDef M fill:#e2e8f0,color:#2d3748,stroke:#cbd5e0,stroke-width:1px\\n';
-                
-                // Render with Mermaid
-                placeholder.style.display = 'none';
-                try {
-                    const { svg } = await mermaid.render('mermaid-graph-' + Date.now(), graphDef);
-                    container.innerHTML = svg;
-                } catch (error) {
-                    console.warn('[Graph] Mermaid render error:', error);
-                    placeholder.style.display = 'block';
-                    placeholder.textContent = '📊 Graph rendering unavailable';
-                    container.innerHTML = '';
-                    container.appendChild(placeholder);
-                }
-            } catch (error) {
-                console.error('[Graph] drawGraph error:', error);
-                // Don't break the UI - just hide graph
-                const container = document.getElementById('graph-container-inner');
-                if (container) container.style.display = 'none';
-            }
-        }
-        
         // ============================================
         // STAR Algorithm - Client-Side Implementation
         // ============================================
@@ -738,25 +597,6 @@
             };
         };
 
-        STAREngine.prototype.getGraphData = function() {
-            // Convert tags map to nodes array
-            var nodes = [];
-            var self = this;
-            this.tags.forEach(function(count, tag) {
-                nodes.push({ id: tag, degree: count });
-            });
-
-            // Convert edges map to edges array
-            var edges = [];
-            this.edges.forEach(function(targets, source) {
-                targets.forEach(function(_, target) {
-                    edges.push({ source: source, target: target });
-                });
-            });
-
-            return { nodes: nodes, edges: edges };
-        };
-
         STAREngine.prototype.clear = function() {
             this.atoms.clear();
             this.tags.clear();
@@ -841,29 +681,20 @@
             ];
             
             var gutenbergUrl = 'https://www.gutenberg.org/files/' + book.id + '/' + book.id + '-0.txt';
-
-            // Track if already processing to avoid showing errors after success
-            var alreadyProcessed = false;
-
+            
+            // Try proxies in sequence until one works
+            tryProxy(0);
+            
             function tryProxy(proxyIndex) {
-                // Stop if already processed a successful response
-                if (alreadyProcessed) return;
-                
                 if (proxyIndex >= corsProxies.length) {
-                    // Only show error if we haven't processed anything
-                    if (!alreadyProcessed) {
-                        showError('All CORS proxies failed. Please try another book.');
-                    }
+                    showError('All CORS proxies failed. Please try another book.');
                     return;
                 }
-
+                
                 var proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(gutenbergUrl);
                 console.log('[STAR Demo] Trying proxy:', proxyIndex + 1, '/', corsProxies.length);
                 
-                fetch(proxyUrl, { 
-                    mode: 'cors',
-                    credentials: 'omit'
-                })
+                fetch(proxyUrl)
                     .then(function(response) {
                         console.log('[STAR Demo] Response status:', response.status);
                         if (!response.ok) {
@@ -873,20 +704,14 @@
                     })
                     .then(function(text) {
                         console.log('[STAR Demo] Raw text length:', text.length);
-
+                        
                         if (text.length < 1000) {
                             throw new Error('Content too short, trying next proxy');
                         }
-
-                        // Success! Mark as processed and DON'T try more proxies
-                        alreadyProcessed = true;
-                        console.log('[STAR Demo] ✅ Proxy', proxyIndex + 1, 'succeeded!');
+                        
                         processIngestedText(text, book.title, progressBar, progressFill, resultsDiv);
                     })
                     .catch(function(error) {
-                        // Don't try next proxy if already processed success
-                        if (alreadyProcessed) return;
-                        
                         console.warn('[STAR Demo] Proxy', proxyIndex + 1, 'failed:', error.message);
                         tryProxy(proxyIndex + 1);
                     });
@@ -918,10 +743,6 @@
 
             // Update search hint with top tags
             updateSearchHint();
-            
-            // Graph visualization temporarily disabled for debugging
-            // var graphData = engine.getGraphData();
-            // drawGraph(graphData.nodes, graphData.edges);
 
             currentBook = { title: title };
             
@@ -1031,15 +852,12 @@
             document.getElementById('searchTime').textContent = '0ms';
             document.getElementById('results').innerHTML = '<div class="loading"><p>Select a book to begin ingestion and search</p></div>';
             document.getElementById('searchHint').style.display = 'none';
-            
-            // Graph visualization temporarily disabled
-            // drawGraph([], []);
         }
 
         function updateSearchHint() {
             var tags = Array.from(engine.tags.entries())
-                .sort(function(a, b) { return b[1] - a[1]; })  // Sort by count
-                .slice(0, 10)  // Top 10 tags
+                .sort(function(a, b) { return b[1] - a[1]; })
+                .slice(0, 10)
                 .map(function(entry) { return entry[0]; });
 
             if (tags.length > 0) {
