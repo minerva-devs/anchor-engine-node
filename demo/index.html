@@ -828,10 +828,13 @@
 
             var gutenbergUrl = 'https://www.gutenberg.org/files/' + book.id + '/' + book.id + '-0.txt';
 
-            // Try proxies in sequence until one works
-            tryProxy(0);
+            // Track if already processing to avoid duplicate calls
+            var alreadyProcessing = false;
 
             function tryProxy(proxyIndex) {
+                // Stop if already processing a successful response
+                if (alreadyProcessing) return;
+                
                 if (proxyIndex >= corsProxies.length) {
                     showError('All CORS proxies failed. Please try:<br>1. Wait a moment and try again<br>2. Try a different book<br>3. Use "Load Sample Book" button<br><br>Error: Network timeout or CORS restriction');
                     return;
@@ -855,14 +858,16 @@
                             throw new Error('Content too short, trying next proxy');
                         }
 
-                        // Success! Process and DON'T try more proxies
+                        // Success! Mark as processing and DON'T try more proxies
+                        alreadyProcessing = true;
                         console.log('[STAR Demo] ✅ Proxy', proxyIndex + 1, 'succeeded!');
                         processIngestedText(text, book.title, progressBar, progressFill, resultsDiv);
                     })
                     .catch(function(error) {
+                        // Don't try next proxy if already processing success
+                        if (alreadyProcessing) return;
+                        
                         console.warn('[STAR Demo] Proxy', proxyIndex + 1, 'failed:', error.message);
-                        // Only try next proxy if not already processing
-                        if (!progressBar || !progressBar.parentElement) return;
                         tryProxy(proxyIndex + 1);
                     });
             }
