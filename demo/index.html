@@ -15,18 +15,12 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding: 1rem;
+            padding: 2rem;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-        }
-
-        @media (min-width: 768px) {
-            body {
-                padding: 2rem;
-            }
         }
 
         header {
@@ -54,34 +48,10 @@
             margin-bottom: 2rem;
         }
 
-        /* Graph Visualization */
-        .graph-container {
-            text-align: center;
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            background: #f7fafc;
-            border-radius: 8px;
-        }
-
-        #graph-canvas {
-            max-width: 100%;
-            height: auto;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            background: white;
-        }
-
-        .graph-placeholder {
-            color: #718096;
-            font-size: 0.875rem;
-            padding: 2rem;
-        }
-
         .stats-bar {
             display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            justify-content: space-between;
+            gap: 2rem;
+            justify-content: space-around;
             padding: 1rem;
             background: #f7fafc;
             border-radius: 8px;
@@ -90,8 +60,6 @@
 
         .stat {
             text-align: center;
-            min-width: 80px;
-            flex: 1 1 80px;
         }
 
         .stat-value {
@@ -108,24 +76,8 @@
 
         .action-bar {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
+            gap: 1rem;
             margin-bottom: 1.5rem;
-        }
-
-        .action-bar button {
-            flex: 1 1 auto;
-            min-width: 150px;
-        }
-
-        @media (min-width: 640px) {
-            .action-bar {
-                flex-wrap: nowrap;
-            }
-            .action-bar button {
-                flex: 0 0 auto;
-                min-width: auto;
-            }
         }
 
         button {
@@ -160,14 +112,12 @@
 
         .search-box {
             display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
+            gap: 1rem;
             margin-bottom: 1.5rem;
         }
 
-        .search-box input[type="text"] {
-            flex: 1 1 200px;
-            min-width: 0;
+        input[type="text"] {
+            flex: 1;
             padding: 0.75rem 1rem;
             border: 2px solid #e2e8f0;
             border-radius: 8px;
@@ -175,23 +125,9 @@
             transition: border-color 0.2s;
         }
 
-        .search-box input[type="text"]:focus {
+        input[type="text"]:focus {
             outline: none;
             border-color: #667eea;
-        }
-
-        .search-box button {
-            flex: 0 0 auto;
-            min-width: 100px;
-        }
-
-        @media (min-width: 640px) {
-            .search-box {
-                flex-wrap: nowrap;
-            }
-            .search-box input[type="text"] {
-                flex: 1 1 auto;
-            }
         }
 
         .results {
@@ -374,13 +310,6 @@
                 Select a book from Project Gutenberg, and it will be atomized into a concept graph for deterministic retrieval.
             </div>
 
-            <div class="graph-container">
-                <canvas id="graph-canvas" width="600" height="300"></canvas>
-                <div id="graph-placeholder" class="graph-placeholder">
-                    📊 Graph visualization will appear here after book ingestion
-                </div>
-            </div>
-
             <div class="stats-bar">
                 <div class="stat">
                     <div class="stat-value" id="atomCount">0</div>
@@ -402,8 +331,6 @@
 
             <div class="action-bar">
                 <button class="btn-primary" onclick="openBookModal()">📚 Select Book from Gutenberg</button>
-                <button class="btn-secondary" onclick="loadSampleBook()">📖 Load Sample Book (No CORS)</button>
-                <button class="btn-secondary" onclick="openPasteModal()">📝 Paste Text</button>
                 <button class="btn-secondary" onclick="resetDemo()">🔄 Reset Demo</button>
             </div>
 
@@ -448,106 +375,7 @@
         </div>
     </div>
 
-    <!-- D3.js for graph visualization -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    
     <script>
-        // ============================================
-        // Graph Visualization - Static Force Layout
-        // ============================================
-        
-        function drawGraph(nodes, edges) {
-            const canvas = document.getElementById('graph-canvas');
-            const placeholder = document.getElementById('graph-placeholder');
-            const ctx = canvas.getContext('2d');
-            const width = canvas.width;
-            const height = canvas.height;
-            
-            // Clear canvas
-            ctx.clearRect(0, 0, width, height);
-            
-            // Show placeholder if not enough nodes
-            if (!nodes || nodes.length < 2) {
-                placeholder.style.display = 'block';
-                canvas.style.display = 'none';
-                return;
-            }
-            
-            placeholder.style.display = 'none';
-            canvas.style.display = 'block';
-            
-            // Limit to top 50 nodes by degree for clarity
-            const nodeDegree = {};
-            edges.forEach(edge => {
-                nodeDegree[edge.source] = (nodeDegree[edge.source] || 0) + 1;
-                nodeDegree[edge.target] = (nodeDegree[edge.target] || 0) + 1;
-            });
-            
-            const sortedNodes = Object.keys(nodeDegree)
-                .sort((a, b) => nodeDegree[b] - nodeDegree[a])
-                .slice(0, 50);
-            
-            const filteredNodes = nodes.filter(n => sortedNodes.includes(n.id));
-            const filteredEdges = edges.filter(e => 
-                sortedNodes.includes(e.source) && sortedNodes.includes(e.target)
-            );
-            
-            // Create node map for edge resolution
-            const nodeMap = {};
-            filteredNodes.forEach(node => {
-                nodeMap[node.id] = { ...node, x: width/2, y: height/2 };
-            });
-            
-            // Set up D3 force simulation
-            const simulation = d3.forceSimulation(Object.values(nodeMap))
-                .force('link', d3.forceLink(filteredEdges)
-                    .id(d => d.id)
-                    .distance(60))
-                .force('charge', d3.forceManyBody().strength(-200))
-                .force('center', d3.forceCenter(width/2, height/2))
-                .force('collide', d3.forceCollide(15))
-                .stop();
-            
-            // Run simulation for 300 ticks
-            for (let i = 0; i < 300; ++i) {
-                simulation.tick();
-            }
-            
-            // Draw edges
-            ctx.beginPath();
-            ctx.strokeStyle = '#cbd5e0';
-            ctx.lineWidth = 1;
-            filteredEdges.forEach(edge => {
-                const source = nodeMap[edge.source];
-                const target = nodeMap[edge.target];
-                if (source && target) {
-                    ctx.moveTo(source.x, source.y);
-                    ctx.lineTo(target.x, target.y);
-                }
-            });
-            ctx.stroke();
-            
-            // Draw nodes
-            Object.values(nodeMap).forEach(node => {
-                // Node circle
-                ctx.beginPath();
-                ctx.arc(node.x, node.y, 6, 0, 2 * Math.PI);
-                ctx.fillStyle = '#667eea';
-                ctx.fill();
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                
-                // Node label (only for high-degree nodes)
-                if (nodeDegree[node.id] >= 3) {
-                    ctx.fillStyle = '#2d3748';
-                    ctx.font = '10px -apple-system, sans-serif';
-                    const label = node.id.length > 12 ? node.id.substring(0, 10) + '...' : node.id;
-                    ctx.fillText(label, node.x + 10, node.y - 10);
-                }
-            });
-        }
-        
         // ============================================
         // STAR Algorithm - Client-Side Implementation
         // ============================================
@@ -724,25 +552,6 @@
             };
         };
 
-        STAREngine.prototype.getGraphData = function() {
-            // Convert tags map to nodes array
-            var nodes = [];
-            var self = this;
-            this.tags.forEach(function(count, tag) {
-                nodes.push({ id: tag, degree: count });
-            });
-
-            // Convert edges map to edges array
-            var edges = [];
-            this.edges.forEach(function(targets, source) {
-                targets.forEach(function(_, target) {
-                    edges.push({ source: source, target: target });
-                });
-            });
-
-            return { nodes: nodes, edges: edges };
-        };
-
         STAREngine.prototype.clear = function() {
             this.atoms.clear();
             this.tags.clear();
@@ -825,18 +634,18 @@
                 'https://corsproxy.io/?',
                 'https://api.codetabs.com/v1/proxy?quest='
             ];
-
+            
             var gutenbergUrl = 'https://www.gutenberg.org/files/' + book.id + '/' + book.id + '-0.txt';
-
+            
             // Try proxies in sequence until one works
             tryProxy(0);
-
+            
             function tryProxy(proxyIndex) {
                 if (proxyIndex >= corsProxies.length) {
-                    showError('All CORS proxies failed. Please try:<br>1. Wait a moment and try again<br>2. Try a different book<br>3. Use "Load Sample Book" button<br><br>Error: Network timeout or CORS restriction');
+                    showError('All CORS proxies failed. Please try another book.');
                     return;
                 }
-
+                
                 var proxyUrl = corsProxies[proxyIndex] + encodeURIComponent(gutenbergUrl);
                 console.log('[STAR Demo] Trying proxy:', proxyIndex + 1, '/', corsProxies.length);
                 
@@ -850,18 +659,15 @@
                     })
                     .then(function(text) {
                         console.log('[STAR Demo] Raw text length:', text.length);
-
+                        
                         if (text.length < 1000) {
                             throw new Error('Content too short, trying next proxy');
                         }
-
-                        // Success! Process the text
-                        console.log('[STAR Demo] ✅ Proxy', proxyIndex + 1, 'succeeded!');
+                        
                         processIngestedText(text, book.title, progressBar, progressFill, resultsDiv);
                     })
                     .catch(function(error) {
                         console.warn('[STAR Demo] Proxy', proxyIndex + 1, 'failed:', error.message);
-                        // Try next proxy
                         tryProxy(proxyIndex + 1);
                     });
             }
@@ -889,11 +695,7 @@
             document.getElementById('atomCount').textContent = stats.atoms.toLocaleString();
             document.getElementById('tagCount').textContent = stats.tags.toLocaleString();
             document.getElementById('edgesCount').textContent = stats.edges.toLocaleString();
-
-            // Draw graph visualization
-            var graphData = engine.getGraphData();
-            drawGraph(graphData.nodes, graphData.edges);
-
+            
             currentBook = { title: title };
             
             resultsDiv.innerHTML = '<div class="info-box"><strong>✅ Ingestion Complete!</strong><br>"' + title + '" has been atomized into ' + stats.atoms.toLocaleString() + ' atoms with ' + stats.tags.toLocaleString() + ' tags and ' + stats.edges.toLocaleString() + ' edges.<br><br>Try searching for themes, characters, or concepts from the book.</div><h3 style="margin-bottom: 1rem; color: #2d3748;">Example Searches:</h3><div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">' + getExampleSearches(title).map(function(q) { return '<button class="btn-secondary" onclick="document.getElementById(\'searchInput\').value=\'' + q + '\'; performSearch()">' + q + '</button>'; }).join('') + '</div>';
@@ -1001,9 +803,6 @@
             document.getElementById('edgesCount').textContent = '0';
             document.getElementById('searchTime').textContent = '0ms';
             document.getElementById('results').innerHTML = '<div class="loading"><p>Select a book to begin ingestion and search</p></div>';
-            
-            // Clear graph visualization
-            drawGraph([], []);
         }
 
         document.getElementById('bookModal').addEventListener('click', function(e) {
