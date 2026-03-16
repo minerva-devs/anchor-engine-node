@@ -17,7 +17,42 @@ import { pathManager } from '../../utils/path-manager.js';
 import { systemStatus } from '../system-status.js';
 
 let watcher: chokidar.FSWatcher | null = null;
-const IGNORE_PATTERNS = /(^|[\/\\])\..*|distilled_.*\.yaml$|MASTER_DISTILLED_.*\.yaml$|_distilled_.*\.(yaml|json|md)$/; // Ignore dotfiles and distillation outputs
+
+// Build ignore patterns from config + defaults
+function buildIgnorePatterns(): RegExp {
+    const defaultPatterns = [
+        '(^|[\\/\\\\])\\..*',  // dotfiles
+        'distilled_.*\\.yaml$',  // distillation outputs
+        'MASTER_DISTILLED_.*\\.yaml$',
+        '_distilled_.*\\.(yaml|json|md)$'
+    ];
+    
+    // Add user-configured exclude patterns (convert glob to regex)
+    const userPatterns: string[] = [];
+    try {
+        const userSettingsPath = path.join(__dirname, '..', '..', '..', 'user_settings.json');
+        if (fs.existsSync(userSettingsPath)) {
+            const userSettings = JSON.parse(fs.readFileSync(userSettingsPath, 'utf-8'));
+            if (userSettings.watcher?.exclude_patterns) {
+                userSettings.watcher.exclude_patterns.forEach((pattern: string) => {
+                    // Escape special regex chars and convert glob wildcards
+                    const regexPattern = pattern
+                        .replace(/[.+?^${}()|[\]\\]/g, '\\$&')  // Escape regex special chars
+                        .replace(/\*\*/g, '.*')  // ** matches anything including /
+                        .replace(/\*/g, '[^\\/]*');  // * matches anything except /
+                    userPatterns.push(regexPattern);
+                });
+            }
+        }
+    } catch (error) {
+        console.warn('[Watchdog] Failed to load exclude_patterns from user_settings.json:', error);
+    }
+    
+    const allPatterns = [...defaultPatterns, ...userPatterns];
+    return new RegExp(allPatterns.join('|'));
+}
+
+const IGNORE_PATTERNS = buildIgnorePatterns();
 
 // Post-ingestion synonym generation
 let ingestionTimeout: NodeJS.Timeout | null = null;

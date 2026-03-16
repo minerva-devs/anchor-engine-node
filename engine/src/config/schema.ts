@@ -143,7 +143,8 @@ const ResourceManagementSchema = z.object({
 const WatcherSchema = z.object({
   debounce_ms: z.number().int().positive().default(2000),
   stability_threshold_ms: z.number().int().positive().default(2000),
-  extra_paths: z.array(z.string()).default([])
+  extra_paths: z.array(z.string()).default([]),
+  exclude_patterns: z.array(z.string()).default([])
 });
 
 // Context schema
