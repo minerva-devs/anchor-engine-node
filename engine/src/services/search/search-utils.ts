@@ -73,19 +73,21 @@ export interface SearchResult {
     content: string;
     source: string;
     timestamp: number;
+    timestamp_iso?: string; // NEW: ISO 8601 format for human readability (optional for backward compat)
     buckets: string[];
     tags: string[];
+    tags_clean?: string[]; // NEW: Tags without # prefix for cleaner API (optional)
     epochs: string;
     provenance: string;
     score: number;
-    sequence?: number; // Added for Bright Node continuity
-    molecular_signature?: string;  // V4 Nomenclature (formerly simhash)
-    frequency?: number; // Number of times this content was found (for deduplication)
-    temporal_state?: { // Information about temporal aspects of duplicates
+    sequence?: number;
+    molecular_signature?: string;
+    frequency?: number;
+    temporal_state?: {
         first_seen: number;
         last_seen: number;
         occurrence_count: number;
-        timestamps: number[]; // Array of all timestamps when this content or similar was found
+        timestamps: number[];
     };
     // Atomic Fields
     compound_id?: string;
@@ -99,12 +101,14 @@ export interface SearchResult {
     semanticCategories?: SemanticCategory[];
     relatedEntities?: string[];
     // Context Provenance (Standard 107)
-    temporal_weight?: number; // Exponential decay factor e^(-λΔt)
-    decay_factor?: number; // Lambda * age in seconds
-    simhash_distance?: number; // Hamming distance from query (0-64)
-    structural_similarity?: number; // 1 - (distance/64)
-    association_path?: string[]; // Tags that connected this result to query
-    retrieved_at?: number; // When this result was retrieved (for caching)
+    temporal_weight?: number;
+    decay_factor?: number;
+    simhash_distance?: number;
+    structural_similarity?: number;
+    association_path?: string[];
+    retrieved_at?: number;
+    // NEW: Content snippet for preview (optional)
+    snippet?: string; // First 200 chars with highlighted query terms
 }
 
 /**
@@ -511,13 +515,20 @@ ${s.content}
     const budgetUtilization = maxChars > 0 ? ((totalContentChars + overheadChars) / maxChars * 100).toFixed(1) : 'N/A';
 
     // Step 6: Convert snippets back to SearchResult[] for API compatibility
-    const enrichedResults: SearchResult[] = deduplicatedSnippets.map(s => ({
+    const enrichedResults: SearchResult[] = deduplicatedSnippets.map(s => {
+      const timestampIso = new Date(s.timestamp).toISOString();
+      const tagsClean = cleanTags(s.tags);
+      const snippet = generateSnippet(s.content, 200);
+      
+      return {
       id: s.sourceAtoms.map(a => a.id).join('+'),
       content: s.content,
       source: s.source,
       timestamp: s.timestamp,
+      timestamp_iso: timestampIso, // NEW: ISO format
       buckets: [],
       tags: s.tags,
+      tags_clean: tagsClean, // NEW: Clean tags without #
       epochs: '',
       provenance: s.provenance,
       score: s.relevanceScore,
@@ -526,8 +537,10 @@ ${s.content}
       end_byte: s.endByte,
       temporal_weight: s.temporal_weight,
       decay_factor: s.decay_factor,
-      is_inflated: true
-    }));
+      is_inflated: true,
+      snippet: snippet // NEW: Preview snippet
+    };
+    });
 
     return {
       context: xmlContext || 'No results found.',
@@ -568,6 +581,25 @@ ${s.content}
  */
 export function filterDisplayTags(tags: string[]): string[] {
     if (!config.SEARCH?.hide_years_in_tags) return tags;
-    // Remove if exactly 4 digits (approx year check)
-    return tags.filter(t => !/^\d{4}$/.test(t));
+    
+    // Filter out year numbers (e.g., "1986", "2023")
+    return tags.filter(tag => {
+        const cleanTag = tag.replace(/^#+/, ''); // Remove # prefix for check
+        return !/^\d{4}$/.test(cleanTag);
+    });
+}
+
+/**
+ * Helper: Clean tags by removing # prefix for cleaner API output
+ */
+export function cleanTags(tags: string[]): string[] {
+    return tags.map(tag => tag.replace(/^#+/, ''));
+}
+
+/**
+ * Helper: Generate content snippet (first 200 chars with ellipsis)
+ */
+export function generateSnippet(content: string, maxLength: number = 200): string {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength).trim() + '...';
 }
