@@ -80,6 +80,7 @@ export interface RadialDistillRequest {
   output_format?: 'yaml' | 'json' | 'decision-records';
   output_path?: string;
   export_to_inbox?: boolean;
+  auto_save?: boolean;
 }
 
 export interface RadialDistillResult {
@@ -395,17 +396,25 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
     const outputFormat = request.output_format || 'decision-records';
     let outputPath: string | undefined;
     let outputSize = 0;
-    
+
+    // Determine if we should save to file
+    const shouldSaveToFile = request.output_path || request.auto_save;
+
     if (outputFormat === 'json' || outputFormat === 'decision-records') {
       const jsonOutput = JSON.stringify(decisionRecords, null, 2);
       outputSize = jsonOutput.length;
-      
-      outputPath = request.output_path || path.join(
-        path.dirname(request.seed?.compound_ids?.[0] || ''),
-        `distilled_standards_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
-      );
-      
-      fs.writeFileSync(outputPath, jsonOutput);
+
+      if (shouldSaveToFile) {
+        const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
+        if (!fs.existsSync(distillsDir)) {
+          fs.mkdirSync(distillsDir, { recursive: true });
+        }
+        outputPath = request.output_path || path.join(
+          distillsDir,
+          `distilled_standards_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+        );
+        fs.writeFileSync(outputPath, jsonOutput);
+      }
     } else if (outputFormat === 'yaml') {
       // Backward compatibility - legacy YAML format
       const yamlOutput = yaml.dump({
@@ -416,10 +425,20 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
         },
         records: decisionRecords
       });
-      
+
       outputSize = yamlOutput.length;
-      outputPath = request.output_path || `distilled_${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`;
-      fs.writeFileSync(outputPath, yamlOutput);
+      
+      if (shouldSaveToFile) {
+        const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
+        if (!fs.existsSync(distillsDir)) {
+          fs.mkdirSync(distillsDir, { recursive: true });
+        }
+        outputPath = request.output_path || path.join(
+          distillsDir,
+          `distilled_${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`
+        );
+        fs.writeFileSync(outputPath, yamlOutput);
+      }
     }
     
     const duration = Date.now() - startTime;
