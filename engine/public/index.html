@@ -888,7 +888,16 @@
                                 <i data-lucide="copy" width="14"></i>
                                 Copy as YAML
                             </button>
+                            <button
+                                onClick={() => downloadResults(results, query)}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-colors flex items-center gap-2"
+                                title="Download search results as JSON"
+                            >
+                                <i data-lucide="download" width="14"></i>
+                                Download JSON
+                            </button>
                             {cachedDistillSummary && (
+                                <button
                                 <button
                                     onClick={() => {
                                         navigator.clipboard.writeText(cachedDistillSummary.result.content);
