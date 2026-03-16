@@ -342,6 +342,36 @@ function loadConfig(): Config {
   // 2. Try Loading user_settings.json (Highest Priority for User Overrides)
   // First try the root of the anchor-os project (monorepo setup)
   const userSettingsPath = path.join(__dirname, '..', '..', '..', 'user_settings.json');
+  
+  // Auto-create user_settings.json with defaults if it doesn't exist
+  if (!fs.existsSync(userSettingsPath)) {
+    const defaultSettings = {
+      watcher: {
+        debounce_ms: 2000,
+        stability_threshold_ms: 2000,
+        extra_paths: [],
+        exclude_patterns: ["**/*.log", "**/node_modules/**", "**/.git/**"]
+      },
+      llm: {
+        provider: "local",
+        chat_model: "",
+        gpu_layers: 11,
+        ctx_size: 8192
+      },
+      search: {
+        strategy: "standard",
+        hide_years_in_tags: false,
+        max_chars_default: 524288
+      }
+    };
+    try {
+      fs.writeFileSync(userSettingsPath, JSON.stringify(defaultSettings, null, 2));
+      StructuredLogger.info('[Config] ✅ Created default user_settings.json', { path: userSettingsPath });
+    } catch (e: any) {
+      StructuredLogger.warn('[Config] Could not create user_settings.json:', e.message);
+    }
+  }
+  
   if (fs.existsSync(userSettingsPath) && fs.statSync(userSettingsPath).isFile()) {
     try {
       const userSettings = JSON.parse(fs.readFileSync(userSettingsPath, 'utf8'));
