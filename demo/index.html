@@ -378,14 +378,14 @@
 
             <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f7fafc; border-radius: 8px;">
                 <label style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                    <span style="font-weight: 600; color: #2d3748;">📊 Ingestion Size:</span>
-                    <input type="range" id="tokenSlider" min="10000" max="200000" step="10000" value="100000" 
+                    <span style="font-weight: 600; color: #2d3748;">📊 Search Results:</span>
+                    <input type="range" id="tokenSlider" min="5" max="50" step="5" value="20" 
                         oninput="updateTokenCount(this.value)" style="flex: 1; min-width: 200px;">
-                    <span id="tokenCount" style="font-weight: 600; color: #667eea; min-width: 120px;">100,000 chars</span>
-                    <span style="color: #718096; font-size: 0.875rem;">(~15-20K words)</span>
+                    <span id="tokenCount" style="font-weight: 600; color: #667eea; min-width: 80px;">20 results</span>
+                    <span style="color: #718096; font-size: 0.875rem;">(max per search)</span>
                 </label>
                 <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #718096;">
-                    💡 Tip: Smaller = faster, Larger = more comprehensive. Mobile users: try 50K or less.
+                    💡 Tip: Fewer = faster, More = comprehensive. Mobile users: try 10-20 for speed.
                 </div>
             </div>
 
@@ -1023,11 +1023,14 @@
             var query = document.getElementById('searchInput').value.trim();
             if (!query) return;
 
+            // Get result limit from slider
+            var resultLimit = parseInt(document.getElementById('tokenSlider').value) || 20;
+
             var resultsDiv = document.getElementById('results');
             resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Searching...</p></div>';
 
             setTimeout(function() {
-                var results = engine.search(query, 20);
+                var results = engine.search(query, resultLimit);
                 
                 if (results.length === 0) {
                     resultsDiv.innerHTML = '<div class="info-box"><strong>No results found</strong><br>Try different keywords or more general terms.</div>';
@@ -1076,8 +1079,7 @@
         }
 
         function updateTokenCount(value) {
-            var words = Math.floor(parseInt(value) / 5); // Rough estimate: 5 chars per word
-            document.getElementById('tokenCount').textContent = value.toLocaleString() + ' chars (~' + words.toLocaleString() + ' words)';
+            document.getElementById('tokenCount').textContent = value + ' results';
         }
 
         function updateSearchHint() {
