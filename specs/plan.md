@@ -1,10 +1,25 @@
 # Anchor Engine - Project Plan & Roadmap
 
-**Project Age:** 6 months (July 2025 - February 2026) | **Status:** Production Ready
+**Project Age:** 9 months (July 2025 - March 2026) | **Status:** Production Ready with Live Demo
 
 ---
 
-## 6-Month Timeline: July 2025 - February 2026
+## Recent Milestones (March 2026)
+
+### Version 4.8.0 - March 16, 2026
+**Theme:** Interactive Demo & Production Features
+
+- ✅ Live demo deployed (https://rsbalchii.github.io/anchor-engine-node/demo/)
+- ✅ 24 classic books with multi-book search
+- ✅ Color-coded tags for cross-book pattern detection
+- ✅ Token slider and paste-your-text feature
+- ✅ Distillation v2.0 with Decision Records output
+- ✅ Watchdog exclude patterns (Issue #122 fixed)
+- ✅ Documentation consolidated (clean root directory)
+
+---
+
+## 9-Month Timeline: July 2025 - March 2026
 
 ### Month 1: July 2025 — Inception
 **Theme:** Concept & Initial Architecture

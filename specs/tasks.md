@@ -1,38 +1,50 @@
 # Anchor Engine - Current Tasks
 
-**Last Updated:** February 20, 2026 | **Current Sprint:** Production Stability
+**Last Updated:** March 16, 2026 | **Current Sprint:** Demo & Production Features
 
 ---
 
-## ✅ Completed (February 2026)
+## ✅ Completed (March 2026)
 
-### Phase: Production Ready
-- [x] Whitepaper implementation complete
-- [x] All 77 architecture standards documented
-- [x] 100MB+ production data ingested (436 files)
-- [x] ~280,000 molecules processed
-- [x] ~1,500 atoms indexed
-- [x] Performance benchmarks verified
-- [x] Documentation streamlined
+### Phase: Interactive Demo (COMPLETED March 16, 2026)
+- [x] Live demo deployed to gh-pages
+- [x] 24 classic books from Project Gutenberg
+- [x] Multi-book selection with checkboxes
+- [x] Cross-book search with color-coded tags
+- [x] Book source badges (purple pills)
+- [x] Token slider (10K-200K characters)
+- [x] Paste your text feature (instant atomization)
+- [x] Real-time stats during ingestion
+- [x] Mobile-responsive UI
+- [x] Search latency <50ms
+
+### Phase: Distillation v2.0 (COMPLETED March 15, 2026)
+- [x] Decision Record output format
+- [x] Semantic block extraction by headings
+- [x] Block-level deduplication with SimHash
+- [x] File mtime preservation for temporal decay
+- [x] Self-contamination prevention
+- [x] Backward-compatible YAML output
+- [x] Standard 010 documentation (292 lines)
+- [x] A/B comparison tests (10/10 passing)
+- [x] Merged to main branch
+
+### Phase: Watchdog Exclude Patterns (COMPLETED March 16, 2026)
+- [x] Fixed Issue #122 - exclude patterns not applying
+- [x] Added exclude_patterns to WatcherSchema
+- [x] Glob-to-regex conversion (** → .*, * → [^\/]*)
+- [x] Reads from user_settings.json
+- [x] Combined with default patterns
+
+### Phase: Documentation Consolidation (COMPLETED March 16, 2026)
+- [x] Updated README with demo features
+- [x] Updated CHANGELOG with v4.8.0 changes
+- [x] Removed temporary docs from root
+- [x] Clean root directory (6 essential docs only)
 
 ---
 
 ## 🎯 Current Focus
-
-### Phase: Documentation & Reproducibility (P0 - COMPLETED March 2026)
-- [x] Benchmark suite with sample corpus generator
-- [x] Benchmark protocol documentation (Standard 077)
-- [x] STAR parameter tuning guide (Standard 078)
-- [x] API contracts with request/response examples
-- [x] Security hardening documentation
-- [x] Architecture tradeoffs analysis
-- [x] GitHub Actions benchmark workflow
-- [x] Tag limiting implementation (Standard 121)
-- [x] Physics Walker underflow fix (Standard 122)
-- [x] Settings UI help text enhancements
-- [x] Physics Walker Jest tests created
-- [ ] Ablation study framework (pending execution)
-- [ ] Cross-platform CI testing (pending)
 
 ### Phase: Agent Harness Integration (P1 - Q2 2026)
 - [ ] OpenCLAW integration (primary target harness)
