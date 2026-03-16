@@ -714,10 +714,13 @@
             fetch('https://gutendex.com/books?languages=en&sort=downloads')
                 .then(function(response) { return response.json(); })
                 .then(function(data) {
+                    // Get up to 24 books from results
                     var books = data.results.slice(0, 24);
                     displayBookSelection(books);
                 })
                 .catch(function(error) {
+                    console.error('Error loading books:', error);
+                    // Fallback to hardcoded list if API fails
                     displayBookSelection(GUTENBERG_BOOKS);
                 });
         }
