@@ -419,7 +419,7 @@ export class GitHubIngestService {
 
     try {
       // Get GitHub token from env (optional)
-      const token = process.env.GITHUB_TOKEN;
+      const token = getGitHubApiToken();
 
       // Download tarball
       const tarballPath = await this.downloadTarball(repo.owner, repo.repo, repo.branch, token);
@@ -687,7 +687,7 @@ export class GitHubIngestService {
     reset_at: string;
     authenticated: boolean;
   }> {
-    const token = process.env.GITHUB_TOKEN;
+    const token = getGitHubApiToken();
     const url = token
       ? 'https://api.github.com/rate_limit'
       : 'https://api.github.com/rate_limit';

@@ -2,6 +2,7 @@
 import express from "express";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import session from 'express-session';
 import path from "path";
 import { fileURLToPath } from "url";
 import { existsSync, rmSync } from "fs";
@@ -24,9 +25,24 @@ const PORT = config.PORT;
 // Use configured file size limit + 50% buffer for JSON overhead (base64/escaping)
 const jsonLimit = Math.ceil((config.LIMITS?.MAX_FILE_SIZE_BYTES || 10 * 1024 * 1024) * 1.5);
 
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true  // Allow cookies for session
+}));
 app.use(express.json({ limit: jsonLimit }));
 app.use(express.urlencoded({ extended: true }));
+
+// Session middleware for OAuth state management
+app.use(session({
+  secret: config.API_KEY || 'anchor-engine-dev-secret',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false,  // Set to true in production with HTTPS
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000  // 24 hours
+  }
+}));
 
 // HTTP Request Logging Middleware
 app.use((req, res, next) => {
@@ -260,6 +276,7 @@ async function startServer() {
     const { setupRoutes } = await import("./routes/api.js");
     const { setupHealthRoutes } = await import("./routes/health.js");
     const { monitoringRouter } = await import("./routes/monitoring.js");
+    const { githubAuthRouter } = await import("./routes/auth.js");
 
     // Set up all API routes (delegates to v1 modules including system + settings)
     setupRoutes(app);
@@ -269,6 +286,9 @@ async function startServer() {
 
     // Set up monitoring routes
     app.use('/monitoring', monitoringRouter);
+    
+    // Set up GitHub OAuth authentication routes
+    app.use('/auth', githubAuthRouter);
 
     // ============================================
     // FIX: Start server AFTER all routes are configured
