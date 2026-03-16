@@ -372,7 +372,21 @@
 
             <div class="action-bar">
                 <button class="btn-primary" onclick="openBookModal()">📚 Select Book from Gutenberg</button>
+                <button class="btn-secondary" onclick="openPasteModal()">📝 Paste Your Text</button>
                 <button class="btn-secondary" onclick="resetDemo()">🔄 Reset Demo</button>
+            </div>
+
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f7fafc; border-radius: 8px;">
+                <label style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                    <span style="font-weight: 600; color: #2d3748;">📊 Ingestion Size:</span>
+                    <input type="range" id="tokenSlider" min="10000" max="200000" step="10000" value="100000" 
+                        oninput="updateTokenCount(this.value)" style="flex: 1; min-width: 200px;">
+                    <span id="tokenCount" style="font-weight: 600; color: #667eea; min-width: 120px;">100,000 chars</span>
+                    <span style="color: #718096; font-size: 0.875rem;">(~15-20K words)</span>
+                </label>
+                <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #718096;">
+                    💡 Tip: Smaller = faster, Larger = more comprehensive. Mobile users: try 50K or less.
+                </div>
             </div>
 
             <div class="search-box">
@@ -628,6 +642,65 @@
         function openBookModal() {
             document.getElementById('bookModal').classList.add('active');
             loadBooks();
+        }
+
+        function openPasteModal() {
+            var modal = document.getElementById('bookModal');
+            var modalTitle = modal.querySelector('.modal-title');
+            var modalContent = modal.querySelector('#bookList');
+            
+            modalTitle.textContent = '📝 Paste Your Text';
+            modalContent.innerHTML = '<textarea id="pasteText" placeholder="Paste any text here (articles, documents, notes, code, etc.)..." style="width: 100%; height: 300px; padding: 1rem; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 0.9rem; font-family: inherit; resize: vertical;"></textarea><div style="margin-top: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap;"><button class="btn-primary" onclick="processPastedText()" style="flex: 1;">📊 Atomize Text</button><button class="btn-secondary" onclick="closeBookModal()">Cancel</button></div><div id="pasteStats" style="margin-top: 0.75rem; font-size: 0.875rem; color: #718096;"></div>';
+            
+            // Update character count as user types
+            setTimeout(function() {
+                var textarea = document.getElementById('pasteText');
+                var stats = document.getElementById('pasteStats');
+                textarea.addEventListener('input', function() {
+                    var chars = this.value.length;
+                    var words = this.value.trim().split(/\s+/).filter(function(w) { return w.length > 0; }).length;
+                    stats.textContent = 'Characters: ' + chars.toLocaleString() + ' | Words: ~' + words.toLocaleString() + ' | Estimated atoms: ~' + Math.floor(words / 5);
+                });
+            }, 100);
+            
+            modal.classList.add('active');
+        }
+
+        function processPastedText() {
+            var text = document.getElementById('pasteText').value.trim();
+            if (!text) {
+                alert('Please paste some text first');
+                return;
+            }
+            
+            var maxChars = parseInt(document.getElementById('tokenSlider').value);
+            if (text.length > maxChars) {
+                if (!confirm('Your text is ' + text.length.toLocaleString() + ' characters, but the limit is set to ' + maxChars.toLocaleString() + '. Continue with first ' + maxChars.toLocaleString() + ' characters?')) {
+                    return;
+                }
+                text = text.substring(0, maxChars);
+            }
+            
+            closeBookModal();
+            
+            var resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="info-box"><strong>📊 Atomizing Your Text...</strong><br>Processing ' + text.length.toLocaleString() + ' characters...</div>';
+            
+            // Process immediately (no CORS needed!)
+            setTimeout(function() {
+                engine.atomize(text, 'Pasted Text');
+                ingestedBooks = [{ title: 'Your Text' }];
+                currentBookTitle = 'Your Text';
+                
+                var stats = engine.getStats();
+                document.getElementById('atomCount').textContent = stats.atoms.toLocaleString();
+                document.getElementById('tagCount').textContent = stats.tags.toLocaleString();
+                document.getElementById('edgesCount').textContent = stats.edges.toLocaleString();
+                
+                resultsDiv.innerHTML = '<div class="info-box"><strong>✅ Atomization Complete!</strong><br>Your text has been atomized into ' + stats.atoms.toLocaleString() + ' atoms with ' + stats.tags.toLocaleString() + ' tags and ' + stats.edges.toLocaleString() + ' edges.<br><br><strong>Try searching for concepts, themes, or keywords!</strong></div><h3 style="margin-bottom: 1rem; color: #2d3748; margin-top: 1rem;">💡 Example Searches:</h3><div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">' + getExampleSearches('your text').map(function(q) { return '<button class="btn-secondary" onclick="document.getElementById(\'searchInput\').value=\'' + q + '\'; performSearch()">' + q + '</button>'; }).join('') + '</div>';
+                
+                updateSearchHint();
+            }, 100);
         }
 
         function closeBookModal() {
@@ -900,8 +973,9 @@
             // Remove excessive whitespace and normalize line breaks
             text = text.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
             
-            // Keep reasonable chunk for demo (100KB = ~15-20k words)
-            return text.substring(0, 100000);
+            // Keep reasonable chunk for demo (controlled by slider)
+            var maxChars = parseInt(document.getElementById('tokenSlider')?.value || 100000);
+            return text.substring(0, maxChars);
         }
 
         function getExampleSearches(title) {
@@ -980,6 +1054,11 @@
             document.getElementById('searchTime').textContent = '0ms';
             document.getElementById('results').innerHTML = '<div class="loading"><p>Select a book to begin ingestion and search</p></div>';
             document.getElementById('searchHint').style.display = 'none';
+        }
+
+        function updateTokenCount(value) {
+            var words = Math.floor(parseInt(value) / 5); // Rough estimate: 5 chars per word
+            document.getElementById('tokenCount').textContent = value.toLocaleString() + ' chars (~' + words.toLocaleString() + ' words)';
         }
 
         function updateSearchHint() {
