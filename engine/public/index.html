@@ -743,6 +743,40 @@
                 }
             };
 
+            // Download search results as JSON
+            const downloadResults = (resultsToDownload, searchQuery) => {
+                if (!resultsToDownload || resultsToDownload.length === 0) return;
+                
+                const exportData = {
+                    query: searchQuery || 'anchor-search',
+                    exported_at: new Date().toISOString(),
+                    result_count: resultsToDownload.length,
+                    token_budget: tokenBudget,
+                    results: resultsToDownload.map(r => ({
+                        id: r.id,
+                        content: r.content,
+                        source: r.source,
+                        timestamp: r.timestamp,
+                        timestamp_iso: r.timestamp_iso,
+                        tags: r.tags,
+                        tags_clean: r.tags_clean,
+                        score: r.score,
+                        snippet: r.snippet,
+                        provenance: r.provenance
+                    }))
+                };
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const safeQuery = (searchQuery || 'search').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+                a.download = `anchor-${safeQuery}-${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            };
+
             return (
                 <div className="flex-1 flex flex-col overflow-hidden">
                     {/* Search Bar */}
