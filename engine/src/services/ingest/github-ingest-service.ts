@@ -10,6 +10,16 @@ import * as tar from 'tar';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { getGitHubToken } from '../../routes/auth.js';
+
+/**
+ * Get GitHub API token - OAuth takes priority, then PAT from env
+ */
+function getGitHubApiToken(): string | undefined {
+  const oauthToken = getGitHubToken();
+  if (oauthToken) return oauthToken;
+  return process.env.GITHUB_TOKEN;
+}
 import { db } from '../../core/db.js';
 import { AtomizerService } from './atomizer-service.js';
 import { AtomicIngestService } from './ingest-atomic.js';
