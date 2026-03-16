@@ -1,6 +1,6 @@
 {
   "name": "@anchor/mcp-server",
-  "version": "4.7.0",
+  "version": "4.8.0",
   "description": "MCP Server for Anchor Engine - Expose memory graph to AI models",
   "type": "module",
   "main": "dist/index.js",
