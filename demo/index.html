@@ -851,6 +851,9 @@
 
                             // Update stats in real-time!
                             var stats = engine.getStats();
+                            document.getElementById('atomCount').textContent = stats.atoms.toLocaleString();
+                            document.getElementById('tagCount').textContent = stats.tags.toLocaleString();
+                            document.getElementById('edgesCount').textContent = stats.edges.toLocaleString();
                             document.getElementById('multiBookStats').textContent = 'Atoms: ' + stats.atoms.toLocaleString() + ' | Tags: ' + stats.tags.toLocaleString() + ' | Edges: ' + stats.edges.toLocaleString();
 
                             // Move to next book
