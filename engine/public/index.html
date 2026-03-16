@@ -743,34 +743,77 @@
                 }
             };
 
-            // Download search results as JSON
+            // Download search results as YAML (more token-efficient for LLMs)
             const downloadResults = (resultsToDownload, searchQuery) => {
                 if (!resultsToDownload || resultsToDownload.length === 0) return;
                 
-                const exportData = {
-                    query: searchQuery || 'anchor-search',
-                    exported_at: new Date().toISOString(),
-                    result_count: resultsToDownload.length,
-                    token_budget: tokenBudget,
-                    results: resultsToDownload.map(r => ({
-                        id: r.id,
-                        content: r.content,
-                        source: r.source,
-                        timestamp: r.timestamp,
-                        timestamp_iso: r.timestamp_iso,
-                        tags: r.tags,
-                        tags_clean: r.tags_clean,
-                        score: r.score,
-                        snippet: r.snippet,
-                        provenance: r.provenance
-                    }))
-                };
-                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                // Build YAML manually (more compact than JSON)
+                const yamlLines = [
+                    `# Anchor Engine Search Export`,
+                    `# Query: ${searchQuery || 'search'}`,
+                    `# Exported: ${new Date().toISOString()}`,
+                    `# Results: ${resultsToDownload.length}`,
+                    `# Token Budget: ${tokenBudget.toLocaleString()}`,
+                    ``,
+                    `query: "${searchQuery || 'search'}"`,
+                    `exported_at: "${new Date().toISOString()}"`,
+                    `result_count: ${resultsToDownload.length}`,
+                    `token_budget: ${tokenBudget}`,
+                    `results:`
+                ];
+                
+                resultsToDownload.forEach((result, index) => {
+                    const safeSource = (result.source || '').replace(/\\/g, '/').replace(/"/g, '\\"');
+                    const dateStr = result.timestamp ? new Date(result.timestamp).toISOString().slice(0, 10) : 'unknown';
+                    
+                    yamlLines.push(`  - id: "${result.id || index}"`);
+                    yamlLines.push(`    source: "${safeSource}"`);
+                    yamlLines.push(`    score: ${result.score?.toFixed(4) || 0}`);
+                    yamlLines.push(`    date: "${dateStr}"`);
+                    yamlLines.push(`    content: |`);
+                    
+                    // Add content with proper indentation
+                    const contentLines = (result.content || '').split('\n');
+                    contentLines.forEach(line => {
+                        yamlLines.push(`      ${line}`);
+                    });
+                    
+                    // Add tags if present
+                    if (result.tags && result.tags.length > 0) {
+                        yamlLines.push(`    tags:`);
+                        result.tags.forEach(tag => {
+                            yamlLines.push(`      - "${tag}"`);
+                        });
+                    }
+                    
+                    // Add clean tags if present
+                    if (result.tags_clean && result.tags_clean.length > 0) {
+                        yamlLines.push(`    tags_clean:`);
+                        result.tags_clean.forEach(tag => {
+                            yamlLines.push(`      - "${tag}"`);
+                        });
+                    }
+                    
+                    // Add snippet if present
+                    if (result.snippet) {
+                        yamlLines.push(`    snippet: "${result.snippet.replace(/"/g, '\\"')}"`);
+                    }
+                    
+                    // Add provenance if present
+                    if (result.provenance) {
+                        yamlLines.push(`    provenance: "${result.provenance}"`);
+                    }
+                    
+                    yamlLines.push(''); // Empty line between results
+                });
+                
+                const yamlContent = yamlLines.join('\n');
+                const blob = new Blob([yamlContent], { type: 'text/yaml' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
                 const safeQuery = (searchQuery || 'search').replace(/[^a-z0-9]/gi, '-').toLowerCase();
-                a.download = `anchor-${safeQuery}-${Date.now()}.json`;
+                a.download = `anchor-${safeQuery}-${Date.now()}.yaml`;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -891,10 +934,10 @@
                             <button
                                 onClick={() => downloadResults(results, query)}
                                 className="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-colors flex items-center gap-2"
-                                title="Download search results as JSON"
+                                title="Download search results as YAML (token-efficient for LLMs)"
                             >
                                 <i data-lucide="download" width="14"></i>
-                                Download JSON
+                                Download YAML
                             </button>
                             {cachedDistillSummary && (
                                 <button
