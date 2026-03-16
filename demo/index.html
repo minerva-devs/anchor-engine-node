@@ -802,7 +802,7 @@
             var totalBooks = books.length;
             var currentBookIndex = 0;
 
-            resultsDiv.innerHTML = '<div class="info-box"><strong>📚 Multi-Book Ingestion</strong><br>Ingesting ' + totalBooks + ' books... This will take 2-3 minutes.<br><br><div id="multiBookProgress" style="margin-top: 1rem; font-weight: bold;">Book 0 of ' + totalBooks + '</div></div>';
+            resultsDiv.innerHTML = '<div class="info-box"><strong>📚 Multi-Book Ingestion</strong><br>Ingesting ' + totalBooks + ' books... This will take 2-3 minutes.<br><br><div id="multiBookProgress" style="margin-top: 1rem; font-weight: bold;">Book 0 of ' + totalBooks + '</div><div id="multiBookStats" style="margin-top: 0.5rem; color: #718096; font-size: 0.875rem;">Atoms: 0 | Tags: 0 | Edges: 0</div></div>';
 
             function ingestNext() {
                 if (currentBookIndex >= totalBooks) {
@@ -848,6 +848,10 @@
                             text = extractBookContent(text);
                             engine.atomize(text, book.title);
                             ingestedBooks.push(book);
+
+                            // Update stats in real-time!
+                            var stats = engine.getStats();
+                            document.getElementById('multiBookStats').textContent = 'Atoms: ' + stats.atoms.toLocaleString() + ' | Tags: ' + stats.tags.toLocaleString() + ' | Edges: ' + stats.edges.toLocaleString();
 
                             // Move to next book
                             setTimeout(ingestNext, 500);
