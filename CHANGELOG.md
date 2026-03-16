@@ -6,6 +6,85 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.8.0] - 2026-03-16 — Interactive Demo, Multi-Book Search, Exclude Patterns
+
+### 🎮 Interactive Demo (gh-pages)
+
+#### Live Demo Features
+- **24 Classic Books** - Pre-loaded library from Project Gutenberg
+- **Multi-Book Selection** - Select 1-24 books with checkboxes
+- **Cross-Book Search** - Search across multiple books simultaneously
+- **Color-Coded Tags** - Visual pattern detection (same color = same concept across books)
+- **Book Source Badges** - Purple pills show which book each result came from
+- **Token Slider** - Control ingestion size (10K-200K characters)
+- **Paste Your Text** - Atomize and search your own documents instantly (no CORS!)
+- **Real-Time Stats** - Live updates during multi-book ingestion
+- **Mobile-Responsive** - Fully responsive UI, works on all devices
+
+#### Demo Performance
+- Search latency: <50ms
+- Multi-book ingestion: ~30 seconds per book
+- Memory usage: <100MB in browser
+- Zero dependencies: Pure vanilla JS + Mermaid.js for visualization
+
+**URL:** https://rsbalchii.github.io/anchor-engine-node/demo/
+
+### 🔧 Watchdog Exclude Patterns
+
+#### Fixed: Issue #122 - Exclude Patterns Not Applying
+- **Added** `exclude_patterns` field to `WatcherSchema`
+- **Updated** watchdog.ts to read patterns from `user_settings.json`
+- **Glob-to-regex conversion** (`**` → `.*`, `*` → `[^\/]*`)
+- **User patterns combine with defaults** (dotfiles, distilled_*.yaml)
+
+#### Usage Example
+```json
+{
+  "watcher": {
+    "exclude_patterns": [
+      "**/*.log",
+      "**/temp/*",
+      "node_modules/**",
+      "**/obj/*",
+      "**/bin/*"
+    ]
+  }
+}
+```
+
+### 📊 Distillation v2.0 (Decision Records)
+
+#### New Output Format
+- **Semantic block extraction** by markdown headings
+- **Decision Record JSON output** with problem/solution/rationale/status
+- **Block-level deduplication** with SimHash
+- **File mtime preservation** for temporal decay (not batch time)
+- **Self-contamination prevention** (filters distilled_*.yaml files)
+- **Backward compatible** (legacy YAML still available)
+
+#### Files Added
+- `engine/src/services/distillation/radial-distiller-v2.ts` (463 lines)
+- `specs/current-standards/010-radial-distillation-v2.md` (292 lines)
+- `engine/tests/integration/distillation-ab.test.ts` (269 lines)
+
+#### A/B Test Results
+- ✅ 10/10 tests passing
+- ✅ Self-contamination prevention working
+- ✅ Temporal preservation (mtime vs batch time)
+- ✅ Block-level deduplication merges provenance correctly
+- ✅ Decision Record schema validation
+- ✅ Status detection and tag extraction
+
+### 📈 Stats Bar Improvements
+
+#### Real-Time Stats Updates
+- **Top stats bar** now updates during multi-book ingestion
+- **Live counter** shows atoms/tags/edges as graph grows
+- **Visible at all times** (not hidden in results area)
+- **Dashboard layout** for professional appearance
+
+---
+
 ## [4.7.0] - 2026-03-12 — Zod Validation, Streaming Search, Memory Management
 
 ### Zod Validation Framework

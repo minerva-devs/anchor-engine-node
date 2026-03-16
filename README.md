@@ -1,13 +1,15 @@
-# Anchor Engine ⚓ [Demo](https://rsbalchii.github.io/anchor-engine-node/demo/index.html) 
+# Anchor Engine ⚓
 
 **Deterministic semantic memory for LLMs – local-first, graph traversal, <1GB RAM**
 
-**Version:** 4.7.0
+**Version:** 4.8.0
 
 [![GitHub release](https://img.shields.io/github/v/release/RSBalchII/anchor-engine-node)](https://github.com/RSBalchII/anchor-engine-node/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18841399.svg)](https://doi.org/10.5281/zenodo.18841399)
+
+**🎮 Live Demo:** [Try the interactive demo](https://rsbalchii.github.io/anchor-engine-node/demo/)
 
 ---
 
@@ -239,6 +241,36 @@ Anchor Engine provides different endpoints for different needs. Here's a quick g
 | **🛡️ Admin Routes** | Security tools | "Admin panel" | `POST /v1/terminal/exec` |
 
 **Complete API Reference:** See [specs/API-ROUTE-MAP.md](specs/API-ROUTE-MAP.md) for detailed documentation of all routes, schemas, and usage examples.
+
+---
+
+## 🎮 Interactive Demo
+
+We have a **live, browser-based demo** that showcases the STAR algorithm in action:
+
+### Features
+
+- **📚 24 Classic Books** - Pre-loaded library from Project Gutenberg
+- **🎯 Multi-Book Search** - Select multiple books, search across them simultaneously
+- **🎨 Color-Coded Tags** - Visual pattern detection across books (same color = same concept)
+- **📊 Token Slider** - Control ingestion size (10K-200K characters)
+- **📝 Paste Your Text** - Atomize and search your own documents instantly
+- **📱 Mobile-Friendly** - Fully responsive, works on all devices
+- **⚡ Fast Search** - Results in <50ms
+
+### Try It Now
+
+**[Open the Demo](https://rsbalchii.github.io/anchor-engine-node/demo/)**
+
+### Demo Use Cases
+
+| Use Case | How |
+|----------|-----|
+| **Writers** | Paste a chapter, search for themes and motifs |
+| **Developers** | Paste code comments, find patterns across files |
+| **Researchers** | Paste paper abstracts, discover cross-document connections |
+| **Students** | Paste lecture notes, study concept relationships |
+| **Professionals** | Paste meeting notes, search decisions and action items |
 
 ---
 
