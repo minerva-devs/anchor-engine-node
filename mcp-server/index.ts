@@ -445,7 +445,7 @@ async function handleResourceCompounds(): Promise<string> {
 const server = new Server(
   {
     name: "anchor-engine-mcp",
-    version: "4.7.0",
+    version: "4.8.0",
   },
   {
     capabilities: {
