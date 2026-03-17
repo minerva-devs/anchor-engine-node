@@ -176,18 +176,46 @@ const SearchPage = () => {
   const [showGitCommands, setShowGitCommands] = useState(false);
   const [availableBuckets, setAvailableBuckets] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [globalTokenBudget, setGlobalTokenBudget] = useState<number>(2048);
 
   // Mobile drawer state
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
+  // Load global token budget from settings
   useEffect(() => {
-    Promise.all([
-      api.getBuckets().catch(() => []),
-      api.getTags().catch(() => [])
-    ]).then(([buckets, tags]) => {
-      setAvailableBuckets(Array.isArray(buckets) ? buckets : []);
-      setAvailableTags(Array.isArray(tags) ? tags : []);
-    });
+    const loadSettings = async () => {
+      try {
+        const [buckets, tags, settingsRes] = await Promise.all([
+          api.getBuckets().catch(() => []),
+          api.getTags().catch(() => []),
+          api.get('/v1/settings').catch(() => ({}))
+        ]);
+        
+        setAvailableBuckets(Array.isArray(buckets) ? buckets : []);
+        setAvailableTags(Array.isArray(tags) ? tags : []);
+        
+        // Extract token budget from settings (search.max_chars_default / 4 to convert chars to tokens)
+        const maxChars = settingsRes?.settings?.search?.max_chars_default || 524288;
+        const tokenBudget = Math.floor(maxChars / 4);
+        setGlobalTokenBudget(tokenBudget);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+    
+    loadSettings();
+  }, []);
+
+  // Listen for settings changes from other components/pages
+  useEffect(() => {
+    const handleSettingsChange = (event: CustomEvent<{ tokenBudget?: number }>) => {
+      if (event.detail?.tokenBudget) {
+        setGlobalTokenBudget(event.detail.tokenBudget);
+      }
+    };
+
+    window.addEventListener('settings-changed', handleSettingsChange as EventListener);
+    return () => window.removeEventListener('settings-changed', handleSettingsChange as EventListener);
   }, []);
 
   const addColumn = useCallback((initialQuery?: string) => {
@@ -406,6 +434,7 @@ const SearchPage = () => {
                 onAddColumn={addColumn}
                 columnCount={columns.length}
                 initialQuery={col.query}
+                globalTokenBudget={globalTokenBudget}
               />
             ))}
           </div>

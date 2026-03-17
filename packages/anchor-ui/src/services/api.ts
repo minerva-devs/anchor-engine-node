@@ -137,7 +137,26 @@ export const api = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ command, working_dir: workingDir })
-        }).then(r => r.json())
+        }).then(r => r.json()),
+
+    // Update search settings and notify UI components
+    updateSearchSettings: async (settings: { max_chars_default?: number }) => {
+        const result = await fetch(`${getBaseUrl()}/v1/settings/search`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        }).then(r => r.json());
+        
+        // Dispatch event to notify UI components of settings change
+        if (settings.max_chars_default) {
+            const tokenBudget = Math.floor(settings.max_chars_default / 4);
+            window.dispatchEvent(new CustomEvent('settings-changed', {
+                detail: { tokenBudget }
+            }));
+        }
+        
+        return result;
+    }
 } as const;
 
 // Define the type for the api object

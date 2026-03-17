@@ -207,6 +207,50 @@ const TOOLS: Tool[] = [
       properties: {},
     },
   },
+  {
+    name: "anchor_search_index",
+    description: "Search the distillation session index for relevant chat sessions. Fast, lightweight query routing for two-tier retrieval. Returns session metadata and IDs for targeted fetching.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Search query to find relevant sessions",
+        },
+        max_results: {
+          type: "number",
+          description: "Maximum sessions to return (default: 10)",
+        },
+        commands_only: {
+          type: "boolean",
+          description: "Only search command names (default: false)",
+        },
+      },
+      required: ["query"],
+    },
+  },
+  {
+    name: "anchor_fetch_session",
+    description: "Fetch full session data by session ID. Use after anchor_search_index to retrieve complete conversation context for a specific session.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        session_id: {
+          type: "string",
+          description: "Session UUID to fetch",
+        },
+        max_messages: {
+          type: "number",
+          description: "Maximum messages to return (default: 100, 0 for all)",
+        },
+        include_metadata: {
+          type: "boolean",
+          description: "Include session metadata (default: true)",
+        },
+      },
+      required: ["session_id"],
+    },
+  },
 ];
 
 // Resource definitions
@@ -430,6 +474,136 @@ async function handleGetStats(args: any): Promise<string> {
 `;
 }
 
+async function handleSearchIndex(args: any): Promise<string> {
+  const { query, max_results = 10, commands_only = false } = args;
+
+  // First, get the distillation output with session index
+  const distillResult = await callAnchorAPI("/v1/memory/distill", "POST", {
+    seed: { query },
+    radius: 1,
+    max_nodes: 100,
+    output_format: "json"
+  });
+
+  const sessionIndex = distillResult?.session_index || [];
+  
+  if (sessionIndex.length === 0) {
+    return "📋 Session Index\n" + "=".repeat(40) + "\n\nNo sessions found in index. Run distillation first to build the index.";
+  }
+
+  // Filter by query (simple text matching)
+  const queryLower = query.toLowerCase();
+  let filtered = sessionIndex.filter((s: any) => {
+    if (commands_only) {
+      return s.commands?.some((c: string) => c.toLowerCase().includes(queryLower));
+    }
+    return (
+      s.topics?.some((t: string) => t.toLowerCase().includes(queryLower)) ||
+      s.commands?.some((c: string) => c.toLowerCase().includes(queryLower)) ||
+      s.participants?.some((p: string) => p.toLowerCase().includes(queryLower))
+    );
+  });
+
+  // Sort by date (most recent first)
+  filtered = filtered.sort((a: any, b: any) => 
+    new Date(b.date).getTime() - new Date(a.date).getTime()
+  ).slice(0, max_results);
+
+  if (filtered.length === 0) {
+    return `📋 Session Index Search\n` + "=".repeat(40) + `\n\nNo sessions matching "${query}".`;
+  }
+
+  let output = `📋 Session Index Results\n`;
+  output += "=".repeat(40) + `\n`;
+  output += `Query: "${query}" | Found: ${filtered.length} sessions\n\n`;
+
+  for (const session of filtered) {
+    output += `🔹 Session: ${session.session_id}\n`;
+    output += `   📅 Date: ${session.date}\n`;
+    output += `   💬 Messages: ${session.message_count}\n`;
+    output += `   🎯 Commands: ${session.commands.join(", ") || "none"}\n`;
+    output += `   🏷️ Topics: ${session.topics.join(", ") || "none"}\n`;
+    output += `   👥 Participants: ${session.participants.join(", ")}\n`;
+    output += `   📁 Path: ${session.full_log_path}\n\n`;
+  }
+
+  output += `\n💡 Use anchor_fetch_session with a session_id to retrieve full context.`;
+  
+  return output;
+}
+
+async function handleFetchSession(args: any): Promise<string> {
+  const { session_id, max_messages = 100, include_metadata = true } = args;
+
+  // Read the session file directly
+  const sessionPath = `inbox/${session_id}.jsonl`;
+  const result = await callAnchorAPI(
+    `/v1/files/read?path=${encodeURIComponent(sessionPath)}`,
+    "GET"
+  );
+
+  if (!result?.content) {
+    return `❌ Error: Could not read session ${session_id}. The file may not exist or is not accessible.`;
+  }
+
+  const lines = result.content.split("\n").filter((line: string) => line.trim());
+  const messages: any[] = [];
+
+  // Parse JSONL
+  for (const line of lines) {
+    try {
+      messages.push(JSON.parse(line));
+    } catch {
+      // Skip malformed lines
+    }
+  }
+
+  // Limit messages if requested
+  const limitedMessages = max_messages > 0 ? messages.slice(0, max_messages) : messages;
+
+  let output = `📬 Session: ${session_id}\n`;
+  output += "=".repeat(40) + `\n\n`;
+
+  if (include_metadata) {
+    const firstMsg = messages[0];
+    const lastMsg = messages[messages.length - 1];
+    output += `📊 Metadata:\n`;
+    output += `   Total Messages: ${messages.length}\n`;
+    output += `   Started: ${firstMsg?.timestamp || "unknown"}\n`;
+    output += `   Ended: ${lastMsg?.timestamp || "unknown"}\n`;
+    output += `   Returning: ${limitedMessages.length} messages\n\n`;
+  }
+
+  output += `📨 Messages:\n` + "-".repeat(40) + `\n\n`;
+
+  for (const msg of limitedMessages) {
+    const type = msg.type || msg.role || "unknown";
+    const timestamp = msg.timestamp ? new Date(msg.timestamp).toISOString() : "unknown";
+    
+    output += `[${timestamp}] ${type}:\n`;
+    
+    if (msg.message?.parts) {
+      for (const part of msg.message.parts) {
+        if (part.text) {
+          output += `   ${part.text.substring(0, 500)}${part.text.length > 500 ? "..." : ""}\n`;
+        }
+      }
+    } else if (msg.systemPayload?.rawCommand) {
+      output += `   Command: ${msg.systemPayload.rawCommand}\n`;
+    } else if (msg.message?.content) {
+      output += `   ${msg.message.content.substring(0, 500)}${msg.message.content.length > 500 ? "..." : ""}\n`;
+    }
+    
+    output += `\n`;
+  }
+
+  if (messages.length > max_messages && max_messages > 0) {
+    output += `\n... and ${messages.length - max_messages} more messages (use max_messages=0 for all)`;
+  }
+
+  return output;
+}
+
 // Resource handlers
 async function handleResourceStats(): Promise<string> {
   const result = await callAnchorAPI("/v1/stats", "GET");
@@ -504,7 +678,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     "anchor_illuminate": "illuminate",
     "anchor_read_file": "read_file",
     "anchor_list_compounds": "list",
-    "anchor_get_stats": "get_stats"
+    "anchor_get_stats": "get_stats",
+    "anchor_search_index": "search_index",
+    "anchor_fetch_session": "fetch_session"
   };
   
   const operation = operationMap[name] || name;
@@ -549,6 +725,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "anchor_get_stats":
         result = await handleGetStats(args);
+        break;
+      case "anchor_search_index":
+        result = await handleSearchIndex(args);
+        break;
+      case "anchor_fetch_session":
+        result = await handleFetchSession(args);
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);

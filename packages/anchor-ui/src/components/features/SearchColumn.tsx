@@ -13,6 +13,7 @@ interface SearchColumnProps {
     onAddColumn: (query?: string) => void;
     initialQuery?: string;
     columnCount: number;
+    globalTokenBudget?: number;
 }
 
 export const SearchColumn = memo(({
@@ -24,7 +25,8 @@ export const SearchColumn = memo(({
     onRemove,
     onAddColumn,
     columnCount,
-    initialQuery
+    initialQuery,
+    globalTokenBudget
 }: SearchColumnProps) => {
     const [query, setQuery] = useState(initialQuery || '');
     const [results, setResults] = useState<any[]>([]);
@@ -34,7 +36,26 @@ export const SearchColumn = memo(({
     const [error, setError] = useState<string | null>(null); // New error state
 
     // Feature State
-    const [tokenBudget, setTokenBudget] = useState(2048);
+    const [tokenBudget, setTokenBudget] = useState(globalTokenBudget || 2048);
+
+    // Sync with global token budget setting
+    useEffect(() => {
+        if (globalTokenBudget !== undefined && globalTokenBudget !== tokenBudget) {
+            setTokenBudget(globalTokenBudget);
+        }
+    }, [globalTokenBudget]);
+
+    // Listen for settings changes via custom event
+    useEffect(() => {
+        const handleSettingsChange = (event: CustomEvent<{ tokenBudget?: number }>) => {
+            if (event.detail?.tokenBudget) {
+                setTokenBudget(event.detail.tokenBudget);
+            }
+        };
+
+        window.addEventListener('settings-changed', handleSettingsChange as EventListener);
+        return () => window.removeEventListener('settings-changed', handleSettingsChange as EventListener);
+    }, []);
     const [activeMode, setActiveMode] = useState(false);
     const [sovereignBias, setSovereignBias] = useState(true);
     const [metadata, setMetadata] = useState<any>(null);
