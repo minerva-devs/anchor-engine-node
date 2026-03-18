@@ -59,7 +59,7 @@ Add to `~/.cursor/mcp.json`:
 }
 ```
 
-### For Qwen Code / Quinn CLI
+### For Qwen Coder
 
 Add to your Qwen config (usually `~/.config/qwen/mcp.json` or similar):
 
