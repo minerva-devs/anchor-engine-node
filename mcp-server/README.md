@@ -4,13 +4,74 @@ Model Context Protocol (MCP) server for Anchor Engine. Exposes your knowledge gr
 
 ## Features
 
+### Read Operations (Always Available)
 - **🔍 Semantic Search** - Query your memory with `anchor_query`
 - **🧪 Radial Distillation** - Compress knowledge into source-of-truth files
 - **🌐 Graph Exploration** - BFS traversal with `anchor_illuminate`
 - **📄 Token-Efficient Reading** - Read files by line ranges
 - **📊 Real-time Stats** - Monitor your knowledge graph
-- **📋 Session Index Search** - Fast chat session lookup with `anchor_search_index`
-- **📨 Session Fetching** - Targeted retrieval with `anchor_fetch_session`
+
+### Write Operations (Opt-In, Disabled by Default)
+- **📝 Text Ingestion** - Add raw text content with `anchor_ingest_text`
+- **📁 File Ingestion** - Ingest files from filesystem with `anchor_ingest_file`
+- **🪣 Bucket Selection** - Choose `inbox` (sovereign) or `external-inbox` (external)
+- **🔐 Security Toggle** - Enable/disable write operations via settings
+
+---
+
+## What's New in v4.8.0
+
+### Write Operations (NEW!)
+
+The MCP server now supports **ingesting content** into Anchor Engine, not just querying it. This allows AI agents to add knowledge to your memory graph.
+
+**Two New Tools:**
+
+1. **`anchor_ingest_text`** - Add raw text content
+   - Perfect for: Meeting notes, thoughts, code snippets, emails
+   - Deterministic atomization (no LLM processing)
+   - Bucket selection: `inbox` (sovereign) or `external-inbox` (external)
+
+2. **`anchor_ingest_file`** - Ingest files from filesystem
+   - Perfect for: Documents, articles, downloaded content
+   - Reads file and ingests in one operation
+   - Defaults to `external-inbox` for safety
+
+**Security First:**
+- Write operations are **disabled by default**
+- Must explicitly enable in `user_settings.json`
+- Defaults to `external-inbox` (lower trust) for safety
+- Clear guidance on when to use `inbox` vs `external-inbox`
+
+**Example Usage:**
+```typescript
+// AI agent adds meeting notes
+anchor_ingest_text({
+  content: "Meeting summary...",
+  filename: "meeting-2026-03-18.md",
+  bucket: "inbox"  // You created this content
+})
+
+// AI agent ingests downloaded article
+anchor_ingest_file({
+  path: "~/downloads/article.html",
+  bucket: "external-inbox"  // External content
+})
+```
+
+**Enable Write Operations:**
+```json
+{
+  "mcp": {
+    "allow_write_operations": true,
+    "default_bucket_for_writes": "external-inbox"
+  }
+}
+```
+
+⚠️ **Only enable write operations if you trust the AI agent.** The default `external-inbox` bucket ensures untrusted data gets lower retrieval priority until you review it.
+
+---
 
 ## Installation
 
@@ -59,7 +120,7 @@ Add to `~/.cursor/mcp.json`:
 }
 ```
 
-### For Qwen Coder
+### For Qwen Code / Quinn CLI
 
 Add to your Qwen config (usually `~/.config/qwen/mcp.json` or similar):
 
@@ -159,68 +220,126 @@ List available source files.
 
 Get system statistics.
 
-### `anchor_search_index` (NEW in v4.8.0)
-
-Search the distillation session index for relevant chat sessions. Fast, lightweight query routing for two-tier retrieval.
-
-**Two-Tier Retrieval Pattern:**
-1. Use `anchor_search_index` to find relevant sessions (fast, searches small index)
-2. Use `anchor_fetch_session` to retrieve full context for specific sessions
-
 ```json
-{
-  "query": "OAuth authentication setup",
-  "max_results": 10,
-  "commands_only": false
-}
+{}
 ```
 
-**Response includes:**
-- Session IDs for targeted queries
-- Date/time of sessions
-- Commands run during session
-- Topics extracted
-- Message count
-- Participants (user/assistant/system)
+### `anchor_ingest_text` (NEW in v4.8.0)
 
-### `anchor_fetch_session` (NEW in v4.8.0)
+Ingest raw text content into Anchor Engine memory. Content is atomized deterministically (no LLM processing).
 
-Fetch full session data by session ID. Use after `anchor_search_index` to retrieve complete conversation context.
-
-```json
-{
-  "session_id": "a057132d-deef-49fa-9214-e8f0bb923fa0",
-  "max_messages": 100,
-  "include_metadata": true
-}
-```
+**Use Cases:**
+- Meeting notes you wrote
+- Personal thoughts and reflections
+- Code snippets you created
+- Email drafts
+- Any sovereign content (content you created)
 
 **Parameters:**
-- `session_id` (required): UUID of the session to fetch
-- `max_messages`: Limit messages returned (default: 100, use 0 for all)
-- `include_metadata`: Include session metadata (default: true)
+- `content` (required): Raw text content to ingest
+- `filename` (required): Filename for the content (e.g., `meeting-notes.md`)
+- `bucket` (optional): Destination bucket
+  - `"inbox"` - Sovereign data (you created it) → 3.0x retrieval boost
+  - `"external-inbox"` - External data (scraped/imported) → 1.0x boost
+  - **Default:** `"external-inbox"` (safer)
+- `tags` (optional): Tags to apply (auto-extracted if not provided)
 
-## Two-Tier Retrieval Workflow
-
-The session index enables efficient memory retrieval without searching the entire corpus:
-
-```
-1. User asks: "How did we set up OAuth?"
-   ↓
-2. anchor_search_index: { query: "OAuth authentication" }
-   ↓ (fast, searches ~100 session entries)
-3. Returns: Session a057132d... from March 9 with /auth command
-   ↓
-4. anchor_fetch_session: { session_id: "a057132d-..." }
-   ↓ (targeted, reads single file)
-5. Returns: Full conversation context for injection
+**Example:**
+```json
+{
+  "content": "Meeting notes from today...\n\nAction items:\n1. Review PR #123\n2. Update documentation",
+  "filename": "meeting-2026-03-18.md",
+  "bucket": "inbox",
+  "tags": ["meetings", "action-items"]
+}
 ```
 
-**Benefits:**
-- **Token Efficient**: Don't load full context unless needed
-- **Fast**: Index search is ~100x faster than full corpus search
-- **Precise**: Session-scoped results reduce noise
-- **Human-Like**: Matches how we remember (gist → details on demand)
+**Response:**
+```
+✅ Text ingested successfully!
+
+👑 Bucket: inbox - Sovereign data (3.0x retrieval boost)
+📄 Filename: meeting-2026-03-18.md
+📊 Size: 1,234 characters
+🏷️ Tags: meetings, action-items
+
+💡 Content will be atomized deterministically (no LLM processing).
+   Use anchor_query to search for this content after ingestion.
+```
+
+⚠️ **Note:** Write operations must be enabled in `user_settings.json`:
+```json
+{
+  "mcp": {
+    "allow_write_operations": true,
+    "default_bucket_for_writes": "external-inbox"
+  }
+}
+```
+
+---
+
+### `anchor_ingest_file` (NEW in v4.8.0)
+
+Ingest a file from filesystem into Anchor Engine. Content is atomized deterministically.
+
+**Use Cases:**
+- Documents you wrote
+- Code files from your projects
+- Downloaded articles (use `external-inbox`)
+- Research papers (use `external-inbox`)
+
+**Parameters:**
+- `path` (required): Absolute or relative path to file
+- `bucket` (optional): Destination bucket
+  - `"inbox"` - Files you created
+  - `"external-inbox"` - External files (downloads, scrapes)
+  - **Default:** `"external-inbox"` (safer)
+- `delete_original` (optional): Delete original file after ingestion (default: `false`)
+
+**Example:**
+```json
+{
+  "path": "~/notes/meeting-2026-03-18.md",
+  "bucket": "inbox"
+}
+```
+
+**Response:**
+```
+✅ File ingested successfully!
+
+👑 Bucket: inbox - Sovereign data (3.0x retrieval boost)
+📄 Filename: meeting-2026-03-18.md
+📊 Size: 1,234 characters
+📁 Source: /home/user/notes/meeting-2026-03-18.md
+
+💡 Content will be atomized deterministically (no LLM processing).
+   Use anchor_query to search for this content after ingestion.
+```
+
+⚠️ **Note:** Write operations must be enabled in `user_settings.json` (see above).
+
+---
+
+## 🪣 Bucket Selection Guide
+
+**When to use `inbox`:**
+- ✅ Content you created (notes, thoughts, code, emails)
+- ✅ Files you wrote
+- ✅ Personal knowledge
+- ✅ Sovereign data (high trust, 3.0x retrieval boost)
+
+**When to use `external-inbox`:**
+- ✅ Web scrapes
+- ✅ Downloaded articles
+- ✅ Imported documents
+- ✅ Third-party content
+- ✅ External knowledge (lower trust, 1.0x boost)
+
+**Default Behavior:** If not specified, defaults to `external-inbox` for safety. This ensures untrusted data doesn't pollute your sovereign knowledge graph until you review it.
+
+---
 
 ## 🔒 Security Configuration
 
@@ -269,26 +388,12 @@ For client data protection:
 
 ## Token-Efficient Workflow
 
-### Pattern 1: Distillation-Based Retrieval
-
 1. **Distill** your corpus: `anchor_distill` with a seed query
 2. **Get** the output file path from results
 3. **Read** the file in chunks: `anchor_read_file` with line ranges
 4. **Search** recursively within chunks
 
 This mimics Kimi's recursive search and saves massive token budgets!
-
-### Pattern 2: Two-Tier Session Retrieval (NEW)
-
-1. **Search Index**: `anchor_search_index` with natural language query
-2. **Review Results**: Find relevant session IDs from the index
-3. **Fetch Session**: `anchor_fetch_session` with specific session_id
-4. **Inject Context**: Use retrieved messages as conversation context
-
-This pattern is ideal for:
-- Finding specific past conversations
-- Command-based lookups ("show me when I ran /auth")
-- Topic-scoped retrieval ("OAuth setup discussions")
 
 ## Environment Variables
 

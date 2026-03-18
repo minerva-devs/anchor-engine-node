@@ -38,6 +38,8 @@ interface MCPSecuritySettings {
   restrict_to_localhost: boolean;
   allowed_operations: string[];
   blocked_operations: string[];
+  allow_write_operations: boolean;  // NEW: Toggle for ingest operations
+  default_bucket_for_writes: string;  // NEW: Default bucket (inbox or external-inbox)
 }
 
 let securitySettings: MCPSecuritySettings = {
@@ -48,7 +50,9 @@ let securitySettings: MCPSecuritySettings = {
   max_query_results: 50,
   restrict_to_localhost: true,
   allowed_operations: ["query", "read_file", "get_stats"],
-  blocked_operations: []
+  blocked_operations: [],
+  allow_write_operations: false,  // Disabled by default for safety
+  default_bucket_for_writes: "external-inbox"  // Safer default
 };
 
 // Rate limiting
@@ -208,47 +212,57 @@ const TOOLS: Tool[] = [
     },
   },
   {
-    name: "anchor_search_index",
-    description: "Search the distillation session index for relevant chat sessions. Fast, lightweight query routing for two-tier retrieval. Returns session metadata and IDs for targeted fetching.",
+    name: "anchor_ingest_text",
+    description: "Ingest raw text content into Anchor Engine memory. Content is atomized deterministically (no LLM processing). Defaults to external-inbox for safety. Use 'inbox' only for content you created yourself (notes, thoughts, code).",
     inputSchema: {
       type: "object",
       properties: {
-        query: {
+        content: {
           type: "string",
-          description: "Search query to find relevant sessions",
+          description: "Raw text content to ingest",
         },
-        max_results: {
-          type: "number",
-          description: "Maximum sessions to return (default: 10)",
+        filename: {
+          type: "string",
+          description: "Filename (e.g., 'meeting-notes-2026-03-18.md')",
         },
-        commands_only: {
-          type: "boolean",
-          description: "Only search command names (default: false)",
+        bucket: {
+          type: "string",
+          enum: ["inbox", "external-inbox"],
+          default: "external-inbox",
+          description: "inbox=sovereign data (you created), external-inbox=external data (scraped/imported). Defaults to external-inbox for safety.",
+        },
+        tags: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional tags (auto-extracted if not provided)",
         },
       },
-      required: ["query"],
+      required: ["content", "filename"],
     },
   },
   {
-    name: "anchor_fetch_session",
-    description: "Fetch full session data by session ID. Use after anchor_search_index to retrieve complete conversation context for a specific session.",
+    name: "anchor_ingest_file",
+    description: "Ingest a file from filesystem into Anchor Engine. Content is atomized deterministically. Defaults to external-inbox for safety. Use 'inbox' only for files you created yourself.",
     inputSchema: {
       type: "object",
       properties: {
-        session_id: {
+        path: {
           type: "string",
-          description: "Session UUID to fetch",
+          description: "Absolute or relative path to file",
         },
-        max_messages: {
-          type: "number",
-          description: "Maximum messages to return (default: 100, 0 for all)",
+        bucket: {
+          type: "string",
+          enum: ["inbox", "external-inbox"],
+          default: "external-inbox",
+          description: "inbox=sovereign data, external-inbox=external data. Defaults to external-inbox.",
         },
-        include_metadata: {
+        delete_original: {
           type: "boolean",
-          description: "Include session metadata (default: true)",
+          default: false,
+          description: "Delete original file after ingestion",
         },
       },
-      required: ["session_id"],
+      required: ["path"],
     },
   },
 ];
@@ -474,134 +488,116 @@ async function handleGetStats(args: any): Promise<string> {
 `;
 }
 
-async function handleSearchIndex(args: any): Promise<string> {
-  const { query, max_results = 10, commands_only = false } = args;
+async function handleIngestText(args: any): Promise<string> {
+  // Security check: Write operations must be enabled
+  if (!securitySettings.allow_write_operations) {
+    return `❌ Write operations are disabled.
 
-  // First, get the distillation output with session index
-  const distillResult = await callAnchorAPI("/v1/memory/distill", "POST", {
-    seed: { query },
-    radius: 1,
-    max_nodes: 100,
-    output_format: "json"
-  });
+To enable text ingestion, add this to your user_settings.json:
 
-  const sessionIndex = distillResult?.session_index || [];
-  
-  if (sessionIndex.length === 0) {
-    return "📋 Session Index\n" + "=".repeat(40) + "\n\nNo sessions found in index. Run distillation first to build the index.";
+{
+  "mcp": {
+    "allow_write_operations": true,
+    "default_bucket_for_writes": "external-inbox"
   }
-
-  // Filter by query (simple text matching)
-  const queryLower = query.toLowerCase();
-  let filtered = sessionIndex.filter((s: any) => {
-    if (commands_only) {
-      return s.commands?.some((c: string) => c.toLowerCase().includes(queryLower));
-    }
-    return (
-      s.topics?.some((t: string) => t.toLowerCase().includes(queryLower)) ||
-      s.commands?.some((c: string) => c.toLowerCase().includes(queryLower)) ||
-      s.participants?.some((p: string) => p.toLowerCase().includes(queryLower))
-    );
-  });
-
-  // Sort by date (most recent first)
-  filtered = filtered.sort((a: any, b: any) => 
-    new Date(b.date).getTime() - new Date(a.date).getTime()
-  ).slice(0, max_results);
-
-  if (filtered.length === 0) {
-    return `📋 Session Index Search\n` + "=".repeat(40) + `\n\nNo sessions matching "${query}".`;
-  }
-
-  let output = `📋 Session Index Results\n`;
-  output += "=".repeat(40) + `\n`;
-  output += `Query: "${query}" | Found: ${filtered.length} sessions\n\n`;
-
-  for (const session of filtered) {
-    output += `🔹 Session: ${session.session_id}\n`;
-    output += `   📅 Date: ${session.date}\n`;
-    output += `   💬 Messages: ${session.message_count}\n`;
-    output += `   🎯 Commands: ${session.commands.join(", ") || "none"}\n`;
-    output += `   🏷️ Topics: ${session.topics.join(", ") || "none"}\n`;
-    output += `   👥 Participants: ${session.participants.join(", ")}\n`;
-    output += `   📁 Path: ${session.full_log_path}\n\n`;
-  }
-
-  output += `\n💡 Use anchor_fetch_session with a session_id to retrieve full context.`;
-  
-  return output;
 }
 
-async function handleFetchSession(args: any): Promise<string> {
-  const { session_id, max_messages = 100, include_metadata = true } = args;
-
-  // Read the session file directly
-  const sessionPath = `inbox/${session_id}.jsonl`;
-  const result = await callAnchorAPI(
-    `/v1/files/read?path=${encodeURIComponent(sessionPath)}`,
-    "GET"
-  );
-
-  if (!result?.content) {
-    return `❌ Error: Could not read session ${session_id}. The file may not exist or is not accessible.`;
+⚠️ Only enable write operations if you trust the AI agent.
+📝 Default bucket is 'external-inbox' for safety (untrusted data).
+   Use 'inbox' only for content you created yourself.`;
   }
 
-  const lines = result.content.split("\n").filter((line: string) => line.trim());
-  const messages: any[] = [];
+  const { content, filename, bucket = securitySettings.default_bucket_for_writes, tags = [] } = args;
 
-  // Parse JSONL
-  for (const line of lines) {
-    try {
-      messages.push(JSON.parse(line));
-    } catch {
-      // Skip malformed lines
+  try {
+    const result = await callAnchorAPI("/v1/research/upload-raw", "POST", {
+      content,
+      filename,
+      bucket,
+      tags
+    });
+
+    const bucketEmoji = bucket === "inbox" ? "👑" : "🌐";
+    const bucketNote = bucket === "inbox" 
+      ? "Sovereign data (3.0x retrieval boost)" 
+      : "External data (1.0x boost)";
+
+    return `✅ Text ingested successfully!
+
+${bucketEmoji} Bucket: ${bucket} - ${bucketNote}
+📄 Filename: ${filename}
+📊 Size: ${content.length.toLocaleString()} characters
+🏷️ Tags: ${tags.length > 0 ? tags.join(", ") : "(auto-extracted)" }
+
+💡 Content will be atomized deterministically (no LLM processing).
+   Use anchor_query to search for this content after ingestion.`;
+  } catch (error: any) {
+    return `❌ Ingestion failed: ${error.message}`;
+  }
+}
+
+async function handleIngestFile(args: any): Promise<string> {
+  // Security check: Write operations must be enabled
+  if (!securitySettings.allow_write_operations) {
+    return `❌ Write operations are disabled.
+
+To enable file ingestion, add this to your user_settings.json:
+
+{
+  "mcp": {
+    "allow_write_operations": true,
+    "default_bucket_for_writes": "external-inbox"
+  }
+}
+
+⚠️ Only enable write operations if you trust the AI agent.
+📁 Default bucket is 'external-inbox' for safety (untrusted data).
+   Use 'inbox' only for files you created yourself.`;
+  }
+
+  const { path: filePath, bucket = securitySettings.default_bucket_for_writes, delete_original = false } = args;
+
+  try {
+    // First, read the file
+    const fileResult = await callAnchorAPI(`/v1/files/read?path=${encodeURIComponent(filePath)}`, "GET");
+    
+    if (!fileResult.content) {
+      return `❌ Could not read file: ${filePath}`;
     }
-  }
 
-  // Limit messages if requested
-  const limitedMessages = max_messages > 0 ? messages.slice(0, max_messages) : messages;
+    const filename = filePath.split("/").pop() || filePath;
+    const content = fileResult.content;
 
-  let output = `📬 Session: ${session_id}\n`;
-  output += "=".repeat(40) + `\n\n`;
+    // Then ingest it
+    const ingestResult = await callAnchorAPI("/v1/research/upload-raw", "POST", {
+      content,
+      filename,
+      bucket,
+      tags: []
+    });
 
-  if (include_metadata) {
-    const firstMsg = messages[0];
-    const lastMsg = messages[messages.length - 1];
-    output += `📊 Metadata:\n`;
-    output += `   Total Messages: ${messages.length}\n`;
-    output += `   Started: ${firstMsg?.timestamp || "unknown"}\n`;
-    output += `   Ended: ${lastMsg?.timestamp || "unknown"}\n`;
-    output += `   Returning: ${limitedMessages.length} messages\n\n`;
-  }
+    const bucketEmoji = bucket === "inbox" ? "👑" : "🌐";
+    const bucketNote = bucket === "inbox" 
+      ? "Sovereign data (3.0x retrieval boost)" 
+      : "External data (1.0x boost)";
 
-  output += `📨 Messages:\n` + "-".repeat(40) + `\n\n`;
-
-  for (const msg of limitedMessages) {
-    const type = msg.type || msg.role || "unknown";
-    const timestamp = msg.timestamp ? new Date(msg.timestamp).toISOString() : "unknown";
-    
-    output += `[${timestamp}] ${type}:\n`;
-    
-    if (msg.message?.parts) {
-      for (const part of msg.message.parts) {
-        if (part.text) {
-          output += `   ${part.text.substring(0, 500)}${part.text.length > 500 ? "..." : ""}\n`;
-        }
-      }
-    } else if (msg.systemPayload?.rawCommand) {
-      output += `   Command: ${msg.systemPayload.rawCommand}\n`;
-    } else if (msg.message?.content) {
-      output += `   ${msg.message.content.substring(0, 500)}${msg.message.content.length > 500 ? "..." : ""}\n`;
+    let deleteNote = "";
+    if (delete_original) {
+      deleteNote = "\n🗑️ Original file will be deleted (not implemented yet - manual deletion required)";
     }
-    
-    output += `\n`;
-  }
 
-  if (messages.length > max_messages && max_messages > 0) {
-    output += `\n... and ${messages.length - max_messages} more messages (use max_messages=0 for all)`;
-  }
+    return `✅ File ingested successfully!
 
-  return output;
+${bucketEmoji} Bucket: ${bucket} - ${bucketNote}
+📄 Filename: ${filename}
+📊 Size: ${content.length.toLocaleString()} characters
+📁 Source: ${filePath}
+
+💡 Content will be atomized deterministically (no LLM processing).
+   Use anchor_query to search for this content after ingestion.${deleteNote}`;
+  } catch (error: any) {
+    return `❌ File ingestion failed: ${error.message}`;
+  }
 }
 
 // Resource handlers
@@ -619,7 +615,7 @@ async function handleResourceCompounds(): Promise<string> {
 const server = new Server(
   {
     name: "anchor-engine-mcp",
-    version: "4.7.0",
+    version: "4.8.0",
   },
   {
     capabilities: {
@@ -679,8 +675,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     "anchor_read_file": "read_file",
     "anchor_list_compounds": "list",
     "anchor_get_stats": "get_stats",
-    "anchor_search_index": "search_index",
-    "anchor_fetch_session": "fetch_session"
+    "anchor_ingest_text": "ingest_text",
+    "anchor_ingest_file": "ingest_file"
   };
   
   const operation = operationMap[name] || name;
@@ -726,11 +722,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "anchor_get_stats":
         result = await handleGetStats(args);
         break;
-      case "anchor_search_index":
-        result = await handleSearchIndex(args);
+      case "anchor_ingest_text":
+        result = await handleIngestText(args);
         break;
-      case "anchor_fetch_session":
-        result = await handleFetchSession(args);
+      case "anchor_ingest_file":
+        result = await handleIngestFile(args);
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);
