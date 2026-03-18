@@ -23,6 +23,34 @@ Instead of vectors, we use **graph traversal**. Instead of guessing, we give you
 
 ---
 
+## Our Philosophy: AI Memory Should Work Like Your Brain
+
+Human memory is remarkably efficient. It runs on ~20 watts, forgets irrelevant details, and over time clarifies core truths rather than drowning in noise. It doesn't store raw experiences—it stores *patterns*, *relationships*, and *meaning*. When you remember a conversation, you don't replay every word; you recall the gist, the emotional tone, the key decisions. The details fade, but the signal strengthens.
+
+Most AI memory systems do the opposite: they hoard data, brute‑force compute similarity, and require massive infrastructure. They simulate understanding through volume, not structure.
+
+**Anchor Engine was built on a different premise: AI memory should work like the human mind—lightweight, connected, and self‑clarifying.**
+
+### Five Core Principles
+
+| Principle | What It Means | How Anchor Implements It |
+|-----------|---------------|--------------------------|
+| **🧠 Forgetting is a feature** | The brain forgets constantly, leaving only what matters | `distill:` command removes redundancy; temporal decay lets noise fade |
+| **🔗 Meaning lives in relationships** | We store how concepts connect, not isolated facts | Graph model with typed edges; STAR algorithm walks relationships |
+| **⚡ Low power, high efficiency** | The brain achieves its magic on ~20 watts | Pointer‑only database; content stays on disk; <1GB RAM |
+| **💎 Clarity through distillation** | Memory builds higher‑level abstractions over time | Decision Records v2.0 extract the *why* behind decisions |
+| **🔍 Explainability builds trust** | You know *why* a memory came to mind | Provenance tracking; receipts show source files and timestamps |
+
+### Why This Matters
+
+Most AI memory systems are built for **scale**, not for **sense**. They assume that more data + more compute = better memory. But that's not how intelligence works. The brain doesn't scale by adding neurons; it scales by refining connections.
+
+Anchor Engine is designed for **sense‑making**. It's for agents that need to remember not just *what* happened, but *why*, and to get *clearer* over time. It's for running on your phone, in your pocket, alongside your life.
+
+**This philosophy isn't an afterthought—it's the foundation.** Every line of code, every standard, every design decision flows from it.
+
+---
+
 ## Why Anchor Engine?
 
 | Feature | What it means for you |

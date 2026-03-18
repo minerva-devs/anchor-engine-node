@@ -1,9 +1,19 @@
 # Standard 125: Semantic Deduplication of Search Results
 
-**Version:** 1.0  
-**Status:** Active  
-**Introduced:** v4.4.2  
+**Version:** 1.0
+**Status:** Active
+**Introduced:** v4.4.2
 **File:** `engine/src/services/search/search-utils.ts`
+
+---
+
+## Philosophy Alignment
+
+This standard embodies a core principle:
+
+> **"Forgetting is a feature, not a bug"** - The brain doesn't store every repetition of a fact; it remembers once, clearly. Semantic deduplication does the same: it removes redundant snippets from search results, ensuring the LLM sees diverse facts, not the same fact repeated five times.
+
+**Result:** Token efficiency and clarity. A 4K context window contains 50 unique insights, not 50 variations of the same 5 insights.
 
 ---
 

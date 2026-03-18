@@ -1,7 +1,17 @@
 # Standard 128: Illuminate & Explore — Corpus Traversal Modes
 
-**Status:** ✅ Active | **Version:** 2.0 | **Date:** 2026-03-08  
+**Status:** ✅ Active | **Version:** 2.0 | **Date:** 2026-03-08
 **Introduced:** v4.5.1 | **Revised:** v4.5.2
+
+---
+
+## Philosophy Alignment
+
+This standard embodies a core principle:
+
+> **"Meaning lives in relationships, not isolated facts"** - When you remember something, your brain follows associative links from concept to concept. The `illuminate:` and `explore:` commands do the same: they walk the graph of relationships, revealing how ideas connect and cluster.
+
+**Explore** shows the *shape* of knowledge (which topics exist and how they relate). **Illuminate** reads the *substance* (the actual content, ranked by relevance). Together, they mirror how human memory works: first the structure, then the details.
 
 ---
 

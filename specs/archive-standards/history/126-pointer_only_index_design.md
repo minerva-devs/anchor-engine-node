@@ -1,8 +1,18 @@
 # Architecture Tradeoffs - Pointer-Only Index
 
-**Version:** 1.0.0  
-**Date:** February 27, 2026  
+**Version:** 1.0.0
+**Date:** February 27, 2026
 **Status:** Active
+
+---
+
+## Philosophy Alignment
+
+This architecture embodies a core principle:
+
+> **"Low power, high efficiency"** - The human brain achieves remarkable intelligence on ~20 watts by storing pointers to neural patterns, not perfect recordings. Anchor Engine's pointer-only index follows the same principle: the database holds only references (file paths, byte offsets), while content lives on disk.
+
+**Result:** The index is a lightweight, disposable map—not a heavy copy. It can be wiped and rebuilt in minutes, uses <1GB RAM, and scales to terabytes of content. This is brain-inspired efficiency: store relationships, not raw data.
 
 ---
 

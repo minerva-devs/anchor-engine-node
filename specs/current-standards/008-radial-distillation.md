@@ -6,6 +6,18 @@
 
 ---
 
+## Philosophy Alignment
+
+This standard embodies two core principles from the Anchor Engine philosophy:
+
+> **"Forgetting is a feature, not a bug"** - The brain forgets constantly, leaving only what matters. Radial distillation deliberately removes redundancy, preserving unique facts while letting noise fade.
+
+> **"Clarity through distillation, not accumulation"** - As you add more data, human memory doesn't get cluttered—it builds higher‑level abstractions. Each distillation pass makes the signal clearer, extracting the *why* behind decisions.
+
+Radial distillation is not just compression—it's **deliberate forgetting** as a design principle. By removing redundancy across the entire corpus, we create a knowledge graph that becomes *more* precise over time, not less.
+
+---
+
 ## 1. Executive Summary
 
 Define the **Radial Distillation** architecture for creating near-lossless, deduplicated corpus compressions. Unlike the legacy distiller (which compressed individual atoms), radial distillation:

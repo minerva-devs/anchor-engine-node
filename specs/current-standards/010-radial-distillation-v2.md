@@ -5,6 +5,16 @@
 
 ---
 
+## Philosophy Alignment
+
+This standard embodies the core principle:
+
+> **"Clarity through distillation, not accumulation"** - Human memory doesn't store every word; it stores the gist, the decisions, the *why*. Distillation v2.0 extracts Decision Records—structured captures of problems, solutions, and rationale—leaving behind the noise while preserving the signal.
+
+Unlike v1 (line-level deduplication), v2.0 extracts **semantic meaning**—the decisions and reasoning that matter. This mirrors how human memory clarifies over time: details fade, but core truths strengthen.
+
+---
+
 ## 1. Executive Summary
 
 Radial Distillation v2.0 produces **Decision Records** — structured JSON objects capturing problems, solutions, rationale, and provenance — instead of line-level deduplicated text. This format is optimized for LLM consumption while preserving temporal and semantic information.
