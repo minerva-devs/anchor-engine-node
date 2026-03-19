@@ -33,6 +33,24 @@ If you want:
 
 ## ⚡ Quick Start (5 Minutes)
 
+### Option 1: npm Install (Recommended)
+
+```bash
+# Install the package
+npm install @rbalchii/anchor-engine
+
+# Or globally for CLI access
+npm install -g @rbalchii/anchor-engine
+
+# Start the engine
+anchor start
+
+# Open your browser
+open http://localhost:3160
+```
+
+### Option 2: From Source
+
 ```bash
 # 1. Clone & Install
 git clone https://github.com/RSBalchII/anchor-engine-node.git
@@ -48,6 +66,8 @@ open http://localhost:3160
 ```
 
 That's it! You now have a sovereign memory system for your LLM.
+
+**Full installation guide:** [INSTALL_NPM.md](INSTALL_NPM.md)
 
 ---
 
