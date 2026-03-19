@@ -32,7 +32,7 @@ export const SearchColumn = memo(({
     const [results, setResults] = useState<any[]>([]);
     const [context, setContext] = useState('');
     const [loading, setLoading] = useState(false);
-    const [viewMode, setViewMode] = useState<'cards' | 'raw'>('cards');
+    const [viewMode, setViewMode] = useState<'cards' | 'raw' | 'meta'>('cards');
     const [error, setError] = useState<string | null>(null); // New error state
 
     // Feature State
@@ -482,8 +482,8 @@ export const SearchColumn = memo(({
 
                 {/* Utility Buttons */}
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                    <Button variant="primary" onClick={() => setViewMode(viewMode === 'cards' ? 'raw' : 'cards')} style={{ flex: 1, background: '#334155', color: '#fff' }}>
-                        {viewMode === 'cards' ? '📄 View Raw Text' : '🃏 View Cards'}
+                    <Button variant="primary" onClick={() => setViewMode(viewMode === 'cards' ? 'raw' : viewMode === 'raw' ? 'meta' : 'cards')} style={{ flex: 1, background: viewMode === 'meta' ? '#059669' : '#334155', color: '#fff' }}>
+                        {viewMode === 'cards' ? '📄 View Raw' : viewMode === 'raw' ? '🔍 Meta Analysis' : '🃏 View Cards'}
                     </Button>
                     <Button variant="primary" onClick={copyContext} style={{ flex: 1, background: '#334155', color: '#fff' }}>
                         📋 Copy Context
@@ -708,6 +708,119 @@ export const SearchColumn = memo(({
                                     </div>
                                 );
                             })
+                        )}
+                    </div>
+                )}
+
+                {/* Meta Analysis View - Shows WHY each molecule was selected */}
+                {!loading && !error && viewMode === 'meta' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', overflowY: 'auto', flex: 1 }}>
+                        {results.length === 0 ? (
+                            <div style={{ color: '#94a3b8', textAlign: 'center', padding: '20px' }}>Search results will appear here...</div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                {/* Summary Card */}
+                                <div className="glass-card" style={{ padding: '20px', border: '2px solid var(--accent-primary)', background: 'rgba(59, 130, 246, 0.1)' }}>
+                                    <h3 style={{ margin: '0 0 15px 0', color: '#a78bfa', fontSize: '1.1rem' }}>🔍 Meta Analysis: Why These Molecules Were Selected</h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', fontSize: '0.9rem' }}>
+                                        <div>
+                                            <div style={{ color: '#94a3b8', marginBottom: '5px' }}>Total Results</div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fff' }}>{results.length}</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ color: '#94a3b8', marginBottom: '5px' }}>Included in Context</div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--accent-primary)' }}>{metadata?.atomCount || results.length}</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ color: '#94a3b8', marginBottom: '5px' }}>Context Fill</div>
+                                            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#22c55e' }}>{metadata?.filledPercent || 0}%</div>
+                                        </div>
+                                        <div>
+                                            <div style={{ color: '#94a3b8', marginBottom: '5px' }}>Query</div>
+                                            <div style={{ fontSize: '0.85rem', color: '#a5f3fc', fontStyle: 'italic' }}>"{query}"</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Individual Molecule Analysis */}
+                                {results.map((r, idx) => {
+                                    const isIncluded = metadata?.atomCount ? idx < metadata.atomCount : true;
+                                    const score = r.score || r.gravityScore || 0;
+                                    const tags = r.tags || r.sharedTags || [];
+                                    const hopDistance = r.hopDistance || r.hops || 0;
+                                    const recency = r.timestamp ? new Date(r.timestamp).toLocaleDateString() : 'Unknown';
+                                    
+                                    return (
+                                        <div key={`meta-${r._searchId || r.id || idx}-${id}`} className="glass-card" style={{ opacity: isIncluded ? 1 : 0.4, padding: '20px', border: isIncluded ? '1px solid var(--accent-primary)' : '1px solid #475569' }}>
+                                            {/* Header */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', paddingBottom: '10px', borderBottom: '1px solid #334155' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <span style={{ fontSize: '1.2rem' }}>#{idx + 1}</span>
+                                                    <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: isIncluded ? 'var(--accent-primary)' : '#475569', color: '#fff', fontWeight: 'bold' }}>
+                                                        {isIncluded ? '✅ INCLUDED' : '❌ TRUNCATED'}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.7rem', padding: '4px 8px', borderRadius: '4px', background: '#334155', color: '#94a3b8' }}>{r.provenance || 'EXT'}</span>
+                                                </div>
+                                                <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: score > 0.8 ? '#22c55e' : score > 0.5 ? '#f59e0b' : '#ef4444' }}>
+                                                    Score: {(score * 100).toFixed(0)}%
+                                                </div>
+                                            </div>
+
+                                            {/* Selection Reasons Grid */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', marginBottom: '15px' }}>
+                                                <div style={{ padding: '10px', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '6px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '5px' }}>🎯 Shared Tags</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#60a5fa' }}>{tags.length || 'N/A'}</div>
+                                                    {tags.length > 0 && (
+                                                        <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '5px', fontStyle: 'italic' }}>
+                                                            {tags.slice(0, 3).join(', ')}{tags.length > 3 ? '...' : ''}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div style={{ padding: '10px', background: 'rgba(167, 139, 250, 0.1)', borderRadius: '6px', border: '1px solid rgba(167, 139, 250, 0.2)' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '5px' }}>🔗 Hop Distance</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#a78bfa' }}>{hopDistance} hop{hopDistance !== 1 ? 's' : ''}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '5px' }}>From query anchors</div>
+                                                </div>
+                                                <div style={{ padding: '10px', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '6px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '5px' }}>📅 Recency</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#22c55e' }}>{recency}</div>
+                                                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '5px' }}>Temporal decay applied</div>
+                                                </div>
+                                                <div style={{ padding: '10px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '5px' }}>📊 Content Length</div>
+                                                    <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#f59e0b' }}>{(r.content?.length || 0).toLocaleString()} chars</div>
+                                                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '5px' }}>≈{Math.ceil((r.content?.length || 0) / 4)} tokens</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Why Selected Explanation */}
+                                            <div style={{ padding: '15px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', border: '1px solid #334155', marginBottom: '15px' }}>
+                                                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '8px', fontWeight: 'bold' }}>💡 Why This Was Selected:</div>
+                                                <div style={{ fontSize: '0.9rem', color: '#a5f3fc', lineHeight: '1.6' }}>
+                                                    {tags.length > 0 && hopDistance <= 1 ? (
+                                                        <span>Direct match via tags <strong>{tags.slice(0, 2).join(', ')}</strong> with high semantic gravity. </span>
+                                                    ) : hopDistance > 0 && hopDistance <= 2 ? (
+                                                        <span>Associated via {hopDistance}-hop graph traversal from anchor atoms. </span>
+                                                    ) : (
+                                                        <span>Retrieved through associative graph expansion with temporal decay. </span>
+                                                    )}
+                                                    {isIncluded ? (
+                                                        <span style={{ color: '#22c55e' }}>Included in final context (top {metadata?.atomCount || results.length} by score).</span>
+                                                    ) : (
+                                                        <span style={{ color: '#f59e0b' }}>Excluded due to token budget—lower priority than top {metadata?.atomCount || results.length}.</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Source Path */}
+                                            <div style={{ fontSize: '0.8rem', color: '#64748b', fontFamily: 'monospace', padding: '8px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+                                                📁 Source: {r.source || r.sourcePath || 'Unknown'}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
                 )}
