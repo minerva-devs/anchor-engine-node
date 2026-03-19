@@ -1,22 +1,29 @@
 # Anchor Engine - Documentation Index
 
-**Version:** 4.1.2 | **Updated:** February 22, 2026 | **Status:** ✅ Production Ready
+**Version:** 4.8.0 | **Updated:** March 18, 2026 | **Status:** ✅ Production Ready
 
 ---
 
 ## 📚 Quick Navigation
 
 ### Getting Started
-- **[README.md](../README.md)** - Quick start, installation, API examples
-- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (latest: v4.1.2 SimHash Dedup)
+- **[README.md](../README.md)** - Quick start, installation, usage guide
+- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (latest: v4.8.0)
+- **[CONTRIBUTING.md](../CONTRIBUTING.md)** - How to contribute
 
 ### Core Documentation
-- **[docs/whitepaper.md](whitepaper.md)** - The Sovereign Context Protocol (95% compliance)
+- **[docs/API.md](API.md)** - Complete API reference
+- **[docs/DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment guide (local, Docker, VPS, K8s)
+- **[docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Troubleshooting guide
+- **[docs/whitepaper.md](whitepaper.md)** - STAR Algorithm whitepaper
 - **[specs/spec.md](../specs/spec.md)** - System specification with architecture diagrams
-- **[specs/standards/](../specs/standards/)** - Architecture standards
-  - **STANDARD_086** - Dual-Strategy Search (v2.0 with SimHash Dedup)
-  - **STANDARD_113** - Automatic Max-Recall Trigger
-  - **STANDARD_116** - Phoenix Protocol Backup/Restore
+- **[specs/current-standards/](../specs/current-standards/)** - Active architecture standards (001-010)
+
+### Development
+- **[engine/src/README.md](../engine/src/README.md)** - Source code overview
+- **[tests/README.md](../tests/README.md)** - Testing guide
+- **[benchmarks/README.md](../benchmarks/README.md)** - Benchmarking framework
+- **[mcp-server/README.md](../mcp-server/README.md)** - MCP server integration
 
 ---
 
@@ -25,39 +32,49 @@
 ### "I want to install and run Anchor Engine"
 → Start with **[README.md](../README.md)** - Quick Start section
 
-### "I need to understand how the system works"
-→ Read **[specs/spec.md](../specs/spec.md)** - System specification with visual flow charts
+### "I need API documentation"
+→ Read **[docs/API.md](API.md)** - Complete API reference with examples
+
+### "I want to deploy to production"
+→ Follow **[docs/DEPLOYMENT.md](DEPLOYMENT.md)** - All deployment options
+
+### "Something's not working"
+→ Check **[docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and fixes
+
+### "I need to understand the system architecture"
+→ Study **[specs/spec.md](../specs/spec.md)** - System specification with diagrams
 
 ### "I'm researching the theory behind Anchor Engine"
-→ Study **[docs/whitepaper.md](whitepaper.md)** - Academic paper
-
-### "I need API documentation"
-→ See **[README.md](../README.md)** - API Examples or **[specs/spec.md](../specs/spec.md)** - API Endpoints
+→ Read **[docs/whitepaper.md](whitepaper.md)** - Academic paper
 
 ### "I want to understand the search algorithm"
-→ Read **[specs/standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md](../specs/standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md)**
+→ See **[specs/current-standards/004-streaming-search.md](../specs/current-standards/004-streaming-search.md)**
 
-### "How does max-recall mode work?"
-→ See **[specs/standards/STANDARD_113_AUTOMATIC_MAX_RECALL.md](../specs/standards/STANDARD_113_AUTOMATIC_MAX_RECALL.md)**
+### "How does distillation work?"
+→ Read **[specs/current-standards/010-radial-distillation-v2.md](../specs/current-standards/010-radial-distillation-v2.md)**
 
-### "How do I backup and restore my data?"
-→ Follow **[specs/standards/STANDARD_116_PHOENIX_PROTOCOL.md](../specs/standards/STANDARD_116_PHOENIX_PROTOCOL.md)**
+### "I want to contribute code"
+→ Start with **[engine/src/README.md](../engine/src/README.md)** - Source overview
 
-### "What's new in the latest version?"
-→ Check **[CHANGELOG.md](../CHANGELOG.md)** - Latest: v4.1.2 SimHash Dedup Fix
+### "I need to write tests"
+→ Follow **[tests/README.md](../tests/README.md)** - Testing guide
+
+### "I want to connect via MCP"
+→ See **[mcp-server/README.md](../mcp-server/README.md)** - MCP integration
 
 ---
 
-## 📊 Key Metrics (v4.1.2)
+## 📊 Key Metrics (v4.8.0)
 
 | Metric | Value | Status |
 |--------|-------|--------|
 | **Context Retrieval** | 618k chars | ✅ +18% vs whitepaper |
 | **Memory Peak** | 510MB | ✅ -70% vs whitepaper |
-| **Search Latency** | 300ms standard, 50s max-recall | ⚠️ Trade-off for volume |
+| **Search Latency** | <200ms (p95) | ✅ Optimized |
 | **Ingestion Throughput** | 1,200 mol/sec | ✅ Verified |
-| **Deduplication Rate** | 40-50% | ✅ NEW with SimHash |
-| **Whitepaper Compliance** | 95% | ✅ Production Ready |
+| **Deduplication Rate** | 40-50% | ✅ With SimHash |
+| **Session Index** | NEW in v4.8.0 | ✅ Two-tier retrieval |
+| **MCP Write Ops** | NEW in v4.8.0 | ✅ Opt-in ingest |
 
 ---
 
@@ -65,45 +82,41 @@
 
 ```
 anchor-engine-node/
-├── README.md                      # Start here
-├── CHANGELOG.md                   # What's new
+├── README.md                      # Start here - Quick start & usage
+├── CHANGELOG.md                   # What's new (v4.8.0)
+├── CONTRIBUTING.md                # How to contribute
 │
 ├── docs/
-│   ├── whitepaper.md              # Academic paper
-│   └── INDEX.md                   # This file - navigation hub
+│   ├── API.md                     # ✅ NEW - Complete API reference
+│   ├── DEPLOYMENT.md              # ✅ NEW - Deployment guide
+│   ├── TROUBLESHOOTING.md         # ✅ NEW - Troubleshooting
+│   ├── whitepaper.md              # STAR algorithm paper
+│   ├── code-patterns.md           # Code patterns
+│   ├── INDEX.md                   # This file - navigation hub
+│   └── arxiv/                     # arXiv submission docs
 │
 ├── specs/
 │   ├── spec.md                    # System spec with diagrams
+│   ├── API-ROUTE-MAP.md           # Detailed API spec
 │   ├── plan.md                    # Roadmap
-│   └── standards/                 # Architecture standards
+│   ├── tasks.md                   # Current tasks
+│   ├── current-standards/         # ✅ Active standards (001-010)
+│   ├── archive-standards/         # Historical standards (059-200+)
+│   └── archive-legacy/            # Legacy docs
 │
-└── tests/
-    └── whitepaper-verification.js # Test suite
+├── engine/
+│   └── src/
+│       └── README.md              # ✅ NEW - Source code overview
+│
+├── tests/
+│   └── README.md                  # ✅ NEW - Testing guide
+│
+├── benchmarks/
+│   └── README.md                  # Benchmarking framework
+│
+└── mcp-server/
+    └── README.md                  # MCP server integration
 ```
-
----
-
-## 🔬 Recent Updates (v4.1.2 - Feb 22, 2026)
-
-### SimHash Deduplication Fix
-
-**Problem:** Cross-file near-duplicate atoms were not being caught (25-35% dedup rate)
-
-**Solution:** Added SimHash distance check (Hamming < 5 = near-duplicate)
-
-**Impact:** Dedup rate improved to 40-50%
-
-**Files Changed:**
-- `engine/src/services/search/search.ts` - Added SimHash check
-- `docs/standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md` - Updated dedup strategy
-- `docs/whitepaper.md` - Updated compliance to 95%
-
-### New Documentation
-
-- **ARCHITECTURE_DIAGRAMS.md** - Complete visual flow charts
-- **STANDARD_086 v2.0** - Dual-strategy search with SimHash dedup
-- **STANDARD_113** - Automatic max-recall trigger
-- **STANDARD_116** - Phoenix Protocol backup/restore
 
 ---
 
@@ -111,18 +124,76 @@ anchor-engine-node/
 
 ### Beginner (Just Getting Started)
 1. **[README.md](../README.md)** - Installation & first query
-2. **[docs/ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)** - System overview
+2. **[docs/API.md](API.md)** - API basics
 3. **[CHANGELOG.md](../CHANGELOG.md)** - Recent features
 
 ### Intermediate (Understanding the System)
 1. **[specs/spec.md](../specs/spec.md)** - Full system specification
-2. **[docs/standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md](standards/STANDARD_086_DUAL_STRATEGY_SEARCH.md)** - Search algorithm
-3. **[docs/standards/STANDARD_113_AUTOMATIC_MAX_RECALL.md](standards/STANDARD_113_AUTOMATIC_MAX_RECALL.md)** - Max-recall mode
+2. **[specs/current-standards/004-streaming-search.md](../specs/current-standards/004-streaming-search.md)** - Search algorithm
+3. **[specs/current-standards/010-radial-distillation-v2.md](../specs/current-standards/010-radial-distillation-v2.md)** - Distillation v2.0
+4. **[engine/src/README.md](../engine/src/README.md)** - Source overview
 
 ### Advanced (Deep Dive)
 1. **[docs/whitepaper.md](whitepaper.md)** - Theoretical foundation
-2. **[tests/whitepaper-verification.js](../tests/whitepaper-verification.js)** - Test suite
-3. **[docs/standards/](standards/)** - All architecture standards
+2. **[tests/README.md](../tests/README.md)** - Test suite
+3. **[specs/current-standards/](../specs/current-standards/)** - All active standards
+4. **[docs/DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment
+
+### Contributor (Writing Code)
+1. **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Contribution guidelines
+2. **[engine/src/README.md](../engine/src/README.md)** - Source structure
+3. **[tests/README.md](../tests/README.md)** - Testing requirements
+4. **[specs/current-standards/](../specs/current-standards/)** - Architecture standards
+
+---
+
+## 🔬 Recent Updates (v4.8.0 - Mar 18, 2026)
+
+### New Features
+- **Session Index** - Two-tier memory retrieval (index → targeted fetch)
+- **MCP Write Operations** - `anchor_ingest_text` and `anchor_ingest_file` tools
+- **Paste & Ingest UI** - Quick text ingestion via Web UI
+- **Philosophy Documentation** - Core principles embedded throughout docs
+
+### New Documentation
+- **docs/API.md** - Complete API reference
+- **docs/DEPLOYMENT.md** - Deployment guide (all platforms)
+- **docs/TROUBLESHOOTING.md** - Troubleshooting by category
+- **engine/src/README.md** - Source code overview
+- **tests/README.md** - Testing guide
+
+### Documentation Consolidation
+- Merged architecture diagrams into `specs/spec.md`
+- Archived 7 redundant historical documents
+- Updated all links to point to current docs
+
+---
+
+## 📁 Documentation Categories
+
+### User-Facing
+| Document | Audience | Purpose |
+|----------|----------|---------|
+| README.md | All users | Quick start & usage |
+| docs/API.md | Developers | API reference |
+| docs/DEPLOYMENT.md | DevOps | Deployment guide |
+| docs/TROUBLESHOOTING.md | All users | Fix common issues |
+| mcp-server/README.md | MCP users | MCP integration |
+
+### Developer-Facing
+| Document | Audience | Purpose |
+|----------|----------|---------|
+| engine/src/README.md | Contributors | Source overview |
+| tests/README.md | Contributors | Testing guide |
+| benchmarks/README.md | Contributors | Performance testing |
+| specs/current-standards/ | Contributors | Architecture standards |
+
+### Academic/Research
+| Document | Audience | Purpose |
+|----------|----------|---------|
+| docs/whitepaper.md | Researchers | STAR algorithm paper |
+| specs/spec.md | Architects | System specification |
+| docs/arxiv/ | Researchers | arXiv submission |
 
 ---
 
@@ -131,23 +202,25 @@ anchor-engine-node/
 - **GitHub Repository:** https://github.com/RSBalchII/anchor-engine-node
 - **License:** AGPL-3.0
 - **NPM Packages:** @rbalchii/* (native modules)
+- **DOI:** https://doi.org/10.5281/zenodo.18841399
 
 ---
 
 ## 📞 Support & Contribution
 
 ### Getting Help
-- Check **[README.md](../README.md)** for common issues
-- Review **[docs/ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md)** for system understanding
+- Check **[docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for common issues
+- Review **[specs/spec.md](../specs/spec.md)** for system understanding
 - Read **[CHANGELOG.md](../CHANGELOG.md)** for recent fixes
 
 ### Contributing
-1. Read **[docs/whitepaper.md](whitepaper.md)** for theoretical foundation
-2. Review **[docs/standards/](standards/)** for architecture guidelines
-3. Run **[tests/whitepaper-verification.js](../tests/whitepaper-verification.js)** before submitting
+1. Read **[CONTRIBUTING.md](../CONTRIBUTING.md)** for guidelines
+2. Review **[engine/src/README.md](../engine/src/README.md)** for source structure
+3. Follow **[specs/current-standards/](../specs/current-standards/)** for architecture
+4. Run **[tests/README.md](../tests/README.md)** test suite before submitting
 
 ---
 
-**Last Updated:** February 22, 2026  
-**Version:** 4.1.2  
-**Status:** ✅ Production Ready (95% whitepaper compliance)
+**Last Updated:** March 18, 2026  
+**Version:** 4.8.0  
+**Status:** ✅ Production Ready
