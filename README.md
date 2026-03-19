@@ -84,6 +84,27 @@ W(q,a) = |T(q) ∩ T(a)| · γ^d(q,a)  ×  e^(−λΔt)  ×  (1 − H(h_q, h_a)/
 
 ---
 
+## ⚓ Why "Anchor"?
+
+> **Drop a query into your memory graph.**  
+> **The Anchor finds the semantic bottom.**  
+> **The chain plays out to your chosen radius.**  
+> **What's retrieved is what's relevant—nothing more, nothing less.**  
+> **Same anchor, same spot, same result. Every time.**  
+> **This isn't a metaphor. It's the algorithm.**
+
+| Anchor Quality | How It Maps to STAR |
+|----------------|---------------------|
+| **Drops to a point** | Query finds seed atoms (anchor discovery) |
+| **Defines a radius** | Chain length = token budget (hop distance) |
+| **Holds against drift** | Deterministic retrieval (no semantic drift) |
+| **Connects to the ship** | Retrieved context → LLM (your ship) |
+| **Works in deep water** | Scales from 10MB to 10GB graphs |
+
+The name isn't marketing. It's architecture.
+
+---
+
 ## 📥 Ingest Your Data
 
 ### Option 1: Web UI (Easiest)
