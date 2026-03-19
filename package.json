@@ -1,9 +1,13 @@
 {
-  "name": "anchor-engine",
-  "version": "4.6.0",
-  "description": "Anchor - Knowledge Database Engine (Pure Node/C++ DB API on Port 3160)",
-  "main": "index.js",
+  "name": "@rbalchii/anchor-engine",
+  "version": "4.7.0",
+  "description": "Deterministic semantic memory for LLMs - local-first, graph traversal, <1GB RAM",
+  "main": "engine/dist/index.js",
   "type": "module",
+  "bin": {
+    "anchor": "anchor.bat",
+    "anchor-engine": "engine/dist/index.js"
+  },
   "scripts": {
     "start": "node --expose-gc --max-old-space-size=6144 engine/dist/index.js",
     "dev": "pnpm --filter anchor-engine dev",
@@ -17,17 +21,22 @@
     "clean": "rimraf dist engine/dist",
     "postinstall": "cd engine && pnpm install --ignore-scripts && pnpm run build",
     "start-with-logging": "node --expose-gc engine/dist/index.js > ../../logs/anchor_engine.log 2>&1",
-    "postversion": "node scripts/sync-version.mjs && git add engine/package.json README.md && git commit --amend --no-edit"
+    "postversion": "node scripts/sync-version.mjs && git add engine/package.json README.md && git commit --amend --no-edit",
+    "prepublishOnly": "pnpm run build && pnpm test"
   },
   "keywords": [
-    "knowledge-base",
-    "database",
-    "graph",
+    "llm-memory",
+    "semantic-search",
+    "graph-database",
+    "rag",
+    "context-engine",
+    "memory-layer",
+    "deterministic-search",
     "pglite",
-    "context",
-    "memory"
+    "local-ai",
+    "knowledge-graph"
   ],
-  "author": "Anchor Team",
+  "author": "Robert Balch II",
   "license": "AGPL-3.0-only",
   "dependencies": {
     "@electric-sql/pglite": "^0.2.0",
@@ -77,10 +86,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/RSBalchII/anchor-engine-node.git"
+    "url": "git+https://github.com/RSBalchII/anchor-engine-node.git"
   },
   "bugs": {
     "url": "https://github.com/RSBalchII/anchor-engine-node/issues"
   },
-  "homepage": "https://github.com/RSBalchII/anchor-engine-node#readme"
+  "homepage": "https://github.com/RSBalchII/anchor-engine-node#readme",
+  "files": [
+    "engine/dist/",
+    "engine/package.json",
+    "anchor.bat",
+    "LICENSE",
+    "README.md",
+    "docs/"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

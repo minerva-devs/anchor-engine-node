@@ -1,0 +1,65 @@
+# Development files
+.git
+.gitignore
+.github
+.vscode
+*.log
+logs/
+tests/
+benchmarks/
+reports/
+sample-data/
+codebase/
+
+# Build artifacts (will be rebuilt on install)
+dist/
+engine/dist/
+cpp/
+dist-android/
+dist-win/
+
+# User data (should not be published)
+inbox/
+external-inbox/
+mirrored_brain/
+backups/
+user_data/
+engine/inbox/
+engine/mirrored_brain/
+engine/backups/
+engine/context_data/
+engine/node_modules/
+
+# Development config
+*.md
+!README.md
+!LICENSE
+PROJECT_STATE_ASSESSMENT.md
+.zenodo.json
+paper.bib
+paper.md
+docker-compose.yml
+Dockerfile
+.jules/
+
+# Node modules (installed fresh by users)
+node_modules/
+
+# IDE
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test configs
+jest.config.cjs
+vitest.config.ts
+
+# Scripts not needed for end users
+scripts/build-standalone.js
+scripts/build-universal.bat
+scripts/migration-dashboard.js
+scripts/run-migration.js
