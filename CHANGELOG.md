@@ -6,6 +6,115 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.8.0] - 2026-03-18 — MCP Write Operations, Session Index, Philosophy Docs
+
+### MCP Write Operations (Issue #134)
+
+#### New MCP Tools
+- **`anchor_ingest_text`** - Ingest raw text content directly
+- **`anchor_ingest_file`** - Ingest files from filesystem
+- Security toggle: `allow_write_operations` (disabled by default)
+- Bucket selection: `inbox` (sovereign, 3.0x boost) vs `external-inbox` (external, 1.0x boost)
+- Default to `external-inbox` for safety
+
+#### MCP Server Updates
+- License changed from MIT to AGPL-3.0-only (aligned with engine)
+- Comprehensive documentation in `mcp-server/README.md`
+- Write operations require explicit opt-in via `user_settings.json`
+
+### Session Index & Two-Tier Retrieval
+
+#### Session Index Search
+- New `anchor_search_index` tool for fast chat session lookup
+- Searches session metadata (topics, commands, participants, dates)
+- Returns session IDs for targeted fetching
+
+#### Session Fetching
+- New `anchor_fetch_session` tool for targeted session retrieval
+- Fetch full conversation context by session ID
+- Configurable max messages and metadata inclusion
+- **Benefit**: Avoids loading entire corpus for session-specific queries
+
+### Web UI Improvements
+
+#### Paste & Ingest Feature
+- New tab in PathManager: "Watch Paths" ↔ "Paste & Ingest"
+- Large textarea for quick text ingestion
+- Filename input and bucket selector
+- Success feedback with character count
+- **Benefit**: No file management needed for quick notes
+
+#### Version Badge
+- Updated UI version display to v4.8.0
+- Clear version identification in header
+
+### Documentation Overhaul
+
+#### Philosophy Documentation
+- Added "Our Philosophy: AI Memory Should Work Like Your Brain" to README
+- Five core principles embedded throughout docs:
+  - 🧠 Forgetting is a feature
+  - 🔗 Meaning lives in relationships
+  - ⚡ Low power, high efficiency
+  - 💎 Clarity through distillation
+  - 🔍 Explainability builds trust
+- Philosophy alignment sections added to 5 key standards
+
+#### New Documentation Files (5)
+- **docs/API.md** - Complete API reference with examples
+- **docs/DEPLOYMENT.md** - Deployment guide (local, Docker, VPS, K8s)
+- **docs/TROUBLESHOOTING.md** - Troubleshooting by category
+- **engine/src/README.md** - Source code overview
+- **tests/README.md** - Testing guide
+
+#### Documentation Consolidation
+- Merged `ARCHITECTURE_DIAGRAMS.md` into `specs/spec.md`
+- Archived 7 redundant historical documents
+- Updated `docs/INDEX.md` as complete navigation hub
+- **Result**: Clear documentation hierarchy, no redundancy
+
+### Standards Structure
+
+#### Current Standards (001-010)
+- Restored correct structure: `specs/current-standards/` for active standards
+- Standards 001-010 represent core active architecture decisions
+- Historical standards (059-200+) moved to `specs/archive-standards/history/`
+
+#### Philosophy Alignment in Standards
+- Standard 008 (Radial Distillation): "Deliberate forgetting" principle
+- Standard 010 (Distillation v2.0): "Clarity through semantic meaning"
+- Standard 125 (Semantic Dedup): "Forgetting redundancy"
+- Standard 126 (Pointer-Only Index): "Brain efficiency (~20 watts)"
+- Standard 128 (Illuminate/Explore): "Associative memory links"
+
+### Repository Cleanup
+
+#### cpp/ Directory Removal
+- Removed 337K lines of old C++ code (68 files)
+- Directory was supposed to be deleted in commit c3e81fb (WASM migration)
+- Reintroduced by PR merges based on old branches
+- Properly removed and archived
+
+#### License Alignment
+- MCP server license: MIT → AGPL-3.0-only
+- Bolt license: MIT → AGPL-3.0-only
+- All components now consistently AGPL-3.0
+
+### Community Health
+
+#### New Files
+- **CODEOWNERS** - Automatic reviewer assignment
+- **PULL_REQUEST_TEMPLATE.md** - PR guidelines
+- **CODE_OF_CONDUCT.md** - Community standards (Contributor Covenant)
+- **CONTRIBUTING.md** - Contribution guidelines
+
+#### GitHub Integration
+- Qwen Coder MCP integration documented
+- OAuth authentication for Qwen Code
+- Mobile Web UI for Bolt Agent
+
+---
+
 ## [4.7.0] - 2026-03-11 — Streaming Search, Memory Management, Code Cleanup
 
 ### Streaming Search (Standard 136)

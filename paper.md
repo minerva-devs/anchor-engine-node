@@ -13,7 +13,7 @@ authors:
 affiliations:
   - name: Independent Researcher, New Mexico Tech Affiliated
     index: 1
-date: 27 February 2026
+date: 18 March 2026
 bibliography: paper.bib
 ---
 

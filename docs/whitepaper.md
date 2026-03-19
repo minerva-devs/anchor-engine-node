@@ -13,9 +13,9 @@ This paper presents **STAR** (Semantic Temporal Associative Retrieval), a novel 
 
 We present the mathematical foundation, implementation details, and production benchmarks from real workloads: 91MB chat history ingested in under 3 minutes, 280,000 molecules indexed, zero data loss. STAR achieves **O(k·d̄)** retrieval complexity where *k* = query tags and *d̄* = average tag degree, compared to **O(n log n)** for dense vector ANN.
 
-The future of AI memory isn't bigger silos—it's universal, sharded utility running on hardware you already own.
+**v4.8.0 Update (March 2026):** Added MCP write operations, session index for two-tier retrieval, and comprehensive documentation. Philosophy: AI memory should work like the human brain—forgetting noise, remembering relationships, clarifying over time.
 
-**Keywords:** Information Retrieval, Graph-Based Search, SimHash, Local-First AI, Explainable AI, PGlite
+**Keywords:** Information Retrieval, Graph-Based Search, SimHash, Local-First AI, Explainable AI, PGlite, MCP
 
 ---
 
