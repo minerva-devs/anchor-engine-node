@@ -9,6 +9,14 @@ export const PathManager = () => {
     const [newPath, setNewPath] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    // Paste & Ingest state
+    const [showPasteIngest, setShowPasteIngest] = useState(false);
+    const [pasteContent, setPasteContent] = useState('');
+    const [pasteFilename, setPasteFilename] = useState('');
+    const [pasteBucket, setPasteBucket] = useState<'inbox' | 'external-inbox'>('external-inbox');
+    const [pasteLoading, setPasteLoading] = useState(false);
+    const [pasteSuccess, setPasteSuccess] = useState<string | null>(null);
 
     const fetchPaths = async () => {
         try {
@@ -63,15 +71,169 @@ export const PathManager = () => {
         }
     };
 
+    const handlePasteIngest = async () => {
+        if (!pasteContent.trim() || !pasteFilename.trim()) return;
+        
+        setPasteLoading(true);
+        setPasteSuccess(null);
+        
+        try {
+            const res = await api.post('/v1/research/upload-raw', {
+                content: pasteContent,
+                filename: pasteFilename,
+                bucket: pasteBucket
+            });
+            
+            if (res.status === 'success') {
+                setPasteSuccess(`✅ Successfully ingested "${pasteFilename}" (${pasteContent.length.toLocaleString()} chars)`);
+                setPasteContent('');
+                setPasteFilename('');
+            } else {
+                setError(res.message || 'Failed to ingest content');
+            }
+        } catch (err: any) {
+            setError(err.message || 'Failed to ingest content');
+        } finally {
+            setPasteLoading(false);
+            setTimeout(() => setPasteSuccess(null), 5000);
+        }
+    };
+
     return (
         <GlassPanel className="path-manager-container" style={{ margin: '1rem', padding: '1rem', height: 'calc(100% - 2rem)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h2 style={{ margin: 0 }}>Corpus Ingestion Paths</h2>
+                <div>
+                    <h2 style={{ margin: 0 }}>Corpus Ingestion</h2>
+                    <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        📁 Manage watch paths OR 📋 Paste text directly
+                    </p>
+                </div>
                 <Button onClick={() => navigate('/dashboard')} style={{ fontSize: '0.8rem', padding: '0.4rem', border: '1px solid var(--border-subtle)' }}>
                     ⬅ Back to Dashboard
                 </Button>
             </div>
 
+            {/* Tab Toggle */}
+            <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '0.5rem' }}>
+                <button
+                    onClick={() => setShowPasteIngest(false)}
+                    style={{
+                        padding: '0.5rem 1rem',
+                        background: !showPasteIngest ? 'var(--accent-primary)' : 'transparent',
+                        color: !showPasteIngest ? '#fff' : 'var(--text-secondary)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: 500
+                    }}
+                >
+                    📁 Watch Paths
+                </button>
+                <button
+                    onClick={() => setShowPasteIngest(true)}
+                    style={{
+                        padding: '0.5rem 1rem',
+                        background: showPasteIngest ? 'var(--accent-primary)' : 'transparent',
+                        color: showPasteIngest ? '#fff' : 'var(--text-secondary)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.9rem',
+                        fontWeight: 500
+                    }}
+                >
+                    📋 Paste & Ingest
+                </button>
+            </div>
+
+            {/* Paste & Ingest Section */}
+            {showPasteIngest && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, overflowY: 'auto' }}>
+                    <div style={{ padding: '1rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '4px', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                        <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '0.95rem' }}>📋 Quick Ingest</h3>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            Paste any text (notes, chats, articles) and ingest it directly into your knowledge graph.
+                        </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <input
+                            type="text"
+                            value={pasteFilename}
+                            onChange={(e) => setPasteFilename(e.target.value)}
+                            placeholder="Filename (e.g., meeting-notes.md)"
+                            style={{
+                                flex: 1,
+                                padding: '0.5rem',
+                                background: 'rgba(0,0,0,0.2)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'white',
+                                borderRadius: '4px'
+                            }}
+                        />
+                        <select
+                            value={pasteBucket}
+                            onChange={(e) => setPasteBucket(e.target.value as 'inbox' | 'external-inbox')}
+                            style={{
+                                padding: '0.5rem',
+                                background: 'rgba(0,0,0,0.2)',
+                                border: '1px solid var(--border-subtle)',
+                                color: 'white',
+                                borderRadius: '4px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <option value="inbox">👑 inbox (my content)</option>
+                            <option value="external-inbox">🌐 external-inbox (external)</option>
+                        </select>
+                    </div>
+
+                    <textarea
+                        value={pasteContent}
+                        onChange={(e) => setPasteContent(e.target.value)}
+                        placeholder="Paste your text here... (supports markdown, plain text, code, etc.)"
+                        style={{
+                            flex: 1,
+                            minHeight: '300px',
+                            padding: '0.8rem',
+                            background: 'rgba(0,0,0,0.2)',
+                            border: '1px solid var(--border-subtle)',
+                            color: 'white',
+                            borderRadius: '4px',
+                            fontFamily: 'monospace',
+                            fontSize: '0.9rem',
+                            resize: 'vertical'
+                        }}
+                    />
+
+                    {pasteSuccess && (
+                        <div style={{ padding: '0.8rem', background: 'rgba(34, 197, 94, 0.1)', borderRadius: '4px', color: '#4ade80', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                            {pasteSuccess}
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <Button 
+                            onClick={handlePasteIngest} 
+                            disabled={pasteLoading || !pasteContent.trim() || !pasteFilename.trim()}
+                            style={{ flex: 1, padding: '0.8rem' }}
+                        >
+                            {pasteLoading ? '⏳ Ingesting...' : '✅ Ingest Content'}
+                        </Button>
+                    </div>
+
+                    <div style={{ marginTop: 'auto', padding: '1rem', background: 'rgba(255,255,0,0.05)', borderRadius: '4px', fontSize: '0.85rem', color: '#ccc' }}>
+                        ℹ️ <strong>Bucket Guide:</strong> Use <strong>inbox</strong> for content you created (notes, thoughts, code). 
+                        Use <strong>external-inbox</strong> for external content (articles, scrapes, imports). 
+                        Sovereign content gets a 3.0x retrieval boost.
+                    </div>
+                </div>
+            )}
+
+            {/* Watch Paths Section (Original) */}
+            {!showPasteIngest && (
+                <>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <input
                     type="text"
@@ -141,6 +303,8 @@ export const PathManager = () => {
                 Files in these directories will be atomized and ingested into the Knowledge Graph.
                 The system watches for changes in real-time.
             </div>
+                </>
+            )}
         </GlassPanel>
     );
 };
