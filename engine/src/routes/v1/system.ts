@@ -2,6 +2,11 @@ import { Application, Request, Response } from 'express';
 import { db } from '../../core/db.js';
 import { getState, clearState } from '../../services/scribe/scribe.js';
 import { PATHS, PROJECT_ROOT } from '../../config/paths.js';
+import { config } from '../../config/index.js';
+
+// Track server control state
+let serverStartTime: Date | null = null;
+let isServerShuttingDown = false;
 
 export function setupSystemRoutes(app: Application) {
   // GET /health - Docker health check endpoint
@@ -65,6 +70,92 @@ export function setupSystemRoutes(app: Application) {
     }
   });
 
+  // POST /v1/system/start - Start/restart the engine
+  // Note: This is primarily for MCP agent control
+  app.post('/v1/system/start', async (req: Request, res: Response) => {
+    try {
+      // Check if already running
+      if (serverStartTime && !isServerShuttingDown) {
+        res.json({
+          status: 'already_running',
+          message: 'Server is already running',
+          started_at: serverStartTime.toISOString(),
+          uptime_seconds: Math.floor((Date.now() - serverStartTime.getTime()) / 1000)
+        });
+        return;
+      }
+
+      // Server is starting or restarting
+      serverStartTime = new Date();
+      isServerShuttingDown = false;
+
+      res.json({
+        status: 'starting',
+        message: 'Server start initiated',
+        started_at: serverStartTime.toISOString()
+      });
+
+      // Note: Actual server restart would require process management
+      // This endpoint is primarily for MCP agent coordination
+      console.log('[System] Server start requested via API');
+    } catch (error: any) {
+      console.error('System start error:', error);
+      res.status(500).json({ error: 'Failed to start system' });
+    }
+  });
+
+  // POST /v1/system/stop - Graceful shutdown
+  app.post('/v1/system/stop', async (req: Request, res: Response) => {
+    try {
+      const { timeout = 30000 } = req.body; // Default 30 second timeout
+
+      isServerShuttingDown = true;
+      console.log(`[System] Graceful shutdown requested (timeout: ${timeout}ms)`);
+
+      // Stop accepting new requests
+      res.json({
+        status: 'shutting_down',
+        message: 'Graceful shutdown initiated',
+        timeout_ms: timeout,
+        timestamp: new Date().toISOString()
+      });
+
+      // Note: Actual shutdown would require process management
+      // This endpoint is primarily for MCP agent coordination
+      console.log('[System] Server stop requested via API');
+
+      // In a full implementation, this would:
+      // 1. Stop accepting new connections
+      // 2. Wait for current operations to complete (up to timeout)
+      // 3. Close database connections
+      // 4. Exit process
+    } catch (error: any) {
+      console.error('System stop error:', error);
+      res.status(500).json({ error: 'Failed to stop system' });
+    }
+  });
+
+  // GET /v1/system/server-info - Get server metadata
+  app.get('/v1/system/server-info', async (req: Request, res: Response) => {
+    try {
+      res.json({
+        status: 'success',
+        server_info: {
+          is_running: serverStartTime !== null && !isServerShuttingDown,
+          is_shutting_down: isServerShuttingDown,
+          started_at: serverStartTime?.toISOString() || null,
+          uptime_seconds: serverStartTime ? Math.floor((Date.now() - serverStartTime.getTime()) / 1000) : 0,
+          port: config.PORT,
+          host: config.HOST,
+          version: '4.8.2'
+        }
+      });
+    } catch (error: any) {
+      console.error('Server info error:', error);
+      res.status(500).json({ error: 'Failed to get server info' });
+    }
+  });
+
   // GET /v1/stats - System statistics (anchor_stats tool)
   app.get('/v1/stats', async (_req: Request, res: Response) => {
     try {
@@ -90,6 +181,131 @@ export function setupSystemRoutes(app: Application) {
     } catch (error) {
       console.error('Stats retrieval error:', error);
       res.status(500).json({ error: 'Failed to retrieve stats' });
+    }
+  });
+
+  // GET /v1/system/ingest-status - Get ingestion progress
+  app.get('/v1/system/ingest-status', async (_req: Request, res: Response) => {
+    try {
+      const { systemStatus } = await import('../../services/system-status.js');
+      const ingestStatus = systemStatus.getIngestionStatus();
+
+      res.json({
+        status: 'success',
+        ...ingestStatus
+      });
+    } catch (error: any) {
+      console.error('Ingest status retrieval error:', error);
+      res.status(500).json({ error: 'Failed to retrieve ingest status' });
+    }
+  });
+
+  // POST /v1/system/wait-for-ingest - Block until ingestion completes
+  app.post('/v1/system/wait-for-ingest', async (req: Request, res: Response) => {
+    try {
+      const { timeout = 300000, job_id } = req.body; // Default 5 minute timeout
+      const { systemStatus } = await import('../../services/system-status.js');
+
+      const startTime = Date.now();
+      const pollInterval = 500; // Check every 500ms
+
+      while (true) {
+        const status = systemStatus.getIngestionStatus();
+        
+        // Check if ingestion is complete or errored
+        if (status.status === 'idle' || status.status === 'complete' || status.status === 'error') {
+          res.json({
+            status: 'complete',
+            final_status: status.status,
+            duration_ms: Date.now() - startTime,
+            job: status.currentJob
+          });
+          return;
+        }
+
+        // Check timeout
+        if (Date.now() - startTime > timeout) {
+          res.status(408).json({
+            status: 'timeout',
+            duration_ms: Date.now() - startTime,
+            message: `Ingestion did not complete within ${timeout}ms`
+          });
+          return;
+        }
+
+        // Wait before next poll
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+    } catch (error: any) {
+      console.error('Wait for ingest error:', error);
+      res.status(500).json({ error: 'Failed to wait for ingestion' });
+    }
+  });
+
+  // GET /v1/config/ingestion - Get current ingestion config
+  app.get('/v1/config/ingestion', async (_req: Request, res: Response) => {
+    try {
+      const { config } = await import('../../config/index.js');
+      
+      res.json({
+        status: 'success',
+        config: config.INGESTION
+      });
+    } catch (error: any) {
+      console.error('Get ingestion config error:', error);
+      res.status(500).json({ error: 'Failed to get ingestion config' });
+    }
+  });
+
+  // POST /v1/config/ingestion - Update ingestion config
+  app.post('/v1/config/ingestion', async (req: Request, res: Response) => {
+    try {
+      const { config } = await import('../../config/index.js');
+      const updates = req.body;
+
+      // Validate and apply updates
+      if (updates.concept_density && !['low', 'medium', 'high'].includes(updates.concept_density)) {
+        res.status(400).json({ error: 'Invalid concept_density. Must be low, medium, or high' });
+        return;
+      }
+
+      if (updates.dedup_strength && !['light', 'medium', 'aggressive'].includes(updates.dedup_strength)) {
+        res.status(400).json({ error: 'Invalid dedup_strength. Must be light, medium, or aggressive' });
+        return;
+      }
+
+      if (updates.ingestion_profile && !['code', 'notes', 'chat', 'default'].includes(updates.ingestion_profile)) {
+        res.status(400).json({ error: 'Invalid ingestion_profile. Must be code, notes, chat, or default' });
+        return;
+      }
+
+      if (updates.tag_threshold !== undefined && (updates.tag_threshold < 0 || updates.tag_threshold > 1)) {
+        res.status(400).json({ error: 'tag_threshold must be between 0 and 1' });
+        return;
+      }
+
+      if (updates.token_budget_default !== undefined && updates.token_budget_default < 0) {
+        res.status(400).json({ error: 'token_budget_default must be positive' });
+        return;
+      }
+
+      // Apply updates to runtime config
+      if (updates.concept_density) config.INGESTION.CONCEPT_DENSITY = updates.concept_density;
+      if (updates.tag_threshold !== undefined) config.INGESTION.TAG_THRESHOLD = updates.tag_threshold;
+      if (updates.dedup_strength) config.INGESTION.DEDUP_STRENGTH = updates.dedup_strength;
+      if (updates.token_budget_default !== undefined) config.INGESTION.TOKEN_BUDGET_DEFAULT = updates.token_budget_default;
+      if (updates.ingestion_profile) config.INGESTION.INGESTION_PROFILE = updates.ingestion_profile;
+
+      console.log('[Config] Ingestion config updated:', updates);
+
+      res.json({
+        status: 'success',
+        message: 'Ingestion config updated',
+        config: config.INGESTION
+      });
+    } catch (error: any) {
+      console.error('Update ingestion config error:', error);
+      res.status(500).json({ error: 'Failed to update ingestion config' });
     }
   });
 

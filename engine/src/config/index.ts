@@ -150,6 +150,15 @@ interface Config {
     SEARCH_RESULTS_BATCH_SIZE: number;
     ENABLE_STREAMING_RESULTS: boolean;
   };
+
+  // Ingestion Configuration (Agent-Controlled)
+  INGESTION: {
+    CONCEPT_DENSITY: 'low' | 'medium' | 'high';
+    TAG_THRESHOLD: number;
+    DEDUP_STRENGTH: 'light' | 'medium' | 'aggressive';
+    TOKEN_BUDGET_DEFAULT: number;
+    INGESTION_PROFILE: 'code' | 'notes' | 'chat' | 'default';
+  };
 }
 
 // Default configuration
@@ -305,6 +314,16 @@ const DEFAULT_CONFIG: Config = {
     SEARCH_RESULTS_BATCH_SIZE: parseInt(process.env['ANCHOR_SEARCH_RESULTS_BATCH_SIZE'] || '20', 10),
     // Enable streaming results for memory efficiency (default: false)
     ENABLE_STREAMING_RESULTS: process.env['ANCHOR_ENABLE_STREAMING_RESULTS'] === 'true'
+  },
+
+  // Ingestion Configuration (Agent-Controlled)
+  // Configurable ingestion behavior for different content types
+  INGESTION: {
+    CONCEPT_DENSITY: (process.env['ANCHOR_CONCEPT_DENSITY'] as 'low' | 'medium' | 'high') || 'medium',
+    TAG_THRESHOLD: parseFloat(process.env['ANCHOR_TAG_THRESHOLD'] || '0.7'),
+    DEDUP_STRENGTH: (process.env['ANCHOR_DEDUP_STRENGTH'] as 'light' | 'medium' | 'aggressive') || 'medium',
+    TOKEN_BUDGET_DEFAULT: parseInt(process.env['ANCHOR_TOKEN_BUDGET_DEFAULT'] || '2000', 10),
+    INGESTION_PROFILE: (process.env['ANCHOR_INGESTION_PROFILE'] as 'code' | 'notes' | 'chat' | 'default') || 'default'
   }
 };
 
@@ -434,6 +453,15 @@ function loadConfig(): Config {
         if (userSettings.memory.emergency_stop_mb !== undefined) loadedConfig.MEMORY.EMERGENCY_STOP_MB = userSettings.memory.emergency_stop_mb;
         if (userSettings.memory.search_results_batch_size !== undefined) loadedConfig.MEMORY.SEARCH_RESULTS_BATCH_SIZE = userSettings.memory.search_results_batch_size;
         if (userSettings.memory.enable_streaming_results !== undefined) loadedConfig.MEMORY.ENABLE_STREAMING_RESULTS = userSettings.memory.enable_streaming_results;
+      }
+
+      // Load Ingestion Configuration (Agent-Controlled)
+      if (userSettings.ingestion) {
+        if (userSettings.ingestion.concept_density) loadedConfig.INGESTION.CONCEPT_DENSITY = userSettings.ingestion.concept_density;
+        if (userSettings.ingestion.tag_threshold !== undefined) loadedConfig.INGESTION.TAG_THRESHOLD = userSettings.ingestion.tag_threshold;
+        if (userSettings.ingestion.dedup_strength) loadedConfig.INGESTION.DEDUP_STRENGTH = userSettings.ingestion.dedup_strength;
+        if (userSettings.ingestion.token_budget_default !== undefined) loadedConfig.INGESTION.TOKEN_BUDGET_DEFAULT = userSettings.ingestion.token_budget_default;
+        if (userSettings.ingestion.ingestion_profile) loadedConfig.INGESTION.INGESTION_PROFILE = userSettings.ingestion.ingestion_profile;
       }
 
     } catch (e) {

@@ -1,11 +1,22 @@
 /**
  * System Status Manager
- * 
+ *
  * Tracks global system state (ingestion, search, idle) and provides
  * queuing mechanism for search requests during ingestion.
  */
 
 type SystemState = 'idle' | 'ingesting' | 'searching' | 'maintenance';
+
+interface IngestionJob {
+  id: string;
+  status: 'pending' | 'processing' | 'complete' | 'error';
+  source: string;
+  filesProcessed: number;
+  filesTotal: number;
+  startedAt?: Date;
+  completedAt?: Date;
+  error?: string;
+}
 
 interface StatusInfo {
   state: SystemState;
@@ -18,6 +29,8 @@ interface StatusInfo {
   };
   lastIngestion?: Date;
   queuedSearches: SearchRequest[];
+  currentIngestion?: IngestionJob;
+  queueDepth: number;
 }
 
 interface SearchRequest {
@@ -33,7 +46,67 @@ class SystemStatusManager {
   private progress?: StatusInfo['progress'];
   private lastIngestion?: Date;
   private queuedSearches: SearchRequest[] = [];
+  private currentIngestion?: IngestionJob;
   private isProcessingQueue = false;
+
+  /**
+   * Start tracking an ingestion job
+   */
+  startIngestion(id: string, source: string, filesTotal: number) {
+    this.setState('ingesting', `Ingesting ${source}`);
+    this.currentIngestion = {
+      id,
+      status: 'processing',
+      source,
+      filesProcessed: 0,
+      filesTotal,
+      startedAt: new Date()
+    };
+    this.setProgress(0, filesTotal, `Starting ingestion of ${source}`);
+  }
+
+  /**
+   * Update ingestion progress
+   */
+  updateIngestionProgress(filesProcessed: number, description?: string) {
+    if (this.currentIngestion) {
+      this.currentIngestion.filesProcessed = filesProcessed;
+      this.setProgress(filesProcessed, this.currentIngestion.filesTotal, description || `Processed ${filesProcessed} files`);
+    }
+  }
+
+  /**
+   * Complete ingestion job
+   */
+  completeIngestion(error?: string) {
+    if (this.currentIngestion) {
+      this.currentIngestion.status = error ? 'error' : 'complete';
+      this.currentIngestion.completedAt = new Date();
+      if (error) {
+        this.currentIngestion.error = error;
+      }
+      this.lastIngestion = new Date();
+      this.setState('idle');
+      this.clearProgress();
+    }
+  }
+
+  /**
+   * Get current ingestion status
+   */
+  getIngestionStatus(): {
+    status: 'idle' | 'processing' | 'complete' | 'error';
+    currentJob?: IngestionJob;
+    lastCompleted?: Date;
+    queueDepth: number;
+  } {
+    return {
+      status: this.currentIngestion?.status || (this.lastIngestion ? 'complete' : 'idle'),
+      currentJob: this.currentIngestion,
+      lastCompleted: this.lastIngestion,
+      queueDepth: this.queuedSearches.length
+    };
+  }
 
   /**
    * Set system state
@@ -77,7 +150,9 @@ class SystemStatusManager {
       activeTask: this.activeTask,
       progress: this.progress,
       lastIngestion: this.lastIngestion,
-      queuedSearches: this.queuedSearches
+      queuedSearches: this.queuedSearches,
+      currentIngestion: this.currentIngestion,
+      queueDepth: this.queuedSearches.length
     };
   }
 
