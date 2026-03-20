@@ -57,8 +57,8 @@ export async function startWatchdog() {
         return;
     }
 
-    const inbox = path.join(PROJECT_ROOT, 'inbox');
-    const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
+    const inbox = path.join(PROJECT_ROOT, 'local-data', 'inbox');
+    const externalInbox = path.join(PROJECT_ROOT, 'local-data', 'external-inbox');
 
     // Auto-create inbox directories if missing (Standard 051: Ephemeral Index)
     // These are gitignored and should be created on-demand
@@ -109,8 +109,8 @@ export function getWatchedPaths(): string[] {
     // For simplicity, we can return the configured roots + static roots.
 
     // Better approach: Return the paths explicitly tracked
-    const inbox = path.join(PROJECT_ROOT, 'inbox');
-    const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
+    const inbox = path.join(PROJECT_ROOT, 'local-data', 'inbox');
+    const externalInbox = path.join(PROJECT_ROOT, 'local-data', 'external-inbox');
     const extraPaths = config.WATCHER_EXTRA_PATHS || [];
 
     return [inbox, externalInbox, ...extraPaths];
@@ -207,10 +207,10 @@ export async function stopWatchdog(): Promise<void> {
  * Get watchdog status
  */
 export function getWatcherStatus(): { isRunning: boolean; watchedPaths: string[] } {
-    const inbox = path.join(PROJECT_ROOT, 'inbox');
-    const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
+    const inbox = path.join(PROJECT_ROOT, 'local-data', 'inbox');
+    const externalInbox = path.join(PROJECT_ROOT, 'local-data', 'external-inbox');
     const extraPaths = config.WATCHER_EXTRA_PATHS || [];
-    
+
     return {
         isRunning: watcher !== null,
         watchedPaths: [inbox, externalInbox, ...extraPaths]
@@ -222,8 +222,8 @@ export function getWatcherStatus(): { isRunning: boolean; watchedPaths: string[]
  */
 export async function triggerManualIngest(): Promise<{ status: string; message: string; filesProcessed?: number; filesIngested?: number }> {
     try {
-        const inbox = path.join(PROJECT_ROOT, 'inbox');
-        const externalInbox = path.join(PROJECT_ROOT, 'external-inbox');
+        const inbox = path.join(PROJECT_ROOT, 'local-data', 'inbox');
+        const externalInbox = path.join(PROJECT_ROOT, 'local-data', 'external-inbox');
 
         if (!fs.existsSync(inbox)) {
             return { status: 'error', message: 'Inbox directory not found' };

@@ -22,8 +22,8 @@ function determineProvenance(source: string, type?: string): 'internal' | 'exter
   const normalizedSource = source.replace(/\\/g, '/');
 
   // 1. Explicit Trusted Inbox (or default 'inbox' folder)
-  // Matches "inbox/..." or ".../inbox/..."
-  if (normalizedSource.includes('/inbox/') || normalizedSource.startsWith('inbox/') ||
+  // Matches "local-data/inbox/..." or ".../local-data/inbox/..."
+  if (normalizedSource.includes('/local-data/inbox/') || normalizedSource.startsWith('local-data/inbox/') ||
     normalizedSource.includes('/internal-inbox/') || normalizedSource.startsWith('internal-inbox/') ||
     normalizedSource.includes('/sovereign/') ||
     type === 'user') {
@@ -31,8 +31,8 @@ function determineProvenance(source: string, type?: string): 'internal' | 'exter
   }
 
   // 2. Explicit External Inbox
-  // Matches "external-inbox/..." or ".../external-inbox/..."
-  if (normalizedSource.includes('/external-inbox/') || normalizedSource.startsWith('external-inbox/') ||
+  // Matches "local-data/external-inbox/..." or ".../local-data/external-inbox/..."
+  if (normalizedSource.includes('/local-data/external-inbox/') || normalizedSource.startsWith('local-data/external-inbox/') ||
     normalizedSource.includes('web_scrape') ||
     normalizedSource.includes('news_agent') ||
     type === 'external') {

@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.8.1] - 2026-03-20 — Local-Data Directory Restructuring
+
+### 🔄 Breaking Changes
+
+**Directory Restructuring**: All data directories moved to `local-data/`
+- `inbox/` → `local-data/inbox/`
+- `external-inbox/` → `local-data/external-inbox/`
+- `mirrored_brain/` → `local-data/mirrored_brain/`
+
+**Migration:** If you have custom paths in `user_settings.json` or `sovereign.yaml`, update them to include `local-data/` prefix.
+
+**Documentation Reorganization**: All documentation moved to `docs/` subdirectories
+- `docs/guides/` - Installation and build guides
+- `docs/testing/` - Testing documentation
+- `docs/project/` - Project status and planning
+- `docs/daily/` - Daily summaries and notes
+
+Root directory now contains only: `README.md`, `CHANGELOG.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`
+
+### ✨ Features
+
+- Recursive directory watching now supports arbitrary subdirectories under `local-data/inbox/` and `local-data/external-inbox/`
+- Watchdog service automatically watches all nested subdirectories
+- New `local-data/` directory provides clearer separation of user data from code
+
+### 🔧 Technical
+
+- Updated `engine/src/config/paths.ts` to use new `local-data/` structure
+- Updated `engine/src/services/ingest/watchdog.ts` path resolution
+- Updated `engine/src/services/ingest/ingest.ts` provenance detection
+- Updated `engine/src/utils/tag-modulation.ts` to recognize new path patterns
+
+---
+
 ## [4.8.0] - 2026-03-18 — MCP Write Operations, Session Index, Philosophy Docs
 
 ### MCP Write Operations (Issue #134)

@@ -62,12 +62,12 @@ const STRICT_BLACKLIST = [
   /^#incorrect_/, /^#error_/,  // Errors
   /^#null\b/, /^#undefined\b/, /^#nan\b/,  // Null values
   /^#untagged$/, /^#manual\b/, /^#manually_/,  // System tags
-  
+
   // System-generated tags (prevent self-contamination from Anchor output)
   /^#virtual_/,           // Virtual molecule markers
   /^#mem_[a-f0-9_]+/,    // System memory IDs
   /^#score_/,            // Score-based tags
-  /^#inbox_/,            // Source path tags
+  /^#local_data_inbox_/, /^#inbox_/,            // Source path tags
   /^#provenance_/,       // Provenance tags
   /^#bucket_/,           // Bucket tags
   /^#epoch_/,            // Epoch tags
