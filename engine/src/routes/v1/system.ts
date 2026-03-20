@@ -1,9 +1,70 @@
 import { Application, Request, Response } from 'express';
 import { db } from '../../core/db.js';
 import { getState, clearState } from '../../services/scribe/scribe.js';
-import { PATHS } from '../../config/paths.js';
+import { PATHS, PROJECT_ROOT } from '../../config/paths.js';
 
 export function setupSystemRoutes(app: Application) {
+  // GET /health - Docker health check endpoint
+  // Returns 200 if DB is connected and system is healthy
+  app.get('/health', async (_req: Request, res: Response) => {
+    try {
+      // Check database connectivity
+      const result = await db.run('SELECT 1 as healthy');
+      const dbHealthy = result.rows?.[0]?.healthy === 1;
+
+      // Check critical directories exist
+      const fs = await import('fs');
+      const criticalDirs = [
+        PATHS.INBOX_DIR,
+        PATHS.EXTERNAL_INBOX_DIR,
+        PATHS.CONTEXT_DIR
+      ];
+
+      const dirsExist = await Promise.all(
+        criticalDirs.map(async dir => {
+          try {
+            await fs.promises.access(dir, fs.constants.R_OK);
+            return true;
+          } catch {
+            return false;
+          }
+        })
+      );
+
+      const allDirsOk = dirsExist.every(d => d);
+
+      if (dbHealthy && allDirsOk) {
+        res.status(200).json({
+          status: 'healthy',
+          timestamp: new Date().toISOString(),
+          checks: {
+            database: 'connected',
+            directories: 'accessible'
+          }
+        });
+      } else {
+        res.status(503).json({
+          status: 'unhealthy',
+          timestamp: new Date().toISOString(),
+          checks: {
+            database: dbHealthy ? 'connected' : 'disconnected',
+            directories: allDirsOk ? 'accessible' : 'some missing'
+          }
+        });
+      }
+    } catch (error: any) {
+      res.status(503).json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        error: error.message,
+        checks: {
+          database: 'error',
+          directories: 'unknown'
+        }
+      });
+    }
+  });
+
   // GET /v1/stats - System statistics (anchor_stats tool)
   app.get('/v1/stats', async (_req: Request, res: Response) => {
     try {
@@ -109,19 +170,65 @@ export function setupSystemRoutes(app: Application) {
   // POST /v1/system/paths - Add a new path to watch
   app.post('/v1/system/paths', async (req: Request, res: Response) => {
     try {
-      const { path } = req.body;
-      if (!path) {
+      const { path: newPath } = req.body;
+      if (!newPath) {
         res.status(400).json({ error: 'Path is required' });
         return;
       }
 
+      // Security: Validate path is within allowed directories
+      const pathModule = await import('path');
+      const fs = await import('fs');
+
+      // Resolve to absolute path
+      const resolvedPath = pathModule.resolve(newPath);
+      
+      // Ensure path exists
+      try {
+        await fs.promises.access(resolvedPath, fs.constants.R_OK);
+      } catch {
+        res.status(400).json({ error: 'Path does not exist or is not readable' });
+        return;
+      }
+
+      // Security: Ensure path is within PROJECT_ROOT or is an absolute path outside
+      // We allow paths outside PROJECT_ROOT but they must be explicitly absolute
+      if (!pathModule.isAbsolute(newPath)) {
+        res.status(400).json({ 
+          error: 'Path must be absolute for security reasons',
+          hint: 'Use an absolute path starting with / or C:\\'
+        });
+        return;
+      }
+
+      // Normalize both paths for comparison
+      const normalizedPath = resolvedPath.replace(/\\/g, '/');
+      const normalizedProjectRoot = PROJECT_ROOT.replace(/\\/g, '/');
+
+      // Allowlist: paths must be either within PROJECT_ROOT or explicitly absolute
+      const isWithinProjectRoot = normalizedPath.startsWith(normalizedProjectRoot + '/') || 
+                                   normalizedPath === normalizedProjectRoot;
+
+      if (!isWithinProjectRoot) {
+        // For paths outside project root, require explicit confirmation
+        res.status(200).json({
+          status: 'warning',
+          message: 'Path is outside PROJECT_ROOT. Ensure this is intentional.',
+          path: resolvedPath,
+          security_note: 'External paths are allowed but should be trusted directories only'
+        });
+        // Still allow the path but log it
+        console.warn('[Security] Adding external watch path:', resolvedPath);
+      }
+
       const { addWatchPath } = await import('../../services/ingest/watchdog.js');
-      const success = await addWatchPath(path);
+      const success = await addWatchPath(resolvedPath);
 
       res.status(200).json({
         status: success ? 'success' : 'failed',
-        message: success ? `Now watching: ${path}` : 'Failed to add path',
-        path
+        message: success ? `Now watching: ${resolvedPath}` : 'Failed to add path',
+        path: resolvedPath,
+        within_project_root: isWithinProjectRoot
       });
     } catch (e: any) {
       console.error('[API] Failed to add watch path:', e);

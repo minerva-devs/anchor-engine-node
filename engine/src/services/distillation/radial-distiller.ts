@@ -68,6 +68,7 @@ export interface RadialDistillResult {
   };
   provenance: {
     source_compounds: string[];
+    unique_sources: number;
     distilled_at: string;
     parameters: RadialDistillRequest;
   };
@@ -463,6 +464,12 @@ export async function radialDistill(
       ? (dedupStats.total / dedupStats.unique).toFixed(2)
       : '1.00';
 
+    // Aggregate provenance from all unique lines
+    const sourceCompounds = Array.from(uniqueLines.values())
+      .flatMap(line => line.provenance)
+      .filter((source, index, arr) => arr.indexOf(source) === index) // deduplicate
+      .sort();
+
     const result: RadialDistillResult = {
       stats: {
         compounds_processed: dedupStats.total, // Approximate
@@ -480,7 +487,8 @@ export async function radialDistill(
         compounds_created: compoundsCreated
       },
       provenance: {
-        source_compounds: [], // TODO: track actual sources
+        source_compounds: sourceCompounds,
+        unique_sources: sourceCompounds.length,
         distilled_at: new Date().toISOString(),
         parameters: request
       }

@@ -1,10 +1,52 @@
 import { Application, Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import { validate, schemas } from '../../middleware/validate.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { AtomizerService } from '../../services/ingest/atomizer-service.js';
 import { AtomicIngestService } from '../../services/ingest/ingest-atomic.js';
 
+// Rate limiter for ingest endpoints
+// Mobile-friendly defaults: 10 requests per minute for ingest, 30 for general API
+const ingestLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 requests per minute
+  message: {
+    error: 'Too many ingest requests',
+    retryAfter: 60 // seconds
+  },
+  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
+  keyGenerator: (req: Request) => {
+    // Rate limit by IP address
+    return req.ip || req.socket.remoteAddress || 'unknown';
+  },
+  // Skip rate limiting for local development
+  skip: (req: Request) => {
+    const isLocalhost = req.ip === '127.0.0.1' || req.ip === '::1' || req.ip?.startsWith('192.168.');
+    if (isLocalhost && process.env.NODE_ENV === 'development') {
+      return true;
+    }
+    return false;
+  }
+});
+
+// General API limiter (less restrictive)
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: {
+    error: 'Too many API requests',
+    retryAfter: 60 // seconds
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => req.ip || req.socket.remoteAddress || 'unknown'
+});
+
 export function setupIngestRoutes(app: Application) {
+  // Apply rate limiting to all ingest routes
+  app.use('/v1/ingest', ingestLimiter);
+
   // Ingestion endpoint (Atomic Architecture)
   app.post('/v1/ingest', validate(schemas.ingest), async (req: Request, res: Response) => {
     const startTime = Date.now();
