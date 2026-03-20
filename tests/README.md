@@ -1,378 +1,261 @@
-# Anchor Engine - Testing Guide
+# A+B Testing Framework
 
-**Version:** 4.8.0 | **Last Updated:** March 18, 2026
+Comprehensive testing suite for Anchor Engine integrations and packages.
 
----
+## Test Suites
 
-## Quick Start
+### 1. API Client Tests (`packages/api-client/test/`)
+
+**Purpose:** Test the TypeScript API client library
+
+**Capabilities Tested:**
+- **A: Basic Operations**
+  - Search with query
+  - Text ingestion
+  - Simple distillation
+  
+- **B: Advanced Operations**
+  - Filtered search (buckets, scores)
+  - File reading with line ranges
+  - Graph illumination
+  - Pagination handling
+
+**Run:**
+```bash
+cd packages/api-client
+pnpm test
+pnpm test:coverage
+pnpm test:watch
+```
+
+### 2. Web Dashboard Tests (`integrations/web-dashboard/src/**/*.test.tsx`)
+
+**Purpose:** Test React components for the web UI
+
+**Capabilities Tested:**
+- **A: Core Features**
+  - Search page functionality
+  - Basic text ingestion
+  - Result display
+  
+- **B: Advanced Features**
+  - Advanced search filters
+  - File upload/drop
+  - Metadata display
+  - Paste & Ingest (v4.8.0)
+
+**Run:**
+```bash
+cd integrations/web-dashboard
+pnpm test
+pnpm test:component
+pnpm test:coverage
+```
+
+### 3. End-to-End Tests (`tests/e2e/`)
+
+**Purpose:** Full integration testing with running engine
+
+**Capabilities Tested:**
+- **A→B: Complete Workflows**
+  - Ingest → Search → Distill → Illuminate
+  - List → Read → Search
+  - Data persistence
+  
+- **Performance Benchmarks**
+  - Search latency (<200ms p95)
+  - Concurrent request handling
+  - Memory efficiency
+
+**Requirements:**
+- Running Anchor Engine instance on `localhost:3160`
+
+**Run:**
+```bash
+# Start engine first
+pnpm start
+
+# In another terminal
+pnpm test:e2e
+```
+
+## Test Runner
+
+Unified test runner for all suites:
 
 ```bash
 # Run all tests
-npm test
+pnpm test:runner
 
-# Watch mode
-npm run test:watch
+# Run specific suite
+pnpm test:runner client
+pnpm test:runner dashboard
+pnpm test:runner e2e
 
-# With coverage
-npm run test:coverage
+# Run with coverage
+pnpm test:coverage
 ```
 
----
+## Test Organization
 
-## Test Structure
+### A Tests (Basic/Core)
+- Simple search
+- Text ingestion
+- Basic result display
+- Single operations
+- Unit tests
 
-```
-tests/
-├── unit/                       # Unit tests
-│   ├── test_atomizer_logic.ts
-│   ├── test_context_quality_improvements.ts
-│   ├── test_vector_service.ts
-│   └── ...
-│
-├── integration/                # Integration tests
-│   ├── test_pglite.ts
-│   ├── minimal-pglite-test.ts
-│   └── ...
-│
-├── benchmarks/                 # Performance tests
-│   ├── benchmark.ts
-│   └── ...
-│
-└── whitepaper-verification.js  # Whitepaper compliance tests
-```
+### B Tests (Advanced/Extended)
+- Filtered search
+- File operations
+- Advanced UI features
+- Complex workflows
+- Integration tests
 
----
+## Coverage Reports
 
-## Running Tests
+HTML coverage reports generated in:
+- `packages/api-client/coverage/`
+- `integrations/web-dashboard/coverage/`
+- `coverage/` (root, for E2E)
 
-### Unit Tests
-
+View in browser:
 ```bash
-# All unit tests
-npm test
-
-# Specific test file
-npx vitest run tests/unit/test_atomizer_logic.ts
-
-# Watch mode
-npm run test:watch
+open packages/api-client/coverage/index.html
+open integrations/web-dashboard/coverage/index.html
 ```
 
-### Integration Tests
-
-```bash
-# PGlite integration tests
-npx ts-node tests/test-pglite.ts
-
-# Minimal test
-npx ts-node tests/minimal-pglite-test.ts
-```
-
-### Benchmark Tests
-
-```bash
-# Run benchmarks
-cd engine
-npm run benchmark
-
-# Search benchmarks
-node tests/benchmarks/search-benchmark.ts
-
-# Ingestion benchmarks
-node tests/benchmarks/ingestion-benchmark.ts
-```
-
-### Whitepaper Verification
-
-```bash
-# Verify against whitepaper specs
-node tests/whitepaper-verification.js
-```
-
----
-
-## Test Categories
-
-### Unit Tests
-
-**Purpose:** Test individual functions in isolation
-
-**Example:**
-```typescript
-import { describe, it, expect } from 'vitest';
-import { atomize } from '../services/ingest/atomizer-service';
-
-describe('Atomizer', () => {
-  it('splits text into atoms', () => {
-    const atoms = atomize('Hello world');
-    expect(atoms.length).toBeGreaterThan(0);
-  });
-});
-```
-
-**Files:**
-- `test_atomizer_logic.ts` - Atomization logic
-- `test_context_quality_improvements.ts` - Context quality
-- `test_vector_service.ts` - Vector operations
-
----
-
-### Integration Tests
-
-**Purpose:** Test component interactions
-
-**Example:**
-```typescript
-import { db } from '../core/db';
-
-describe('Database Integration', () => {
-  beforeAll(async () => {
-    await db.init();
-  });
-
-  it('stores and retrieves atoms', async () => {
-    await db.run('INSERT INTO atoms ...');
-    const result = await db.run('SELECT * FROM atoms');
-    expect(result.results.length).toBe(1);
-  });
-});
-```
-
-**Files:**
-- `test-pglite.ts` - PGlite integration
-- `minimal-pglite-test.ts` - Minimal DB test
-
----
-
-### Benchmark Tests
-
-**Purpose:** Measure performance metrics
-
-**Example:**
-```typescript
-import { benchmark } from './benchmark';
-
-const results = await benchmark({
-  name: 'Search Latency',
-  fn: async () => await search({ query: 'test' }),
-  iterations: 100
-});
-
-console.log(`p95: ${results.p95}ms`);
-```
-
-**Metrics Tracked:**
-- Search latency (p50, p95, p99)
-- Ingestion throughput (atoms/sec)
-- Memory usage (MB)
-- Compression ratio
-
----
-
-## Writing Tests
-
-### Test File Structure
-
-```typescript
-import { describe, it, expect, beforeEach } from 'vitest';
-import { myFunction } from '../my-module';
-
-describe('MyModule', () => {
-  beforeEach(() => {
-    // Setup before each test
-  });
-
-  describe('myFunction', () => {
-    it('should do something', async () => {
-      const result = await myFunction();
-      expect(result).toBeDefined();
-    });
-
-    it('should handle edge cases', () => {
-      expect(() => myFunction(null)).toThrow();
-    });
-  });
-});
-```
-
-### Best Practices
-
-1. **Descriptive Names:**
-   ```typescript
-   it('returns empty array when query is empty', () => {
-     // ...
-   });
-   ```
-
-2. **Arrange-Act-Assert:**
-   ```typescript
-   // Arrange
-   const input = 'test';
-   
-   // Act
-   const result = await myFunction(input);
-   
-   // Assert
-   expect(result).toBe('expected');
-   ```
-
-3. **Test Edge Cases:**
-   - Empty inputs
-   - Null/undefined
-   - Large inputs
-   - Invalid formats
-
----
-
-## Test Coverage
-
-### Running Coverage
-
-```bash
-npm run test:coverage
-```
-
-### Coverage Goals
-
-| Component | Target | Current |
-|-----------|--------|---------|
-| Services | 80% | 75% |
-| Routes | 90% | 85% |
-| Utils | 70% | 65% |
-| **Overall** | **80%** | **75%** |
-
-### Coverage Reports
-
-**Location:** `coverage/`
-
-**Formats:**
-- HTML: `coverage/index.html`
-- JSON: `coverage/coverage-final.json`
-- Text: Console output
-
----
-
-## Continuous Integration
-
-### GitHub Actions
+## CI/CD Integration
 
 Tests run automatically on:
 - Pull requests
-- Push to main
-- Scheduled (daily)
+- Pre-publish (`prepublishOnly`)
+- Nightly builds
 
-**Workflow:** `.github/workflows/test.yml`
+### GitHub Actions Workflow
 
-### Pre-commit Hooks
-
-```bash
-# Install hooks
-npm install
-
-# Run tests before commit
-npm run precommit
+```yaml
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: pnpm install
+      - run: pnpm build
+      - run: pnpm test:runner
 ```
 
----
+## Mocking Strategy
 
-## Debugging Tests
+### API Client Tests
+- Mock HTTP responses
+- Simulate network delays
+- Test error scenarios
 
-### Verbose Output
+### Dashboard Tests
+- Mock `@rbalchii/anchor-client`
+- Simulate user interactions
+- Test component state
 
-```bash
-npm test -- --reporter=verbose
-```
+### E2E Tests
+- Real engine instance
+- Real API calls
+- Real file system
 
-### Debug Specific Test
-
-```bash
-npx vitest run -t "should handle edge cases"
-```
-
-### Debug Mode
-
-```bash
-node --inspect-brk node_modules/.bin/vitest run
-```
-
-Then open `chrome://inspect` in Chrome.
-
----
-
-## Performance Testing
-
-### Search Benchmarks
+## Environment Variables
 
 ```bash
-cd engine
-node tests/benchmarks/search-benchmark.ts
+# Engine URL (default: http://localhost:3160)
+ANCHOR_API_URL=http://localhost:3160
+
+# API key (if authentication enabled)
+ANCHOR_API_KEY=your-api-key
+
+# Test timeout (default: 30000ms)
+TEST_TIMEOUT=60000
 ```
 
-**Metrics:**
-- Query latency (p50, p95, p99)
-- Results per second
-- Memory per query
+## Writing New Tests
 
-### Ingestion Benchmarks
+### API Client Test Template
 
-```bash
-node tests/benchmarks/ingestion-benchmark.ts
-```
-
-**Metrics:**
-- Atoms per second
-- Bytes per second
-- Memory peak
-
----
-
-## Known Issues
-
-### Flaky Tests
-
-**Issue:** PGlite timing issues
-
-**Workaround:**
 ```typescript
-// Add delay before assertions
-await new Promise(r => setTimeout(r, 100));
-```
+import { describe, it, expect } from 'vitest';
+import { AnchorClient } from '../src/index';
 
-### Memory Leaks in Tests
+describe('Feature Name', () => {
+  const client = new AnchorClient({ baseUrl: 'http://localhost:3160' });
 
-**Issue:** Tests don't clean up
+  it('A: Should do basic operation', async () => {
+    const result = await client.search('test');
+    expect(result.results.length).toBeGreaterThan(0);
+  });
 
-**Fix:**
-```typescript
-afterEach(async () => {
-  await db.reset();
-  await cleanup();
+  it('B: Should do advanced operation', async () => {
+    const result = await client.search('test', {
+      maxResults: 20,
+      buckets: ['inbox']
+    });
+    expect(result.results.length).toBeLessThanOrEqual(20);
+  });
 });
 ```
 
----
+### Dashboard Test Template
 
-## Contributing Tests
+```typescript
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Component } from '../pages/Component';
 
-### Adding New Tests
+describe('Component - A+B Tests', () => {
+  it('A: Should render basic UI', () => {
+    render(<Component />);
+    expect(screen.getByTestId('basic')).toBeInTheDocument();
+  });
 
-1. Create file in `tests/unit/` or `tests/integration/`
-2. Follow naming: `test_<feature>.ts`
-3. Add to test suite
-4. Run: `npm test`
+  it('B: Should handle advanced interaction', async () => {
+    render(<Component />);
+    fireEvent.click(screen.getByRole('button'));
+    expect(await screen.findByText('Success')).toBeInTheDocument();
+  });
+});
+```
 
-### Test Review Checklist
+## Performance Testing
 
-- [ ] Descriptive test names
-- [ ] Edge cases covered
-- [ ] No flaky assertions
-- [ ] Cleanup in afterEach
-- [ ] Coverage improved
+Benchmarks included in E2E tests:
 
----
+- **Search Latency:** <200ms p95
+- **Concurrent Requests:** 10 requests in <5s
+- **Memory Usage:** <1GB during tests
+- **File Operations:** <1s for 10MB files
 
-## Support
+## Troubleshooting
 
-- **Testing Standards:** [`specs/current-standards/130-test-coverage-requirements.md`](../../specs/current-standards/130-test-coverage-requirements.md)
-- **Issues:** https://github.com/RSBalchII/anchor-engine-node/issues
-- **Discussions:** https://github.com/RSBalchII/anchor-engine-node/discussions
+### Tests Fail Immediately
+- Check if engine is running (for E2E)
+- Verify `pnpm install` completed
+- Check Node.js version (v20+)
+
+### Timeout Errors
+- Increase `TEST_TIMEOUT` environment variable
+- Check network connectivity
+- Verify engine performance
+
+### Coverage Not Generated
+- Ensure `@vitest/coverage-v8` is installed
+- Check vitest config has coverage section
+- Run with `--coverage` flag
+
+## Future Enhancements
+
+- [ ] Visual regression testing for dashboard
+- [ ] Load testing with k6
+- [ ] Browser extension tests (Playwright)
+- [ ] Mobile responsiveness tests
+- [ ] Accessibility tests (a11y)
