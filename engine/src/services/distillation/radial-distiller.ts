@@ -13,6 +13,7 @@ import { db } from '../../core/db.js';
 import { ContextInflator } from '../search/context-inflator.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { getMirrorPath } from '../mirror/mirror.js';
+import { PATHS } from '../../config/paths.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -333,9 +334,9 @@ async function reassembleCompounds(
   if (request.output_path) {
     outputPath = request.output_path;
   } else if (request.output_format === 'compound') {
-    outputPath = path.join(process.cwd(), 'mirrored_brain', 'distilled', `distilled_${timestamp}.md`);
+    outputPath = path.join(PATHS.MIRRORED_BRAIN_DIR, 'distilled', `distilled_${timestamp}.md`);
   } else {
-    outputPath = path.join(process.cwd(), 'inbox', 'distilled', `distilled_${timestamp}.${request.output_format || 'yaml'}`);
+    outputPath = path.join(PATHS.INBOX_DIR, 'distilled', `distilled_${timestamp}.${request.output_format || 'yaml'}`);
   }
 
   // Ensure directory exists

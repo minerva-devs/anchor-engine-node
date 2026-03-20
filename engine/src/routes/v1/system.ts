@@ -1,6 +1,7 @@
 import { Application, Request, Response } from 'express';
 import { db } from '../../core/db.js';
 import { getState, clearState } from '../../services/scribe/scribe.js';
+import { PATHS } from '../../config/paths.js';
 
 export function setupSystemRoutes(app: Application) {
   // GET /v1/stats - System statistics (anchor_stats tool)
@@ -296,7 +297,7 @@ export function setupSystemRoutes(app: Application) {
 
       // Security: Canonicalize paths to prevent symlink traversal attacks
       // Get realpath of base directory (inbox/distilled)
-      const baseDir = path.resolve(process.cwd(), 'inbox', 'distilled');
+      const baseDir = path.resolve(PATHS.INBOX_DIR, 'distilled');
       let realBaseDir: string;
       try {
         realBaseDir = await fs.promises.realpath(baseDir);

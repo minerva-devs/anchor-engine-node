@@ -30,7 +30,6 @@ export const PATHS = {
   MODELS_DIR,
   DIST_DIR,
   BACKUPS_DIR: path.join(PROJECT_ROOT, 'backups'),
-  MIRRORED_BRAIN_DIR: path.join(PROJECT_ROOT, 'mirrored_brain'),
   LOGS_DIR: path.join(PROJECT_ROOT, 'logs'),
   CONFIG_FILE: path.join(PROJECT_ROOT, 'sovereign.yaml'),
   USER_SETTINGS: path.join(PROJECT_ROOT, 'user_settings.json'),
