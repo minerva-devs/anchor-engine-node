@@ -67,7 +67,25 @@ open http://localhost:3160
 
 That's it! You now have a sovereign memory system for your LLM.
 
-**Full installation guide:** [INSTALL_NPM.md](INSTALL_NPM.md)
+### Data Directory Structure
+
+All user data is stored in the `local-data/` directory:
+
+- **`local-data/inbox/`** - Your sovereign content (internal provenance, 3.0x boost)
+  - Files you create or write directly
+  - Higher priority in search results
+  
+- **`local-data/external-inbox/`** - External content (external provenance, 1.0x boost)
+  - Web scrapes, news articles, RSS feeds
+  - Content from external sources
+  
+- **`local-data/mirrored_brain/`** - Auto-generated mirror of ingested content
+  - Cleaned, processed versions of your files
+  - Stripped of noise, timestamps, and PII
+
+**Note:** The `local-data/` directory is gitignored by default to protect your data and privacy.
+
+**Full installation guide:** [docs/guides/INSTALL_NPM.md](docs/guides/INSTALL_NPM.md)
 
 ---
 

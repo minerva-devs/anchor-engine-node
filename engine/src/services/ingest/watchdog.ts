@@ -10,7 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { db } from '../../core/db.js';
-import { NOTEBOOK_DIR, PROJECT_ROOT } from '../../config/paths.js';
+import { NOTEBOOK_DIR, PROJECT_ROOT, PATHS } from '../../config/paths.js';
 import { ingestAtoms } from './ingest.js';
 import { config } from '../../config/index.js';
 import { pathManager } from '../../utils/path-manager.js';
@@ -57,8 +57,8 @@ export async function startWatchdog() {
         return;
     }
 
-    const inbox = path.join(PROJECT_ROOT, 'local-data', 'inbox');
-    const externalInbox = path.join(PROJECT_ROOT, 'local-data', 'external-inbox');
+    const inbox = PATHS.INBOX_DIR;
+    const externalInbox = PATHS.EXTERNAL_INBOX_DIR;
 
     // Auto-create inbox directories if missing (Standard 051: Ephemeral Index)
     // These are gitignored and should be created on-demand
@@ -104,16 +104,8 @@ export async function startWatchdog() {
 // Dynamic Path Management
 export function getWatchedPaths(): string[] {
     if (!watcher) return [];
-    // chokidar.getWatched() returns an object where keys are paths
-    // But it returns all subdirectories too. We mainly want the roots we added.
-    // For simplicity, we can return the configured roots + static roots.
 
-    // Better approach: Return the paths explicitly tracked
-    const inbox = path.join(PROJECT_ROOT, 'local-data', 'inbox');
-    const externalInbox = path.join(PROJECT_ROOT, 'local-data', 'external-inbox');
-    const extraPaths = config.WATCHER_EXTRA_PATHS || [];
-
-    return [inbox, externalInbox, ...extraPaths];
+    return [PATHS.INBOX_DIR, PATHS.EXTERNAL_INBOX_DIR, ...(config.WATCHER_EXTRA_PATHS || [])];
 }
 
 export async function addWatchPath(newPath: string): Promise<boolean> {
@@ -207,13 +199,9 @@ export async function stopWatchdog(): Promise<void> {
  * Get watchdog status
  */
 export function getWatcherStatus(): { isRunning: boolean; watchedPaths: string[] } {
-    const inbox = path.join(PROJECT_ROOT, 'local-data', 'inbox');
-    const externalInbox = path.join(PROJECT_ROOT, 'local-data', 'external-inbox');
-    const extraPaths = config.WATCHER_EXTRA_PATHS || [];
-
     return {
         isRunning: watcher !== null,
-        watchedPaths: [inbox, externalInbox, ...extraPaths]
+        watchedPaths: [PATHS.INBOX_DIR, PATHS.EXTERNAL_INBOX_DIR, ...(config.WATCHER_EXTRA_PATHS || [])]
     };
 }
 
@@ -222,8 +210,8 @@ export function getWatcherStatus(): { isRunning: boolean; watchedPaths: string[]
  */
 export async function triggerManualIngest(): Promise<{ status: string; message: string; filesProcessed?: number; filesIngested?: number }> {
     try {
-        const inbox = path.join(PROJECT_ROOT, 'local-data', 'inbox');
-        const externalInbox = path.join(PROJECT_ROOT, 'local-data', 'external-inbox');
+        const inbox = PATHS.INBOX_DIR;
+        const externalInbox = PATHS.EXTERNAL_INBOX_DIR;
 
         if (!fs.existsSync(inbox)) {
             return { status: 'error', message: 'Inbox directory not found' };

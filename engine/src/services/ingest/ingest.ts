@@ -8,6 +8,7 @@
 import { db } from '../../core/db.js';
 import crypto from 'crypto';
 import { config } from '../../config/index.js';
+import { PATHS } from '../../config/paths.js';
 import { cleanContent, getCleaningStats } from './content-cleaner.js';
 
 interface IngestOptions {
@@ -19,28 +20,30 @@ interface IngestOptions {
  * Determines the provenance of content based on its source
  */
 function determineProvenance(source: string, type?: string): 'internal' | 'external' | 'system' {
-  const normalizedSource = source.replace(/\\/g, '/');
+  // Normalize path separators and resolve to absolute path for robust comparison
+  const normalizedSource = path.resolve(path.normalize(source)).replace(/\\/g, '/');
+  
+  // Get canonical paths for comparison
+  const inboxDir = PATHS.INBOX_DIR.replace(/\\/g, '/');
+  const externalInboxDir = PATHS.EXTERNAL_INBOX_DIR.replace(/\\/g, '/');
 
-  // 1. Explicit Trusted Inbox (or default 'inbox' folder)
-  // Matches "local-data/inbox/..." or ".../local-data/inbox/..."
-  if (normalizedSource.includes('/local-data/inbox/') || normalizedSource.startsWith('local-data/inbox/') ||
+  // 1. Explicit Trusted Inbox (internal provenance, 3.0x boost)
+  if (normalizedSource.startsWith(inboxDir) ||
     normalizedSource.includes('/internal-inbox/') || normalizedSource.startsWith('internal-inbox/') ||
     normalizedSource.includes('/sovereign/') ||
     type === 'user') {
     return 'internal';
   }
 
-  // 2. Explicit External Inbox
-  // Matches "local-data/external-inbox/..." or ".../local-data/external-inbox/..."
-  if (normalizedSource.includes('/local-data/external-inbox/') || normalizedSource.startsWith('local-data/external-inbox/') ||
+  // 2. Explicit External Inbox (external provenance, 1.0x boost)
+  if (normalizedSource.startsWith(externalInboxDir) ||
     normalizedSource.includes('web_scrape') ||
     normalizedSource.includes('news_agent') ||
     type === 'external') {
     return 'external';
   }
 
-  // Default to external only if it didn't match the explicitly internal folders above
-  // Note: We flipped the order to prioritize the known 'inbox' check which was failing before (falling through to default)
+  // Default to external for all other sources
   return 'external';
 }
 

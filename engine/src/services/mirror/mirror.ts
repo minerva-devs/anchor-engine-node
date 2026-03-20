@@ -179,7 +179,7 @@ function getRelativePath(absolutePath: string): string {
     if (!absolutePath) return 'unknown_file';
 
     const inboxDir = PATHS.INBOX_DIR;
-    const externalDir = path.join(path.dirname(PATHS.INBOX_DIR), 'external-inbox');
+    const externalDir = PATHS.EXTERNAL_INBOX_DIR;
 
     if (absolutePath.startsWith(inboxDir)) {
         return path.relative(inboxDir, absolutePath);
