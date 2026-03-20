@@ -60,8 +60,9 @@ codebase
 codebase/*
 external-inbox/*
 inbox/*
-notebook/
+local-data/*
 mirrored_brain/
+notebook/
 user_settings.json
 context/
 
