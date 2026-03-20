@@ -1,0 +1,23 @@
+{
+  "name": "@rbalchii/anchor-dashboard",
+  "version": "4.8.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@rbalchii/anchor-client": "^4.8.0",
+    "@rbalchii/anchor-types": "^4.8.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.4.0",
+    "vite": "^5.0.0"
+  }
+}
