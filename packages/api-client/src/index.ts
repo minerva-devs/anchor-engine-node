@@ -189,6 +189,47 @@ export class AnchorClient {
   }
 
   /**
+   * Get server information (uptime, version, port)
+   */
+  async getServerInfo(): Promise<ApiResponse<any>> {
+    return this.get('/v1/system/server-info');
+  }
+
+  /**
+   * Get current ingestion status
+   */
+  async getIngestStatus(): Promise<ApiResponse<any>> {
+    return this.get('/v1/system/ingest-status');
+  }
+
+  /**
+   * Wait for current ingestion to complete
+   */
+  async waitForIngest(timeout?: number): Promise<ApiResponse<any>> {
+    return this.post('/v1/system/wait-for-ingest', { timeout });
+  }
+
+  /**
+   * Get current ingestion configuration
+   */
+  async getIngestionConfig(): Promise<ApiResponse<any>> {
+    return this.get('/v1/config/ingestion');
+  }
+
+  /**
+   * Update ingestion configuration
+   */
+  async setIngestionConfig(config: {
+    concept_density?: 'low' | 'medium' | 'high';
+    tag_threshold?: number;
+    dedup_strength?: 'light' | 'medium' | 'aggressive';
+    token_budget_default?: number;
+    ingestion_profile?: 'code' | 'notes' | 'chat' | 'default';
+  }): Promise<ApiResponse<any>> {
+    return this.post('/v1/config/ingestion', config);
+  }
+
+  /**
    * List all available compounds (source files)
    */
   async listCompounds(): Promise<ApiResponse<any>> {
