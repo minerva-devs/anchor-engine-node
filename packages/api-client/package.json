@@ -1,0 +1,26 @@
+{
+  "name": "@rbalchii/anchor-client",
+  "version": "4.8.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "node --loader ts-node/esm test/client.test.ts"
+  },
+  "dependencies": {
+    "@rbalchii/anchor-types": "^4.8.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.2"
+  },
+  "files": ["dist"]
+}
