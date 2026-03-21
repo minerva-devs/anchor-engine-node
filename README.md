@@ -194,6 +194,164 @@ curl -X POST http://localhost:3160/v1/memory/search \
 
 ---
 
+## 🧠 MCP Server – Memory for Your AI Agent
+
+Anchor Engine can act as an **MCP (Model Context Protocol) server**, giving any MCP‑compatible agent persistent, deterministic memory.
+
+### Install
+
+```bash
+# Install globally for CLI access
+npm install -g @rbalchii/anchor-engine
+
+# Or use npx directly
+npx @rbalchii/anchor-engine
+```
+
+### Start the MCP Server
+
+```bash
+# Option 1: Use the dedicated MCP binary
+anchor-mcp
+
+# Option 2: Start via main CLI
+anchor mcp
+
+# Option 3: Run directly with npx
+npx anchor-mcp
+```
+
+The server runs in **stdio mode**, communicating directly with your AI agent.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `anchor_query` | Search memory with token budget and provenance tracking |
+| `anchor_distill` | Create checkpoint summaries from sessions |
+| `anchor_illuminate` | BFS graph traversal for exploration |
+| `anchor_read_file` | Read files by line ranges (token-efficient) |
+| `anchor_list_compounds` | List available source files |
+| `anchor_get_stats` | Check engine health and database stats |
+| `anchor_ingest_text` | Add raw text content (opt-in, disabled by default) |
+| `anchor_ingest_file` | Ingest files from filesystem (opt-in) |
+
+### Configuration
+
+Create a `user_settings.json` in your project root:
+
+```json
+{
+  "server": {
+    "port": 3160,
+    "api_key": "your-secret-key"
+  },
+  "mcp": {
+    "allow_write_operations": false,
+    "default_bucket_for_writes": "external-inbox",
+    "rate_limit_requests_per_minute": 60,
+    "max_query_results": 50
+  }
+}
+```
+
+Or set environment variables:
+```bash
+export ANCHOR_API_URL="http://localhost:3160"
+export ANCHOR_API_KEY="your-secret-key"
+```
+
+### Agent Examples
+
+#### Claude Desktop
+
+Add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "anchor": {
+      "command": "npx",
+      "args": ["@rbalchii/anchor-engine", "mcp"]
+    }
+  }
+}
+```
+
+Or if installed globally:
+```json
+{
+  "mcpServers": {
+    "anchor": {
+      "command": "anchor-mcp"
+    }
+  }
+}
+```
+
+#### Qwen Code
+
+Qwen Code automatically detects MCP servers. Just run:
+```bash
+anchor-mcp
+```
+
+Then use tools in chat:
+```
+/anchor_query query="What did we decide about authentication?"
+```
+
+#### Cursor
+
+Add to Cursor MCP settings:
+```json
+{
+  "command": "anchor-mcp",
+  "env": {
+    "ANCHOR_API_URL": "http://localhost:3160"
+  }
+}
+```
+
+### Quick-Start Demo (2 Minutes)
+
+```bash
+# 1. Start the MCP server
+anchor-mcp &
+
+# 2. Ingest some text (via API for demo)
+curl -X POST http://localhost:3160/v1/research/upload-raw \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "The STAR algorithm uses physics-based scoring with temporal decay.",
+    "filename": "star-notes.md",
+    "bucket": "inbox"
+  }'
+
+# 3. Search for it
+curl -X POST http://localhost:3160/v1/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "STAR algorithm physics scoring",
+    "token_budget": 1024
+  }'
+
+# 4. Or use MCP tools in your AI agent
+# In Claude/Qwen: "/anchor_query query=STAR algorithm"
+```
+
+### Security
+
+- **Write operations disabled by default** – Must explicitly enable in settings
+- **Rate limiting** – Configurable requests per minute
+- **API key authentication** – Optional but recommended
+- **Localhost restriction** – Only accept local connections by default
+- **Bucket safety** – Defaults to `external-inbox` for untrusted content
+
+See full documentation: **[mcp-server/README.md](mcp-server/README.md)**
+
+---
+
 ## 🏛️ Our Philosophy: AI Memory Should Work Like Your Brain
 
 Human memory is remarkably efficient. It runs on ~20 watts, forgets irrelevant details, and over time clarifies core truths rather than drowning in noise. It doesn't store raw experiences—it stores *patterns*, *relationships*, and *meaning*.

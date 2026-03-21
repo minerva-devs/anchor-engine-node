@@ -6,7 +6,8 @@
   "type": "module",
   "bin": {
     "anchor": "anchor.bat",
-    "anchor-engine": "engine/dist/index.js"
+    "anchor-engine": "engine/dist/index.js",
+    "anchor-mcp": "mcp-server/dist/index.js"
   },
   "scripts": {
     "start": "node --expose-gc --max-old-space-size=6144 engine/dist/index.js",
@@ -99,6 +100,9 @@
   "files": [
     "engine/dist/",
     "engine/package.json",
+    "mcp-server/dist/",
+    "mcp-server/package.json",
+    "mcp-server/README.md",
     "anchor.bat",
     "LICENSE",
     "README.md",
