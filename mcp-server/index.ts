@@ -28,6 +28,9 @@ import { z } from "zod";
 // Anchor Engine API base URL
 const ANCHOR_API_URL = process.env.ANCHOR_API_URL || "http://localhost:3160";
 
+// Anchor API Key (optional, for servers that require auth)
+const ANCHOR_API_KEY = process.env.ANCHOR_API_KEY || "";
+
 // Security settings
 interface MCPSecuritySettings {
   enabled: boolean;
@@ -292,6 +295,11 @@ async function callAnchorAPI(endpoint: string, method: string = "GET", body?: an
       "Content-Type": "application/json",
     },
   };
+
+  // Add API key if configured
+  if (ANCHOR_API_KEY) {
+    (options.headers as Record<string, string>)["Authorization"] = `Bearer ${ANCHOR_API_KEY}`;
+  }
 
   if (body && method !== "GET") {
     options.body = JSON.stringify(body);
