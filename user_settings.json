@@ -39,7 +39,10 @@
     "watcher": {
         "debounce_ms": 2000,
         "stability_threshold_ms": 2000,
-        "extra_paths": []
+        "extra_paths": [
+            "/data/data/com.termux/files/home/.qwen/projects/-data-data-com-termux-files-home/chats"
+        ],
+        "agent_note": "Add your agent's chat directory here for automatic ingestion. Example: /path/to/claude/chats, /path/to/cursor/history"
     },
     "context": {
         "relevance_weight": 0.7,
@@ -54,7 +57,7 @@
         "date_extractor_scan_limit": 2000
     },
     "database": {
-        "wipe_on_startup": false
+        "wipe_on_startup": true
     },
     "memory": {
         "throttle_start_mb": 1500,
