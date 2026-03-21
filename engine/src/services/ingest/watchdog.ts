@@ -71,10 +71,18 @@ export async function startWatchdog() {
         console.log(`[Watchdog] Created external-inbox directory: ${externalInbox}`);
     }
 
+    // P0 Critical Fix: Auto-enable watchdog when extra_paths is configured
+    const extraPaths = config.WATCHER_EXTRA_PATHS || [];
+    if (extraPaths.length > 0) {
+        console.log(`🔍 Watchdog auto-enabled: watching ${extraPaths.length} extra path(s)`);
+        extraPaths.forEach((p: string) => {
+            console.log(`   • ${p}`);
+        });
+    }
+
     console.log(`[Watchdog] Starting watch on: ${inbox} and ${externalInbox}`);
 
-    // Load extra paths from config
-    const extraPaths = config.WATCHER_EXTRA_PATHS || [];
+    // Validate extra paths (already logged above if configured)
     const validExtraPaths = extraPaths.filter((p: string) => {
         if (fs.existsSync(p)) return true;
         console.warn(`[Watchdog] Extra path not found: ${p}`);

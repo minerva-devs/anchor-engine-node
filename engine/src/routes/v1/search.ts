@@ -8,6 +8,7 @@ import { executeStreamingSearch, formatSSE } from '../../services/search/streami
 export function setupSearchRoutes(app: Application) {
   // POST Search endpoint (Standard 136: Streaming Search)
   // Memory-efficient streaming search with Server-Sent Events
+  // Supports both streaming (default) and non-streaming modes via query param
   app.post('/v1/memory/search', validate(schemas.memorySearch), async (req: Request, res: Response) => {
     const startTime = Date.now();
 
@@ -18,6 +19,9 @@ export function setupSearchRoutes(app: Application) {
         return;
       }
 
+      // Check for non-streaming mode (FRICTIONLESS_SPEC.md section 4.3)
+      const streamMode = req.query.stream !== 'false';
+      
       const strategy = (req.body as any).strategy || 'standard';
       const maxChars = body.max_chars || 5000;
       const estimatedTokens = maxChars / 4;
@@ -32,14 +36,9 @@ export function setupSearchRoutes(app: Application) {
       StructuredLogger.info('STREAMING_SEARCH_REQUEST', {
         query: body.query.substring(0, 100),
         strategy: useMaxRecall ? 'max-recall' : 'standard',
-        batchSize
+        batchSize,
+        streamMode
       });
-
-      // Set up SSE headers
-      res.setHeader('Content-Type', 'text/event-stream');
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Connection', 'keep-alive');
-      res.setHeader('X-Accel-Buffering', 'no');
 
       // Handle legacy params
       const bucketParam = (req.body as any).bucket;
@@ -47,7 +46,67 @@ export function setupSearchRoutes(app: Application) {
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
       const tags = (req.body as any).tags || [];
 
-      // Execute streaming search
+      if (!streamMode) {
+        // Non-streaming mode: Return single JSON response with content (FRICTIONLESS_SPEC.md section 4.1)
+        const searchResult = await smartChatSearch(
+          body.query,
+          allBuckets,
+          maxChars,
+          tags,
+          (req.body as any).provenance || 'all',
+          useMaxRecall,
+          body.user_context
+        );
+
+        const duration = Date.now() - startTime;
+
+        // Format results with content (FRICTIONLESS_SPEC.md section 4.1)
+        const formattedResults = searchResult.results.map(r => ({
+          uuid: r.id,
+          content: r.content,
+          source: r.source,
+          timestamp: new Date(r.timestamp).toISOString(),
+          score: r.score,
+          tags: r.tags || [],
+          buckets: r.buckets || [],
+          provenance: r.provenance,
+          compound_id: r.compound_id,
+          start_byte: r.start_byte,
+          end_byte: r.end_byte
+        }));
+
+        const response: any = {
+          metadata: {
+            totalResults: formattedResults.length,
+            durationMs: duration,
+            strategy: searchResult.strategy
+          },
+          results: formattedResults
+        };
+
+        // Add debug info if requested (FRICTIONLESS_SPEC.md section 4.2)
+        if (req.query.debug === 'true') {
+          response.debug = {
+            queryTags: tags,
+            bucketsSearched: allBuckets,
+            useMaxRecall,
+            charBudget: maxChars,
+            splitQueries: searchResult.splitQueries || [],
+            metadataFromSearch: searchResult.metadata || {}
+          };
+        }
+
+        StructuredLogger.info('NON_STREAMING_SEARCH_COMPLETE', {
+          query: body.query.substring(0, 100),
+          totalResults: formattedResults.length,
+          durationMs: duration
+        });
+
+        res.status(200).json(response);
+        return;
+      }
+
+      // Streaming mode: Execute streaming search
       const stream = executeStreamingSearch({
         query: body.query,
         buckets: allBuckets,
@@ -59,9 +118,21 @@ export function setupSearchRoutes(app: Application) {
         batchSize
       });
 
+      // Set up SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no');
+
       // Stream results to client
+      let totalResults = 0;
       for await (const event of stream) {
         res.write(formatSSE(event));
+
+        // Accumulate result count from batch events
+        if (event.type === 'batch') {
+          totalResults += event.results.length;
+        }
 
         if (event.type === 'error') {
           res.end();
@@ -69,12 +140,12 @@ export function setupSearchRoutes(app: Application) {
         }
       }
 
-      // Send final completion event
+      // Send final completion event with actual result count
       const duration = Date.now() - startTime;
       res.write(formatSSE({
         type: 'metadata',
         strategy: useMaxRecall ? 'max-recall' : 'standard',
-        totalResults: 0,
+        totalResults,
         query: body.query,
         durationMs: duration
       }));

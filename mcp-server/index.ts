@@ -24,12 +24,55 @@ import {
   Resource,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import { readFileSync, existsSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+
+// Get MCP server directory
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const projectRoot = join(__dirname, "..");
+
+// Try to load settings from user_settings.json (unity of abstraction)
+let settingsApiKey = "";
+let settingsApiUrl = "http://localhost:3161";
+let settingsMcpConfig: Partial<MCPSecuritySettings> = {};
+
+try {
+  // Try project root first
+  const settingsPath = join(projectRoot, "user_settings.json");
+  if (existsSync(settingsPath)) {
+    const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
+    settingsApiKey = settings.server?.api_key || "";
+    settingsApiUrl = `http://localhost:${settings.server?.port || 3161}`;
+    
+    // Load MCP-specific settings if present
+    if (settings.mcp) {
+      settingsMcpConfig = {
+        enabled: settings.mcp.enabled ?? false,
+        rate_limit_requests_per_minute: settings.mcp.rate_limit_requests_per_minute ?? 60,
+        max_query_results: settings.mcp.max_query_results ?? 50,
+        allowed_operations: settings.mcp.allowed_operations ?? ["query", "read_file", "get_stats"],
+        blocked_operations: settings.mcp.blocked_operations ?? [],
+        allow_write_operations: settings.mcp.allowed_operations?.includes("ingest") ?? false,
+        default_bucket_for_writes: "external-inbox"
+      };
+    }
+    
+    console.error("✅ MCP: Loaded settings from user_settings.json");
+    console.error(`   Engine URL: ${settingsApiUrl}`);
+    console.error(`   API Key: ${settingsApiKey ? 'set (' + settingsApiKey.substring(0, 8) + '...)' : 'not set'}`);
+  }
+} catch (error) {
+  console.error("⚠️  MCP: Could not load user_settings.json, using defaults");
+}
 
 // Anchor Engine API base URL
-const ANCHOR_API_URL = process.env.ANCHOR_API_URL || "http://localhost:3160";
+// Environment variables override settings (for backward compatibility)
+const ANCHOR_API_URL = process.env.ANCHOR_API_URL || settingsApiUrl;
 
 // Anchor API Key (optional, for servers that require auth)
-const ANCHOR_API_KEY = process.env.ANCHOR_API_KEY || "";
+// Environment variables override settings (for backward compatibility)
+const ANCHOR_API_KEY = process.env.ANCHOR_API_KEY || settingsApiKey;
 
 // Security settings
 interface MCPSecuritySettings {
@@ -55,7 +98,8 @@ let securitySettings: MCPSecuritySettings = {
   allowed_operations: ["query", "read_file", "get_stats"],
   blocked_operations: [],
   allow_write_operations: false,  // Disabled by default for safety
-  default_bucket_for_writes: "external-inbox"  // Safer default
+  default_bucket_for_writes: "external-inbox",  // Safer default
+  ...settingsMcpConfig  // Apply settings from user_settings.json
 };
 
 // Rate limiting
@@ -822,7 +866,16 @@ async function loadSecuritySettings(): Promise<void> {
 async function main() {
   // Load security settings first
   await loadSecuritySettings();
-  
+
+  // Show configuration summary
+  console.error("");
+  console.error("🔌 MCP Server Configuration:");
+  console.error(`   Engine URL: ${ANCHOR_API_URL}`);
+  console.error(`   API Key: ${ANCHOR_API_KEY ? 'set (' + ANCHOR_API_KEY.substring(0, 8) + '...)' : 'not set'}`);
+  console.error(`   Source: ${process.env.ANCHOR_API_KEY ? 'environment variables' : 'user_settings.json'}`);
+  console.error(`   MCP Enabled: ${securitySettings.enabled ? '✅' : '❌'}`);
+  console.error("");
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Anchor Engine MCP Server running on stdio");

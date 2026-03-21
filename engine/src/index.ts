@@ -230,6 +230,8 @@ app.get('/v1/models', (req, res) => {
 
 
 async function startServer() {
+  const startupStartTime = Date.now();
+  
   try {
     console.time("⏱️ Startup Time");
     console.log("Initializing Anchor Context Engine...");
@@ -282,8 +284,24 @@ async function startServer() {
     // to prevent duplicate instances. ProcessManager is disabled for nanobot.
     console.log('[Services] Nanobot skipped (started by launcher)');
 
-    // Watchdog is now controlled via UI settings - not auto-started
-    console.log('[Services] Watchdog disabled - start from /settings UI');
+    // P0 Critical Fix: Watchdog Auto-Enable (FRICTIONLESS_SPEC.md section 1.2)
+    // Auto-start watchdog if watcher.extra_paths is configured in user_settings.json
+    let watchdogEnabled = false;
+    try {
+        const { startWatchdog } = await import('./services/ingest/watchdog.js');
+        const { config } = await import('./config/index.js');
+
+        if (config.WATCHER_EXTRA_PATHS && config.WATCHER_EXTRA_PATHS.length > 0) {
+            console.log('[Services] Watchdog: auto-starting due to extra_paths configuration...');
+            await startWatchdog();
+            console.log('[Services] ✅ Watchdog auto-started successfully');
+            watchdogEnabled = true;
+        } else {
+            console.log('[Services] Watchdog: disabled (no extra_paths configured)');
+        }
+    } catch (error: any) {
+        console.warn('[Services] Watchdog auto-start failed:', error.message);
+    }
 
     // Dreamer service disabled - optimized for STAR algorithm startup (v4.0)
     console.log('[Services] All service start commands queued');
@@ -336,6 +354,16 @@ async function startServer() {
 
     console.log('[Startup] All derived data regenerated. System ready.');
 
+
+    // ============================================
+    // P0 Critical Fix: Display Startup Status Banner
+    // FRICTIONLESS_SPEC.md section 1.3
+    // ============================================
+    const { displayStartupBanner } = await import('./utils/startup-banner.js');
+    await displayStartupBanner({
+      startupTimeMs: Date.now() - startupStartTime,
+      watchdogEnabled
+    });
 
   } catch (error) {
     console.error("Failed to start Anchor Context Engine:", error);
