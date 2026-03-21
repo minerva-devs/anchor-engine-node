@@ -60,7 +60,6 @@
     "compress": "GZip"
   },
   "dependencies": {
-    "@anchor/shared": "file:../shared",
     "@electric-sql/pglite": "^0.2.0",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@rbalchii/anchor-atomizer-wasm": "^1.0.0",

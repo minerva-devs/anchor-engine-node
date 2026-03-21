@@ -192,7 +192,10 @@ export function setupSystemRoutes(app: Application) {
 
       res.json({
         status: 'success',
-        ...ingestStatus
+        state: ingestStatus.status,
+        currentJob: ingestStatus.currentJob,
+        lastCompleted: ingestStatus.lastCompleted,
+        queueDepth: ingestStatus.queueDepth
       });
     } catch (error: any) {
       console.error('Ingest status retrieval error:', error);

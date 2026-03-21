@@ -100,8 +100,12 @@ class SystemStatusManager {
     lastCompleted?: Date;
     queueDepth: number;
   } {
+    const jobStatus = this.currentIngestion?.status || (this.lastIngestion ? 'complete' : 'idle');
+    // Map 'pending' to 'idle' for API response
+    const apiStatus = jobStatus === 'pending' ? 'idle' : jobStatus;
+    
     return {
-      status: this.currentIngestion?.status || (this.lastIngestion ? 'complete' : 'idle'),
+      status: apiStatus,
       currentJob: this.currentIngestion,
       lastCompleted: this.lastIngestion,
       queueDepth: this.queuedSearches.length

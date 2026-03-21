@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bolt Memory - Orchestrator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        header h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+        header p { opacity: 0.9; }
+        .content { padding: 2rem; }
+        .section { margin-bottom: 2rem; }
+        .section h2 {
+            font-size: 1.25rem;
+            color: #4a5568;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .provider-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .provider-card {
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .provider-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.2);
+        }
+        .provider-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%);
+        }
+        .provider-card h3 { font-size: 1rem; color: #2d3748; margin-bottom: 0.25rem; }
+        .provider-card p { font-size: 0.875rem; color: #718096; }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .status-indicator.ready { background: #48bb78; }
+        .status-indicator.offline { background: #f56565; }
+        .status-indicator.loading { background: #ecc94b; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .response-box {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+        .memory-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .stat-card {
+            background: #f7fafc;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value { font-size: 1.5rem; font-weight: bold; color: #667eea; }
+        .stat-label { font-size: 0.875rem; color: #718096; margin-top: 0.25rem; }
+        .loading { opacity: 0.6; pointer-events: none; }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Bolt Memory Orchestrator</h1>
+            <p>Model-agnostic AI orchestration with persistent memory</p>
+        </header>
+        
+        <div class="content">
+            <!-- Provider Selection -->
+            <div class="section">
+                <h2>🤖 Select LLM Provider</h2>
+                <div class="provider-grid">
+                    <div class="provider-card selected" data-provider="llama_cpp">
+                        <h3>🦙 llama.cpp</h3>
+                        <p>Local GGUF models</p>
+                        <p><span class="status-indicator ready"></span>Ready</p>
+                    </div>
+                    <div class="provider-card" data-provider="ollama">
+                        <h3>🦙 Ollama</h3>
+                        <p>localhost:11434</p>
+                        <p><span class="status-indicator offline"></span>Check</p>
+                    </div>
+                    <div class="provider-card" data-provider="lm_studio">
+                        <h3>🎬 LM Studio</h3>
+                        <p>localhost:1234</p>
+                        <p><span class="status-indicator offline"></span>Check</p>
+                    </div>
+                    <div class="provider-card" data-provider="openai">
+                        <h3>🌐 OpenAI API</h3>
+                        <p>Remote API</p>
+                        <p><span class="status-indicator offline"></span>Configure</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Memory Status -->
+            <div class="section">
+                <h2>💾 Bolt Memory Status</h2>
+                <div class="memory-stats" id="memoryStats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statCompounds">-</div>
+                        <div class="stat-label">Compounds</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statSources">-</div>
+                        <div class="stat-label">Sources</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statAtoms">-</div>
+                        <div class="stat-label">Atoms</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statMolecules">-</div>
+                        <div class="stat-label">Molecules</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task Input -->
+            <div class="section">
+                <h2>📝 Your Task</h2>
+                <textarea 
+                    id="taskInput" 
+                    placeholder="Describe your task or ask a question... The orchestrator will search memory for context and provide a thoughtful response."
+                ></textarea>
+                <div style="margin-top: 1rem; display: flex; gap: 1rem; align-items: center;">
+                    <button class="btn" id="orchestrateBtn" onclick="orchestrate()">
+                        🚀 Orchestrate
+                    </button>
+                    <label style="display: flex; align-items: center; gap: 0.5rem; color: #718096;">
+                        <input type="checkbox" id="autoSearch" checked>
+                        Auto-search memory
+                    </label>
+                </div>
+            </div>
+
+            <!-- Response -->
+            <div class="section" id="responseSection" style="display: none;">
+                <h2>💡 Response</h2>
+                <div class="response-box" id="responseBox"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CONFIG = {
+            boltMemoryUrl: 'http://localhost:3161',
+            apiKey: 'bolt-memory-secret',
+            providers: {
+                llama_cpp: { port: 8080 },
+                ollama: { port: 11434 },
+                lm_studio: { port: 1234 },
+            }
+        };
+
+        let selectedProvider = 'llama_cpp';
+
+        // Provider selection
+        document.querySelectorAll('.provider-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                selectedProvider = card.dataset.provider;
+            });
+        });
+
+        // Load memory stats
+        async function loadMemoryStats() {
+            try {
+                const response = await fetch(`${CONFIG.boltMemoryUrl}/v1/stats`, {
+                    headers: { 'Authorization': `Bearer ${CONFIG.apiKey}` }
+                });
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('statCompounds').textContent = stats.atoms ? '✓' : '0';
+                    document.getElementById('statSources').textContent = stats.sources || '0';
+                    document.getElementById('statAtoms').textContent = stats.atoms || '0';
+                    document.getElementById('statMolecules').textContent = stats.molecules || '0';
+                }
+            } catch (error) {
+                console.error('Failed to load stats:', error);
+            }
+        }
+
+        // Orchestrate task
+        async function orchestrate() {
+            const task = document.getElementById('taskInput').value.trim();
+            if (!task) {
+                alert('Please enter a task');
+                return;
+            }
+
+            const btn = document.getElementById('orchestrateBtn');
+            const responseSection = document.getElementById('responseSection');
+            const responseBox = document.getElementById('responseBox');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Processing...';
+            responseSection.style.display = 'none';
+
+            try {
+                // Search memory if enabled
+                let context = '';
+                if (document.getElementById('autoSearch').checked) {
+                    const searchRes = await fetch(`${CONFIG.boltMemoryUrl}/v1/memory/search`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${CONFIG.apiKey}`,
+                        },
+                        body: JSON.stringify({ query: task, token_budget: 2000 }),
+                    });
+                    
+                    if (searchRes.ok) {
+                        const searchData = await searchRes.json();
+                        if (searchData.results?.length > 0) {
+                            context = `\n\nRelevant context:\n${searchData.results.map(r => `- ${r.content?.substring(0, 200)}`).join('\n')}`;
+                        }
+                    }
+                }
+
+                // Query LLM
+                const prompt = `Task: ${task}${context}\n\nPlease provide:\n1. Analysis\n2. Step-by-step plan\n3. Recommendations`;
+                
+                let response;
+                if (selectedProvider === 'llama_cpp') {
+                    const llmRes = await fetch(`http://localhost:${CONFIG.providers.llama_cpp.port}/completion`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            prompt: `<|user|>\n${prompt}</s>\n<|assistant|>\n`,
+                            n_predict: 2048,
+                            temperature: 0.7,
+                            stop: ['</s>'],
+                        }),
+                    });
+                    const llmData = await llmRes.json();
+                    response = llmData.content || 'No response';
+                } else {
+                    response = `[${selectedProvider}] Response would go here (provider not implemented in UI yet)`;
+                }
+
+                // Save to memory
+                await fetch(`${CONFIG.boltMemoryUrl}/v1/ingest`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${CONFIG.apiKey}`,
+                    },
+                    body: JSON.stringify({
+                        content: `Task: ${task}\n\nResponse: ${response}`,
+                        source: `ui-session-${Date.now()}`,
+                        type: 'orchestrator',
+                        buckets: ['orchestrator'],
+                    }),
+                });
+
+                // Display response
+                responseBox.textContent = response;
+                responseSection.style.display = 'block';
+                
+                // Refresh stats
+                loadMemoryStats();
+
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 Orchestrate';
+            }
+        }
+
+        // Initial load
+        loadMemoryStats();
+        setInterval(loadMemoryStats, 30000); // Refresh every 30 seconds
+    </script>
+</body>
+</html>

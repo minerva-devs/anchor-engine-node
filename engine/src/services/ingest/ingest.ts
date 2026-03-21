@@ -7,6 +7,7 @@
 
 import { db } from '../../core/db.js';
 import crypto from 'crypto';
+import * as path from 'path';
 import { config } from '../../config/index.js';
 import { PATHS } from '../../config/paths.js';
 import { cleanContent, getCleaningStats } from './content-cleaner.js';
