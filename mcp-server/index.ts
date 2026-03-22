@@ -29,8 +29,9 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 // Get MCP server directory
+// dist/ is at mcp-server/dist/, so we need to go up 2 levels to reach project root
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(__dirname, "..");
+const projectRoot = join(__dirname, "..", "..");
 
 // Try to load settings from user_settings.json (unity of abstraction)
 let settingsApiKey = "";
