@@ -39,8 +39,12 @@ import {
 
 import { KnowledgeCluster, KnowledgeMolecule } from '../../types/api.js';
 
+// --- Import from engram module ---
+import { createEngram, lookupByEngram, hydrateEngrams } from './engram.js';
+
 // Re-export everything that external consumers need
 export { getGlobalTags, filterDisplayTags, parseQuery, splitQueryIntoMolecules };
+export { createEngram, lookupByEngram, hydrateEngrams };
 export type { SearchResult };
 export type { BrightNode, BrightNodeRelationship } from './bright-nodes.js';
 export { getBrightNodes, getStructuredGraph } from './bright-nodes.js';
@@ -113,69 +117,6 @@ function calculateLightweightScore(
   // Combine scores (base score + term overlap + bonuses)
   const baseScore = result.score || 0.5;
   return Math.min(1.0, baseScore * 0.3 + termScore * 0.5 + phraseBonus + tagBonus + recencyBonus);
-}
-
-/**
- * Create or update an engram (lexical sidecar) for fast entity lookup
- */
-export async function createEngram(key: string, memoryIds: string[]): Promise<void> {
-  const normalizedKey = key.toLowerCase().trim();
-  const engramId = createHash('md5').update(normalizedKey).digest('hex');
-
-  const insertQuery = `INSERT INTO engrams (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`;
-  await db.run(insertQuery, [engramId, JSON.stringify(memoryIds)]);
-}
-
-/**
- * Lookup memories by engram key (O(1) operation)
- */
-export async function lookupByEngram(key: string): Promise<string[]> {
-  const normalizedKey = key.toLowerCase().trim();
-  const engramId = createHash('md5').update(normalizedKey).digest('hex');
-
-  const query = `SELECT value FROM engrams WHERE key = $1`;
-  const result = await db.run(query, [engramId]);
-
-  if (result.rows && result.rows.length > 0) {
-    return JSON.parse(result.rows[0].value as string);
-  }
-
-  return [];
-}
-
-/**
- * Hydrate engram IDs into full SearchResult objects
- */
-export async function hydrateEngrams(ids: string[]): Promise<SearchResult[]> {
-  if (!ids || ids.length === 0) return [];
-
-  const query = `
-    SELECT id, content, source_path, timestamp, buckets, tags, provenance, compound_id, start_byte, end_byte
-    FROM atoms
-    WHERE id = ANY($1)
-  `;
-
-  try {
-    const result = await db.run(query, [ids]);
-
-    return result.rows.map((row: any) => ({
-      id: row.id,
-      content: row.content,
-      source: row.source_path, // Map source_path to source
-      timestamp: row.timestamp,
-      buckets: row.buckets || [],
-      tags: row.tags || [],
-      epochs: '',
-      provenance: row.provenance || 'internal',
-      score: 1.0, // High score for direct engram hits
-      compound_id: row.compound_id,
-      start_byte: row.start_byte,
-      end_byte: row.end_byte
-    }));
-  } catch (e) {
-    console.error('[Search] Failed to hydrate engrams:', e);
-    return [];
-  }
 }
 
 /**
