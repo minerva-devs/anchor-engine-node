@@ -1,7 +1,7 @@
 {
     "server": {
         "host": "0.0.0.0",
-        "port": 3161,
+        "port": 3160,
         "api_key": "bolt-memory-secret"
     },
     "llm": {
