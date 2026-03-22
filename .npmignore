@@ -1,65 +1,46 @@
+# Source files (not needed in npm package)
+engine/src/
+engine/tests/
+engine/tsconfig.json
+engine/CMakeLists.txt
+engine/build-optimized.bat
+engine/bin/
+engine/context/
+engine/data/
+engine/native/
+mcp-server/src/
+mcp-server/tsconfig.json
+
+# Test files
+tests/
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
+
 # Development files
-.git
-.gitignore
-.github
-.vscode
+.github/
+.vscode/
+.idea/
 *.log
 logs/
-tests/
-benchmarks/
-reports/
-sample-data/
-codebase/
 
-# Build artifacts (will be rebuilt on install)
-dist/
-engine/dist/
-cpp/
-dist-android/
-dist-win/
+# Environment
+.env
+.env.*
 
-# User data (should not be published)
-inbox/
-external-inbox/
-mirrored_brain/
-backups/
-user_data/
-engine/inbox/
-engine/mirrored_brain/
-engine/backups/
-engine/context_data/
-engine/node_modules/
+# Database files
+context_data/
+context.db
+*.db
 
-# Development config
-*.md
-!README.md
-!LICENSE
-PROJECT_STATE_ASSESSMENT.md
-.zenodo.json
-paper.bib
-paper.md
-docker-compose.yml
-Dockerfile
-.jules/
-
-# Node modules (installed fresh by users)
+# Build artifacts (keep dist!)
 node_modules/
-
-# IDE
-*.swp
-*.swo
-*~
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# Test configs
-jest.config.cjs
-vitest.config.ts
-
-# Scripts not needed for end users
-scripts/build-standalone.js
-scripts/build-universal.bat
-scripts/migration-dashboard.js
-scripts/run-migration.js
+# Large files
+*.wasm
+*.gguf
