@@ -853,12 +853,12 @@ async function loadSecuritySettings(): Promise<void> {
         console.error(`   - Allowed ops: ${securitySettings.allowed_operations.join(', ')}`);
       }
     } else {
-      console.error("⚠️ No MCP settings found in Anchor config. Using defaults (disabled).");
+      console.error("⚠️ No MCP settings found in Anchor config. Using settings from user_settings.json.");
     }
   } catch (error: any) {
-    console.error(`⚠️ Failed to load security settings: ${error.message}`);
-    console.error("   MCP will remain disabled until settings can be loaded.");
-    securitySettings.enabled = false;
+    console.error(`⚠️ Failed to load security settings from engine: ${error.message}`);
+    console.error("   Using settings from user_settings.json (already loaded at startup).");
+    // Don't disable - keep the settings loaded from user_settings.json at startup
   }
 }
 
