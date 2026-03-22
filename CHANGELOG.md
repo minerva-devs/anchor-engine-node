@@ -6,6 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.9.0] - 2026-03-22 — Agent Discovery, Graph Export, Ingestion Status API
+
+### ✨ New Features
+
+#### Agent Discovery Service (P1)
+- **GET /v1/agent/discover** - Auto-detect installed AI agents (Qwen Code, Claude Desktop, Cursor, Continue.dev)
+- **POST /v1/agent/add** - Add an agent's chat directory to watched paths
+- Returns agent name, path, session count, and watched status
+- Cross-platform support (Linux, macOS, Windows, Termux/Android)
+
+#### Graph Export Service (P1)
+- **GET /v1/graph/export** - Export knowledge graph as markdown with wiki-links
+- Options: `maxNodes`, `minWeight`, `includeContent`, `maxContentLength`, `bucket`, `tag`
+- Can write to file with `?output=path` or return content directly
+- Generates statistics, top tags, hub atoms, and source listings
+
+#### Ingestion Status API (P1)
+- **GET /v1/ingest/status** - Get detailed ingestion progress
+- Returns: `active`, `state`, `currentFile`, `processed`, `total`, `queueDepth`
+- Tracks `startedAt` and `lastCompleted` timestamps
+
+### 🔧 Technical
+
+- New service: `engine/src/services/agent-discovery.ts`
+- New service: `engine/src/services/graph-export.ts`
+- Updated routes: `engine/src/routes/v1/system.ts` with P1 endpoints
+- All endpoints follow existing API patterns with proper error handling
+
+### 📚 Documentation
+
+- Agent integration guides in `docs/integrations/`:
+  - `claude-desktop.md`
+  - `cursor.md`
+  - `continue.md`
+  - `qwen-code.md`
+
+---
+
 ## [4.8.1] - 2026-03-20 — Local-Data Directory Restructuring
 
 ### 🔄 Breaking Changes

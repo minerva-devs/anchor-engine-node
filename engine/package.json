@@ -1,6 +1,6 @@
 {
   "name": "anchor-engine",
-  "version": "4.8.1",
+  "version": "4.9.0",
   "type": "module",
   "description": "Anchor Headless Context Engine & Knowledge Graph",
   "main": "src/index.js",

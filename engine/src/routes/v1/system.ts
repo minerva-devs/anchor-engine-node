@@ -671,4 +671,142 @@ export function setupSystemRoutes(app: Application) {
       res.status(500).json({ error: error.message });
     }
   });
+
+  // ============================================
+  // P1 Features: Agent Discovery, Ingestion Status, Graph Export
+  // ============================================
+
+  // GET /v1/agent/discover - Discover installed AI agents
+  app.get('/v1/agent/discover', async (_req: Request, res: Response) => {
+    try {
+      const { discoverAgents } = await import('../../services/agent-discovery.js');
+      const { getWatchedPaths } = await import('../../services/ingest/watchdog.js');
+
+      const watchedPaths = getWatchedPaths();
+      const agents = await discoverAgents(watchedPaths);
+
+      res.status(200).json({
+        status: 'success',
+        count: agents.length,
+        agents
+      });
+    } catch (error: any) {
+      console.error('[API] Agent discovery error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /v1/agent/add - Add an agent's chat directory to watched paths
+  app.post('/v1/agent/add', async (req: Request, res: Response) => {
+    try {
+      const { agent_id } = req.body;
+
+      if (!agent_id) {
+        res.status(400).json({ error: 'agent_id is required' });
+        return;
+      }
+
+      const { getAgentPath, getAgentPossiblePaths, KNOWN_AGENTS } = await import('../../services/agent-discovery.js');
+      const agentPath = await getAgentPath(agent_id);
+
+      if (!agentPath) {
+        const possiblePaths = getAgentPossiblePaths(agent_id);
+        res.status(404).json({
+          error: `Agent '${agent_id}' not found on this system`,
+          possible_locations: possiblePaths,
+          supported_agents: Object.keys(KNOWN_AGENTS)
+        });
+        return;
+      }
+
+      // Add to watched paths
+      const { addWatchPath } = await import('../../services/ingest/watchdog.js');
+      const success = await addWatchPath(agentPath);
+
+      if (success) {
+        res.status(200).json({
+          status: 'success',
+          message: `Added ${agent_id} chat directory to watched paths`,
+          agent_id,
+          path: agentPath
+        });
+      } else {
+        res.status(500).json({
+          error: 'Failed to add agent path to watched paths',
+          agent_id,
+          path: agentPath
+        });
+      }
+    } catch (error: any) {
+      console.error('[API] Agent add error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /v1/ingest/status - Get detailed ingestion progress
+  app.get('/v1/ingest/status', async (_req: Request, res: Response) => {
+    try {
+      const { systemStatus } = await import('../../services/system-status.js');
+      const ingestStatus = systemStatus.getIngestionStatus();
+      const status = systemStatus.getStatus();
+
+      const response = {
+        active: status.state === 'ingesting',
+        state: status.state,
+        currentFile: status.progress?.description || null,
+        processed: status.progress?.current || 0,
+        total: status.progress?.total || 0,
+        atomsCreated: 0,
+        errors: [],
+        startedAt: ingestStatus.currentJob?.startedAt?.toISOString() || null,
+        lastCompleted: ingestStatus.lastCompleted?.toISOString() || null,
+        queueDepth: ingestStatus.queueDepth
+      };
+
+      res.status(200).json(response);
+    } catch (error: any) {
+      console.error('[API] Ingest status error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /v1/graph/export - Export knowledge graph as markdown
+  app.get('/v1/graph/export', async (req: Request, res: Response) => {
+    try {
+      const { exportGraph, exportGraphToFile } = await import('../../services/graph-export.js');
+
+      const options = {
+        maxNodes: parseInt(req.query.maxNodes as string) || 100,
+        minWeight: parseInt(req.query.minWeight as string) || 1,
+        includeContent: req.query.includeContent !== 'false',
+        maxContentLength: parseInt(req.query.maxContentLength as string) || 200,
+        bucket: req.query.bucket as string,
+        tag: req.query.tag as string
+      };
+
+      const outputPath = req.query.output as string;
+
+      if (outputPath) {
+        const result = await exportGraphToFile(outputPath, options);
+        res.status(200).json({
+          status: 'success',
+          message: `Exported ${result.nodeCount} nodes to ${result.outputPath}`,
+          nodeCount: result.nodeCount,
+          edgeCount: result.edgeCount,
+          outputPath: result.outputPath
+        });
+      } else {
+        const result = await exportGraph(options);
+        res.status(200).json({
+          status: 'success',
+          nodeCount: result.nodeCount,
+          edgeCount: result.edgeCount,
+          content: result.content
+        });
+      }
+    } catch (error: any) {
+      console.error('[API] Graph export error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
