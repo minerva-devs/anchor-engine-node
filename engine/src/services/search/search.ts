@@ -981,6 +981,7 @@ async function _executeSearchInternal(
     
     if (dedupedAnchorIds.length > 0) {
       // Use TypeScript PhysicsTagWalker for radial inflation
+      console.log(`[Search] 🔬 PhysicsTagWalker starting: exploring ${dedupedAnchorIds.length} anchors for associations...`);
       const walker = new PhysicsTagWalker();
       walkerResults = await walker.performRadialInflation(
         dedupedAnchorIds,
