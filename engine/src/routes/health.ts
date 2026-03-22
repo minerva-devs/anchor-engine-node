@@ -1,6 +1,6 @@
 /**
  * Health Check Routes for ECE
- * 
+ *
  * Implements health check endpoints following Standard 058: UniversalRAG API
  */
 
@@ -8,8 +8,8 @@ import express, { Request, Response } from 'express';
 import { healthCheckService } from '../services/health-check-enhanced.js';
 
 export function setupHealthRoutes(app: express.Application) {
-  // Enhanced health check endpoint
-  app.get('/health', async (_req: Request, res: Response) => {
+  // Full health check endpoint (detailed)
+  app.get('/health/full', async (_req: Request, res: Response) => {
     try {
       const healthStatus = await healthCheckService.checkHealth();
 
@@ -30,7 +30,7 @@ export function setupHealthRoutes(app: express.Application) {
           platform: healthStatus.system.platform,
           arch: healthStatus.system.arch,
           uptime: process.uptime(),
-          version: '3.0.0'
+          version: '4.9.0'
         }
       });
     } catch (error: any) {
@@ -40,6 +40,25 @@ export function setupHealthRoutes(app: express.Application) {
         error: error.message,
         timestamp: new Date().toISOString()
       });
+    }
+  });
+
+  // WASM modules health endpoint
+  app.get('/health/wasm', async (_req: Request, res: Response) => {
+    try {
+      const healthStatus = await healthCheckService.checkHealth();
+      const wasmHealth = healthStatus.components.find(c => c.name === 'wasm-modules');
+
+      if (wasmHealth) {
+        const statusCode = wasmHealth.status === 'healthy' ? 200 :
+          wasmHealth.status === 'degraded' ? 207 : 503;
+
+        res.status(statusCode).json(wasmHealth);
+      } else {
+        res.status(500).json({ error: 'WASM module health check not available' });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

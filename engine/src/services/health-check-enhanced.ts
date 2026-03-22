@@ -7,6 +7,7 @@
 
 import { db } from '../core/db.js';
 import { nativeModuleManager } from '../utils/native-module-manager.js';
+import { wasmModuleLoader } from '../utils/wasm-module-loader.js';
 import * as os from 'os';
 import * as fs from 'fs/promises';
 import { pathManager } from '../utils/path-manager.js';
@@ -80,6 +81,10 @@ export class HealthCheckService {
     // Check native modules
     const nativeHealth = this.checkNativeModulesHealth();
     components.push(nativeHealth);
+
+    // Check WASM modules
+    const wasmHealth = this.checkWasmModulesHealth();
+    components.push(wasmHealth);
 
     // Check file system access
     const fsHealth = await this.checkFileSystemHealth();
@@ -237,6 +242,76 @@ export class HealthCheckService {
         name: 'native-modules',
         status: 'unhealthy',
         message: `Native module check failed: ${error.message}`,
+        details: {
+          error: error.message
+        }
+      };
+    }
+  }
+
+  /**
+   * Check WASM modules health (Standard 013)
+   */
+  private checkWasmModulesHealth(): ComponentHealth {
+    try {
+      const summary = wasmModuleLoader.getSummary();
+      const allStatus = wasmModuleLoader.getAllStatus();
+
+      // All modules loaded with WASM (no fallbacks)
+      if (summary.wasm === summary.total) {
+        return {
+          name: 'wasm-modules',
+          status: 'healthy',
+          message: `All ${summary.total} WASM modules loaded and operational`,
+          details: {
+            modules: allStatus,
+            summary
+          }
+        };
+      }
+
+      // Some modules using fallbacks
+      if (summary.fallback > 0) {
+        const fallbackModules = allStatus.filter(m => m.fallback).map(m => m.moduleName);
+        return {
+          name: 'wasm-modules',
+          status: 'degraded',
+          message: `${summary.fallback} WASM module(s) using JS fallbacks: ${fallbackModules.join(', ')}`,
+          details: {
+            modules: allStatus,
+            summary,
+            fallbackModules
+          }
+        };
+      }
+
+      // No modules loaded (shouldn't happen after init)
+      if (summary.wasm === 0 && summary.fallback === 0) {
+        return {
+          name: 'wasm-modules',
+          status: 'unhealthy',
+          message: 'No WASM modules loaded',
+          details: {
+            modules: allStatus,
+            summary
+          }
+        };
+      }
+
+      return {
+        name: 'wasm-modules',
+        status: 'healthy',
+        message: 'WASM modules operational',
+        details: {
+          modules: allStatus,
+          summary
+        }
+      };
+    } catch (error: any) {
+      return {
+        name: 'wasm-modules',
+        status: 'unhealthy',
+        message: `WASM module check failed: ${error.message}`,
         details: {
           error: error.message
         }
