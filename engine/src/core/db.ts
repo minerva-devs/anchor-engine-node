@@ -109,6 +109,22 @@ export class Database {
               console.warn(`[DB] Will attempt to overwrite on init`);
             }
           }
+
+          // Also wipe mirrored_brain to prevent corrupted files from accumulating
+          const mirroredBrainPath = path.join(path.dirname(dbPath), 'mirrored_brain');
+          if (fs.existsSync(mirroredBrainPath)) {
+            console.log(`[DB] Clearing mirrored_brain directory (regenerated from inbox on start)`);
+            try {
+              const entries = fs.readdirSync(mirroredBrainPath);
+              for (const entry of entries) {
+                const entryPath = path.join(mirroredBrainPath, entry);
+                fs.rmSync(entryPath, { recursive: true, force: true });
+              }
+              console.log(`[DB] mirrored_brain cleared (${entries.length} entries removed)`);
+            } catch (mirrorError: any) {
+              console.warn(`[DB] Warning: Could not clear mirrored_brain: ${mirrorError.message}`);
+            }
+          }
         } else {
           console.log(`[DB] Retaining existing database (wipe_on_startup=false). Index may be stale.`);
         }
