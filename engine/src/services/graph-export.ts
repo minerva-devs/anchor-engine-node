@@ -3,12 +3,16 @@
  *
  * Exports the knowledge graph as markdown with wiki-links.
  * Creates a KNOWLEDGE.md file that represents the corpus structure.
+ *
+ * NOTE: This endpoint should not be called during active ingestion
+ * as it may cause transaction conflicts in PGlite.
  */
 
 import { db } from '../core/db.js';
 import { PATHS } from '../config/paths.js';
 import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, basename } from 'path';
+import { systemStatus } from './system-status.js';
 
 export interface GraphExportOptions {
   /** Maximum number of nodes to include */
@@ -152,6 +156,12 @@ export async function exportGraph(
     tag
   } = options;
 
+  // Check if ingestion is active - avoid transaction conflicts
+  const status = systemStatus.getStatus();
+  if (status.state === 'ingesting') {
+    throw new Error('Graph export unavailable during ingestion. Please retry after ingestion completes.');
+  }
+
   let markdown = `# Knowledge Graph Export
 
 > Generated: ${new Date().toISOString()}
@@ -168,17 +178,23 @@ export async function exportGraph(
   try {
     const atomsResult = await db.run('SELECT COUNT(*) as count FROM atoms');
     stats.atoms = atomsResult.rows?.[0]?.count || 0;
-    
+
     const sourcesResult = await db.run('SELECT COUNT(*) as count FROM sources');
     stats.sources = sourcesResult.rows?.[0]?.count || 0;
-    
+
     const tagsResult = await db.run('SELECT COUNT(DISTINCT tag) as count FROM tags WHERE tag IS NOT NULL');
     stats.tags = tagsResult.rows?.[0]?.count || 0;
-    
+
     const moleculesResult = await db.run('SELECT COUNT(*) as count FROM molecules');
     stats.molecules = moleculesResult.rows?.[0]?.count || 0;
   } catch (e) {
     console.error('[GraphExport] Error getting stats:', e);
+    // Return empty result on database errors
+    return {
+      content: `# Knowledge Graph Export\n\n> Error: Database query failed. The engine may be busy with ingestion.\n`,
+      nodeCount: 0,
+      edgeCount: 0
+    };
   }
 
   markdown += `| Metric | Count |
