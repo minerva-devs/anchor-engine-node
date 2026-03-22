@@ -20,6 +20,7 @@ module.exports = {
     '/node_modules/',
     '/dist/',
     '/context_data/',
+    '/local-data/', // Ignore mirrored brain and inbox data
     '\\.d\\.ts$', // Ignore declaration files
     'pglite-database.test.ts', // Requires Vitest: PGlite WASM/ESM module-linking conflict with Jest
     'physics_walker.test.ts'   // Requires Vitest: PGlite WASM/ESM module-linking conflict with Jest
@@ -29,7 +30,8 @@ module.exports = {
   modulePathIgnorePatterns: [
     '<rootDir>/engine/native/',
     '<rootDir>/engine/src/native/',
-    '<rootDir>/cpp/'
+    '<rootDir>/cpp/',
+    '<rootDir>/local-data/'
   ],
 
   // Module resolution for ESM

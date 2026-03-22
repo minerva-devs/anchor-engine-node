@@ -74,11 +74,16 @@ app.use('/v1', (req, res, next) => {
 
 // API Key Authentication for /v1 routes
 app.use('/v1', apiKeyAuth);
-if (config.API_KEY && config.API_KEY !== 'ece-secret-key') {
-  StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: true });
-} else {
-  StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: false });
+
+// Security: Require API key to be configured
+if (!config.API_KEY || config.API_KEY.trim() === '') {
+  console.error('\n❌ FATAL: API key not configured!');
+  console.error('   Please set server.api_key in user_settings.json');
+  console.error('   Example: { "server": { "api_key": "your-secret-key-here" } }\n');
+  process.exit(1);
 }
+
+StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: true });
 
 // Rate limiting — applied after auth so authenticated clients share the same window
 // General limit: 100 requests / minute per IP

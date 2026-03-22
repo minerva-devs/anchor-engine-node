@@ -72,15 +72,11 @@ function formatNumber(num: number): string {
  * Get API key display status
  */
 function getApiKeyStatus(): string {
-  if (!config.API_KEY || config.API_KEY === 'ece-secret-key') {
-    return 'not set (using default)';
-  }
-  
-  // Show partial key for identification (first 8 chars + ellipsis)
-  const partialKey = config.API_KEY.length > 8 
-    ? `${config.API_KEY.substring(0, 8)}...` 
+  // API key is required at startup, so it should always be set
+  const partialKey = config.API_KEY.length > 8
+    ? `${config.API_KEY.substring(0, 8)}...`
     : config.API_KEY;
-  
+
   return `set (${partialKey})`;
 }
 
