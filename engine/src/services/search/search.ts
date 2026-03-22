@@ -45,6 +45,34 @@ export type { SearchResult };
 export type { BrightNode, BrightNodeRelationship } from './bright-nodes.js';
 export { getBrightNodes, getStructuredGraph } from './bright-nodes.js';
 
+// --- Search Cache (Standard 016) ---
+interface CacheEntry {
+  results: { context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string };
+  timestamp: number;
+}
+
+const searchCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 60000; // 1 minute TTL
+const MAX_CACHE_SIZE = 100;
+
+function getCacheKey(query: string, buckets: string[], maxChars: number, tags: string[], provenance: string, useMaxRecall: boolean): string {
+  return createHash('md5').update(`${query}|${buckets.join(',')}|${maxChars}|${tags.join(',')}|${provenance}|${useMaxRecall}`).digest('hex');
+}
+
+function cleanExpiredCache(): void {
+  const now = Date.now();
+  for (const [key, entry] of searchCache.entries()) {
+    if (now - entry.timestamp > CACHE_TTL_MS) {
+      searchCache.delete(key);
+    }
+  }
+  // Also trim if too large
+  if (searchCache.size > MAX_CACHE_SIZE) {
+    const keysToDelete = Array.from(searchCache.keys()).slice(0, searchCache.size - MAX_CACHE_SIZE);
+    keysToDelete.forEach(k => searchCache.delete(k));
+  }
+}
+
 /**
  * Lightweight semantic scoring for two-pass search (Standard 134)
  * Scores candidates without expensive context inflation
@@ -1224,6 +1252,16 @@ export async function iterativeSearch(
     throw new Error(`Search rejected: ${throttleResult.reason}. Please wait and try again.`);
   }
 
+  // Check cache first
+  cleanExpiredCache();
+  const cacheKey = getCacheKey(query, buckets, maxChars, tags, provenance, useMaxRecall);
+  const cached = searchCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+    console.log(`[IterativeSearch] Cache HIT for query: "${query.substring(0, 50)}..."`);
+    return cached.results;
+  }
+  console.log(`[IterativeSearch] Cache MISS for query: "${query.substring(0, 50)}..."`);
+
   // 0. Extract Scope Tags (Hashtags) to preserve them across strategies
   // We want to make sure if user typed "#work", it stays even if we strip adjectives.
   const scopeTags: string[] = [...tags];
@@ -1236,7 +1274,10 @@ export async function iterativeSearch(
   // Strategy 1: Standard Expanded Search (All Nouns, Verbs, Dates + Expansion)
   console.log(`[IterativeSearch] Strategy 1: Standard Execution`);
   let results = await executeSearch(query, buckets, maxChars, provenance, tags, undefined, useMaxRecall, userContext);
-  if (results.results.length > 0) return { ...results, attempt: 1 };
+  if (results.results.length > 0) {
+    searchCache.set(cacheKey, { results: { ...results, attempt: 1 }, timestamp: Date.now() });
+    return { ...results, attempt: 1 };
+  }
 
   // Strategy 2: Strict "Subjects & Time" (Strip Verbs/Adjectives, keep Nouns + Dates)
   console.log(`[IterativeSearch] Strategy 2: Strict Nouns/Dates`);
@@ -1253,7 +1294,10 @@ export async function iterativeSearch(
     const strictQuery = Array.from(uniqueTokens).join(' ') + ' ' + tagsString;
     console.log(`[IterativeSearch] Fallback Query 1: "${strictQuery.trim()}"`);
     results = await executeSearch(strictQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
-    if (results.results.length > 0) return { ...results, attempt: 2 };
+    if (results.results.length > 0) {
+      searchCache.set(cacheKey, { results: { ...results, attempt: 2 }, timestamp: Date.now() });
+      return { ...results, attempt: 2 };
+    }
   }
 
   // Strategy 3: "Just the Dates" (If query heavily implies time)
@@ -1267,9 +1311,14 @@ export async function iterativeSearch(
   if (entityQuery.trim().length > 0 && entityQuery.trim() !== (Array.from(uniqueTokens).join(' ') + ' ' + tagsString).trim()) {
     console.log(`[IterativeSearch] Fallback Query 2: "${entityQuery.trim()}"`);
     results = await executeSearch(entityQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
-    if (results.results.length > 0) return { ...results, attempt: 3 };
+    if (results.results.length > 0) {
+      searchCache.set(cacheKey, { results: { ...results, attempt: 3 }, timestamp: Date.now() });
+      return { ...results, attempt: 3 };
+    }
   }
 
+  // Cache empty results too (with shorter TTL would be ideal, but keeping simple)
+  searchCache.set(cacheKey, { results: { ...results, attempt: 4 }, timestamp: Date.now() });
   return { ...results, attempt: 4 }; // Return empty result if all fail
 }
 
