@@ -334,6 +334,8 @@ const RESOURCES: Resource[] = [
 // Helper function for API calls
 async function callAnchorAPI(endpoint: string, method: string = "GET", body?: any): Promise<any> {
   const url = `${ANCHOR_API_URL}${endpoint}`;
+  console.error(`[MCP] Calling: ${method} ${url}`);
+
   const options: RequestInit = {
     method,
     headers: {
@@ -350,30 +352,36 @@ async function callAnchorAPI(endpoint: string, method: string = "GET", body?: an
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(url, options);
+  try {
+    const response = await fetch(url, options);
 
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Anchor API error (${response.status}): ${error}`);
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Anchor API error (${response.status}): ${error}`);
+    }
+
+    // Handle streaming responses (SSE)
+    const contentType = response.headers.get("content-type");
+    if (contentType?.includes("text/event-stream")) {
+      const text = await response.text();
+      // Parse SSE events
+      const events = text
+        .split("\n\n")
+        .filter((e) => e.trim())
+        .map((event) => {
+          const dataMatch = event.match(/data: (.+)/);
+          return dataMatch ? JSON.parse(dataMatch[1]) : null;
+        })
+        .filter(Boolean);
+      return events;
+    }
+
+    return response.json();
+  } catch (error: any) {
+    console.error(`[MCP] Fetch failed for ${url}: ${error.message}`);
+    console.error(`[MCP] ANCHOR_API_URL=${ANCHOR_API_URL}`);
+    throw error;
   }
-
-  // Handle streaming responses (SSE)
-  const contentType = response.headers.get("content-type");
-  if (contentType?.includes("text/event-stream")) {
-    const text = await response.text();
-    // Parse SSE events
-    const events = text
-      .split("\n\n")
-      .filter((e) => e.trim())
-      .map((event) => {
-        const dataMatch = event.match(/data: (.+)/);
-        return dataMatch ? JSON.parse(dataMatch[1]) : null;
-      })
-      .filter(Boolean);
-    return events;
-  }
-
-  return response.json();
 }
 
 // Tool handlers
