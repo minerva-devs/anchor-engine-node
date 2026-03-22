@@ -14,8 +14,10 @@ import { Application, Request, Response } from 'express';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { exploreMemory, ExploreRequest } from '../../services/search/explore.js';
 import { radialDistill, RadialDistillRequest } from '../../services/distillation/radial-distiller.js';
+import { validate, schemas } from '../../middleware/validate.js';
 
 export function setupMemoryRoutes(app: Application) {
+  // Note: memoryExplore schema validates basic structure; complex seed validation remains inline
   app.post('/v1/memory/explore', async (req: Request, res: Response) => {
     const startTime = Date.now();
     StructuredLogger.info('EXPLORE_REQUEST', { endpoint: '/v1/memory/explore' });

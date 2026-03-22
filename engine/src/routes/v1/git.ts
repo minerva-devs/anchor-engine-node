@@ -1,19 +1,15 @@
 import { Application, Request, Response } from 'express';
+import { validate, schemas } from '../../middleware/validate.js';
 
 export function setupGitRoutes(app: Application) {
   // GitHub Repository Ingestion Endpoints (Standard 115)
   // POST /v1/github/repos - Register new repo and trigger initial ingestion
-  app.post('/v1/github/repos', async (req: Request, res: Response) => {
+  app.post('/v1/github/repos', validate(schemas.githubRepos), async (req: Request, res: Response) => {
     try {
       const body = req.body as any;
       const url = body.url as string;
       const bucket = body.bucket as string;
       const includeHistory = body.include_history === true;
-
-      if (!url || !bucket) {
-        res.status(400).json({ error: 'url and bucket are required' });
-        return;
-      }
 
       const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();

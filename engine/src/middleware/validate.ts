@@ -114,6 +114,45 @@ export const schemas: Record<string, Record<string, FieldSchema>> = {
     code_weight: { type: 'number', required: false, min: 0, max: 1 }
   },
 
+  /** POST /v1/memory/distill */
+  memoryDistill: {
+    seed: { type: 'string', required: false },
+    radius: { type: 'number', required: false, min: 1, max: 10 },
+    max_radius: { type: 'number', required: false, min: 1, max: 20 },
+    output_format: { type: 'string', required: false },
+    output_path: { type: 'string', required: false }
+  },
+
+  /** POST /v1/memory/explore */
+  memoryExplore: {
+    seed: { type: 'string', required: true, minLength: 1 },
+    depth: { type: 'number', required: false, min: 1, max: 10 },
+    max_nodes: { type: 'number', required: false, min: 1, max: 1000 }
+  },
+
+  /** POST /v1/github/repos */
+  githubRepos: {
+    url: { type: 'string', required: true, minLength: 1 },
+    bucket: { type: 'string', required: true, minLength: 1 },
+    include_history: { type: 'boolean', required: false }
+  },
+
+  /** POST /v1/terminal/exec */
+  terminalExec: {
+    command: { type: 'string', required: true, minLength: 1 },
+    cwd: { type: 'string', required: false },
+    timeout: { type: 'number', required: false, min: 1000, max: 300000 }
+  },
+
+  /** POST /v1/config/ingestion */
+  configIngestion: {
+    concept_density: { type: 'string', required: false },
+    tag_threshold: { type: 'number', required: false, min: 0, max: 1 },
+    dedup_strength: { type: 'string', required: false },
+    token_budget_default: { type: 'number', required: false, min: 100, max: 10000 },
+    ingestion_profile: { type: 'string', required: false }
+  },
+
   /** POST /v1/chat/completions */
   chatCompletions: {
     messages: { type: 'array', required: true },

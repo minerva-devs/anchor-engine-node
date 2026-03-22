@@ -3,6 +3,7 @@ import { db } from '../../core/db.js';
 import { getState, clearState } from '../../services/scribe/scribe.js';
 import { PATHS, PROJECT_ROOT } from '../../config/paths.js';
 import { config } from '../../config/index.js';
+import { validate, schemas } from '../../middleware/validate.js';
 
 // Track server control state
 let serverStartTime: Date | null = null;
@@ -261,12 +262,12 @@ export function setupSystemRoutes(app: Application) {
   });
 
   // POST /v1/config/ingestion - Update ingestion config
-  app.post('/v1/config/ingestion', async (req: Request, res: Response) => {
+  app.post('/v1/config/ingestion', validate(schemas.configIngestion), async (req: Request, res: Response) => {
     try {
       const { config } = await import('../../config/index.js');
       const updates = req.body;
 
-      // Validate and apply updates
+      // Validate enum values (schema handles basic type validation)
       if (updates.concept_density && !['low', 'medium', 'high'].includes(updates.concept_density)) {
         res.status(400).json({ error: 'Invalid concept_density. Must be low, medium, or high' });
         return;
@@ -279,16 +280,6 @@ export function setupSystemRoutes(app: Application) {
 
       if (updates.ingestion_profile && !['code', 'notes', 'chat', 'default'].includes(updates.ingestion_profile)) {
         res.status(400).json({ error: 'Invalid ingestion_profile. Must be code, notes, chat, or default' });
-        return;
-      }
-
-      if (updates.tag_threshold !== undefined && (updates.tag_threshold < 0 || updates.tag_threshold > 1)) {
-        res.status(400).json({ error: 'tag_threshold must be between 0 and 1' });
-        return;
-      }
-
-      if (updates.token_budget_default !== undefined && updates.token_budget_default < 0) {
-        res.status(400).json({ error: 'token_budget_default must be positive' });
         return;
       }
 

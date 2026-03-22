@@ -1,15 +1,12 @@
 import { Application, Request, Response } from 'express';
 import { db } from '../../core/db.js';
+import { validate, schemas } from '../../middleware/validate.js';
 
 export function setupAdminRoutes(app: Application) {
   // Terminal Command Execution Endpoint
-  app.post('/v1/terminal/exec', async (req: Request, res: Response) => {
+  app.post('/v1/terminal/exec', validate(schemas.terminalExec), async (req: Request, res: Response) => {
     try {
       const { command } = req.body;
-
-      if (!command) {
-        return res.status(400).json({ error: 'Command is required' });
-      }
 
       // For now, we'll simulate command execution for security
       // In a real implementation, you'd want to use a secure sandbox
