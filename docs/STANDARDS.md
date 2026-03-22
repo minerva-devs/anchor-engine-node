@@ -17,10 +17,13 @@ Quick reference for all active standards. Full specifications are in `specs/curr
 | [009](../specs/current-standards/009-illuminate-bfs-traversal.md) | Illuminate BFS Traversal | Graph exploration |
 | [010](../specs/current-standards/010-radial-distillation-v2.md) | Radial Distillation v2 | Enhanced distillation |
 | [011](../specs/current-standards/011-security-hardening.md) | Security Hardening | Auth, path validation, rate limiting |
-| [012](../specs/current-standards/012-data-integrity.md) | Data Integrity | Database wipe, transaction safety |
+| [012](../specs/current-standards/012-data-integrity.md) | Data Integrity | Database wipe, transaction safety, operation state machine |
 | [013](../specs/current-standards/013-wasm-fallback.md) | WASM Module Fallbacks | Graceful degradation |
 | [014](../specs/current-standards/014-operational-visibility.md) | Operational Visibility | Startup banner, health, progress |
 | [015](../specs/current-standards/015-configuration-management.md) | Configuration Management | Path constants, settings hierarchy |
+| [016](../specs/current-standards/016-mcp-integration-testing.md) | MCP Integration Testing | Integration tests, graceful degradation |
+| [017](../specs/current-standards/017-dependency-validation.md) | Dependency Validation | deps vs devDeps, pre-publish checks |
+| [018](../specs/current-standards/018-configuration-validation.md) | Configuration Validation | Fail fast, startup checks |
 
 ---
 
@@ -65,6 +68,32 @@ Quick reference for all active standards. Full specifications are in `specs/curr
 | Duplicate paths | Single `PATHS` constant | `import { PATHS } from config` |
 | `process.cwd()` | Use PATHS | Never use `process.cwd()` |
 | Manual enable | Auto-enable logic | `if (paths.length) start()` |
+
+### MCP Integration (Standard 016)
+
+| Pain Point | Fix | Code Pattern |
+|------------|-----|--------------|
+| Port mismatch | Use engine port from settings | `ANCHOR_API_URL = settings.server.port` |
+| Path resolution | Go up 2 levels from dist/ | `join(__dirname, '..', '..')` |
+| Engine unavailable | Graceful degradation | Return error message, don't crash |
+| No visibility | Log API calls | `console.error('[MCP] Calling:', url)` |
+
+### Dependency Validation (Standard 017)
+
+| Pain Point | Fix | Code Pattern |
+|------------|-----|--------------|
+| Missing deps | Validate before publish | `npm run validate:deps` |
+| WASM in devDeps | Move to dependencies | Check `package.json` |
+| npm install fails | Test with `npm pack` | Smoke test packed tarball |
+
+### Configuration Validation (Standard 018)
+
+| Pain Point | Fix | Code Pattern |
+|------------|-----|--------------|
+| Missing API key | Fail fast at startup | `if (!apiKey) process.exit(1)` |
+| Port in use | Check before bind | `isPortAvailable(port)` |
+| Path not writable | Test write access | `fs.writeFileSync(testFile)` |
+| Insecure defaults | Warn on startup | Show warnings in banner |
 
 ---
 
