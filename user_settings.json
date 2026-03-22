@@ -87,7 +87,9 @@
             "read_file",
             "get_stats",
             "ingest",
-            "distill"
+            "distill",
+            "illuminate",
+            "list"
         ],
         "blocked_operations": []
     },
