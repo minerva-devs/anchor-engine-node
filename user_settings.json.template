@@ -4,6 +4,16 @@
     "port": 3160,
     "api_key": "change-me-to-at-least-16-characters"
   },
+  "encryption": {
+    "enabled": false,
+    "password_storage": "env",
+    "password_env_var": "ANCHOR_MASTER_PASSWORD",
+    "min_confidence": 0.7,
+    "auto_encrypt_on_ingest": true,
+    "auto_decrypt_on_search": true,
+    "detect_nsfw": false,
+    "dry_run": false
+  },
   "search": {
     "strategy": "hybrid",
     "hide_years_in_tags": true,

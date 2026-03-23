@@ -19,6 +19,7 @@ import { setupSettingsRoutes } from './v1/settings.js';
 import { setupEnhancedRoutes } from './enhanced-api.js';
 import { setupMemoryRoutes } from './v1/memory.js';
 import { setupDistillRoutes } from './v1/distills.js';
+import { setupEncryptionRoutes } from './v1/encryption.js';
 
 export function setupRoutes(app: Application) {
   // Core data routes
@@ -27,6 +28,9 @@ export function setupRoutes(app: Application) {
   setupBackupRoutes(app);
   setupAtomRoutes(app);
   setupTagsRoutes(app);
+
+  // Encryption routes (must be before system routes)
+  setupEncryptionRoutes(app);
 
   // System & admin routes
   setupSystemRoutes(app);

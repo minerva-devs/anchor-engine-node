@@ -1483,6 +1483,7 @@
             const [loading, setLoading] = useState(true);
             const [saving, setSaving] = useState(false);
             const [message, setMessage] = useState('');
+            const [showPasswordInput, setShowPasswordInput] = useState(false);
 
             useEffect(() => {
                 loadSettings();
@@ -1989,6 +1990,146 @@
                             </div>
 
                             <div id="github-auth-message" className="hidden p-3 rounded-lg text-sm"></div>
+                        </div>
+
+                        {/* Content Encryption Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-pink-400">
+                                <i data-lucide="lock"></i>
+                                Content Encryption
+                            </h3>
+                            <p className="text-xs text-gray-400 mb-4">
+                                Encrypt sensitive content (credentials, personal info, NSFW material) in your knowledge base.
+                                Encrypted blocks are masked during LLM processing but preserved for personal reference.
+                            </p>
+
+                            <div className="space-y-4">
+                                {/* Encryption Toggle */}
+                                <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-pink-400">Enable Content Encryption</p>
+                                        <p className="text-sm text-gray-400">
+                                            Automatically encrypt sensitive content during ingestion
+                                        </p>
+                                    </div>
+                                    <input
+                                        type="checkbox"
+                                        checked={settings?.encryption?.enabled ?? false}
+                                        onChange={(e) => {
+                                            updateSetting('encryption', 'enabled', e.target.checked);
+                                            // Show password prompt if enabling
+                                            if (e.target.checked && !settings?.encryption?.password_set) {
+                                                setShowPasswordInput(true);
+                                            }
+                                        }}
+                                        className="w-5 h-5 accent-pink-500 flex-shrink-0 ml-4"
+                                    />
+                                </div>
+
+                                {/* Master Password Input */}
+                                {(settings?.encryption?.enabled || showPasswordInput) && (
+                                    <div className="p-4 bg-white/5 rounded-lg">
+                                        <label className="block text-sm font-medium mb-2">
+                                            Master Password
+                                            <span className="text-xs text-gray-500 ml-2">(required for encryption)</span>
+                                        </label>
+                                        <input
+                                            type="password"
+                                            id="encryption-master-password"
+                                            placeholder="Enter a strong password (min 12 characters)"
+                                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-pink-500/50 outline-none font-mono text-sm"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-2">
+                                            ⚠️ <strong>Store this password safely!</strong> If lost, encrypted content cannot be recovered.
+                                            We recommend using a password manager.
+                                        </p>
+                                        <div className="mt-3 flex gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    const passwordInput = document.getElementById('encryption-master-password');
+                                                    const password = passwordInput?.value;
+                                                    if (!password || password.length < 12) {
+                                                        alert('Password must be at least 12 characters for security');
+                                                        return;
+                                                    }
+                                                    
+                                                    try {
+                                                        // Set password temporarily (cached in memory for 5 min)
+                                                        const res = await fetch('/v1/encryption/set-password', {
+                                                            method: 'POST',
+                                                            headers: {
+                                                                'Content-Type': 'application/json',
+                                                                'Authorization': `Bearer ${API_KEY}`
+                                                            },
+                                                            body: JSON.stringify({ password, validate: true })
+                                                        });
+                                                        
+                                                        const data = await res.json();
+                                                        if (res.ok) {
+                                                            alert('✅ Password set! It will be cached for 5 minutes.\n\nSet ANCHOR_MASTER_PASSWORD environment variable for permanent storage.');
+                                                            passwordInput.value = '';
+                                                            updateSetting('encryption', 'password_set', true);
+                                                        } else {
+                                                            alert('❌ ' + (data.error || 'Failed to set password'));
+                                                        }
+                                                    } catch (error: any) {
+                                                        alert('❌ ' + error.message);
+                                                    }
+                                                }}
+                                                className="px-4 py-2 bg-pink-500/20 text-pink-400 border border-pink-500/30 rounded-lg hover:bg-pink-500/30 transition-colors text-sm font-medium"
+                                            >
+                                                Set Password (Temporary)
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    const password = prompt('Enter master password to clear from cache:');
+                                                    if (password) {
+                                                        // Just clear the cached password
+                                                        fetch('/v1/encryption/clear-password', {
+                                                            method: 'POST',
+                                                            headers: { 'Authorization': `Bearer ${API_KEY}` }
+                                                        });
+                                                        alert('✅ Password cleared from memory');
+                                                    }
+                                                }}
+                                                className="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/30 transition-colors text-sm font-medium"
+                                            >
+                                                Clear from Memory
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Encryption Stats */}
+                                {settings?.encryption?.enabled && (
+                                    <div className="p-4 bg-white/5 rounded-lg">
+                                        <p className="text-sm font-medium mb-2">Encryption Status</p>
+                                        <div className="grid grid-cols-2 gap-3 text-xs">
+                                            <div>
+                                                <span className="text-gray-500">Auto-encrypt on ingest:</span>
+                                                <span className="text-pink-400 ml-2">Yes</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-500">Auto-decrypt on search:</span>
+                                                <span className="text-pink-400 ml-2">Yes</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-500">NSFW detection:</span>
+                                                <span className={settings?.encryption?.detect_nsfw ? 'text-pink-400' : 'text-gray-500'}>
+                                                    {settings?.encryption?.detect_nsfw ? 'Enabled' : 'Disabled'}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-gray-500">Min confidence:</span>
+                                                <span className="text-pink-400 ml-2">{(settings?.encryption?.min_confidence || 0.7) * 100}%</span>
+                                            </div>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-3">
+                                            💡 <strong>Tip:</strong> Encryption protects sensitive content from LLM content filters while preserving your ability to search and view it.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
