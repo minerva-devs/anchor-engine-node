@@ -1,7 +1,18 @@
 {
     "server": {
         "host": "0.0.0.0",
-        "port": 3000
+        "port": 3160,
+        "api_key": "bolt-memory-secret"
+    },
+    "encryption": {
+        "enabled": false,
+        "password_storage": "env",
+        "password_env_var": "ANCHOR_MASTER_PASSWORD",
+        "min_confidence": 0.7,
+        "auto_encrypt_on_ingest": true,
+        "auto_decrypt_on_search": true,
+        "detect_nsfw": false,
+        "dry_run": false
     },
     "llm": {
         "provider": "remote",
