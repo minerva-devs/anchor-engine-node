@@ -1202,10 +1202,21 @@
                 if (!repoUrl.trim()) return;
                 setLoading(true);
                 setMessage('');
+                
+                // Get PAT from settings page input (if user entered one)
+                const patInput = document.getElementById('github-pat-input');
+                const githubToken = patInput?.value?.trim() || '';
+                
                 try {
+                    const headers = { 'Content-Type': 'application/json' };
+                    // Only include token if provided (temporary, not stored)
+                    if (githubToken) {
+                        headers['X-GitHub-Token'] = githubToken;
+                    }
+                    
                     const res = await fetch('/v1/github/repos', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers,
                         body: JSON.stringify({
                             url: repoUrl.trim(),
                             branch: branch.trim() || 'main',
@@ -1215,12 +1226,44 @@
                         })
                     });
                     const data = await res.json();
-                    setMessage('✅ ' + (data.message || 'Repository ingestion started'));
+                    
+                    if (res.ok) {
+                        setMessage('✅ ' + (data.message || 'Repository ingestion started'));
+                        // Clear PAT input after successful use (security)
+                        if (patInput) patInput.value = '';
+                        // Clear message box on settings page too
+                        const msgBox = document.getElementById('github-auth-message');
+                        if (msgBox) {
+                            msgBox.className = 'hidden p-3 rounded-lg text-sm';
+                            msgBox.textContent = '';
+                        }
+                    } else {
+                        // Show clear error message
+                        const errorMsg = data.error || data.message || 'Unknown error';
+                        setMessage('❌ ' + errorMsg);
+                        
+                        // Also show on settings page message box
+                        const msgBox = document.getElementById('github-auth-message');
+                        if (msgBox) {
+                            msgBox.className = 'p-3 rounded-lg text-sm bg-red-500/10 border border-red-500/30 text-red-300';
+                            msgBox.textContent = '❌ GitHub Error: ' + errorMsg + ' Check your token has repo scope.';
+                        }
+                    }
                 } catch (error) {
-                    setMessage('❌ Failed: ' + error.message);
+                    const errorMsg = error.message || 'Failed to connect to GitHub';
+                    setMessage('❌ ' + errorMsg);
+                    
+                    // Also show on settings page message box
+                    const msgBox = document.getElementById('github-auth-message');
+                    if (msgBox) {
+                        msgBox.className = 'p-3 rounded-lg text-sm bg-red-500/10 border border-red-500/30 text-red-300';
+                        msgBox.textContent = '❌ Connection Error: ' + errorMsg + '. Check network and try again.';
+                    }
                 } finally {
                     setLoading(false);
-                    setTimeout(() => setMessage(''), 5000);
+                    // Clear PAT from memory (input already cleared above on success)
+                    if (patInput && patInput.value) patInput.value = '';
+                    setTimeout(() => setMessage(''), 8000);
                 }
             };
 
@@ -1915,6 +1958,37 @@
                                     When set, all /v1 API requests must include <code>Authorization: Bearer &lt;key&gt;</code>
                                 </p>
                             </div>
+                        </div>
+
+                        {/* GitHub Authentication Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-green-400">
+                                <i data-lucide="github"></i>
+                                GitHub Authentication
+                            </h3>
+                            <p className="text-xs text-gray-400 mb-4">
+                                Enter a Personal Access Token (PAT) to ingest private repositories. 
+                                The token is used only for the current operation and is not stored.
+                            </p>
+                            
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium mb-2">Personal Access Token</label>
+                                <input
+                                    type="password"
+                                    id="github-pat-input"
+                                    placeholder="ghp_... (optional, uses git credentials if empty)"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none font-mono text-sm"
+                                />
+                                <p className="text-xs text-gray-500 mt-2">
+                                    Generate at:{' '}
+                                    <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">
+                                        github.com/settings/tokens
+                                    </a>
+                                    {' '}Required scopes: <code className="bg-white/10 px-1 rounded">repo</code>
+                                </p>
+                            </div>
+
+                            <div id="github-auth-message" className="hidden p-3 rounded-lg text-sm"></div>
                         </div>
                     </div>
                 </div>

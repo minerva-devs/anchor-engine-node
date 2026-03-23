@@ -30,5 +30,10 @@
             "memory"
         ],
         "max_chars_default": 8192
+    },
+    "watcher": {
+        "extra_paths": [
+            "/data/data/com.termux/files/home/projects/Coding-Notes/inbox/chats/qwen-raw"
+        ]
     }
 }

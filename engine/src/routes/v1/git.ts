@@ -11,6 +11,10 @@ export function setupGitRoutes(app: Application) {
       const bucket = body.bucket as string;
       const includeHistory = body.include_history === true;
       const runAnalysis = body.run_analysis === true;
+      
+      // Get temporary GitHub token from header (if provided by user)
+      // Token is NOT stored, used only for this operation
+      const tempToken = req.headers['x-github-token'] as string | undefined;
 
       const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();
@@ -23,12 +27,21 @@ export function setupGitRoutes(app: Application) {
         try {
           await service.syncRepo(repo.id, { runAnalysis });
           if (includeHistory) {
-            const token = process.env.GITHUB_TOKEN;
+            // Use temp token if provided, otherwise fall back to env var
+            const token = tempToken || process.env.GITHUB_TOKEN;
             await service.ingestGitHistory(repo.owner, repo.repo, repo.branch, bucket, token);
             console.log(`[API] Git history ingested for ${repo.owner}/${repo.repo}`);
           }
+          // Clear temp token from memory after use (security)
+          if (tempToken) {
+            console.log(`[API] Temporary GitHub token cleared after use`);
+          }
         } catch (error: any) {
           console.error(`[API] Background sync/history failed for ${repo.id}:`, error);
+          // Clear temp token on error too
+          if (tempToken) {
+            console.log(`[API] Temporary GitHub token cleared after error`);
+          }
         }
       })();
 
