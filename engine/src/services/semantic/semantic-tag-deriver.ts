@@ -72,7 +72,7 @@ export class SemanticTagDeriver {
     // Check if required entities are present
     if (rule.requiredEntities) {
       const hasRequiredEntities = rule.requiredEntities.some((reqType: string) =>
-        entities.some(entity => this.entityMatchesType(entity, reqType))
+        entities.some(entity => this.entityMatchesType(entity, reqType)),
       );
       if (!hasRequiredEntities) return false;
     }
@@ -80,14 +80,14 @@ export class SemanticTagDeriver {
     // Check if any exclusion keywords are present
     if (rule.exclusions) {
       const hasExclusion = rule.exclusions.some((excl: string) =>
-        content.toLowerCase().includes(excl.toLowerCase())
+        content.toLowerCase().includes(excl.toLowerCase()),
       );
       if (hasExclusion) return false;
     }
 
     // Check if any trigger keywords are present
     const hasTrigger = rule.triggers.some((trigger: string) =>
-      content.toLowerCase().includes(trigger.toLowerCase())
+      content.toLowerCase().includes(trigger.toLowerCase()),
     );
 
     return hasTrigger;
@@ -169,7 +169,7 @@ export class SemanticTagDeriver {
       'method', 'variable', 'algorithm', 'cozodb', 'electron', 'react', 'vite',
       'graphql', 'rest', 'json', 'xml', 'html', 'css', 'sql', 'nosql', 'mongodb',
       'postgresql', 'mysql', 'redis', 'docker', 'kubernetes', 'aws', 'azure', 'gcp',
-      'rag', 'vector', 'embedding', 'simhash', 'cozo', 'rocksdb', 'glm', 'qwen'
+      'rag', 'vector', 'embedding', 'simhash', 'cozo', 'rocksdb', 'glm', 'qwen',
     ];
     return techTerms.includes(entity.toLowerCase());
   }
@@ -183,7 +183,7 @@ export class SemanticTagDeriver {
       /yesterday|today|tomorrow/,
       /morning|afternoon|evening|night/,
       /january|february|march|april|may|june|july|august|september|october|november|december/i,
-      /monday|tuesday|wednesday|thursday|friday|saturday|sunday/i
+      /monday|tuesday|wednesday|thursday|friday|saturday|sunday/i,
     ];
 
     return timePatterns.some(pattern => pattern.test(content.toLowerCase()));
@@ -205,7 +205,7 @@ export class SemanticTagDeriver {
       /(^|\n)(User|Human|Assistant|AI|System|Me|You):/i,
       /(^|\n)\[\d{2}:\d{2}\]/, // [14:30]
       /^(> )?User:/m,
-      /^(> )?Assistant:/m
+      /^(> )?Assistant:/m,
     ];
     return chatPatterns.some(p => p.test(content));
   }

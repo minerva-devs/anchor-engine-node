@@ -109,15 +109,15 @@ async function resolveSeedsByQuery(query: string, limit: number): Promise<string
       `SELECT id FROM atoms
        WHERE to_tsvector('simple', content) @@ to_tsquery('simple', $1)
        LIMIT $2`,
-      [terms, limit]
+      [terms, limit],
     );
     return (result.rows as any[]).map(r => r.id);
   } catch {
     // Fallback: LIKE search
     const like = `%${query.split(' ')[0]}%`;
     const result = await db.run(
-      `SELECT id FROM atoms WHERE content ILIKE $1 LIMIT $2`,
-      [like, limit]
+      'SELECT id FROM atoms WHERE content ILIKE $1 LIMIT $2',
+      [like, limit],
     );
     return (result.rows as any[]).map(r => r.id);
   }
@@ -128,7 +128,7 @@ async function bfsViaEdges(
   seeds: string[],
   maxDepth: number,
   minWeight: number,
-  maxNodes: number
+  maxNodes: number,
 ): Promise<{ nodeIds: string[]; edges: ExploreEdge[] }> {
   const visited = new Set<string>(seeds);
   let frontier = [...seeds];
@@ -148,7 +148,7 @@ async function bfsViaEdges(
         `SELECT source_id, target_id, weight FROM edges
          WHERE (source_id IN (${placeholders}) OR target_id IN (${placeholders}))
            AND weight >= $1`,
-        [minWeight, ...chunk]
+        [minWeight, ...chunk],
       );
 
       for (const row of result.rows as any[]) {
@@ -169,7 +169,7 @@ async function bfsViaEdges(
   const atomIds = [...visited].filter(id => id.startsWith('atom_')).slice(0, maxNodes);
   return {
     nodeIds: atomIds,
-    edges: allEdges
+    edges: allEdges,
   };
 }
 
@@ -177,7 +177,7 @@ async function bfsViaEdges(
 async function bfsViaTags(
   seeds: string[],
   maxDepth: number,
-  maxNodes: number
+  maxNodes: number,
 ): Promise<{ nodeIds: string[] }> {
   const visited = new Set<string>(seeds);
   let frontier = [...seeds];
@@ -196,7 +196,7 @@ async function bfsViaTags(
          FROM tags t1
          JOIN tags t2 ON t1.tag = t2.tag AND t1.atom_id != t2.atom_id
          WHERE t1.atom_id IN (${placeholders})`,
-        chunk
+        chunk,
       );
 
       for (const row of result.rows as any[]) {
@@ -227,7 +227,7 @@ async function fetchNodes(ids: string[]): Promise<ExploreNode[]> {
     const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
     const aResult = await db.run(
       `SELECT id, content, source_path, timestamp FROM atoms WHERE id IN (${placeholders})`,
-      chunk
+      chunk,
     );
     atomRows.push(...(aResult.rows as any[]));
   }
@@ -238,7 +238,7 @@ async function fetchNodes(ids: string[]): Promise<ExploreNode[]> {
     const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
     const tResult = await db.run(
       `SELECT atom_id, tag FROM tags WHERE atom_id IN (${placeholders})`,
-      chunk
+      chunk,
     );
     tagRows.push(...(tResult.rows as any[]));
   }
@@ -254,14 +254,14 @@ async function fetchNodes(ids: string[]): Promise<ExploreNode[]> {
     content: r.content,
     source: r.source_path || '',
     tags: tagMap.get(r.id) || [],
-    ...(r.timestamp != null && { timestamp: Number(r.timestamp) })
+    ...(r.timestamp != null && { timestamp: Number(r.timestamp) }),
   }));
 }
 
 /** Check if the edges table has any rows */
 async function edgesTableHasData(): Promise<boolean> {
   try {
-    const result = await db.run(`SELECT 1 FROM edges LIMIT 1`, []);
+    const result = await db.run('SELECT 1 FROM edges LIMIT 1', []);
     return (result.rows as any[]).length > 0;
   } catch {
     return false;
@@ -283,7 +283,7 @@ async function globalTopNodes(seedCount: number, minWeight: number): Promise<str
      GROUP BY id
      ORDER BY total_weight DESC
      LIMIT $2`,
-    [minWeight, seedCount]
+    [minWeight, seedCount],
   );
   return (result.rows as any[]).map(r => r.id);
 }
@@ -291,8 +291,8 @@ async function globalTopNodes(seedCount: number, minWeight: number): Promise<str
 /** Estimate total corpus char size for auto_budget calculation */
 async function estimateCorpusChars(): Promise<number> {
   const result = await db.run(
-    `SELECT COUNT(*) AS atom_count, AVG(LENGTH(content)) AS avg_len FROM atoms`,
-    []
+    'SELECT COUNT(*) AS atom_count, AVG(LENGTH(content)) AS avg_len FROM atoms',
+    [],
   );
   const row = (result.rows as any[])[0];
   return Math.round((row.atom_count ?? 0) * (row.avg_len ?? 0));
@@ -304,7 +304,7 @@ async function estimateCorpusChars(): Promise<number> {
  */
 function rankNodesBySubgraphDegree(
   nodeIds: string[],
-  edges: ExploreEdge[]
+  edges: ExploreEdge[],
 ): string[] {
   // Edges connect mem_ hubs → atom_ nodes; score each atom by how many edges touch it
   const score = new Map<string, number>();
@@ -334,7 +334,7 @@ function rankNodesBySubgraphDegree(
  */
 async function fetchContentAtomsByHubs(
   hubIds: string[],  // mem_ compound IDs ordered by importance (most connected first)
-  maxCount: number
+  maxCount: number,
 ): Promise<string[]> {
   if (hubIds.length === 0) return [];
 
@@ -350,7 +350,7 @@ async function fetchContentAtomsByHubs(
          AND id NOT LIKE 'mem_%'
        ORDER BY start_byte
        LIMIT ${Math.min(remaining, PGLITE_CHUNK_RESULT_IDS)}`,
-      chunk
+      chunk,
     );
     allIds.push(...(result.rows as any[]).map((r: any) => r.id));
   }
@@ -392,7 +392,7 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
     StructuredLogger.warn('EXPLORE_NO_SEEDS', { query: req.seed.query, global: req.seed.global });
     return {
       nodes: [],
-      stats: { nodes_count: 0, seed_nodes: 0, max_depth_achieved: 0, strategy: 'none' }
+      stats: { nodes_count: 0, seed_nodes: 0, max_depth_achieved: 0, strategy: 'none' },
     };
   }
 
@@ -414,7 +414,7 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
     const contentIds = await fetchContentAtomsByHubs(hubIds, maxNodes);
     StructuredLogger.info('EXPLORE_ILLUMINATE_CONTENT', {
       hubs_queried: hubIds.length,
-      content_atoms: contentIds.length
+      content_atoms: contentIds.length,
     });
     nodeIds = contentIds;
     strategy = 'illuminate-global';
@@ -464,7 +464,7 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
       before: nodeIds.length,
       after: trimmed.length,
       chars_used: usedChars,
-      budget: charBudget
+      budget: charBudget,
     });
   }
 
@@ -501,8 +501,8 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
         max_depth_achieved: maxDepth,
         strategy,
         chars_used: charsUsed,
-        ...(charBudget !== undefined && { char_budget: charBudget })
-      }
+        ...(charBudget !== undefined && { char_budget: charBudget }),
+      },
     };
   }
 
@@ -514,7 +514,7 @@ export async function exploreMemory(req: ExploreRequest): Promise<ExploreResult>
       max_depth_achieved: maxDepth,
       strategy,
       chars_used: charsUsed,
-      ...(charBudget !== undefined && { char_budget: charBudget })
-    }
+      ...(charBudget !== undefined && { char_budget: charBudget }),
+    },
   };
 }

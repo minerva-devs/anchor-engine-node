@@ -41,7 +41,7 @@ const COMMON_WORDS = new Set([
   // Time references (too generic)
   'today', 'tomorrow', 'yesterday', 'now', 'then', 'soon', 'later',
   // Misc generic
-  'get', 'got', 'make', 'made', 'can', 'will', 'would', 'could', 'should', 'may', 'might', 'must'
+  'get', 'got', 'make', 'made', 'can', 'will', 'would', 'could', 'should', 'may', 'might', 'must',
 ]);
 
 // Entity-type patterns (high-value tags always kept)
@@ -129,8 +129,8 @@ export function getTagModulationSettings(): TagModulationSettings {
     entity_extraction: {
       enabled: tagging.entity_extraction?.enabled ?? true,
       min_confidence: tagging.entity_extraction?.min_confidence ?? 0.6,
-      categories: tagging.entity_extraction?.categories ?? ['PERSON', 'ORG', 'PRODUCT', 'EVENT', 'LOCATION']
-    }
+      categories: tagging.entity_extraction?.categories ?? ['PERSON', 'ORG', 'PRODUCT', 'EVENT', 'LOCATION'],
+    },
   };
 }
 
@@ -213,7 +213,7 @@ export function isEntityTag(tag: string): boolean {
 export function modulateTags(
   tags: string[], 
   modulationLevel: number = 50,
-  strictness: number = 75
+  strictness: number = 75,
 ): string[] {
   if (!tags || !Array.isArray(tags)) return [];
   
@@ -267,7 +267,7 @@ export function filterAtomLabelsAsTags(labels: string[]): string[] {
   return modulateTags(
     labels.map(label => label.startsWith('#') ? label : `#${label}`),
     settings.modulation_level,
-    settings.blacklist_strictness
+    settings.blacklist_strictness,
   );
 }
 
@@ -328,7 +328,7 @@ export function normalizeTag(tag: string): string | null {
  */
 export function processMoleculeTags(
   rawTags: string[],
-  atomLabels?: string[]
+  atomLabels?: string[],
 ): string[] {
   const settings = getTagModulationSettings();
   
@@ -339,7 +339,7 @@ export function processMoleculeTags(
   if (atomLabels && settings.atom_as_tag) {
     processedTags = [
       ...processedTags,
-      ...atomLabels.map(label => label.startsWith('#') ? label : `#${label}`)
+      ...atomLabels.map(label => label.startsWith('#') ? label : `#${label}`),
     ];
   }
   

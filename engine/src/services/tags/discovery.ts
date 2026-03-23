@@ -59,7 +59,7 @@ export async function runDiscovery(sampleSize: number = 30): Promise<string[]> {
         }
     } catch (e: any) {
         console.warn(`[Discovery] Query failed for strategy '${strategy}' (Seed: ${seedTag}):`, e.message);
-        console.warn(`[Discovery] Falling back to safe Explorer mode.`);
+        console.warn('[Discovery] Falling back to safe Explorer mode.');
         query = `SELECT content FROM atoms LIMIT ${sampleSize}`;
         result = await db.run(query);
     }
@@ -92,7 +92,7 @@ export async function runDiscovery(sampleSize: number = 30): Promise<string[]> {
         // We ask BERT to look for standard entities, but since the context is specific (seeded),
         // it is more likely to find domain-specific co-occurrences.
         const discoveredTags = await extractEntitiesWithGLiNER(sampledContent, [
-            'person', 'organization', 'technology', 'project', 'software', 'location', 'concept'
+            'person', 'organization', 'technology', 'project', 'software', 'location', 'concept',
         ]);
 
         console.log(`[Discovery] BERT found ${discoveredTags.length} potential tags.`);
@@ -107,7 +107,7 @@ export async function runDiscovery(sampleSize: number = 30): Promise<string[]> {
             }
             return newTags;
         } else {
-            throw new Error("BERT found no entities.");
+            throw new Error('BERT found no entities.');
         }
     } catch (e: any) {
         console.warn(`[Discovery] Teacher (BERT) passed. Error: ${e.message}`);
@@ -199,7 +199,7 @@ export function getMasterTags(): string[] {
             if (!watcherInitialized) {
                 watcherInitialized = true;
                 try {
-                    fs.watch(MASTER_TAGS_PATH, (eventType) => {
+                    fs.watch(MASTER_TAGS_PATH, eventType => {
                         if (eventType === 'change' || eventType === 'rename') {
                             // Invalidate cache
                             cachedMasterTags = null;

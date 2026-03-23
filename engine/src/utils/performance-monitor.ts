@@ -47,7 +47,7 @@ class PerformanceMonitor {
           maxDuration: -Infinity,
           lastDuration: 0,
           averageDuration: 0,
-          lastUpdated: Date.now()
+          lastUpdated: Date.now(),
         });
       }
 
@@ -75,7 +75,7 @@ class PerformanceMonitor {
         maxDuration: -Infinity,
         lastDuration: 0,
         averageDuration: 0,
-        lastUpdated: Date.now()
+        lastUpdated: Date.now(),
       });
     }
 
@@ -140,7 +140,7 @@ class PerformanceMonitor {
         maxDuration: -Infinity,
         lastDuration: 0,
         averageDuration: 0,
-        lastUpdated: Date.now()
+        lastUpdated: Date.now(),
       });
     }
 
@@ -209,11 +209,11 @@ class PerformanceMonitor {
         heapTotal: memoryUsage.heapTotal,
         heapUsed: memoryUsage.heapUsed,
         external: memoryUsage.external,
-        arrayBuffers: memoryUsage.arrayBuffers
+        arrayBuffers: memoryUsage.arrayBuffers,
       },
       uptime,
       timestamp: Date.now(),
-      processId: process.pid
+      processId: process.pid,
     };
   }
 
@@ -230,7 +230,7 @@ class PerformanceMonitor {
         minDuration: metric.minDuration === Infinity ? 0 : metric.minDuration,
         maxDuration: metric.maxDuration === -Infinity ? 0 : metric.maxDuration,
         lastDuration: metric.lastDuration,
-        lastUpdated: metric.lastUpdated
+        lastUpdated: metric.lastUpdated,
       };
     }
     return result;
@@ -251,7 +251,7 @@ class PerformanceMonitor {
       totalCalls,
       totalDuration,
       avgDuration,
-      stats: allStats
+      stats: allStats,
     };
   }
 }

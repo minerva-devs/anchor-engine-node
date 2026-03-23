@@ -121,7 +121,7 @@ export class HealthCheckService {
       status: overallStatus,
       components,
       system: systemInfo,
-      metrics
+      metrics,
     };
   }
 
@@ -140,8 +140,8 @@ export class HealthCheckService {
           message: 'Database connection and query execution successful',
           details: {
             querySuccess: true,
-            rowCount: result.rows.length
-          }
+            rowCount: result.rows.length,
+          },
         };
       } else {
         return {
@@ -149,8 +149,8 @@ export class HealthCheckService {
           status: 'degraded',
           message: 'Database connection established but query returned no results',
           details: {
-            querySuccess: false
-          }
+            querySuccess: false,
+          },
         };
       }
     } catch (error: any) {
@@ -160,8 +160,8 @@ export class HealthCheckService {
         message: `Database connection failed: ${error.message}`,
         details: {
           error: error.message,
-          stack: error.stack
-        }
+          stack: error.stack,
+        },
       };
     }
   }
@@ -180,7 +180,7 @@ export class HealthCheckService {
         return {
           name: 'native-modules',
           status: 'unhealthy',
-          message: 'Native module manager not initialized properly'
+          message: 'Native module manager not initialized properly',
         };
       }
 
@@ -191,8 +191,8 @@ export class HealthCheckService {
           message: 'Native modules not loaded, using fallback implementations',
           details: {
             fallbackActive: eceNativeStatus.fallbackActive,
-            error: eceNativeStatus.error
-          }
+            error: eceNativeStatus.error,
+          },
         };
       }
 
@@ -211,8 +211,8 @@ export class HealthCheckService {
                 message: 'Native modules loaded and functional',
                 details: {
                   modulesLoaded: Array.from(status.keys()),
-                  fallbackActive: eceNativeStatus.fallbackActive
-                }
+                  fallbackActive: eceNativeStatus.fallbackActive,
+                },
               };
             }
           }
@@ -222,8 +222,8 @@ export class HealthCheckService {
             status: 'degraded',
             message: `Native module functionality test failed: ${error.message}`,
             details: {
-              error: error.message
-            }
+              error: error.message,
+            },
           };
         }
       }
@@ -234,8 +234,8 @@ export class HealthCheckService {
         message: eceNativeStatus.fallbackActive ? 'Native modules loaded with fallback implementations' : 'Native modules loaded and operational',
         details: {
           fallbackActive: eceNativeStatus.fallbackActive,
-          error: eceNativeStatus.error
-        }
+          error: eceNativeStatus.error,
+        },
       };
     } catch (error: any) {
       return {
@@ -243,8 +243,8 @@ export class HealthCheckService {
         status: 'unhealthy',
         message: `Native module check failed: ${error.message}`,
         details: {
-          error: error.message
-        }
+          error: error.message,
+        },
       };
     }
   }
@@ -265,8 +265,8 @@ export class HealthCheckService {
           message: `All ${summary.total} WASM modules loaded and operational`,
           details: {
             modules: allStatus,
-            summary
-          }
+            summary,
+          },
         };
       }
 
@@ -280,8 +280,8 @@ export class HealthCheckService {
           details: {
             modules: allStatus,
             summary,
-            fallbackModules
-          }
+            fallbackModules,
+          },
         };
       }
 
@@ -293,8 +293,8 @@ export class HealthCheckService {
           message: 'No WASM modules loaded',
           details: {
             modules: allStatus,
-            summary
-          }
+            summary,
+          },
         };
       }
 
@@ -304,8 +304,8 @@ export class HealthCheckService {
         message: 'WASM modules operational',
         details: {
           modules: allStatus,
-          summary
-        }
+          summary,
+        },
       };
     } catch (error: any) {
       return {
@@ -313,8 +313,8 @@ export class HealthCheckService {
         status: 'unhealthy',
         message: `WASM module check failed: ${error.message}`,
         details: {
-          error: error.message
-        }
+          error: error.message,
+        },
       };
     }
   }
@@ -329,7 +329,7 @@ export class HealthCheckService {
         pathManager.getDatabasePath(),
         pathManager.getNotebookDir(),
         pathManager.getContextDir(),
-        pathManager.getLogsDir()
+        pathManager.getLogsDir(),
       ];
 
       for (const path of criticalPaths) {
@@ -348,14 +348,14 @@ export class HealthCheckService {
               return {
                 name: 'filesystem',
                 status: 'unhealthy',
-                message: `Database directory does not exist and cannot be accessed: ${parentDir}`
+                message: `Database directory does not exist and cannot be accessed: ${parentDir}`,
               };
             }
           } else {
             return {
               name: 'filesystem',
               status: 'unhealthy',
-              message: `Critical path not accessible: ${path}`
+              message: `Critical path not accessible: ${path}`,
             };
           }
         }
@@ -366,8 +366,8 @@ export class HealthCheckService {
         status: 'healthy',
         message: 'All critical paths accessible',
         details: {
-          checkedPaths: criticalPaths
-        }
+          checkedPaths: criticalPaths,
+        },
       };
     } catch (error: any) {
       return {
@@ -375,8 +375,8 @@ export class HealthCheckService {
         status: 'unhealthy',
         message: `File system check failed: ${error.message}`,
         details: {
-          error: error.message
-        }
+          error: error.message,
+        },
       };
     }
   }
@@ -404,7 +404,7 @@ export class HealthCheckService {
           name: 'system-resources',
           status: 'degraded',
           message: `System resources below threshold: ${messages.join(', ')}`,
-          details: systemInfo
+          details: systemInfo,
         };
       }
 
@@ -412,7 +412,7 @@ export class HealthCheckService {
         name: 'system-resources',
         status: 'healthy',
         message: 'System resources within acceptable ranges',
-        details: systemInfo
+        details: systemInfo,
       };
     } catch (error: any) {
       return {
@@ -420,8 +420,8 @@ export class HealthCheckService {
         status: 'unhealthy',
         message: `System resource check failed: ${error.message}`,
         details: {
-          error: error.message
-        }
+          error: error.message,
+        },
       };
     }
   }
@@ -446,8 +446,8 @@ export class HealthCheckService {
           details: {
             slowOperations,
             busyOperations,
-            metrics
-          }
+            metrics,
+          },
         };
       }
 
@@ -458,8 +458,8 @@ export class HealthCheckService {
         details: {
           slowOperations,
           busyOperations,
-          metrics
-        }
+          metrics,
+        },
       };
     } catch (error: any) {
       return {
@@ -467,8 +467,8 @@ export class HealthCheckService {
         status: 'unhealthy',
         message: `Performance metrics check failed: ${error.message}`,
         details: {
-          error: error.message
-        }
+          error: error.message,
+        },
       };
     }
   }
@@ -498,7 +498,7 @@ export class HealthCheckService {
       cpuCount,
       loadAverage,
       diskSpace,
-      processInfo
+      processInfo,
     };
   }
 
@@ -518,7 +518,7 @@ export class HealthCheckService {
       pid: process.pid,
       memoryUsage,
       uptime,
-      cpuUsage
+      cpuUsage,
     };
   }
 
@@ -537,14 +537,14 @@ export class HealthCheckService {
       return {
         total,
         available,
-        used: total - available
+        used: total - available,
       };
     } catch (error) {
       // Return safe defaults if we can't determine actual values
       return {
         total: 1024 * 1024 * 1024 * 500, // 500GB
         available: 1024 * 1024 * 1024 * 100, // 100GB
-        used: 1024 * 1024 * 1024 * 400  // 400GB
+        used: 1024 * 1024 * 1024 * 400,  // 400GB
       };
     }
   }

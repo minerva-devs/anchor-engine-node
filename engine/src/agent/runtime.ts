@@ -35,7 +35,7 @@ export class AgentRuntime {
 
     // Initialize inference service
     this.inferenceService = new InferenceService({
-      modelPath: options.model
+      modelPath: options.model,
     });
   }
 
@@ -72,14 +72,14 @@ export class AgentRuntime {
       console.log(`[AgentRuntime] Starting Basic Chat for: "${objective}"`);
     }
 
-    let fullAnswer = "";
+    let fullAnswer = '';
 
     // Use provided contextual messages if available, otherwise use default
     const chatMessages = this.messages && this.messages.length > 0
       ? this.messages
       : [
-          { role: 'system', content: "You are a helpful AI assistant." },
-          { role: 'user', content: objective }
+          { role: 'system', content: 'You are a helpful AI assistant.' },
+          { role: 'user', content: objective },
         ];
 
     // Direct Chat Call with contextual messages
@@ -89,7 +89,7 @@ export class AgentRuntime {
         fullAnswer += token;
         // Stream directly to frontend as 'token'
         this.emit({ type: 'token', content: token });
-      }
+      },
     } as any);
 
     this.emit({ type: 'answer', content: fullAnswer });

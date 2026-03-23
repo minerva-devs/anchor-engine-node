@@ -52,7 +52,7 @@ export class QueryBuilder {
       whereConditions: [],
       orderByClause: null,
       limitValue: null,
-      transformFunctions: {}
+      transformFunctions: {},
     };
   }
 
@@ -68,8 +68,8 @@ export class QueryBuilder {
     if (!safeIdentifierPattern.test(identifier)) {
       throw new Error(
         `Invalid ${contextName}: "${identifier}". ` +
-        `Identifiers must contain only alphanumeric characters and underscores, ` +
-        `and must start with a letter or underscore.`
+        'Identifiers must contain only alphanumeric characters and underscores, ' +
+        'and must start with a letter or underscore.',
       );
     }
   }
@@ -165,7 +165,7 @@ export class QueryBuilder {
     if (this.options.whereConditions.length > 0) {
       const whereClauses = this.options.whereConditions.map(condition => {
         // Handle different operators
-        let operator = condition.operator.toUpperCase();
+        const operator = condition.operator.toUpperCase();
         if (operator === 'LIKE') {
           params.push(`%${condition.value}%`);
           return `${this.escapeIdentifier(condition.field)} LIKE $${params.length}`;

@@ -1,9 +1,11 @@
+import type {
+  ChatRequest,
+} from './inference.js';
 import {
   initializeInference,
   runChatCompletion,
   runCompletion,
   getInferenceStatus,
-  ChatRequest
 } from './inference.js';
 
 interface InferenceServiceOptions {
@@ -24,7 +26,7 @@ export class InferenceService {
       gpuLayers: options.gpuLayers || 20,
       temperature: options.temperature || 0.7,
       maxTokens: options.maxTokens || 1024,
-      ...options
+      ...options,
     };
   }
 
@@ -34,7 +36,7 @@ export class InferenceService {
         contextSize: this.options.contextSize,
         gpuLayers: this.options.gpuLayers,
         temperature: this.options.temperature,
-        maxTokens: this.options.maxTokens
+        maxTokens: this.options.maxTokens,
       });
 
       if (result.success) {
@@ -56,7 +58,7 @@ export class InferenceService {
         contextSize: this.options.contextSize,
         gpuLayers: this.options.gpuLayers,
         temperature: this.options.temperature,
-        maxTokens: this.options.maxTokens
+        maxTokens: this.options.maxTokens,
       });
 
       if (result.success && result.response) {
@@ -81,8 +83,8 @@ export class InferenceService {
           gpuLayers: this.options.gpuLayers,
           temperature: options.temperature ?? this.options.temperature,
           maxTokens: this.options.maxTokens,
-          ...options
-        }
+          ...options,
+        },
       };
 
       console.log(`\x1b[34m[Inference]\x1b[0m Processing chat request (${messages.length} messages)...`);

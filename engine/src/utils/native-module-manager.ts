@@ -131,7 +131,7 @@ export class NativeModuleManager {
       platform: process.platform,
       architecture: process.arch,
       fallbackActive,
-      error: errorMessage
+      error: errorMessage,
     };
 
     this.status.set(moduleName, status);
@@ -209,7 +209,7 @@ export class NativeModuleManager {
 
             // Generate 2-shingles (overlapping pairs)
             if (tokens.length < 2) {
-              shingles.push(tokens[0] || "");
+              shingles.push(tokens[0] || '');
             } else {
               for (let i = 0; i < tokens.length - 1; i++) {
                 shingles.push(`${tokens[i]} ${tokens[i + 1]}`);
@@ -274,7 +274,7 @@ export class NativeModuleManager {
             }
 
             return count;
-          }
+          },
         };
 
       default:

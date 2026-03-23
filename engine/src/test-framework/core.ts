@@ -140,7 +140,7 @@ export class TestFramework {
           name: testCase.name,
           status: 'SKIP',
           duration: 0,
-          details: { description: testCase.description }
+          details: { description: testCase.description },
         });
         continue;
       }
@@ -177,7 +177,7 @@ export class TestFramework {
       results,
       passed,
       failed,
-      skipped
+      skipped,
     };
 
     return report;
@@ -211,7 +211,7 @@ export class TestFramework {
         name: testCase.name,
         status: 'PASS',
         duration: Date.now() - startTime,
-        details: { description: testCase.description }
+        details: { description: testCase.description },
       };
     } catch (error) {
       // Clear timeout if test failed
@@ -224,7 +224,7 @@ export class TestFramework {
         status: 'FAIL',
         duration: Date.now() - startTime,
         error: error as Error,
-        details: { description: testCase.description }
+        details: { description: testCase.description },
       };
     }
   }
@@ -235,7 +235,7 @@ export class TestFramework {
   async runTestsByTag(tag: string): Promise<TestReport[]> {
     const filteredSuites = this.testSuites.map(suite => ({
       ...suite,
-      tests: suite.tests.filter(test => test.tags?.includes(tag))
+      tests: suite.tests.filter(test => test.tags?.includes(tag)),
     })).filter(suite => suite.tests.length > 0);
 
     const originalSuites = this.testSuites;
@@ -255,7 +255,7 @@ export class TestFramework {
   async runTestsByName(pattern: string): Promise<TestReport[]> {
     const filteredSuites = this.testSuites.map(suite => ({
       ...suite,
-      tests: suite.tests.filter(test => test.name.includes(pattern))
+      tests: suite.tests.filter(test => test.name.includes(pattern)),
     })).filter(suite => suite.tests.length > 0);
 
     const originalSuites = this.testSuites;
@@ -274,8 +274,8 @@ export class TestFramework {
    */
   getStats(): { suites: number; tests: number; passed: number; failed: number; skipped: number } {
     let totalTests = 0;
-    let totalPassed = 0;
-    let totalFailed = 0;
+    const totalPassed = 0;
+    const totalFailed = 0;
     let totalSkipped = 0;
 
     for (const suite of this.testSuites) {
@@ -288,7 +288,7 @@ export class TestFramework {
       tests: totalTests,
       passed: totalPassed,
       failed: totalFailed,
-      skipped: totalSkipped
+      skipped: totalSkipped,
     };
   }
 }
@@ -362,8 +362,8 @@ export class JSONReporter implements Reporter {
         totalTests: reports.reduce((sum, r) => r.results.length, 0),
         totalPassed: reports.reduce((sum, r) => sum + r.passed, 0),
         totalFailed: reports.reduce((sum, r) => sum + r.failed, 0),
-        totalSkipped: reports.reduce((sum, r) => sum + r.skipped, 0)
-      }
+        totalSkipped: reports.reduce((sum, r) => sum + r.skipped, 0),
+      },
     };
 
     await fs.promises.writeFile(this.outputFile, JSON.stringify(reportData, null, 2));
@@ -389,7 +389,7 @@ export class JUnitReporter implements Reporter {
         if (result.status === 'FAIL') {
           xml += `>\n      <failure message="${result.error?.message || 'Unknown error'}"><![CDATA[${result.error?.stack || ''}]]></failure>\n    </testcase>\n`;
         } else if (result.status === 'SKIP') {
-          xml += `>\n      <skipped/>\n    </testcase>\n`;
+          xml += '>\n      <skipped/>\n    </testcase>\n';
         } else {
           xml += '/>\n';
         }

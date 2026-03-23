@@ -1,6 +1,6 @@
 import { db } from '../../core/db.js';
 import { config } from '../../config/index.js';
-import { Atom, Molecule, Compound } from '../../types/atomic.js';
+import type { Atom, Molecule, Compound } from '../../types/atomic.js';
 import { filterTags } from '../../utils/tag-filter.js';
 
 export class AtomicIngestService {
@@ -9,7 +9,7 @@ export class AtomicIngestService {
         compound: Compound,
         molecules: Molecule[],
         atoms: Atom[],
-        buckets: string[] = ['core']
+        buckets: string[] = ['core'],
     ) {
         const startTime = Date.now();
         const filename = compound.path.split(/[/\\]/).pop() || compound.path;
@@ -53,7 +53,7 @@ export class AtomicIngestService {
 
         // Recreate FTS indexes after bulk insert
         if (isLargeIngestion) {
-            console.log(`[AtomicIngest] ⏱️ Recreating FTS indexes...`);
+            console.log('[AtomicIngest] ⏱️ Recreating FTS indexes...');
             try {
                 await db.run(`
                     CREATE INDEX IF NOT EXISTS idx_molecules_content_gin
@@ -69,7 +69,7 @@ export class AtomicIngestService {
                 // This prevents "nfig"]D errors from stale query plans
                 await db.run('VACUUM ANALYZE atoms');
                 await db.run('VACUUM ANALYZE molecules');
-                console.log(`[AtomicIngest] ✅ FTS indexes recreated and optimized`);
+                console.log('[AtomicIngest] ✅ FTS indexes recreated and optimized');
             } catch (e: any) {
                 console.warn(`[AtomicIngest] Could not recreate FTS indexes: ${e.message}`);
             }
@@ -83,7 +83,7 @@ export class AtomicIngestService {
         compound: Compound,
         molecules: Molecule[],
         atoms: Atom[],
-        buckets: string[]
+        buckets: string[],
     ) {
         // 1. Persist Atoms (Tags)
         const atomsStart = Date.now();
@@ -131,6 +131,16 @@ export class AtomicIngestService {
         await this.batchWriteMemory(compound, molecules, atoms, buckets);
         console.log(`[AtomicIngest] ⏱️ Memory/Atoms persisted: ${((Date.now() - memoryStart) / 1000).toFixed(2)}s`);
 
+        // Standard 016: Invalidate search cache after successful atomic ingestion
+        // This ensures fresh search results after new content is added
+        try {
+            const { searchCache } = await import('../search/search.js');
+            searchCache.clear();
+            console.log('[AtomicIngest] ✅ Search cache invalidated after atomic ingestion');
+        } catch (e) {
+            console.warn('[AtomicIngest] Could not invalidate search cache:', e);
+        }
+
         // 6. Persist Atom Positions (Lazy Molecule Inflation)
         const positionsStart = Date.now();
         const atomLabelMap = new Map<string, string>();
@@ -166,12 +176,12 @@ export class AtomicIngestService {
                         atom.label, // label becomes content
                         'atom_source', // source_path
                         Date.now(), // timestamp
-                        "0", // simhash
+                        '0', // simhash
                         JSON.stringify(this.zeroVector()), // embedding
                         'internal', // provenance
                         ['atoms'], // buckets
-                        [atom.label] // tags
-                    ]
+                        [atom.label], // tags
+                    ],
                 );
             }
         }
@@ -271,7 +281,7 @@ export class AtomicIngestService {
                     JSON.stringify(this.zeroVector()), // embedding (we don't compute embeddings here anymore)
                     m.timestamp || Date.now(),
                     JSON.stringify(m.tags || []),
-                    JSON.stringify(m.entities || {})
+                    JSON.stringify(m.entities || {}),
                 );
             }
 
@@ -292,7 +302,7 @@ export class AtomicIngestService {
                    timestamp = EXCLUDED.timestamp,
                    tags = EXCLUDED.tags,
                    entities = EXCLUDED.entities`,
-                values
+                values,
             );
         }
 
@@ -315,7 +325,7 @@ export class AtomicIngestService {
                      ON CONFLICT (source_id, target_id, relation) DO UPDATE SET
                        weight = EXCLUDED.weight,
                        relation = EXCLUDED.relation`,
-                    [compoundId, atomId, 1.0, 'has_tag']
+                    [compoundId, atomId, 1.0, 'has_tag'],
                 );
             }
         }
@@ -370,8 +380,8 @@ export class AtomicIngestService {
                         compound.molecular_signature || '0',
                         JSON.stringify(atoms),
                         JSON.stringify(molecules),
-                        JSON.stringify(this.zeroVector())
-                    ]
+                        JSON.stringify(this.zeroVector()),
+                    ],
                 );
             }
         }
@@ -382,7 +392,7 @@ export class AtomicIngestService {
         compound: Compound,
         molecules: Molecule[],
         atoms: Atom[],
-        buckets: string[]
+        buckets: string[],
     ) {
         // 1. Write Compound Row
         const MAX_ATOM_CONTENT_SIZE = 500 * 1024;
@@ -411,15 +421,15 @@ export class AtomicIngestService {
                 atomContent,
                 compound.path,
                 compound.timestamp,
-                compound.molecular_signature || "0",
+                compound.molecular_signature || '0',
                 JSON.stringify(this.zeroVector()),
                 compound.provenance,
                 buckets,
                 atoms.map(a => a.label),
                 compound.id,
                 0,
-                compound.compound_body.length
-            ]
+                compound.compound_body.length,
+            ],
         );
 
         // 2. Write Molecule Rows in Batches
@@ -445,7 +455,7 @@ export class AtomicIngestService {
 
             for (const m of batch) {
                 // Extract tags from atoms and filter through blacklist
-                const rawTags = (m.atoms || []).map(id => atomLabelMap.get(id)).filter(l => l !== undefined) as string[];
+                const rawTags = (m.atoms || []).map(id => atomLabelMap.get(id)).filter(l => l !== undefined);
                 const specificTags = filterTags(rawTags);
 
                 placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
@@ -462,7 +472,7 @@ export class AtomicIngestService {
                     specificTags,
                     m.compoundId,
                     m.start_byte || 0,
-                    m.end_byte || 0
+                    m.end_byte || 0,
                 );
             }
 
@@ -481,7 +491,7 @@ export class AtomicIngestService {
                    compound_id = EXCLUDED.compound_id,
                    start_byte = EXCLUDED.start_byte,
                    end_byte = EXCLUDED.end_byte`,
-                values
+                values,
             );
         }
     }
@@ -530,7 +540,7 @@ export class AtomicIngestService {
             `INSERT INTO atom_positions (compound_id, atom_label, byte_offset)
              VALUES ${placeholders.join(', ')}
              ON CONFLICT (compound_id, atom_label, byte_offset) DO NOTHING`,
-            flatValues
+            flatValues,
         );
     }
 
@@ -542,7 +552,7 @@ export class AtomicIngestService {
     private generateHash(str: string): string {
         // Simple hash for legacy field
         let hash = 0;
-        if (str.length === 0) return "0";
+        if (str.length === 0) return '0';
         for (let i = 0; i < str.length; i++) {
             const char = str.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;

@@ -60,7 +60,7 @@ class SystemStatusManager {
       source,
       filesProcessed: 0,
       filesTotal,
-      startedAt: new Date()
+      startedAt: new Date(),
     };
     this.setProgress(0, filesTotal, `Starting ingestion of ${source}`);
   }
@@ -108,7 +108,7 @@ class SystemStatusManager {
       status: apiStatus,
       currentJob: this.currentIngestion,
       lastCompleted: this.lastIngestion,
-      queueDepth: this.queuedSearches.length
+      queueDepth: this.queuedSearches.length,
     };
   }
 
@@ -156,7 +156,7 @@ class SystemStatusManager {
       lastIngestion: this.lastIngestion,
       queuedSearches: this.queuedSearches,
       currentIngestion: this.currentIngestion,
-      queueDepth: this.queuedSearches.length
+      queueDepth: this.queuedSearches.length,
     };
   }
 

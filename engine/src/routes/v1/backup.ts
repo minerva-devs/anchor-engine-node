@@ -1,4 +1,4 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import { createBackup, listBackups, restoreBackup } from '../../services/backup/backup.js';
 import { getLatestBackup, validateBackup } from '../../services/backup/backup-restore.js';
 
@@ -10,7 +10,7 @@ export function setupBackupRoutes(app: Application) {
       const result = await createBackup();
       res.status(200).json(result);
     } catch (e: any) {
-      console.error("Backup Failed", e);
+      console.error('Backup Failed', e);
       res.status(500).json({ error: e.message });
     }
   });
@@ -29,9 +29,9 @@ export function setupBackupRoutes(app: Application) {
             valid: validation.valid,
             error: validation.error || undefined,
             size: (validation as any).size || 0,
-            sizeFormatted: (validation as any).sizeFormatted || 'Unknown'
+            sizeFormatted: (validation as any).sizeFormatted || 'Unknown',
           };
-        })
+        }),
       );
 
       res.status(200).json(backupsWithMeta);
@@ -45,7 +45,7 @@ export function setupBackupRoutes(app: Application) {
     try {
       const { filename } = req.body;
       if (!filename) {
-        res.status(400).json({ error: "Filename required" });
+        res.status(400).json({ error: 'Filename required' });
         return;
       }
 
@@ -66,10 +66,10 @@ export function setupBackupRoutes(app: Application) {
         message: 'Backup restore complete',
         stats: result,
         totalTime,
-        atomsPerSec
+        atomsPerSec,
       });
     } catch (e: any) {
-      console.error("Backup Restore Failed", e);
+      console.error('Backup Restore Failed', e);
       res.status(500).json({ error: e.message });
     }
   });
@@ -87,7 +87,7 @@ export function setupBackupRoutes(app: Application) {
       res.status(200).json({
         filename: latest,
         valid: validation.valid,
-        error: validation.error || undefined
+        error: validation.error || undefined,
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });

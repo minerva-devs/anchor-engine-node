@@ -66,7 +66,7 @@ async function startVisionServer() {
     if (serverProcess) {
         // Double check if process is really alive, otherwise nullify
         if (serverProcess.exitCode !== null) {
-            console.warn("[Vision] Process found but it has exited. Restarting...");
+            console.warn('[Vision] Process found but it has exited. Restarting...');
             serverProcess = null;
         } else {
             return;
@@ -75,7 +75,7 @@ async function startVisionServer() {
 
     const modelPath = getModelPath();
     if (!modelPath) {
-        console.warn("[Vision] No GGUF model found. Vision features disabled.");
+        console.warn('[Vision] No GGUF model found. Vision features disabled.');
         return;
     }
 
@@ -98,23 +98,23 @@ async function startVisionServer() {
 
     try {
         serverProcess = spawn(BIN_PATH, args, {
-            stdio: ['ignore', 'pipe', 'pipe']
+            stdio: ['ignore', 'pipe', 'pipe'],
         });
 
-        serverProcess.stdout.on('data', (data) => {
+        serverProcess.stdout.on('data', data => {
             const msg = data.toString();
             // console.log(`[Vision Binary] ${msg}`); 
         });
 
-        serverProcess.stderr.on('data', (data) => {
+        serverProcess.stderr.on('data', data => {
             const msg = data.toString();
             if (msg.includes('server is listening') || msg.includes('HTTP server listening')) {
-                console.log(`[Vision] Sidecar Ready.`);
+                console.log('[Vision] Sidecar Ready.');
             }
 
             // Detect specific architecture errors
             if (msg.includes('unknown model architecture')) {
-                lastVisionError = "Incompatible Binary: Your llama-server.exe does not support this model type (e.g. Qwen2-VL). Please update engine/bin or use a different model.";
+                lastVisionError = 'Incompatible Binary: Your llama-server.exe does not support this model type (e.g. Qwen2-VL). Please update engine/bin or use a different model.';
                 console.error(`[Vision Critical] ${lastVisionError}`);
             }
 
@@ -124,7 +124,7 @@ async function startVisionServer() {
             }
         });
 
-        serverProcess.on('close', (code) => {
+        serverProcess.on('close', code => {
             console.log(`[Vision] Sidecar exited with code ${code}`);
             serverProcess = null;
         });
@@ -144,13 +144,13 @@ async function analyzeImage(base64Image, prompt) {
     if (!serverProcess) {
         lastVisionError = null;
         await startVisionServer();
-        if (!serverProcess) throw new Error("Vision server failed to start (Mock Mode or Missing Binary).");
+        if (!serverProcess) throw new Error('Vision server failed to start (Mock Mode or Missing Binary).');
         // Wait for boot
         await new Promise(r => setTimeout(r, 4000)); // Fixed timeout for now, could be configurable later
 
         if (!serverProcess) {
             // Return the specific error if captured, otherwise generic
-            throw new Error(lastVisionError || "Vision server crashed during startup.");
+            throw new Error(lastVisionError || 'Vision server crashed during startup.');
         }
     }
 
@@ -161,7 +161,7 @@ async function analyzeImage(base64Image, prompt) {
             image_data: [{ data: base64Image, id: 12 }],
             n_predict: 400,
             temperature: 0.1,
-            cache_prompt: true
+            cache_prompt: true,
         });
 
         const options = {
@@ -171,16 +171,16 @@ async function analyzeImage(base64Image, prompt) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Content-Length': payload.length
-            }
+                'Content-Length': payload.length,
+            },
         };
 
-        const req = http.request(options, (res) => {
+        const req = http.request(options, res => {
             let data = '';
-            res.on('data', (chunk) => data += chunk);
+            res.on('data', chunk => data += chunk);
             res.on('end', () => {
                 if (!data || data.trim().length === 0) {
-                    return reject(new Error("Vision sidecar returned empty response. It may have crashed."));
+                    return reject(new Error('Vision sidecar returned empty response. It may have crashed.'));
                 }
                 try {
                     const json = JSON.parse(data);
@@ -197,7 +197,7 @@ async function analyzeImage(base64Image, prompt) {
             });
         });
 
-        req.on('error', (e) => {
+        req.on('error', e => {
             reject(new Error(`Vision Request Error: ${e.message}`));
         });
 

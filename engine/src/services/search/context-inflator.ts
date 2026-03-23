@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { db } from '../../core/db.js';
-import { SearchResult } from './search.js';
+import type { SearchResult } from './search.js';
 import { getMirrorPath, MIRRORED_BRAIN_PATH } from '../mirror/mirror.js';
 import { NOTEBOOK_DIR } from '../../config/paths.js';
 import { processWithAdaptiveConcurrency, getOptimalBatchSize } from '../../utils/adaptive-concurrency.js';
@@ -102,7 +102,7 @@ export class ContextInflator {
                         return {
                             ...res,
                             content: `...${diskContent}...`,
-                            is_inflated: true
+                            is_inflated: true,
                         };
                     }
 
@@ -114,7 +114,7 @@ export class ContextInflator {
                         return {
                             ...res,
                             content: `...${dbContent}...`,
-                            is_inflated: true
+                            is_inflated: true,
                         };
                     }
 
@@ -187,7 +187,7 @@ export class ContextInflator {
         return {
             start: snappedStart,
             end: snappedEnd,
-            text: content.substring(snappedStart, snappedEnd).trim()
+            text: content.substring(snappedStart, snappedEnd).trim(),
         };
     }
 
@@ -198,7 +198,7 @@ export class ContextInflator {
     private static async inflateFromDisk(
         res: SearchResult,
         radius: number,
-        pathCache: Map<string, Promise<{ filePath: string, provenance: string } | null>>
+        pathCache: Map<string, Promise<{ filePath: string, provenance: string } | null>>,
     ): Promise<string | null> {
         if (!res.compound_id) return null;
 
@@ -207,7 +207,7 @@ export class ContextInflator {
         if (!pathPromise) {
             pathPromise = (async () => {
                 try {
-                    const result = await db.run(`SELECT path, provenance FROM compounds WHERE id = $1`, [res.compound_id]);
+                    const result = await db.run('SELECT path, provenance FROM compounds WHERE id = $1', [res.compound_id]);
                     if (result.rows && result.rows.length > 0) {
                         return { filePath: result.rows[0].path as string, provenance: result.rows[0].provenance as string };
                     }
@@ -305,7 +305,7 @@ export class ContextInflator {
         if (!res.compound_id) return null;
 
         try {
-            const result = await db.run(`SELECT compound_body FROM compounds WHERE id = $1`, [res.compound_id]);
+            const result = await db.run('SELECT compound_body FROM compounds WHERE id = $1', [res.compound_id]);
             if (!result.rows || result.rows.length === 0) return null;
 
             const compoundBody = result.rows[0].compound_body as string;
@@ -390,7 +390,7 @@ export class ContextInflator {
                 byteOffset: row.byte_offset as number,
                 filePath: row.path as string,
                 timestamp: row.timestamp as number,
-                provenance: row.provenance as string
+                provenance: row.provenance as string,
             }));
         } catch (e) {
             console.error(`[ContextInflator] Check locations failed for ${term}`, e);
@@ -411,7 +411,7 @@ export class ContextInflator {
         radius: number = 500,
         maxResults: number = 20,
         maxWindowSize: number = radius * 3, // Default cap if not provided
-        options: { buckets?: string[], provenance?: string } = {}
+        options: { buckets?: string[], provenance?: string } = {},
     ): Promise<SearchResult[]> {
         const results: SearchResult[] = [];
 
@@ -472,7 +472,7 @@ export class ContextInflator {
                         positions: [],
                         filePath: dbPath,
                         timestamp,
-                        provenance
+                        provenance,
                     });
                 }
                 compoundPositions.get(compoundId)!.positions.push(byteOffset);
@@ -516,7 +516,7 @@ export class ContextInflator {
                     const rawWindows = data.positions.map(byteOffset => ({
                         start: Math.max(0, byteOffset - radius),
                         end: Math.min(fileSize, byteOffset + radius),
-                        offset: byteOffset
+                        offset: byteOffset,
                     }));
 
                     // Sort by start position for merge algorithm
@@ -584,7 +584,7 @@ export class ContextInflator {
                                 compound_id: compoundId,
                                 start_byte: window.start,
                                 end_byte: window.end,
-                                is_inflated: true
+                                is_inflated: true,
                             });
                         }
                     } catch (err) {
@@ -594,7 +594,7 @@ export class ContextInflator {
                     }
 
                     return compoundResults;
-                }
+                },
             );
             // Flatten results
             resultsArrays.forEach(arr => results.push(...arr));
@@ -611,7 +611,7 @@ export class ContextInflator {
             return results;
 
         } catch (e) {
-            console.error(`[ContextInflator] Failed to inflate from atom positions: `, e);
+            console.error('[ContextInflator] Failed to inflate from atom positions: ', e);
             return [];
         }
     }
@@ -644,7 +644,7 @@ export class ContextInflator {
         const bucketsArray = Array.from(allBuckets);
 
         // Query for related content that shares tags or buckets but wasn't in the original results
-        let query = `
+        const query = `
             SELECT id, content, source_path as source, timestamp,
     buckets, tags, epochs, provenance, simhash as molecular_signature,
     100 as score  --Lower score for less directly connected content
@@ -690,7 +690,7 @@ WHERE `;
         }
 
         // Limit to avoid fetching too much
-        fullQuery += ` ORDER BY timestamp DESC LIMIT 10`;
+        fullQuery += ' ORDER BY timestamp DESC LIMIT 10';
 
         try {
             const result = await db.run(fullQuery, params);
@@ -708,7 +708,7 @@ WHERE `;
                 provenance: row.provenance,
                 molecular_signature: row.simhash,
                 score: row.score || 100, // Default score if not provided
-                is_inflated: true
+                is_inflated: true,
             }));
 
             // Further filter and truncate content to fit the remaining budget
@@ -730,7 +730,7 @@ WHERE `;
                     const truncatedContent = result.content.substring(0, availableSpace);
                     filteredResults.push({
                         ...result,
-                        content: truncatedContent
+                        content: truncatedContent,
                     });
                     totalChars += truncatedContent.length;
                     break; // Budget is filled
@@ -740,7 +740,7 @@ WHERE `;
             console.log(`[ContextInflator] Fetched ${filteredResults.length} additional results to fill budget`);
             return filteredResults;
         } catch (e) {
-            console.error(`[ContextInflator] Failed to fetch additional context: `, e);
+            console.error('[ContextInflator] Failed to fetch additional context: ', e);
             return [];
         }
     }

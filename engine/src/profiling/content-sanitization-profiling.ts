@@ -5,7 +5,8 @@
  * This includes the "Key Assassin" functionality for cleaning JSON artifacts
  */
 
-import { nativeModuleProfiler, ProfilingConfig } from '../utils/native-module-profiler.js';
+import type { ProfilingConfig } from '../utils/native-module-profiler.js';
+import { nativeModuleProfiler } from '../utils/native-module-profiler.js';
 import { logWithContext } from '../utils/structured-logger.js';
 
 // Generate test data for sanitization profiling
@@ -15,10 +16,10 @@ function generateSanitizationTestData(): any[] {
   // Different types of content to test sanitization performance
   const samples = [
     // Clean content (should pass through quickly)
-    "This is clean content without any artifacts.",
+    'This is clean content without any artifacts.',
     
     // Content with JSON artifacts
-    `{\"type\": \"response_content\", \"response_content\": \"This is the actual content\", \"timestamp\": \"2023-01-01T00:00:00Z\", \"source\": \"test\"}`,
+    '{\"type\": \"response_content\", \"response_content\": \"This is the actual content\", \"timestamp\": \"2023-01-01T00:00:00Z\", \"source\": \"test\"}',
     
     // Content with multiple JSON artifacts
     `{
@@ -34,7 +35,7 @@ function generateSanitizationTestData(): any[] {
     2023-10-15T10:30:01Z INFO: Request completed`,
     
     // Content with escaped characters
-    `\"response_content\": \"This has \\\\\"escaped quotes\\\\\" and \\\\n newlines \\\\t tabs\"`,
+    '\"response_content\": \"This has \\\\\"escaped quotes\\\\\" and \\\\n newlines \\\\t tabs\"',
     
     // Content with multiple embedded JSON objects
     `Processing: {\"id\": 1, \"data\": \"value1\"}
@@ -55,7 +56,7 @@ function generateSanitizationTestData(): any[] {
     }`,
     
     // Content with code artifacts
-    `"response_content": "function example() { return \\"real content\\"; }"`,
+    '"response_content": "function example() { return \\"real content\\"; }"',
     
     // Content with mixed artifacts and real content
     `# Meeting Notes
@@ -81,7 +82,7 @@ function generateSanitizationTestData(): any[] {
       "raw_input": "{\\"original\\": \\"data\\"}",
       "processed_output": "cleaned data",
       "debug_info": {"level": "verbose", "details": "lots of internal data"}
-    }`
+    }`,
   ];
 
   // Create variations of the samples
@@ -101,7 +102,7 @@ function generateCleanseTestData(): any[] {
   // Different types of content to test the Key Assassin functionality
   const samples = [
     // Content with various JSON wrappers
-    `{"response_content": "Actual user content here", "metadata": {"extra": "data"}}`,
+    '{"response_content": "Actual user content here", "metadata": {"extra": "data"}}',
     
     // Content with nested JSON
     `{
@@ -122,7 +123,7 @@ function generateCleanseTestData(): any[] {
     }`,
     
     // Content with escaped JSON
-    `{\"response_content\": \"Escaped content here\", \"extra\": \"data\"}`,
+    '{\"response_content\": \"Escaped content here\", \"extra\": \"data\"}',
     
     // Content with mixed artifacts
     `Processing result:
@@ -173,15 +174,15 @@ function generateCleanseTestData(): any[] {
     // Very large content with artifacts
     `{
       "response_content": "` + 
-      "This is a very long response content string that contains lots of meaningful information ".repeat(50) +
+      'This is a very long response content string that contains lots of meaningful information '.repeat(50) +
       `",
       "metadata": {` +
-      `"field1": "value1", "field2": "value2", "field3": "value3", `.repeat(20) +
+      '"field1": "value1", "field2": "value2", "field3": "value3", '.repeat(20) +
       `},
       "nested_objects": [` +
-      `{"id": 1, "data": "item1"}, {"id": 2, "data": "item2"}, `.repeat(30) +
+      '{"id": 1, "data": "item1"}, {"id": 2, "data": "item2"}, '.repeat(30) +
       `]
-    }`
+    }`,
   ];
 
   // Create variations of the samples
@@ -208,14 +209,14 @@ async function runSanitizationProfiling() {
       operation: 'sanitize',
       iterations: 100,
       testData: sanitizeTestData,
-      parameters: {}
+      parameters: {},
     };
     
     // Run the sanitization profiling
     logWithContext.info('Executing content sanitization profiling...', {
       operation: sanitizeConfig.operation,
       iterations: sanitizeConfig.iterations,
-      testDataSize: sanitizeTestData.length
+      testDataSize: sanitizeTestData.length,
     });
     
     const sanitizeResult = await nativeModuleProfiler.profileOperation(sanitizeConfig);
@@ -228,7 +229,7 @@ async function runSanitizationProfiling() {
       minDuration: `${sanitizeResult.minDuration.toFixed(4)}ms`,
       maxDuration: `${sanitizeResult.maxDuration.toFixed(4)}ms`,
       memoryDelta: `${sanitizeResult.memoryDelta.toFixed(2)}MB`,
-      iterations: sanitizeResult.iterations
+      iterations: sanitizeResult.iterations,
     });
     
     // Generate test data for cleanse (Key Assassin)
@@ -240,14 +241,14 @@ async function runSanitizationProfiling() {
       operation: 'cleanse',
       iterations: 80,
       testData: cleanseTestData,
-      parameters: {}
+      parameters: {},
     };
     
     // Run the cleanse profiling
     logWithContext.info('Executing Key Assassin (cleanse) profiling...', {
       operation: cleanseConfig.operation,
       iterations: cleanseConfig.iterations,
-      testDataSize: cleanseTestData.length
+      testDataSize: cleanseTestData.length,
     });
     
     const cleanseResult = await nativeModuleProfiler.profileOperation(cleanseConfig);
@@ -260,7 +261,7 @@ async function runSanitizationProfiling() {
       minDuration: `${cleanseResult.minDuration.toFixed(4)}ms`,
       maxDuration: `${cleanseResult.maxDuration.toFixed(4)}ms`,
       memoryDelta: `${cleanseResult.memoryDelta.toFixed(2)}MB`,
-      iterations: cleanseResult.iterations
+      iterations: cleanseResult.iterations,
     });
     
     // Generate and save report
@@ -299,7 +300,7 @@ if (require.main === module) {
       logWithContext.info('Content sanitization profiling script completed successfully');
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(error => {
       logWithContext.error('Content sanitization profiling script failed', error);
       process.exit(1);
     });

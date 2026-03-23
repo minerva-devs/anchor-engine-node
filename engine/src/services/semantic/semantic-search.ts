@@ -41,7 +41,7 @@ export async function executeSemanticSearch(
   maxChars: number = 5242,
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   explicitTags: string[] = [],
-  codeWeight: number = 1.0 // 1.0 = normal, 0.1 = heavily penalized
+  codeWeight: number = 1.0, // 1.0 = normal, 0.1 = heavily penalized
 ): Promise<{
   context: string;
   results: SearchResult[];
@@ -111,7 +111,7 @@ export async function executeSemanticSearch(
       console.log(`[SemanticSearch] Vector Index returned ${vectorIds.length} hits.`);
     }
   } catch (e) {
-    console.warn(`[SemanticSearch] Vector search failed, falling back to pure FTS.`, e);
+    console.warn('[SemanticSearch] Vector search failed, falling back to pure FTS.', e);
   }
 
 
@@ -144,7 +144,7 @@ export async function executeSemanticSearch(
     sqlParams.push(vectorIds); // Push vectorIds to sqlParams
   }
 
-  searchQuery += `)`;
+  searchQuery += ')';
 
   // Add provenance filter
   if (provenance !== 'all') {
@@ -192,7 +192,7 @@ export async function executeSemanticSearch(
   }
 
   // Complete the query with ordering and limit
-  searchQuery += ` ORDER BY score DESC, timestamp DESC LIMIT 50`;
+  searchQuery += ' ORDER BY score DESC, timestamp DESC LIMIT 50';
 
   // FIXING PARAM INDEXES:
   // Re-build sqlParams and Query correctly
@@ -200,7 +200,7 @@ export async function executeSemanticSearch(
   sqlParams.push(tsQueryString);
   let pIdx = 2;
 
-  let clause = `to_tsvector('simple', a.content) @@ to_tsquery('simple', $1)`;
+  let clause = 'to_tsvector(\'simple\', a.content) @@ to_tsquery(\'simple\', $1)';
 
   if (vectorIds.length > 0) {
     clause = `(${clause} OR a.vector_id = ANY($${pIdx}))`;
@@ -253,14 +253,14 @@ export async function executeSemanticSearch(
       const endByte = typeof row.end_byte === 'number' ? row.end_byte : Number(row.end_byte);
       const rowVectorId = typeof row.vector_id === 'number' ? row.vector_id : Number(row.vector_id || 0);
 
-      let content = '';
+      const content = '';
       // Content hydration is now handled by ContextInflator reading from disk.
 
       const rowBuckets = Array.isArray(row.buckets) ? row.buckets as string[] : (typeof row.buckets === 'string' ? [row.buckets] : []);
       const rowTags = Array.isArray(row.tags) ? row.tags as string[] : (typeof row.tags === 'string' ? [row.tags] : []);
 
       // Calculate semantic relevance score
-      let semanticScore = calculateSemanticScore(content, queryEntities, searchTerms, entityPairs);
+      const semanticScore = calculateSemanticScore(content, queryEntities, searchTerms, entityPairs);
 
       // Calculate Vector Score
       let vectorScore = 0;
@@ -335,7 +335,7 @@ export async function executeSemanticSearch(
         // Inflation Metadata
         compound_id: String(row[9] || ''),
         start_byte: startByte,
-        end_byte: endByte
+        end_byte: endByte,
       };
 
       processedResults.push(searchResult);
@@ -389,8 +389,8 @@ export async function executeSemanticSearch(
         radiusPerTerm,
         maxResultsPerTerm,
         maxWindowSize,
-        { buckets, provenance } // Pass filters
-      ).then(results => ({ term, results }))
+        { buckets, provenance }, // Pass filters
+      ).then(results => ({ term, results })),
     );
 
     const inflationResults = await Promise.all(inflationPromises);
@@ -471,7 +471,7 @@ export async function executeSemanticSearch(
         // Push modified result with truncated content
         finalResults.push({
           ...res,
-          content: finalContent
+          content: finalContent,
         });
       }
     }
@@ -492,8 +492,8 @@ export async function executeSemanticSearch(
         entityPairs,
         resultsCount: finalResults.length,
         totalCharacters: totalChars,
-        semanticCategories: [...new Set(finalResults.flatMap(r => r.semanticCategories || []))]
-      }
+        semanticCategories: [...new Set(finalResults.flatMap(r => r.semanticCategories || []))],
+      },
     };
   } catch (error) {
     console.error('[SemanticSearch] Search error:', error);
@@ -510,8 +510,8 @@ export async function executeSemanticSearch(
         entityPairs: [],
         resultsCount: 0,
         totalCharacters: 0,
-        semanticCategories: []
-      }
+        semanticCategories: [],
+      },
     };
   }
 }
@@ -526,7 +526,7 @@ function extractEntitiesFromQuery(query: string): string[] {
 
   // Look for capitalized words (potential names)
   const capitalizedWords = query.split(/\s+/).filter(word =>
-    word.length > 1 && /^[A-Z]/.test(word) && !isCommonCapitalizedWord(word)
+    word.length > 1 && /^[A-Z]/.test(word) && !isCommonCapitalizedWord(word),
   );
 
   potentialEntities.push(...capitalizedWords);
@@ -589,7 +589,7 @@ function calculateSemanticScore(content: string, queryEntities: string[], search
 function findEntityPairs(content: string, queryEntities: string[]): string[] {
   const contentLower = content.toLowerCase();
   const foundEntities = queryEntities.filter(entity =>
-    contentLower.includes(entity.toLowerCase())
+    contentLower.includes(entity.toLowerCase()),
   );
 
   // Create pairs of entities found together
@@ -655,7 +655,7 @@ export async function executeDistributedRadialSearch(
   buckets?: string[], // Added parameter
   maxChars: number = 10000,
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
-  codeWeight: number = 1.0
+  codeWeight: number = 1.0,
 ): Promise<{
   context: string;
   results: SearchResult[];
@@ -673,7 +673,7 @@ export async function executeDistributedRadialSearch(
       context: '',
       results: [],
       toAgentString: () => '',
-      metadata: { query, termCount: 0, totalChars: 0 }
+      metadata: { query, termCount: 0, totalChars: 0 },
     };
   }
 
@@ -705,7 +705,7 @@ export async function executeDistributedRadialSearch(
     const locations = await ContextInflator.getAtomLocations(
       termObj.term,
       50,
-      { buckets, provenance }
+      { buckets, provenance },
     );
     if (locations.length > 0) {
       termLocations.set(termObj.term, locations);
@@ -730,7 +730,7 @@ export async function executeDistributedRadialSearch(
   // We can reuse the existing inflateFromAtomPositions but passing our calculated specific radius
   const processTerms = async (terms: any[], isRelated: boolean) => {
     // Parallelize term processing within the group
-    const promises = terms.map(async (termObj) => {
+    const promises = terms.map(async termObj => {
       // Skip if no locations found (save the DB call)
       if (!termLocations.has(termObj.term)) return;
 
@@ -739,7 +739,7 @@ export async function executeDistributedRadialSearch(
         elasticRadius,
         maxResultPerTerm,
         elasticRadius * 4, // Allow merging up to 4x radius
-        { buckets, provenance } // Pass filters
+        { buckets, provenance }, // Pass filters
       );
 
       // Provenance is now handled in SQL, but we keep this as a safe backup or for consistency
@@ -756,7 +756,7 @@ export async function executeDistributedRadialSearch(
   // Parallelize processing of both direct and related terms
   await Promise.all([
     processTerms(budget.directTerms, false),
-    processTerms(budget.relatedTerms, true)
+    processTerms(budget.relatedTerms, true),
   ]);
 
   // Apply Smart Code Weighting to Radial Results
@@ -831,7 +831,7 @@ export async function executeDistributedRadialSearch(
       directTerms: budget.directTerms.length,
       relatedTerms: budget.relatedTerms.length,
       totalChars,
-      resultCount: finalResults.length
-    }
+      resultCount: finalResults.length,
+    },
   };
 }

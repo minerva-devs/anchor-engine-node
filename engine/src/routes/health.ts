@@ -4,7 +4,8 @@
  * Implements health check endpoints following Standard 058: UniversalRAG API
  */
 
-import express, { Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import type express from 'express';
 import { healthCheckService } from '../services/health-check-enhanced.js';
 
 export function setupHealthRoutes(app: express.Application) {
@@ -30,15 +31,15 @@ export function setupHealthRoutes(app: express.Application) {
           platform: healthStatus.system.platform,
           arch: healthStatus.system.arch,
           uptime: process.uptime(),
-          version: '4.9.0'
-        }
+          version: '4.9.0',
+        },
       });
     } catch (error: any) {
       console.error('Health check failed:', error);
       res.status(503).json({
         status: 'unhealthy',
         error: error.message,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     }
   });
@@ -106,7 +107,7 @@ export function setupHealthRoutes(app: express.Application) {
       res.status(200).json({
         status: healthStatus.status,
         system: healthStatus.system,
-        timestamp: new Date(healthStatus.timestamp).toISOString()
+        timestamp: new Date(healthStatus.timestamp).toISOString(),
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

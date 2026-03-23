@@ -23,7 +23,7 @@ if (!fs.existsSync(PAPERS_DIR)) fs.mkdirSync(PAPERS_DIR, { recursive: true });
 
 const turndownService = new TurndownService({
     headingStyle: 'atx',
-    codeBlockStyle: 'fenced'
+    codeBlockStyle: 'fenced',
 });
 
 // Remove script tags, styles, etc.
@@ -51,7 +51,7 @@ export async function fetchAndProcess(url: string, category: 'article' | 'paper'
 
         const response = await gotScraping(url, {
             timeout: { request: 10000 },
-            dnsLookup: safeLookup
+            dnsLookup: safeLookup,
         });
 
         const html = response.body;
@@ -72,7 +72,7 @@ export async function fetchAndProcess(url: string, category: 'article' | 'paper'
         $('.sidebar').remove();
 
         // Target main content if possible
-        let contentHtml = $('main').html() || $('article').html() || $('body').html() || '';
+        const contentHtml = $('main').html() || $('article').html() || $('body').html() || '';
 
         // Convert
         const markdown = turndownService.turndown(contentHtml);

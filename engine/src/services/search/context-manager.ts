@@ -37,7 +37,7 @@ interface ContextCompositionResult {
 export function composeRollingContext(
   query: string,
   results: SearchResult[],
-  tokenBudget: number = 4096
+  tokenBudget: number = 4096,
 ): ContextCompositionResult {
   // Constants
   const CHARS_PER_TOKEN = 4; // Rough estimate
@@ -47,7 +47,7 @@ export function composeRollingContext(
 
   // 1. Dynamic Recency Analysis
   // Check for temporal signals in query
-  const temporalSignals = ["recent", "latest", "new", "today", "now", "current", "last"];
+  const temporalSignals = ['recent', 'latest', 'new', 'today', 'now', 'current', 'last'];
   const hasTemporalSignal = temporalSignals.some(signal => query.toLowerCase().includes(signal));
 
   // Adjust weights based on intent
@@ -101,12 +101,12 @@ export function composeRollingContext(
 
         if (bestCut > (remaining * 0.5)) {
           // If punctuation is reasonably far in, use it
-          const slicedContent = atom.content.substring(0, bestCut + 1) + " [Truncated]";
+          const slicedContent = atom.content.substring(0, bestCut + 1) + ' [Truncated]';
           selectedAtoms.push({ ...atom, content: slicedContent });
           currentChars += slicedContent.length;
         } else {
           // Fallback to hard cut if no punctuation found nearby
-          const slicedContent = atom.content.substring(0, remaining) + "...";
+          const slicedContent = atom.content.substring(0, remaining) + '...';
           selectedAtoms.push({ ...atom, content: slicedContent });
           currentChars += slicedContent.length;
         }
@@ -135,13 +135,13 @@ export function composeRollingContext(
           return new Date().toISOString();
         }
       })(),
-      provenance: a.provenance || 'internal'
-    }
+      provenance: a.provenance || 'internal',
+    },
   }));
 
   const graph = {
     intent: query,
-    nodes: graphNodes
+    nodes: graphNodes,
   };
 
   const jsonString = JSON.stringify(graph, null, 2);
@@ -155,7 +155,7 @@ export function composeRollingContext(
       tokenCount: Math.ceil(currentChars / CHARS_PER_TOKEN),
       charCount: currentChars,
       filledPercent: Math.min(100, (currentChars / charBudget) * 100),
-      atomCount: selectedAtoms.length
-    }
+      atomCount: selectedAtoms.length,
+    },
   };
 }

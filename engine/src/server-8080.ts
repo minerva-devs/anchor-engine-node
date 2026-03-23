@@ -27,7 +27,7 @@ db.init().then(() => {
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      service: 'Anchor Engine Chat Server (Port 8080)'
+      service: 'Anchor Engine Chat Server (Port 8080)',
     });
   });
 
@@ -47,7 +47,7 @@ db.init().then(() => {
     console.log(`Health check available at http://localhost:${PORT}/health`);
     console.log('Ready to serve chat completions for Qwen Code CLI...');
   });
-}).catch((error) => {
+}).catch(error => {
   console.error('Failed to initialize database:', error);
   // If database initialization fails, try to continue without it for basic API functionality
   console.warn('Continuing without database access - some features may not work');
@@ -65,7 +65,7 @@ db.init().then(() => {
     res.status(200).json({
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      service: 'ECE Chat Server (Port 8080) - DB unavailable'
+      service: 'ECE Chat Server (Port 8080) - DB unavailable',
     });
   });
 

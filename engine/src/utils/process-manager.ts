@@ -1,5 +1,6 @@
 // packages/anchor-engine/engine/src/utils/process-manager.ts
-import { spawn, ChildProcess } from 'child_process';
+import type { ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
@@ -81,10 +82,10 @@ export class ProcessManager {
             cwd: fullCwd,
             stdio: ['inherit', 'pipe', 'pipe'],
             env: { ...process.env, ...config.env },
-            shell: useShell
+            shell: useShell,
         });
 
-        child.stdout?.on('data', (data) => {
+        child.stdout?.on('data', data => {
             const lines = data.toString().split('\n');
             lines.forEach((line: string) => {
                 if (line.trim()) {
@@ -93,7 +94,7 @@ export class ProcessManager {
             });
         });
 
-        child.stderr?.on('data', (data) => {
+        child.stderr?.on('data', data => {
             const lines = data.toString().split('\n');
             lines.forEach((line: string) => {
                 if (line.trim()) {
@@ -102,12 +103,12 @@ export class ProcessManager {
             });
         });
 
-        child.on('close', (code) => {
+        child.on('close', code => {
             console.log(`[ProcessManager] Service ${config.name} exited with code ${code}`);
             this.processes.delete(config.name);
         });
 
-        child.on('error', (err) => {
+        child.on('error', err => {
             console.error(`[ProcessManager] Failed to start service ${config.name}:`, err);
         });
 

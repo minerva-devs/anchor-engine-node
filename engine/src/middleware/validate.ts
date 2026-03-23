@@ -9,7 +9,7 @@
  *   app.post('/v1/ingest', validate(schemas.ingest), handler);
  */
 
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 
 interface FieldSchema {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
@@ -82,7 +82,7 @@ export function validate(schema: Record<string, FieldSchema>) {
     if (errors.length > 0) {
       res.status(400).json({
         error: 'Validation failed',
-        details: errors
+        details: errors,
       });
       return;
     }
@@ -102,7 +102,7 @@ export const schemas: Record<string, Record<string, FieldSchema>> = {
     type: { type: 'string', required: false },
     bucket: { type: 'string', required: false },
     buckets: { type: 'array', required: false, itemType: 'string' },
-    tags: { type: 'array', required: false, itemType: 'string' }
+    tags: { type: 'array', required: false, itemType: 'string' },
   },
 
   /** POST /v1/memory/search */
@@ -111,7 +111,7 @@ export const schemas: Record<string, Record<string, FieldSchema>> = {
     buckets: { type: 'array', required: false, itemType: 'string' },
     tags: { type: 'array', required: false, itemType: 'string' },
     max_chars: { type: 'number', required: false, min: 1 },
-    code_weight: { type: 'number', required: false, min: 0, max: 1 }
+    code_weight: { type: 'number', required: false, min: 0, max: 1 },
   },
 
   /** POST /v1/memory/distill */
@@ -120,28 +120,28 @@ export const schemas: Record<string, Record<string, FieldSchema>> = {
     radius: { type: 'number', required: false, min: 1, max: 10 },
     max_radius: { type: 'number', required: false, min: 1, max: 20 },
     output_format: { type: 'string', required: false },
-    output_path: { type: 'string', required: false }
+    output_path: { type: 'string', required: false },
   },
 
   /** POST /v1/memory/explore */
   memoryExplore: {
     seed: { type: 'string', required: true, minLength: 1 },
     depth: { type: 'number', required: false, min: 1, max: 10 },
-    max_nodes: { type: 'number', required: false, min: 1, max: 1000 }
+    max_nodes: { type: 'number', required: false, min: 1, max: 1000 },
   },
 
   /** POST /v1/github/repos */
   githubRepos: {
     url: { type: 'string', required: true, minLength: 1 },
     bucket: { type: 'string', required: true, minLength: 1 },
-    include_history: { type: 'boolean', required: false }
+    include_history: { type: 'boolean', required: false },
   },
 
   /** POST /v1/terminal/exec */
   terminalExec: {
     command: { type: 'string', required: true, minLength: 1 },
     cwd: { type: 'string', required: false },
-    timeout: { type: 'number', required: false, min: 1000, max: 300000 }
+    timeout: { type: 'number', required: false, min: 1000, max: 300000 },
   },
 
   /** POST /v1/config/ingestion */
@@ -150,7 +150,7 @@ export const schemas: Record<string, Record<string, FieldSchema>> = {
     tag_threshold: { type: 'number', required: false, min: 0, max: 1 },
     dedup_strength: { type: 'string', required: false },
     token_budget_default: { type: 'number', required: false, min: 100, max: 10000 },
-    ingestion_profile: { type: 'string', required: false }
+    ingestion_profile: { type: 'string', required: false },
   },
 
   /** POST /v1/chat/completions */
@@ -158,21 +158,21 @@ export const schemas: Record<string, Record<string, FieldSchema>> = {
     messages: { type: 'array', required: true },
     model: { type: 'string', required: false },
     temperature: { type: 'number', required: false, min: 0, max: 2 },
-    max_tokens: { type: 'number', required: false, min: 1, max: 128000 }
+    max_tokens: { type: 'number', required: false, min: 1, max: 128000 },
   },
 
   /** POST /v1/model/load */
   modelLoad: {
-    model: { type: 'string', required: true, minLength: 1 }
+    model: { type: 'string', required: true, minLength: 1 },
   },
 
   /** POST /v1/research/scrape */
   researchScrape: {
-    url: { type: 'string', required: true, minLength: 1 }
+    url: { type: 'string', required: true, minLength: 1 },
   },
 
   /** POST /v1/engine/switch */
   engineSwitch: {
-    engine: { type: 'string', required: true, minLength: 1 }
-  }
+    engine: { type: 'string', required: true, minLength: 1 },
+  },
 };

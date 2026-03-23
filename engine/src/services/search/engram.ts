@@ -9,7 +9,7 @@
 
 import { createHash } from 'crypto';
 import { db } from '../../core/db.js';
-import { SearchResult } from './search-utils.js';
+import type { SearchResult } from './search-utils.js';
 
 /**
  * Create or update an engram (lexical sidecar) for fast entity lookup
@@ -18,7 +18,7 @@ export async function createEngram(key: string, memoryIds: string[]): Promise<vo
   const normalizedKey = key.toLowerCase().trim();
   const engramId = createHash('md5').update(normalizedKey).digest('hex');
 
-  const insertQuery = `INSERT INTO engrams (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`;
+  const insertQuery = 'INSERT INTO engrams (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value';
   await db.run(insertQuery, [engramId, JSON.stringify(memoryIds)]);
 }
 
@@ -29,7 +29,7 @@ export async function lookupByEngram(key: string): Promise<string[]> {
   const normalizedKey = key.toLowerCase().trim();
   const engramId = createHash('md5').update(normalizedKey).digest('hex');
 
-  const query = `SELECT value FROM engrams WHERE key = $1`;
+  const query = 'SELECT value FROM engrams WHERE key = $1';
   const result = await db.run(query, [engramId]);
 
   if (result.rows && result.rows.length > 0) {
@@ -66,7 +66,7 @@ export async function hydrateEngrams(ids: string[]): Promise<SearchResult[]> {
       score: 1.0, // High score for direct engram hits
       compound_id: row.compound_id,
       start_byte: row.start_byte,
-      end_byte: row.end_byte
+      end_byte: row.end_byte,
     }));
   } catch (e) {
     console.error('[Engram] Failed to hydrate engrams:', e);

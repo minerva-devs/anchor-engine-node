@@ -266,6 +266,61 @@ ANCHOR_API_KEY=your-secret-key \
 node mcp-server/dist/index.js
 ```
 
+### **Problem: "Not connected" Error in MCP Tools**
+
+**Symptoms:**
+- MCP tools return "Not connected" error
+- Engine is running and healthy
+- MCP server starts correctly when tested directly
+
+**Root Cause:**
+Port mismatch between MCP configuration and engine port. This can happen when:
+1. Multiple config files have different ports
+2. Engine port was changed but MCP config wasn't updated
+3. Different systems (Termux, Desktop, etc.) have different default ports
+
+**Check:**
+```bash
+# Check engine port
+curl http://localhost:3160/health && echo "Port 3160 OK"
+curl http://localhost:3161/health && echo "Port 3161 OK"
+
+# Check MCP config in Qwen Code
+cat ~/.qwen/mcp.json | grep ANCHOR_API_URL
+cat ~/.qwen/settings.json | grep -A5 mcpServers
+
+# Check engine config
+cat user_settings.json | grep -A3 '"server"'
+```
+
+**Fix:**
+Ensure all configs use the same port:
+
+```bash
+# 1. Find the correct port from engine config
+ENGINE_PORT=$(cat user_settings.json | grep -A1 '"server"' | grep port | grep -o '[0-9]\+')
+echo "Engine port: $ENGINE_PORT"
+
+# 2. Update ~/.qwen/mcp.json
+# Change ANCHOR_API_URL to match engine port
+
+# 3. Update ~/.qwen/settings.json mcpServers section
+# Change ANCHOR_API_URL to match engine port
+
+# 4. Restart Qwen Code session to pick up new config
+```
+
+**Config Files to Check:**
+
+| File | Setting | Must Match |
+|------|---------|------------|
+| `user_settings.json` | `server.port` | Engine's actual port |
+| `~/.qwen/mcp.json` | `ANCHOR_API_URL` | Engine's port |
+| `~/.qwen/settings.json` | `mcpServers.anchor.env.ANCHOR_API_URL` | Engine's port |
+
+**Note for Termux/Android Users:**
+On Termux, the default port is typically `3160`. Some documentation may reference `3161` from desktop setups. Always verify the actual port in `user_settings.json`.
+
 ---
 
 ## 📝 Best Practices

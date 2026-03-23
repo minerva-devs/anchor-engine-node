@@ -145,7 +145,7 @@ function generateWikiLink(atom: any): string {
  * Export knowledge graph as markdown
  */
 export async function exportGraph(
-  options: GraphExportOptions = {}
+  options: GraphExportOptions = {},
 ): Promise<GraphExportResult> {
   const {
     maxNodes = 100,
@@ -153,7 +153,7 @@ export async function exportGraph(
     includeContent = true,
     maxContentLength = 200,
     bucket,
-    tag
+    tag,
   } = options;
 
   // Check if ingestion is active - avoid transaction conflicts
@@ -174,7 +174,7 @@ export async function exportGraph(
 `;
 
   // Get statistics with separate queries to avoid subquery issues
-  let stats = { atoms: 0, sources: 0, tags: 0, molecules: 0 };
+  const stats = { atoms: 0, sources: 0, tags: 0, molecules: 0 };
   try {
     const atomsResult = await db.run('SELECT COUNT(*) as count FROM atoms');
     stats.atoms = atomsResult.rows?.[0]?.count || 0;
@@ -191,9 +191,9 @@ export async function exportGraph(
     console.error('[GraphExport] Error getting stats:', e);
     // Return empty result on database errors
     return {
-      content: `# Knowledge Graph Export\n\n> Error: Database query failed. The engine may be busy with ingestion.\n`,
+      content: '# Knowledge Graph Export\n\n> Error: Database query failed. The engine may be busy with ingestion.\n',
       nodeCount: 0,
-      edgeCount: 0
+      edgeCount: 0,
     };
   }
 
@@ -275,7 +275,7 @@ These atoms have the most connections in the knowledge graph:
   return {
     content: markdown,
     nodeCount: hubs.length,
-    edgeCount
+    edgeCount,
   };
 }
 
@@ -284,7 +284,7 @@ These atoms have the most connections in the knowledge graph:
  */
 export async function exportGraphToFile(
   outputPath?: string,
-  options: GraphExportOptions = {}
+  options: GraphExportOptions = {},
 ): Promise<GraphExportResult> {
   const result = await exportGraph(options);
 

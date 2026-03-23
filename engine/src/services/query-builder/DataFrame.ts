@@ -257,25 +257,25 @@ export class DataFrame {
     for (const header of headers) {
       colWidths[header] = Math.max(
         header.length,
-        ...this.data.map(row => String(row[header] ?? '').length)
+        ...this.data.map(row => String(row[header] ?? '').length),
       );
     }
 
     // Create header row
     const headerRow = headers.map(header => 
-      header.padEnd(colWidths[header])
+      header.padEnd(colWidths[header]),
     ).join(' | ');
 
     // Create separator row
     const separatorRow = headers.map(header => 
-      '-'.repeat(colWidths[header])
+      '-'.repeat(colWidths[header]),
     ).join('-|-');
 
     // Create data rows
     const dataRows = this.data.map(row => 
       headers.map(header => 
-        String(row[header] ?? '').padEnd(colWidths[header])
-      ).join(' | ')
+        String(row[header] ?? '').padEnd(colWidths[header]),
+      ).join(' | '),
     );
 
     // Combine all rows

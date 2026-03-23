@@ -13,9 +13,9 @@ interface ContextItem {
  */
 export async function summarizeContext(
     results: ContextItem[],
-    query: string
+    query: string,
 ): Promise<string> {
-    if (!results || results.length === 0) return "";
+    if (!results || results.length === 0) return '';
 
     // 1. Prepare the Retrieval Document
     const docs = results.map(r => {
@@ -41,12 +41,12 @@ SUMMARY:`;
         console.log(`[Reader] Summarizing ${results.length} items for query: "${query}"`);
         const summary = await runSideChannel(userPrompt, systemPrompt, {
             temperature: 0.3, // Fact-focused
-            maxTokens: 512
+            maxTokens: 512,
         }) as string;
         console.log(`[Reader] Summary generated (${summary.length} chars).`);
         return summary.trim();
     } catch (e) {
-        console.error(`[Reader] Failed to summarize:`, e);
+        console.error('[Reader] Failed to summarize:', e);
         return `Error summarizing results: ${(e as any).message}`; // Fallback
     }
 }

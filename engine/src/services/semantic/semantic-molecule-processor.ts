@@ -6,7 +6,7 @@
  */
 
 import { SemanticCategory } from '../../types/taxonomy.js';
-import { SemanticMolecule, SemanticAtom } from './types/semantic.js';
+import type { SemanticMolecule, SemanticAtom } from './types/semantic.js';
 import { SemanticTagDeriver } from './semantic-tag-deriver.js';
 import { NlpService } from '../../services/nlp/nlp-service.js';
 
@@ -26,7 +26,7 @@ export class SemanticMoleculeProcessor {
     content: string,
     source: string,
     timestamp: number,
-    provenance: string = 'internal'
+    provenance: string = 'internal',
   ): Promise<SemanticMolecule> {
     // Create a unique ID for this molecule
     const id = `mol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -49,7 +49,7 @@ export class SemanticMoleculeProcessor {
       semanticTags,
       containedEntities: entities,
       provenance,
-      score: 0 // Will be calculated during search
+      score: 0, // Will be calculated during search
     };
     
     return molecule;
@@ -68,7 +68,7 @@ export class SemanticMoleculeProcessor {
         entityValue: entity,
         entityType,
         confidence: 1.0, // For now, assume high confidence
-        sourceMoleculeId: moleculeId
+        sourceMoleculeId: moleculeId,
       };
     });
   }
@@ -136,7 +136,7 @@ export class SemanticMoleculeProcessor {
       'node.js', 'typescript', 'javascript', 'api', 'database', 'function', 'class', 
       'method', 'variable', 'algorithm', 'cozodb', 'electron', 'react', 'vite',
       'graphql', 'rest', 'json', 'xml', 'html', 'css', 'sql', 'nosql', 'mongodb',
-      'postgresql', 'mysql', 'redis', 'docker', 'kubernetes', 'aws', 'azure', 'gcp'
+      'postgresql', 'mysql', 'redis', 'docker', 'kubernetes', 'aws', 'azure', 'gcp',
     ];
     return techTerms.includes(entity.toLowerCase());
   }
@@ -163,7 +163,7 @@ export class SemanticMoleculeProcessor {
       'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
       'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
       'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
-      'should', 'may', 'might', 'must', 'can', 'shall', 'this', 'that', 'these', 'those'
+      'should', 'may', 'might', 'must', 'can', 'shall', 'this', 'that', 'these', 'those',
     ];
     return commonWords.includes(word.toLowerCase());
   }
@@ -173,7 +173,7 @@ export class SemanticMoleculeProcessor {
    * OPTIMIZED: Process chunks in parallel to improve performance
    */
   public async processTextChunks(
-    chunks: Array<{ content: string; source: string; timestamp: number; provenance?: string }>
+    chunks: Array<{ content: string; source: string; timestamp: number; provenance?: string }>,
   ): Promise<SemanticMolecule[]> {
     // Process all chunks in parallel instead of sequentially
     const moleculePromises = chunks.map(chunk => 
@@ -181,8 +181,8 @@ export class SemanticMoleculeProcessor {
         chunk.content,
         chunk.source,
         chunk.timestamp,
-        chunk.provenance || 'internal'
-      )
+        chunk.provenance || 'internal',
+      ),
     );
 
     return await Promise.all(moleculePromises);
@@ -202,9 +202,9 @@ export class SemanticMoleculeProcessor {
     return molecules.filter(mol => 
       entities.some(entity => 
         mol.containedEntities.some(containedEntity => 
-          containedEntity.toLowerCase() === entity.toLowerCase()
-        )
-      )
+          containedEntity.toLowerCase() === entity.toLowerCase(),
+        ),
+      ),
     );
   }
 
@@ -221,8 +221,8 @@ export class SemanticMoleculeProcessor {
       // Check if all specified entities are present in this molecule
       return entities.every(entity => 
         mol.containedEntities.some(containedEntity => 
-          containedEntity.toLowerCase() === entity.toLowerCase()
-        )
+          containedEntity.toLowerCase() === entity.toLowerCase(),
+        ),
       );
     });
   }

@@ -63,21 +63,21 @@ export class RequestTracer {
       operation,
       startTime: Date.now(),
       status: 'started',
-      tags
+      tags,
     };
 
     this.activeSpans.set(spanId, span);
 
     const context: TraceContext = {
       traceId,
-      spanId
+      spanId,
     };
 
     logWithContext.info('TRACE_START', {
       traceId,
       spanId,
       operation,
-      tags
+      tags,
     });
 
     return context;
@@ -89,7 +89,7 @@ export class RequestTracer {
   startChildSpan(
     parentContext: TraceContext,
     operation: string,
-    tags?: Record<string, any>
+    tags?: Record<string, any>,
   ): TraceContext {
     const spanId = uuidv4();
     const span: TraceSpan = {
@@ -99,7 +99,7 @@ export class RequestTracer {
       operation,
       startTime: Date.now(),
       status: 'started',
-      tags
+      tags,
     };
 
     this.activeSpans.set(spanId, span);
@@ -107,7 +107,7 @@ export class RequestTracer {
     const context: TraceContext = {
       traceId: parentContext.traceId,
       spanId,
-      parentId: parentContext.spanId
+      parentId: parentContext.spanId,
     };
 
     logWithContext.info('SPAN_START', {
@@ -115,7 +115,7 @@ export class RequestTracer {
       spanId,
       parentId: parentContext.spanId,
       operation,
-      tags
+      tags,
     });
 
     return context;
@@ -129,7 +129,7 @@ export class RequestTracer {
     if (!span) {
       logWithContext.warn('Attempted to end non-existent span', {
         spanId: context.spanId,
-        traceId: context.traceId
+        traceId: context.traceId,
       });
       return;
     }
@@ -151,7 +151,7 @@ export class RequestTracer {
       operation: span.operation,
       duration: span.duration,
       status,
-      tags
+      tags,
     });
 
     // Record performance metric
@@ -177,7 +177,7 @@ export class RequestTracer {
       timestamp: Date.now(),
       level,
       message,
-      fields
+      fields,
     });
 
     // Update the span in the map
@@ -216,7 +216,7 @@ export class RequestTracer {
    */
   getActiveSpans(traceId: string): TraceSpan[] {
     return Array.from(this.activeSpans.values()).filter(
-      span => span.traceId === traceId && span.status === 'started'
+      span => span.traceId === traceId && span.status === 'started',
     );
   }
 
@@ -225,7 +225,7 @@ export class RequestTracer {
    */
   getCompletedSpans(traceId: string): TraceSpan[] {
     return Array.from(this.activeSpans.values()).filter(
-      span => span.traceId === traceId && span.status === 'completed'
+      span => span.traceId === traceId && span.status === 'completed',
     );
   }
 
@@ -247,7 +247,7 @@ export class RequestTracer {
     const errorSpans = allSpans.filter(s => s.status === 'error');
 
     const totalDuration = Math.max(
-      ...allSpans.map(s => s.duration || 0)
+      ...allSpans.map(s => s.duration || 0),
     );
 
     const operations = [...new Set(allSpans.map(s => s.operation))];
@@ -258,7 +258,7 @@ export class RequestTracer {
       completedSpans: completedSpans.length,
       errorSpans: errorSpans.length,
       totalDuration,
-      operations
+      operations,
     };
   }
 
@@ -281,8 +281,8 @@ export class RequestTracer {
         duration: span.duration,
         status: span.status,
         tags: span.tags || {},
-        logs: span.logs || []
-      }))
+        logs: span.logs || [],
+      })),
     };
   }
 
@@ -408,7 +408,7 @@ export async function traceOperation<T>(
   operation: string,
   fn: () => Promise<T>,
   tags?: Record<string, any>,
-  parentContext?: TraceContext
+  parentContext?: TraceContext,
 ): Promise<T> {
   const context = parentContext
     ? requestTracer.startChildSpan(parentContext, operation, tags)
@@ -428,24 +428,24 @@ export async function traceOperation<T>(
 export async function traceIngestion<T>(
   content: string,
   source: string,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> {
   const context = requestTracer.startTrace('ingestion', {
     source,
     contentLength: content.length,
-    operation: 'ingest'
+    operation: 'ingest',
   });
 
   try {
     const result = await fn();
     requestTracer.endTrace(context, 'completed', {
-      status: 'success'
+      status: 'success',
     });
     return result;
   } catch (error) {
     requestTracer.endTrace(context, 'error', {
       status: 'failed',
-      error: (error as Error).message
+      error: (error as Error).message,
     });
     throw error;
   }
@@ -455,24 +455,24 @@ export async function traceIngestion<T>(
 export async function traceSearch<T>(
   query: string,
   buckets: string[],
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> {
   const context = requestTracer.startTrace('search', {
     query: query.substring(0, 100), // Truncate long queries
     buckets,
-    operation: 'search'
+    operation: 'search',
   });
 
   try {
     const result = await fn();
     requestTracer.endTrace(context, 'completed', {
-      status: 'success'
+      status: 'success',
     });
     return result;
   } catch (error) {
     requestTracer.endTrace(context, 'error', {
       status: 'failed',
-      error: (error as Error).message
+      error: (error as Error).message,
     });
     throw error;
   }
@@ -482,24 +482,24 @@ export async function traceSearch<T>(
 export async function traceDatabaseOperation<T>(
   operation: string,
   query: string,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> {
   const context = requestTracer.startTrace(`db_${operation}`, {
     operation,
     queryLength: query.length,
-    operationType: 'database'
+    operationType: 'database',
   });
 
   try {
     const result = await fn();
     requestTracer.endTrace(context, 'completed', {
-      status: 'success'
+      status: 'success',
     });
     return result;
   } catch (error) {
     requestTracer.endTrace(context, 'error', {
       status: 'failed',
-      error: (error as Error).message
+      error: (error as Error).message,
     });
     throw error;
   }
@@ -509,24 +509,24 @@ export async function traceDatabaseOperation<T>(
 export async function traceNativeOperation<T>(
   operation: string,
   module: string,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> {
   const context = requestTracer.startTrace(`native_${operation}`, {
     module,
     operation,
-    operationType: 'native'
+    operationType: 'native',
   });
 
   try {
     const result = await fn();
     requestTracer.endTrace(context, 'completed', {
-      status: 'success'
+      status: 'success',
     });
     return result;
   } catch (error) {
     requestTracer.endTrace(context, 'error', {
       status: 'failed',
-      error: (error as Error).message
+      error: (error as Error).message,
     });
     throw error;
   }

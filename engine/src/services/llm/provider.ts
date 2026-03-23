@@ -6,14 +6,14 @@ import config from '../../config/index.js';
 
 // --- CONFIGURATION ---
 const LLM_PROVIDER = config.LLM_PROVIDER || 'local';
-const REMOTE_LLM_URL = config.REMOTE_LLM_URL;
-const REMOTE_MODEL_NAME = config.REMOTE_MODEL_NAME;
+const { REMOTE_LLM_URL } = config;
+const { REMOTE_MODEL_NAME } = config;
 
 // Global State (Local)
-let clientWorker: Worker | null = null;
-let orchestratorWorker: Worker | null = null;
-let currentChatModelName = "";
-let currentOrchestratorModelName = "";
+const clientWorker: Worker | null = null;
+const orchestratorWorker: Worker | null = null;
+let currentChatModelName = '';
+let currentOrchestratorModelName = '';
 
 // ESM __dirname fix
 const __filename = fileURLToPath(import.meta.url);
@@ -39,21 +39,21 @@ async function remoteChatCompletion(prompt: string, systemPrompt: string, option
   const body = {
     model: REMOTE_MODEL_NAME,
     messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: prompt }
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt },
     ],
     stream: !!onToken,
     temperature: options.temperature || 0.7,
-    max_tokens: options.maxTokens || 2048
+    max_tokens: options.maxTokens || 2048,
   };
 
   try {
     const response = await fetch(`${REMOTE_LLM_URL}/chat/completions`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) throw new Error(`Remote Brain Error: ${response.status} ${response.statusText}`);
@@ -85,14 +85,14 @@ async function remoteChatCompletion(prompt: string, systemPrompt: string, option
           }
         }
       }
-      return ""; // Stream handled via callback
+      return ''; // Stream handled via callback
     } else {
       // Blocking Mode
       const json = await response.json();
-      return json.choices[0]?.message?.content || "";
+      return json.choices[0]?.message?.content || '';
     }
   } catch (error: any) {
-    console.error("❌ [Provider] Remote Inference Failed:", error.message);
+    console.error('❌ [Provider] Remote Inference Failed:', error.message);
     throw error;
   }
 }
@@ -106,7 +106,7 @@ export async function initWorker() {
     try {
       await fetch(REMOTE_LLM_URL.replace('/v1', '/health').replace('/chat/completions', ''), { method: 'GET' }).catch(() => { });
     } catch (e) {
-      console.warn("⚠️ [Provider] Remote Brain unreachable? Is the Desktop server running?");
+      console.warn('⚠️ [Provider] Remote Brain unreachable? Is the Desktop server running?');
     }
     return;
   }
@@ -121,15 +121,15 @@ export async function initWorker() {
 async function spawnWorker(name: string, workerPath: string, workerData: any = {}): Promise<Worker> {
   return new Promise((resolve, reject) => {
     const w = new Worker(workerPath, { workerData });
-    w.on('message', (msg) => {
+    w.on('message', msg => {
       if (msg.type === 'ready') resolve(w);
       if (msg.type === 'error') console.error(`[${name}] Error:`, msg.error);
     });
-    w.on('error', (err) => {
+    w.on('error', err => {
       console.error(`[${name}] Thread Error:`, err);
       reject(err);
     });
-    w.on('exit', (code) => {
+    w.on('exit', code => {
       if (code !== 0) console.error(`[${name}] Stopped with exit code ${code}`);
     });
   });
@@ -143,29 +143,29 @@ export async function initAutoLoad() {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    console.log("[Provider] Auto-loading configured models...");
+    console.log('[Provider] Auto-loading configured models...');
     await initWorker();
 
     if (LLM_PROVIDER === 'local') {
-      console.log(`[Provider] DEBUG: Loading Local Models...`);
+      console.log('[Provider] DEBUG: Loading Local Models...');
       try {
         // Load Chat Model
         // ... (Local Loading Logic) ...
         console.log(`[Provider] Loading Main Chat Model: ${config.MODELS.MAIN.PATH}`);
         await loadModel(config.MODELS.MAIN.PATH, {
           ctxSize: config.MODELS.MAIN.CTX_SIZE,
-          gpuLayers: config.MODELS.MAIN.GPU_LAYERS
+          gpuLayers: config.MODELS.MAIN.GPU_LAYERS,
         }, 'chat');
 
         // Load Orchestrator Model
         console.log(`[Provider] Loading Orchestrator Model: ${config.MODELS.ORCHESTRATOR.PATH}`);
         await loadModel(config.MODELS.ORCHESTRATOR.PATH, {
           ctxSize: config.MODELS.ORCHESTRATOR.CTX_SIZE,
-          gpuLayers: config.MODELS.ORCHESTRATOR.GPU_LAYERS
+          gpuLayers: config.MODELS.ORCHESTRATOR.GPU_LAYERS,
         }, 'orchestrator');
 
       } catch (e) {
-        console.error("[Provider] Auto-load failed:", e);
+        console.error('[Provider] Auto-load failed:', e);
         initPromise = null;
         throw e;
       }
@@ -180,7 +180,7 @@ let chatLoadingPromise: Promise<any> | null = null;
 let orchLoadingPromise: Promise<any> | null = null;
 
 export async function loadModel(modelPath: string, options: LoadModelOptions = {}, target: 'chat' | 'orchestrator' = 'chat') {
-  if (LLM_PROVIDER === 'remote') return { status: "ready (remote)" };
+  if (LLM_PROVIDER === 'remote') return { status: 'ready (remote)' };
 
   // ... (Local Loading Logic) ...
   console.log(`[Provider] loadModel called for: ${modelPath} [Target: ${target}]`);
@@ -190,14 +190,14 @@ export async function loadModel(modelPath: string, options: LoadModelOptions = {
   let targetWorker = clientWorker;
   if (target === 'orchestrator') {
     targetWorker = orchestratorWorker;
-    if (!targetWorker) console.warn("[Provider] Warning: Orchestrator target requested but OrchestratorWorker is null. Fallback to ClientWorker?");
+    if (!targetWorker) console.warn('[Provider] Warning: Orchestrator target requested but OrchestratorWorker is null. Fallback to ClientWorker?');
   }
 
   if (!targetWorker) throw new Error(`Worker not initialized for target ${target}`);
 
   // Check if already loaded
-  if (target === 'chat' && modelPath === currentChatModelName) return { status: "ready" };
-  if (target === 'orchestrator' && modelPath === currentOrchestratorModelName) return { status: "ready" };
+  if (target === 'chat' && modelPath === currentChatModelName) return { status: 'ready' };
+  if (target === 'orchestrator' && modelPath === currentOrchestratorModelName) return { status: 'ready' };
 
   // Prevent parallel loads for *same target*
   if (target === 'chat' && chatLoadingPromise) return chatLoadingPromise;
@@ -209,7 +209,7 @@ export async function loadModel(modelPath: string, options: LoadModelOptions = {
     const handler = (msg: any) => {
       if (msg.type === 'modelLoaded') {
         console.log(`[Provider] ${target} Model loaded successfully: ${modelPath}`);
-        targetWorker!.off('message', handler);
+        targetWorker.off('message', handler);
         if (target === 'chat') {
           currentChatModelName = modelPath;
           chatLoadingPromise = null;
@@ -217,9 +217,9 @@ export async function loadModel(modelPath: string, options: LoadModelOptions = {
           currentOrchestratorModelName = modelPath;
           orchLoadingPromise = null;
         }
-        resolve({ status: "success" });
+        resolve({ status: 'success' });
       } else if (msg.type === 'error') {
-        targetWorker!.off('message', handler);
+        targetWorker.off('message', handler);
         if (target === 'chat') chatLoadingPromise = null;
         else orchLoadingPromise = null;
         console.error(`[Provider] Worker ${target} Error:`, msg.error);
@@ -227,10 +227,10 @@ export async function loadModel(modelPath: string, options: LoadModelOptions = {
       }
     };
 
-    targetWorker!.on('message', handler);
-    targetWorker!.postMessage({
+    targetWorker.on('message', handler);
+    targetWorker.postMessage({
       type: 'loadModel',
-      data: { modelPath: fullModelPath, options }
+      data: { modelPath: fullModelPath, options },
     });
   });
 
@@ -245,21 +245,21 @@ export async function runInference(prompt: string, data: any) {
     // Stub for generic inference if needed, or throw
     return null;
   }
-  if (!clientWorker || !currentChatModelName) throw new Error("Chat Model not loaded");
-  console.log("runInference called locally");
+  if (!clientWorker || !currentChatModelName) throw new Error('Chat Model not loaded');
+  console.log('runInference called locally');
   return null;
 }
 
 export async function runStreamingChat(
   prompt: string,
   onToken: (token: string) => void,
-  systemInstruction = "You are a helpful assistant.",
+  systemInstruction = 'You are a helpful assistant.',
   options: any = {},
-  requestedModel?: string
+  requestedModel?: string,
 ): Promise<string> {
   if (LLM_PROVIDER === 'remote') {
     await remoteChatCompletion(prompt, systemInstruction, options, onToken);
-    return ""; // Remote stream handled via callback
+    return ''; // Remote stream handled via callback
   }
 
   // Local Logic
@@ -267,20 +267,20 @@ export async function runStreamingChat(
     console.log(`[Provider] Requested model "${requestedModel}" differs from current "${currentChatModelName}". Loading...`);
     await loadModel(requestedModel, {
       ctxSize: options.ctxSize || config.MODELS.MAIN.CTX_SIZE,
-      gpuLayers: options.gpuLayers || config.MODELS.MAIN.GPU_LAYERS
+      gpuLayers: options.gpuLayers || config.MODELS.MAIN.GPU_LAYERS,
     }, 'chat');
   }
 
   if (!clientWorker || !currentChatModelName) {
-    console.log("[Provider] Chat Model not loaded, auto-loading...");
+    console.log('[Provider] Chat Model not loaded, auto-loading...');
     await initAutoLoad();
-    if (!clientWorker || !currentChatModelName) throw new Error("Chat Model failed to load.");
+    if (!clientWorker || !currentChatModelName) throw new Error('Chat Model failed to load.');
   }
 
-  const worker = clientWorker!;
+  const worker = clientWorker;
 
   return new Promise((resolve, reject) => {
-    let fullResponse = "";
+    let fullResponse = '';
 
     const handler = (msg: any) => {
       if (msg.type === 'token') {
@@ -298,16 +298,16 @@ export async function runStreamingChat(
     worker.on('message', handler);
     worker.postMessage({
       type: 'chat',
-      data: { prompt, options: { ...options, onToken: undefined, systemPrompt: systemInstruction } }
+      data: { prompt, options: { ...options, onToken: undefined, systemPrompt: systemInstruction } },
     });
   });
 }
 
 export async function runSideChannel(
   prompt: string,
-  systemInstruction = "You are a helpful assistant.",
+  systemInstruction = 'You are a helpful assistant.',
   options: any = {},
-  requestedModel?: string
+  requestedModel?: string,
 ) {
   if (LLM_PROVIDER === 'remote') {
     return await remoteChatCompletion(prompt, systemInstruction, options);
@@ -319,7 +319,7 @@ export async function runSideChannel(
 
   // Retry logic (simplified from original for brevity/clarity in this patch)
   const targetWorker = orchestratorWorker || clientWorker;
-  if (!targetWorker) throw new Error("Orchestrator/Chat Model failed to load.");
+  if (!targetWorker) throw new Error('Orchestrator/Chat Model failed to load.');
 
   return new Promise((resolve, _reject) => {
     const handler = (msg: any) => {
@@ -335,7 +335,7 @@ export async function runSideChannel(
     const { onToken, ...workerOptions } = options;
     targetWorker.postMessage({
       type: 'chat',
-      data: { prompt, options: { ...workerOptions, systemPrompt: systemInstruction } }
+      data: { prompt, options: { ...workerOptions, systemPrompt: systemInstruction } },
     });
   });
 }
@@ -353,7 +353,7 @@ export async function getEmbeddings(texts: string[]): Promise<number[][] | null>
 
 // Stub for now
 export async function initInference() {
-  console.warn("[Provider] initInference called (Legacy). BLOCKED.");
+  console.warn('[Provider] initInference called (Legacy). BLOCKED.');
   return null;
 }
 
@@ -368,5 +368,5 @@ export async function listModels(customDir?: string) {
   const fs = await import('fs');
   const targetDir = customDir ? path.resolve(customDir) : MODELS_DIR;
   if (!fs.existsSync(targetDir)) return [];
-  return fs.readdirSync(targetDir).filter((f: string) => f.endsWith(".gguf"));
+  return fs.readdirSync(targetDir).filter((f: string) => f.endsWith('.gguf'));
 }

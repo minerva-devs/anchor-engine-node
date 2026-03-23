@@ -39,7 +39,7 @@ export async function initializeInference(modelPath?: string, options: Inference
     if (modelPath) {
       await loadModel(modelPath, {
         ctxSize: options.contextSize,
-        gpuLayers: options.gpuLayers
+        gpuLayers: options.gpuLayers,
       }, 'chat');
     } else {
       // Otherwise use the auto-loader (which reads user_settings.json)
@@ -49,13 +49,13 @@ export async function initializeInference(modelPath?: string, options: Inference
     return {
       success: true,
       message: 'Inference engine initialized successfully (Worker Backend)',
-      model: 'Worker'
+      model: 'Worker',
     };
   } catch (error: any) {
     console.error(`[InferenceService] Initialization failed: ${error.message}`);
     return {
       success: false,
-      message: `Failed to initialize inference engine: ${error.message}`
+      message: `Failed to initialize inference engine: ${error.message}`,
     };
   }
 }
@@ -72,14 +72,14 @@ export async function runChatCompletion(request: ChatRequest): Promise<{ success
     // However, provider.ts runSideChannel signature is (prompt, systemInstruction, options)
 
     // We need to extract the last user message and the system prompt
-    const messages = request.messages;
+    const { messages } = request;
     const systemMsg = messages.find(m => m.role === 'system');
-    const systemPrompt = systemMsg ? systemMsg.content : "You are a helpful assistant.";
+    const systemPrompt = systemMsg ? systemMsg.content : 'You are a helpful assistant.';
 
     // Combine the non-system messages into a history-aware prompt or pass them if the provider supports it.
     // The current provider implementation takes a prompt string.
 
-    let prompt = "";
+    let prompt = '';
     const lastMsg = messages[messages.length - 1];
 
     // If there is history, we should try to include it, but the provider.ts side channel is stateless.
@@ -100,26 +100,26 @@ export async function runChatCompletion(request: ChatRequest): Promise<{ success
         temperature: request.options?.temperature ?? 0.7,
         maxTokens: request.options?.maxTokens ?? 1024,
         grammar: request.options?.grammar,
-        onToken: request.options?.onToken
+        onToken: request.options?.onToken,
       },
-      request.model
+      request.model,
     );
 
     if (!responseText) {
-      throw new Error("Empty response from Provider");
+      throw new Error('Empty response from Provider');
     }
 
     return {
       success: true,
       response: {
         role: 'assistant',
-        content: responseText
-      }
+        content: responseText,
+      },
     };
   } catch (error: any) {
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -129,23 +129,23 @@ export async function runChatCompletion(request: ChatRequest): Promise<{ success
  */
 export async function runCompletion(prompt: string, options: InferenceOptions = {}): Promise<{ success: boolean; response?: string; error?: string }> {
   try {
-    const result = await runSideChannel(prompt, "You are a completion engine.", options);
+    const result = await runSideChannel(prompt, 'You are a completion engine.', options);
 
     if (result) {
       return {
         success: true,
-        response: result as string
+        response: result as string,
       };
     } else {
       return {
         success: false,
-        error: 'Unknown error occurred'
+        error: 'Unknown error occurred',
       };
     }
   } catch (error: any) {
     return {
       success: false,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -160,6 +160,6 @@ export function getInferenceStatus(): { loaded: boolean; model?: string; error?:
   return {
     loaded: true,
     model: 'Worker-managed',
-    error: undefined
+    error: undefined,
   };
 }

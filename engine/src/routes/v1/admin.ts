@@ -1,4 +1,4 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import { db } from '../../core/db.js';
 import { validate, schemas } from '../../middleware/validate.js';
 
@@ -20,7 +20,7 @@ export function setupAdminRoutes(app: Application) {
       if (isDangerous) {
         return res.status(400).json({
           error: 'Command contains potentially dangerous operations',
-          stderr: 'ERROR: Dangerous command blocked by security policy'
+          stderr: 'ERROR: Dangerous command blocked by security policy',
         });
       }
 
@@ -30,7 +30,7 @@ export function setupAdminRoutes(app: Application) {
           command: command,
           stdout: '', // Empty stdout for clear command
           stderr: '',
-          code: 0
+          code: 0,
         });
       }
 
@@ -44,7 +44,7 @@ export function setupAdminRoutes(app: Application) {
         'cat README.md': { stdout: '# Project README\n\nThis is a sample readme file.' },
         'type README.md': { stdout: '# Project README\n\nThis is a sample readme file.' },
         'help': { stdout: 'Available commands: ls, pwd, whoami, echo, cat/type, help' },
-        'cls': { stdout: '' }
+        'cls': { stdout: '' },
       };
 
       // Check if we have a predefined response
@@ -60,7 +60,7 @@ export function setupAdminRoutes(app: Application) {
         } else {
           response = {
             stdout: `Command executed: ${command}\n(Output simulated for security)`,
-            stderr: command.includes('error') ? 'Simulated error for testing' : undefined
+            stderr: command.includes('error') ? 'Simulated error for testing' : undefined,
           };
         }
       }
@@ -69,14 +69,14 @@ export function setupAdminRoutes(app: Application) {
         command: command,
         stdout: response.stdout || '',
         stderr: response.stderr || '',
-        code: response.code !== undefined ? response.code : 0
+        code: response.code !== undefined ? response.code : 0,
       });
 
     } catch (error: any) {
       console.error('Terminal execution error:', error);
       res.status(500).json({
         error: error.message,
-        stderr: `Execution failed: ${error.message}`
+        stderr: `Execution failed: ${error.message}`,
       });
     }
   });
@@ -100,7 +100,7 @@ export function setupAdminRoutes(app: Application) {
         atoms: atomCount.rows?.[0]?.count || 0,
         tags: tagCount.rows?.[0]?.count || 0,
         sampleTags: sampleTags.rows || [],
-        tagsWithLowCount: lowCountTags.rows?.[0]?.count || 0
+        tagsWithLowCount: lowCountTags.rows?.[0]?.count || 0,
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -113,7 +113,7 @@ export function setupAdminRoutes(app: Application) {
       const synonyms = await db.run('SELECT key, value FROM engrams WHERE key LIKE \'synonym:%\'');
       res.status(200).json({
         count: synonyms.rows?.length || 0,
-        synonyms: synonyms.rows || []
+        synonyms: synonyms.rows || [],
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -123,7 +123,7 @@ export function setupAdminRoutes(app: Application) {
   // Maintenance: Re-index Tags (Fix for missing buckets/tags in UI)
   app.post('/v1/maintenance/reindex-tags', async (_req: Request, res: Response) => {
     try {
-      console.log("[Maintenance] Starting Tag Re-indexing...");
+      console.log('[Maintenance] Starting Tag Re-indexing...');
 
       // 1. Drop old table
       await db.run('DROP TABLE IF EXISTS tags');
@@ -143,7 +143,7 @@ export function setupAdminRoutes(app: Application) {
       try {
         await db.run('CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);');
         await db.run('CREATE INDEX IF NOT EXISTS idx_tags_bucket ON tags(bucket);');
-      } catch (e) { console.warn("Index creation warning", e); }
+      } catch (e) { console.warn('Index creation warning', e); }
 
       // 4. Migrate Data
       const atoms = await db.run('SELECT id, tags, buckets FROM atoms');
@@ -161,11 +161,11 @@ export function setupAdminRoutes(app: Application) {
           await db.run(
             `INSERT INTO tags (atom_id, tag, bucket) VALUES ${placeholders}
              ON CONFLICT (atom_id, tag, bucket) DO NOTHING`,
-            params
+            params,
           );
           count += values.length;
         } catch (e) {
-          console.warn(`[Maintenance] Batch insert failed:`, e);
+          console.warn('[Maintenance] Batch insert failed:', e);
         }
         values = [];
         params = [];
@@ -250,13 +250,13 @@ export function setupAdminRoutes(app: Application) {
         nodes: nodes.slice(0, limit),
         links: links.slice(0, limit * 2), // More links than nodes typically
         query: query,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
     } catch (error: any) {
       console.error('Graph data error:', error);
       res.status(500).json({
-        error: error.message
+        error: error.message,
       });
     }
   });
@@ -265,7 +265,7 @@ export function setupAdminRoutes(app: Application) {
   app.post('/v1/dream', async (_req: Request, res: Response) => {
     res.status(501).json({
       error: 'Dreamer service is disabled',
-      message: 'This endpoint has been disabled to optimize startup for the STAR algorithm'
+      message: 'This endpoint has been disabled to optimize startup for the STAR algorithm',
     });
   });
 

@@ -37,7 +37,7 @@ const DEFAULT_OPTIONS: CleanOptions = {
     normalizeWhitespace: true,
     removeBoilerplate: false,
     normalizeLineEndings: true,
-    collapseBlankLines: true
+    collapseBlankLines: true,
 };
 
 /**
@@ -129,7 +129,7 @@ function decodeHtmlEntities(text: string): string {
         '&bull;': '•',
         '&copy;': '©',
         '&reg;': '®',
-        '&trade;': '™'
+        '&trade;': '™',
     };
 
     let decoded = text;
@@ -183,7 +183,7 @@ function removeBoilerplate(text: string): string {
         // Comments sections
         /<div[^>]*id="[^"]*comments[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
         // Related posts
-        /<div[^>]*class="[^"]*related[^"]*"[^>]*>[\s\S]*?<\/div>/gi
+        /<div[^>]*class="[^"]*related[^"]*"[^>]*>[\s\S]*?<\/div>/gi,
     ];
 
     for (const pattern of boilerplatePatterns) {
@@ -211,6 +211,6 @@ export function getCleaningStats(original: string, cleaned: string): {
         originalLength,
         cleanedLength,
         reductionPercent: Math.round(reductionPercent * 100) / 100,
-        charsRemoved
+        charsRemoved,
     };
 }

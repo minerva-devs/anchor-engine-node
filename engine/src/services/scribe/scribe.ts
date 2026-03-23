@@ -114,8 +114,8 @@ Session State Summary:`;
                 [], // tags
                 'system', // provenance
                 '0', // simhash
-                new Array(768).fill(0.0) // embedding (stub)
-            ]
+                new Array(768).fill(0.0), // embedding (stub)
+            ],
         );
 
         console.log('✍️ Scribe: State updated successfully');
@@ -155,7 +155,7 @@ export async function getState(): Promise<string | null> {
  */
 export async function clearState(): Promise<ClearStateResult> {
     try {
-        const query = `DELETE FROM atoms WHERE id = $1`;
+        const query = 'DELETE FROM atoms WHERE id = $1';
         await db.run(query, [SESSION_STATE_ID]);
         console.log('✍️ Scribe: State cleared');
         return { status: 'cleared' };

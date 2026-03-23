@@ -88,10 +88,10 @@ export class NlpService {
       'city', 'town', 'state', 'country', 'street', 'avenue', 'road', 'building',
       'avenue', 'boulevard', 'lane', 'drive', 'court', 'place', 'plaza', 'square',
       'mountain', 'river', 'lake', 'ocean', 'sea', 'valley', 'canyon', 'park',
-      'hotel', 'restaurant', 'store', 'mall', 'airport', 'station', 'port'
+      'hotel', 'restaurant', 'store', 'mall', 'airport', 'station', 'port',
     ];
     return placeIndicators.some(indicator =>
-      entity.toLowerCase().includes(indicator.toLowerCase())
+      entity.toLowerCase().includes(indicator.toLowerCase()),
     );
   }
 
@@ -104,7 +104,7 @@ export class NlpService {
       'method', 'variable', 'algorithm', 'cozodb', 'electron', 'react', 'vite',
       'graphql', 'rest', 'json', 'xml', 'html', 'css', 'sql', 'nosql', 'mongodb',
       'postgresql', 'mysql', 'redis', 'docker', 'kubernetes', 'aws', 'azure', 'gcp',
-      'glm', 'llama', 'model', 'tensor', 'vector', 'embedding', 'rag', 'ai', 'ml', 'dl'
+      'glm', 'llama', 'model', 'tensor', 'vector', 'embedding', 'rag', 'ai', 'ml', 'dl',
     ];
     return techTerms.includes(entity.toLowerCase());
   }
@@ -143,7 +143,7 @@ export class NlpService {
       'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
       'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
       'should', 'may', 'might', 'must', 'can', 'shall', 'this', 'that', 'these', 'those',
-      'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them'
+      'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
     ];
     return commonWords.includes(word.toLowerCase());
   }
@@ -155,7 +155,7 @@ export class NlpService {
     const relationshipIndicators = [
       'and', 'with', 'met', 'told', 'said', 'spoke', 'visited',
       'called', 'texted', 'together', 'relationship', 'friend', 'partner',
-      'love', 'missed', 'cared', 'knows', 'introduced', 'about', 'to'
+      'love', 'missed', 'cared', 'knows', 'introduced', 'about', 'to',
     ];
     const lowerText = text.toLowerCase();
     return relationshipIndicators.some(indicator =>
@@ -163,7 +163,7 @@ export class NlpService {
       lowerText.startsWith(`${indicator} `) ||
       lowerText.endsWith(` ${indicator}`) ||
       lowerText.includes(`${indicator},`) ||
-      lowerText.includes(`${indicator}.`)
+      lowerText.includes(`${indicator}.`),
     );
   }
 }

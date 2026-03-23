@@ -61,10 +61,10 @@ export class TaxonomyManager {
         triggers: [
           'and', 'with', 'met', 'told', 'said to', 'spoke to', 'visited', 
           'called', 'texted', 'together', 'relationship', 'friend', 'partner',
-          'love', 'missed', 'cared about', 'knows', 'introduced to', 'about'
+          'love', 'missed', 'cared about', 'knows', 'introduced to', 'about',
         ],
         requiredEntities: ['person'],
-        weight: 0.9
+        weight: 0.9,
       },
       {
         category: SemanticCategory.NARRATIVE,
@@ -72,10 +72,10 @@ export class TaxonomyManager {
           'when', 'then', 'later', 'before', 'after', 'during', 'while',
           'first', 'next', 'finally', 'meanwhile', 'eventually', 'suddenly',
           'it was', 'there was', 'once upon', 'story', 'remember', 'recall',
-          'yesterday', 'today', 'tomorrow', 'morning', 'afternoon', 'evening', 'night'
+          'yesterday', 'today', 'tomorrow', 'morning', 'afternoon', 'evening', 'night',
         ],
         requiredEntities: ['person', 'date'],
-        weight: 0.8
+        weight: 0.8,
       },
       {
         category: SemanticCategory.TECHNICAL,
@@ -83,10 +83,10 @@ export class TaxonomyManager {
           'function', 'class', 'method', 'variable', 'code', 'algorithm',
           'API', 'endpoint', 'database', 'server', 'client', 'library',
           'framework', 'module', 'component', 'system', 'architecture',
-          'Node.js', 'TypeScript', 'CozoDB', 'RAG', 'vector', 'embedding'
+          'Node.js', 'TypeScript', 'CozoDB', 'RAG', 'vector', 'embedding',
         ],
         requiredEntities: ['technical'],
-        weight: 0.95
+        weight: 0.95,
       },
       {
         category: SemanticCategory.INDUSTRY,
@@ -94,10 +94,10 @@ export class TaxonomyManager {
           'market', 'industry', 'company', 'business', 'finance', 'economy',
           'oil', 'gas', 'energy', 'seismic', 'co2', 'sequestration',
           'production', 'drilling', 'reservoir', 'pipeline', 'refinery',
-          'barrel', 'bpd', 'mboed', 'upstream', 'midstream', 'downstream'
+          'barrel', 'bpd', 'mboed', 'upstream', 'midstream', 'downstream',
         ],
         requiredEntities: ['concept'],
-        weight: 0.85
+        weight: 0.85,
       },
       {
         category: SemanticCategory.LOCATION,
@@ -105,10 +105,10 @@ export class TaxonomyManager {
           'in', 'at', 'near', 'by', 'around', 'beside', 'between', 'within',
           'city', 'town', 'country', 'state', 'street', 'building', 'room',
           'address', 'coordinates', 'region', 'area', 'district', 'zone',
-          'Albuquerque', 'Bernalillo', 'Sandia', 'Los Alamos', 'Texas', 'New Mexico'
+          'Albuquerque', 'Bernalillo', 'Sandia', 'Los Alamos', 'Texas', 'New Mexico',
         ],
         requiredEntities: ['place'],
-        weight: 0.7
+        weight: 0.7,
       },
       {
         category: SemanticCategory.EMOTIONAL,
@@ -116,10 +116,10 @@ export class TaxonomyManager {
           'happy', 'sad', 'angry', 'excited', 'frustrated', 'anxious', 'joy',
           'fear', 'love', 'hate', 'regret', 'hope', 'despair', 'grateful',
           'felt', 'emotions', 'feelings', 'heart', 'soul', 'spirit', 'lonely',
-          'connected', 'isolated', 'supported', 'understood'
+          'connected', 'isolated', 'supported', 'understood',
         ],
-        weight: 0.8
-      }
+        weight: 0.8,
+      },
     ];
   }
 
@@ -163,7 +163,7 @@ export class TaxonomyManager {
       const suggestions = result.rows.map((row: any) => ({
         entity: row.entity as string,
         frequency: row.count as number,
-        suggestedCategory: this.guessCategory(row.entity as string)
+        suggestedCategory: this.guessCategory(row.entity as string),
       })).filter((item: any) => item.frequency > 1); // Only include entities that appear more than once
 
       return suggestions;
@@ -214,14 +214,14 @@ export class TaxonomyManager {
       // If trigger matched, check required entities
       if (applies && rule.requiredEntities) {
         applies = rule.requiredEntities.some(reqType => 
-          entities.some(entity => this.entityMatchesType(entity, reqType))
+          entities.some(entity => this.entityMatchesType(entity, reqType)),
         );
       }
       
       // Check for exclusions
       if (applies && rule.exclusions) {
         applies = !rule.exclusions.some(excl => 
-          contentLower.includes(excl.toLowerCase())
+          contentLower.includes(excl.toLowerCase()),
         );
       }
       
@@ -308,7 +308,7 @@ export class TaxonomyManager {
       'method', 'variable', 'algorithm', 'cozodb', 'electron', 'react', 'vite',
       'graphql', 'rest', 'json', 'xml', 'html', 'css', 'sql', 'nosql', 'mongodb',
       'postgresql', 'mysql', 'redis', 'docker', 'kubernetes', 'aws', 'azure', 'gcp',
-      'rag', 'vector', 'embedding', 'simhash', 'cozo', 'rocksdb'
+      'rag', 'vector', 'embedding', 'simhash', 'cozo', 'rocksdb',
     ];
     return techTerms.includes(entity.toLowerCase());
   }
@@ -319,7 +319,7 @@ export class TaxonomyManager {
       /yesterday|today|tomorrow/,
       /morning|afternoon|evening|night/,
       /january|february|march|april|may|june|july|august|september|october|november|december/i,
-      /monday|tuesday|wednesday|thursday|friday|saturday|sunday/i
+      /monday|tuesday|wednesday|thursday|friday|saturday|sunday/i,
     ];
     
     return timePatterns.some(pattern => pattern.test(content.toLowerCase()));

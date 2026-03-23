@@ -17,7 +17,8 @@
  */
 
 import { db } from '../core/db.js';
-import { radialDistill, RadialDistillRequest } from '../services/distillation/radial-distiller.js';
+import type { RadialDistillRequest } from '../services/distillation/radial-distiller.js';
+import { radialDistill } from '../services/distillation/radial-distiller.js';
 import { config } from '../config/index.js';
 import path from 'path';
 import fs from 'fs';
@@ -89,21 +90,21 @@ Examples:
     const radialRequest: RadialDistillRequest = {
       seed: {
         query: seedQuery,
-        compound_ids: seedIds
+        compound_ids: seedIds,
       },
       radius: radius,
       normalization: strictNormalization ? 'strict' : (lenientNormalization ? 'lenient' : 'strict'),
       output_format: asYaml ? 'yaml' : (asJson ? 'json' : 'compound'),
       output_path: outputPath,
-      export_to_inbox: exportToInbox
+      export_to_inbox: exportToInbox,
     };
 
     console.log('Radial Distilling (Standard 133)...');
     console.log(`  Target: ${seedQuery || (seedIds ? seedIds.join(',') : 'All Compounds')}`);
     console.log(`  Radius: ${radius} chars`);
     console.log(`  Normalization: ${radialRequest.normalization}`);
-    console.log(`  Mode: Line-level deduplication`);
-    if (exportToInbox) console.log(`  Export: Enabled (→ inbox/distilled/)`);
+    console.log('  Mode: Line-level deduplication');
+    if (exportToInbox) console.log('  Export: Enabled (→ inbox/distilled/)');
     console.log();
 
     const result = await radialDistill(radialRequest);

@@ -55,7 +55,7 @@ async function initializePipeline() {
     // Disable native dependencies that might cause crashes on Windows
     env.allowLocalModels = true;
     // Disable ONNX native backend that requires sharp
-    env.backends.onnx['native'] = false;
+    env.backends.onnx.native = false;
     env.backends.onnx.wasm.proxy = false;
     env.backends.onnx.wasm.numThreads = 1;
 
@@ -66,12 +66,12 @@ async function initializePipeline() {
     console.log('[NER] Loading BERT NER model (Xenova/bert-base-NER)...');
     try {
         nerPipeline = await pipeline('token-classification', 'Xenova/bert-base-NER', {
-            quantized: true
+            quantized: true,
         });
     } catch (e) {
         console.warn('[NER] Primary model failed. Trying fallback (Xenova/bert-base-multilingual-cased-ner-hrl)...');
         nerPipeline = await pipeline('token-classification', 'Xenova/bert-base-multilingual-cased-ner-hrl', {
-            quantized: true
+            quantized: true,
         });
     }
     console.log('[NER] Model loaded successfully.');

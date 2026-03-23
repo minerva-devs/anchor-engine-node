@@ -253,33 +253,136 @@ Edit `user_settings.json`:
 
 ## Database Issues
 
+### Understanding the Ephemeral Database Pattern
+
+Anchor Engine uses an **ephemeral database** architecture. The PGlite database is wiped and rebuilt on every startup. This is intentional and prevents corruption issues.
+
+**Source of Truth Hierarchy:**
+1. `inbox/` and `external-inbox/` - **Permanent source of truth** (never deleted)
+2. `mirrored_brain/` - Rebuildable cache (wiped on startup)
+3. PGlite database - Ephemeral index (wiped on startup)
+
+**Key Principle:** The database is a disposable cache. Your data is safe in `inbox/`.
+
+See [Standard 020: Ephemeral Database](../specs/current-standards/020-ephemeral-database.md) for full details.
+
 ### Database Corruption
 
-**Symptoms:** "Database not initialized" or SQL errors
+**Symptoms:** "Database not initialized", SQL errors, or ingestion hanging indefinitely
+
+**Root Cause:** PGlite (WASM PostgreSQL) can become corrupted from:
+- Unclean shutdowns (SIGKILL, crashes, power loss)
+- WASM heap corruption under memory pressure
+- Silent write failures during heavy operations
 
 **Solution:**
 
-1. **Stop Engine:**
+The engine automatically handles this with `wipe_on_startup: true` (default):
+
+1. **Force Kill (if hanging):**
    ```bash
-   pnpm stop
+   pkill -9 -f "anchor-engine"
    ```
 
-2. **Backup Data:**
-   ```bash
-   cp -r engine/context_data engine/context_data.backup
-   ```
-
-3. **Delete Database:**
-   ```bash
-   rm -rf engine/context_data
-   ```
-
-4. **Restart (Auto-Rebuild):**
+2. **Restart (Auto-Wipe and Rebuild):**
    ```bash
    pnpm start
    ```
 
-**Note:** Data is preserved in `mirrored_brain/` - database rebuilds from it.
+3. **Watch the rebuild:**
+   ```bash
+   tail -f engine/logs/server.log
+   # Look for:
+   # [DB] Removing existing database directory...
+   # [DB] Clearing mirrored_brain directory...
+   # [Startup] Regenerating mirrored_brain/ from inbox/...
+   ```
+
+**Note:** Your data is preserved in `inbox/` and `external-inbox/`. The database rebuilds from these sources.
+
+### Ingestion Hangs Indefinitely
+
+**Symptoms:**
+- Ingestion API calls never return
+- Files don't appear in search
+- Engine appears healthy (`/health` returns 200)
+- No error messages in logs
+
+**Root Cause:** Database corruption causing the ingestion transaction to hang silently.
+
+**Solution:**
+
+```bash
+# 1. Check if ingestion is stuck
+curl http://localhost:3160/v1/ingest/status
+
+# 2. Force kill the engine
+pkill -9 -f "anchor-engine"
+
+# 3. Verify inbox/ is intact (your data is safe)
+ls -la local-data/inbox/
+
+# 4. Restart (automatic wipe and rebuild)
+pnpm start
+
+# 5. Monitor the rebuild progress
+curl http://localhost:3160/v1/ingest/status
+```
+
+**Prevention:**
+- Always use `wipe_on_startup: true` (default)
+- Use graceful shutdown when possible: `pkill -TERM -f "anchor-engine"`
+- Never set `wipe_on_startup: false` for "performance" - this causes corruption
+
+### "Missing Data" After Restart
+
+**Symptoms:** Data that was ingested is no longer searchable after restart
+
+**Common Causes:**
+
+1. **Files placed in mirrored_brain/ instead of inbox/**
+   ```bash
+   # WRONG - will be deleted on startup
+   cp myfile.txt local-data/mirrored_brain/
+   
+   # CORRECT - permanent storage
+   cp myfile.txt local-data/inbox/
+   pnpm restart
+   ```
+
+2. **wipe_on_startup set to false**
+   ```json
+   // Check user_settings.json
+   {
+     "database": {
+       "wipe_on_startup": true  // Must be true
+     }
+   }
+   ```
+
+3. **Ingestion failed silently**
+   - Check logs: `tail -f engine/logs/server.log`
+   - Verify with: `curl http://localhost:3160/v1/stats`
+
+### Manual Database Wipe (Emergency)
+
+If automatic wipe fails:
+
+```bash
+# 1. Stop engine
+pkill -9 -f "anchor-engine"
+
+# 2. Backup inbox/ (source of truth)
+cp -r local-data/inbox local-data/inbox.backup.$(date +%Y%m%d)
+cp -r local-data/external-inbox local-data/external-inbox.backup.$(date +%Y%m%d)
+
+# 3. Delete database and cache
+rm -rf local-data/context_data
+rm -rf local-data/mirrored_brain
+
+# 4. Restart (will rebuild everything)
+pnpm start
+```
 
 ### Slow Database
 

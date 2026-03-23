@@ -14,8 +14,54 @@ Model Context Protocol (MCP) server for Anchor Engine. Exposes your knowledge gr
 ### Write Operations (Opt-In, Disabled by Default)
 - **📝 Text Ingestion** - Add raw text content with `anchor_ingest_text`
 - **📁 File Ingestion** - Ingest files from filesystem with `anchor_ingest_file`
+- **🐙 GitHub Ingestion** - Ingest repos with `anchor_github_ingest` (includes optional code analysis)
 - **🪣 Bucket Selection** - Choose `inbox` (sovereign) or `external-inbox` (external)
 - **🔐 Security Toggle** - Enable/disable write operations via settings
+
+### Search Prefixes (Power User Features)
+
+The `anchor_query` tool supports special prefixes for advanced search strategies:
+
+| Prefix | Description |
+|--------|-------------|
+| `distill:` | Lossless semantic compression (removes redundancy) |
+| `illuminate:` | BFS graph traversal from seed concepts |
+| `explore:` | Same as illuminate (alias) |
+| `deep:` | Max-recall multi-hop search (comprehensive) |
+| `exact:` | FTS only, no physics-based scoring |
+| (none) | Automatic STAR search (smart hybrid) |
+
+**Example:**
+```json
+{
+  "query": "distill: machine learning patterns",
+  "max_results": 20
+}
+```
+
+---
+
+## What's New in v4.9.0
+
+### GitHub Ingestion with Code Analysis (NEW!)
+
+The MCP server now supports **GitHub repository ingestion** with optional code analysis. AI agents can ingest entire codebases and get structured analysis reports.
+
+**New Tool: `anchor_github_ingest`**
+
+```json
+{
+  "url": "https://github.com/user/repo",
+  "run_analysis": true,
+  "include_history": true
+}
+```
+
+**Features:**
+- Download and ingest source files
+- Run code analysis (ESLint, unused exports, duplicates)
+- Include full commit history
+- Analysis results tagged with `#analysis`
 
 ---
 
@@ -322,6 +368,59 @@ Ingest a file from filesystem into Anchor Engine. Content is atomized determinis
 
 ---
 
+### `anchor_github_ingest` (NEW in v4.9.0)
+
+Ingest a GitHub repository into Anchor Engine. Downloads source files and optionally runs code analysis and/or includes full commit history.
+
+**Parameters:**
+- `url` (required): GitHub repository URL (e.g., `https://github.com/user/repo`)
+- `branch` (optional): Branch to ingest (default: `main`)
+- `bucket` (optional): Bucket for ingested content (default: `code`)
+- `run_analysis` (optional): Run code analysis - ESLint, unused exports, duplicates (default: `false`)
+- `include_history` (optional): Include full commit history (default: `true`)
+
+**Example:**
+```json
+{
+  "url": "https://github.com/user/repo",
+  "branch": "main",
+  "run_analysis": true,
+  "include_history": true
+}
+```
+
+**Response:**
+```
+✅ GitHub ingestion started!
+
+📦 Repository: user/repo
+🌿 Branch: main
+🪣 Bucket: code
+
+Features enabled:
+  📝 commit history
+  🔍 code analysis
+
+⏳ Ingestion runs in the background. Use anchor_query to search for content after a few moments.
+
+💡 Tips:
+  - Use anchor_get_stats to check ingestion progress
+  - Search with: anchor_query({ query: "topic in user/repo" })
+  - Analysis results tagged with #analysis
+```
+
+**Code Analysis Details:**
+
+When `run_analysis: true`, the following tools are run:
+- **ESLint**: Code style and potential errors (JS/TS)
+- **ts-prune**: Unused exports (TypeScript)
+- **dependency-cruiser**: Module dependency validation (JS/TS)
+- **jscpd**: Duplicate code detection (multi-language)
+
+Analysis results are ingested with the `#analysis` tag and linked to source files via file path tags.
+
+---
+
 ## 🪣 Bucket Selection Guide
 
 **When to use `inbox`:**
@@ -398,6 +497,61 @@ This mimics Kimi's recursive search and saves massive token budgets!
 ## Environment Variables
 
 - `ANCHOR_API_URL` - Anchor Engine API endpoint (default: `http://localhost:3160`)
+
+---
+
+## Troubleshooting
+
+### "Not connected" Error
+
+If MCP tools return "Not connected" but the engine is running:
+
+**Symptoms:**
+- `anchor_query`, `anchor_get_stats`, etc. return "Not connected"
+- Engine health check passes: `curl http://localhost:3160/health` returns OK
+- MCP server starts correctly when run directly
+
+**Root Cause:**
+Port mismatch between MCP configuration and actual engine port.
+
+**Check:**
+```bash
+# What port is the engine running on?
+curl http://localhost:3160/health && echo "Port 3160 OK"
+curl http://localhost:3161/health && echo "Port 3161 OK"
+
+# What port is MCP configured to use?
+cat ~/.qwen/mcp.json | grep ANCHOR_API_URL
+# or
+cat ~/.config/claude/claude_desktop_config.json | grep ANCHOR_API_URL
+```
+
+**Fix:**
+Ensure `ANCHOR_API_URL` in your MCP config matches the engine's actual port:
+
+```json
+{
+  "mcpServers": {
+    "anchor": {
+      "env": {
+        "ANCHOR_API_URL": "http://localhost:3160"  // Must match engine port!
+      }
+    }
+  }
+}
+```
+
+**Common Port Mismatches:**
+
+| System | Typical Port | Config Location |
+|--------|--------------|-----------------|
+| Termux/Android | 3160 | `user_settings.json` → `server.port` |
+| Desktop Linux | 3161 | `user_settings.json` → `server.port` |
+| macOS | 3161 | `user_settings.json` → `server.port` |
+
+Always verify the actual port in `user_settings.json` before configuring MCP.
+
+---
 
 ## License
 

@@ -76,7 +76,7 @@ async function cleanupAtomTags(): Promise<number> {
       if (filteredTags.length < currentTags.length) {
         await db.run(
           'UPDATE atoms SET tags = $1 WHERE id = $2',
-          [filteredTags, atomId]
+          [filteredTags, atomId],
         );
         totalCleaned++;
         

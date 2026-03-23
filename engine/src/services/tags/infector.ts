@@ -54,7 +54,7 @@ async function* atomStream(batchSize = 50) {
         // Yield one atom at a time (Functional Flow)
         for (const row of result.rows) {
             // Handle both array and object formats that PGlite might return
-            let id, content, tags;
+            let id; let content; let tags;
 
             if (Array.isArray(row)) {
                 // Row is in array format [id, content, tags]
@@ -71,7 +71,7 @@ async function* atomStream(batchSize = 50) {
             yield {
                 id: id as string,
                 content: content as string,
-                tags: (tags as string[]) || []
+                tags: (tags as string[]) || [],
             };
         }
     }
@@ -122,8 +122,8 @@ export function infectAtom(atom: { id: string, content: string, tags: string[] }
 
     // 2. Months (Full Names)
     const months = [
-        "january", "february", "march", "april", "may", "june",
-        "july", "august", "september", "october", "november", "december"
+        'january', 'february', 'march', 'april', 'may', 'june',
+        'july', 'august', 'september', 'october', 'november', 'december',
     ];
 
     // Simple inclusion check for months (since we normalized text to lowercase)
@@ -172,12 +172,12 @@ export async function runInfectionLoop() {
             while (attempts < maxAttempts) {
                 try {
                     await db.run(
-                        `UPDATE atoms SET tags = $1 WHERE id = $2`,
-                        [newTags, atom.id]
+                        'UPDATE atoms SET tags = $1 WHERE id = $2',
+                        [newTags, atom.id],
                     );
 
                     infectedCount++;
-                    if (infectedCount % 100 === 0) process.stdout.write(`.`);
+                    if (infectedCount % 100 === 0) process.stdout.write('.');
                     break; // Success
                 } catch (error: any) {
                     attempts++;

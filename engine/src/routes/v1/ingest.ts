@@ -1,4 +1,4 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { validate, schemas } from '../../middleware/validate.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
@@ -12,7 +12,7 @@ const ingestLimiter = rateLimit({
   max: 10, // 10 requests per minute
   message: {
     error: 'Too many ingest requests',
-    retryAfter: 60 // seconds
+    retryAfter: 60, // seconds
   },
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
@@ -27,7 +27,7 @@ const ingestLimiter = rateLimit({
       return true;
     }
     return false;
-  }
+  },
 });
 
 // General API limiter (less restrictive)
@@ -36,11 +36,11 @@ const apiLimiter = rateLimit({
   max: 100, // 100 requests per minute
   message: {
     error: 'Too many API requests',
-    retryAfter: 60 // seconds
+    retryAfter: 60, // seconds
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req: Request) => req.ip || req.socket.remoteAddress || 'unknown'
+  keyGenerator: (req: Request) => req.ip || req.socket.remoteAddress || 'unknown',
 });
 
 export function setupIngestRoutes(app: Application) {
@@ -62,7 +62,7 @@ export function setupIngestRoutes(app: Application) {
       StructuredLogger.info('INGEST_REQUEST', {
         source: source || 'api_upload',
         content_length: content.length,
-        buckets: buckets.length > 0 ? buckets : [bucket || 'notebook']
+        buckets: buckets.length > 0 ? buckets : [bucket || 'notebook'],
       });
 
       // Use legacy Atomizer pipeline for performance
@@ -74,7 +74,7 @@ export function setupIngestRoutes(app: Application) {
       const atomizeResult = await atomizer.atomize(
         content,
         source || 'api_upload',
-        provenance
+        provenance,
       );
 
       // Skip ingestion if transient data was detected
@@ -83,7 +83,7 @@ export function setupIngestRoutes(app: Application) {
           status: 'skipped',
           message: 'Content skipped (transient data detected)',
           id: null,
-          duration_ms: Date.now() - startTime
+          duration_ms: Date.now() - startTime,
         };
         return res.json(result);
       }
@@ -102,21 +102,21 @@ export function setupIngestRoutes(app: Application) {
         atoms_count: atoms.length,
         molecules_count: molecules.length,
         buckets: targetBuckets,
-        duration_ms: duration
+        duration_ms: duration,
       });
 
       const result = {
         status: 'success',
         message: `Ingested ${atoms.length} atoms and ${molecules.length} molecules`,
         id: compound.id,
-        duration_ms: duration
+        duration_ms: duration,
       };
 
       res.status(200).json(result);
     } catch (e: any) {
       const duration = Date.now() - startTime;
       StructuredLogger.error('INGEST_ERROR', e, {
-        duration_ms: duration
+        duration_ms: duration,
       });
       res.status(500).json({ error: e.message });
     }

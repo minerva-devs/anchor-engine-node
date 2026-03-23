@@ -12,7 +12,7 @@ async function init() {
     parentPort?.postMessage({ type: 'ready' });
 }
 
-parentPort?.on('message', (message) => {
+parentPort?.on('message', message => {
     const err = 'Local inference not available. node-llama-cpp removed. Use LLM_PROVIDER=remote.';
     if (message.type === 'dispose') {
         parentPort?.postMessage({ type: 'disposed' });

@@ -6,7 +6,7 @@
  */
 
 import { SemanticMoleculeProcessor } from './semantic-molecule-processor.js';
-import { SemanticMolecule } from './types/semantic.js';
+import type { SemanticMolecule } from './types/semantic.js';
 import { db } from '../../core/db.js';
 import * as crypto from 'crypto';
 import { NlpService } from '../../services/nlp/nlp-service.js';
@@ -29,7 +29,7 @@ export class SemanticIngestionService {
     type: string = 'text',
     bucket: string = 'default',
     buckets: string[] = [],
-    tags: string[] = [] // These will be high-level semantic categories
+    tags: string[] = [], // These will be high-level semantic categories
   ): Promise<{ status: string; id: string; message: string }> {
     const timer = new Timer('IngestionService');
 
@@ -69,7 +69,7 @@ export class SemanticIngestionService {
         content: chunk,
         source: `${source}_chunk_${index}`,
         timestamp: Date.now() + index, // Slightly offset timestamps
-        provenance: 'external'
+        provenance: 'external',
       }));
 
       console.log(`[IngestionService] Processing ${chunksWithMetadata.length} chunks through molecule processor...`);
@@ -79,8 +79,8 @@ export class SemanticIngestionService {
           chunk.content,
           chunk.source,
           chunk.timestamp,
-          chunk.provenance
-        ))
+          chunk.provenance,
+        )),
       );
       console.log(`[IngestionService] Processed ${semanticMolecules.length} semantic molecules with a total of ${semanticMolecules.reduce((sum, mol) => sum + mol.containedEntities.length, 0)} atomic entities`);
       timer.logLap(`Processed ${semanticMolecules.length} semantic molecules`);
@@ -92,7 +92,7 @@ export class SemanticIngestionService {
       return {
         status: result.status,
         id: semanticMolecules[0]?.id || 'unknown',
-        message: result.message
+        message: result.message,
       };
     } catch (e: any) {
       console.error('[SemanticIngestionService] Ingest Error:', e);
@@ -109,7 +109,7 @@ export class SemanticIngestionService {
     source: string,
     type: string,
     buckets: string[],
-    tags: string[]
+    tags: string[],
   ): Promise<{ status: 'success' | 'error', message: string }> {
     const timer = new Timer('SaveMoleculesBatched');
 
@@ -133,7 +133,7 @@ export class SemanticIngestionService {
       // The processor should be the source of truth, but the original code overrode it.
       // Let's respect the processor's ID to keep the object consistent.
       const id = molecule.id || `mol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const timestamp = molecule.timestamp;
+      const { timestamp } = molecule;
       const hash = crypto.createHash('sha256').update(molecule.content).digest('hex');
 
       // Prepare molecule atom
@@ -150,8 +150,8 @@ export class SemanticIngestionService {
         tags: [...tags, ...molecule.semanticTags.map((tag: string) => tag.replace('#', ''))],
         epochs: [],
         provenance: molecule.provenance,
-        simhash: "0",
-        embedding: ZERO_VECTOR_STR
+        simhash: '0',
+        embedding: ZERO_VECTOR_STR,
       });
 
       // Prepare atomic entities
@@ -177,8 +177,8 @@ export class SemanticIngestionService {
           tags: [entityTag, ...molecule.semanticTags.map((tag: string) => tag.replace('#', ''))],
           epochs: [],
           provenance: 'internal',
-          simhash: "0",
-          embedding: ZERO_VECTOR_STR
+          simhash: '0',
+          embedding: ZERO_VECTOR_STR,
         });
       }
     }
@@ -210,7 +210,7 @@ export class SemanticIngestionService {
             atomValues.push(
               atom.id, atom.timestamp, atom.content, atom.source_path, atom.source_id,
               atom.sequence, atom.type, atom.hash, atom.buckets, atom.tags,
-              atom.epochs, atom.provenance, atom.simhash, atom.embedding
+              atom.epochs, atom.provenance, atom.simhash, atom.embedding,
             );
             pIdx += 14;
           }
@@ -283,7 +283,7 @@ export class SemanticIngestionService {
       timer.logTotalAndReset(`Saved batch of ${molecules.length} molecules`);
       return {
         status: 'success',
-        message: `Saved ${molecules.length} molecules with ${molecules.reduce((sum, m) => sum + m.containedEntities.length, 0)} entities`
+        message: `Saved ${molecules.length} molecules with ${molecules.reduce((sum, m) => sum + m.containedEntities.length, 0)} entities`,
       };
 
     } catch (error) {
@@ -351,7 +351,7 @@ export class SemanticIngestionService {
   public async processSingleChunk(
     content: string,
     source: string,
-    timestamp: number = Date.now()
+    timestamp: number = Date.now(),
   ): Promise<SemanticMolecule> {
     return await this.moleculeProcessor.processTextChunk(content, source, timestamp);
   }
@@ -366,7 +366,7 @@ export class SemanticIngestionService {
     type: string = 'text',
     bucket: string = 'default',
     buckets: string[] = [],
-    tags: string[] = []
+    tags: string[] = [],
   ): Promise<{ status: string; id: string; message: string }> {
     const allBuckets = bucket ? [...buckets, bucket] : buckets;
     const chunkSize = 100 * 1024; // Reduced to 100KB to prevent memory issues with PGlite while maintaining reasonable performance
@@ -450,11 +450,11 @@ export class SemanticIngestionService {
             content: textChunk,
             source: `${chunkSource}_molecule_${idx}`,
             timestamp: Date.now() + globalIndex * 1000 + idx,
-            provenance: 'external'
+            provenance: 'external',
           }));
 
           return await this.moleculeProcessor.processTextChunks(chunksWithMetadata);
-        })
+        }),
       );
 
       // Flatten the batch results
@@ -474,7 +474,7 @@ export class SemanticIngestionService {
     return {
       status: 'success',
       id: `multi_chunk_${Date.now()}`,
-      message: `Processed large content in ${chunks.length} chunks (streaming), ingested ${totalMolecules} semantic molecules with ${totalEntities} atomic entities`
+      message: `Processed large content in ${chunks.length} chunks (streaming), ingested ${totalMolecules} semantic molecules with ${totalEntities} atomic entities`,
     };
   }
 
@@ -488,7 +488,7 @@ export class SemanticIngestionService {
     type: string = 'text',
     bucket: string = 'default',
     buckets: string[] = [],
-    tags: string[] = []
+    tags: string[] = [],
   ): Promise<{ status: string; id: string; message: string }> {
     // This method bypasses the length validation to avoid recursion
     try {
@@ -503,7 +503,7 @@ export class SemanticIngestionService {
         content: chunk,
         source: `${source}_chunk_${index}`,
         timestamp: Date.now() + index, // Slightly offset timestamps
-        provenance: 'external'
+        provenance: 'external',
       }));
 
       // Process chunks in parallel to reduce serial processing time
@@ -512,8 +512,8 @@ export class SemanticIngestionService {
           chunk.content,
           chunk.source,
           chunk.timestamp,
-          chunk.provenance
-        ))
+          chunk.provenance,
+        )),
       );
 
       // Batched Ingestion Logic
@@ -527,7 +527,7 @@ export class SemanticIngestionService {
 
       for (const molecule of semanticMolecules) {
         const id = `mol_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const timestamp = molecule.timestamp;
+        const { timestamp } = molecule;
         const hash = crypto.createHash('sha256').update(molecule.content).digest('hex');
 
         // Prepare Payload (always happens regardless of vector processing)
@@ -547,16 +547,16 @@ export class SemanticIngestionService {
           tags: [...tags, ...molecule.semanticTags.map((tag: string) => tag.replace('#', ''))],
           epochs: [],
           provenance: molecule.provenance,
-          simhash: "0",
+          simhash: '0',
           embedding: embeddingStr,
-          vector_id: null // No vector ID when not using vectors
+          vector_id: null, // No vector ID when not using vectors
         });
 
         // Prepare Tags for Molecule
         tagsToInsert.push({
           atomId: id,
           tags: [...tags, ...molecule.semanticTags.map((tag: string) => tag.replace('#', ''))],
-          buckets: allBuckets
+          buckets: allBuckets,
         });
 
         // Also store the atomic entities separately if needed
@@ -589,16 +589,16 @@ export class SemanticIngestionService {
               tags: entityTags,
               epochs: [],
               provenance: 'internal',
-              simhash: "0",
+              simhash: '0',
               embedding: ZERO_VECTOR_STR, // Use shared zero vector string
-              vector_id: null
+              vector_id: null,
             });
 
             // Prepare Tags for Entity
             tagsToInsert.push({
               atomId: atomId,
               tags: entityTags,
-              buckets: entityBuckets
+              buckets: entityBuckets,
             });
           }
         }
@@ -624,7 +624,7 @@ export class SemanticIngestionService {
               atomValues.push(
                 atom.id, atom.timestamp, atom.content, atom.source_path, atom.source_id,
                 atom.sequence, atom.type, atom.hash, atom.buckets, atom.tags,
-                atom.epochs, atom.provenance, atom.simhash, atom.embedding
+                atom.epochs, atom.provenance, atom.simhash, atom.embedding,
               );
               pIdx += 14;
             }
@@ -719,7 +719,7 @@ export class SemanticIngestionService {
       return {
         status: 'success',
         id: semanticMolecules[0]?.id || 'unknown',
-        message: `Ingested ${semanticMolecules.length} semantic molecules with ${semanticMolecules.reduce((sum, mol) => sum + mol.containedEntities.length, 0)} atomic entities`
+        message: `Ingested ${semanticMolecules.length} semantic molecules with ${semanticMolecules.reduce((sum, mol) => sum + mol.containedEntities.length, 0)} atomic entities`,
       };
     } catch (e: any) {
       console.error('[SemanticIngestionService] Single Chunk Ingest Error:', e);
@@ -761,11 +761,11 @@ export class SemanticIngestionService {
       await db.run(
         `INSERT INTO tags (atom_id, tag, bucket) VALUES ${placeholders.join(', ')}
            ON CONFLICT (atom_id, tag, bucket) DO NOTHING`,
-        values
+        values,
       );
     } catch (e) {
       // Warn but don't fail ingestion
-      console.warn(`[SemanticIngestionService] Failed to index tags`, e);
+      console.warn('[SemanticIngestionService] Failed to index tags', e);
     }
   }
 }

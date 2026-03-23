@@ -1,24 +1,24 @@
 // engine/src/index.ts
-import express from "express";
-import cors from "cors";
-import rateLimit from "express-rate-limit";
-import path from "path";
-import { fileURLToPath } from "url";
-import { existsSync, rmSync } from "fs";
+import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync, rmSync } from 'fs';
 
 // Fix module load error by using explicit relative path
-import { db } from "./core/db.js";
-import { config } from "./config/index.js";
-import { MODELS_DIR, PROJECT_ROOT } from "./config/paths.js";
-import { apiKeyAuth } from "./middleware/auth.js";
-import { pathManager } from "./utils/path-manager.js";
-import { StructuredLogger } from "./utils/structured-logger.js";
+import { db } from './core/db.js';
+import { config } from './config/index.js';
+import { MODELS_DIR, PROJECT_ROOT } from './config/paths.js';
+import { apiKeyAuth } from './middleware/auth.js';
+import { pathManager } from './utils/path-manager.js';
+import { StructuredLogger } from './utils/structured-logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app: express.Application = express();
-const PORT = config.PORT;
+const { PORT } = config;
 
 // Security Fix: Limit JSON body size to prevent DoS via large payloads
 // Use configured file size limit + 50% buffer for JSON overhead (base64/escaping)
@@ -45,7 +45,7 @@ app.use((req, res, next) => {
       method: req.method,
       path: req.path,
       status,
-      duration_ms: duration
+      duration_ms: duration,
     });
 
     // Mark activity for idle manager (skip static files)
@@ -65,8 +65,8 @@ let databaseReady = false;
 app.use('/v1', (req, res, next) => {
   if (!databaseReady) {
     return res.status(503).json({
-      error: "Service temporarily unavailable",
-      message: "Database initializing, please wait..."
+      error: 'Service temporarily unavailable',
+      message: 'Database initializing, please wait...',
     });
   }
   next();
@@ -92,7 +92,7 @@ const apiLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Too many requests', message: 'Rate limit exceeded. Try again in a minute.' }
+  message: { error: 'Too many requests', message: 'Rate limit exceeded. Try again in a minute.' },
 });
 // Stricter limit for expensive write operations: 20 / minute per IP
 const ingestLimiter = rateLimit({
@@ -100,7 +100,7 @@ const ingestLimiter = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Rate limit exceeded', message: 'Ingest rate limit exceeded. Try again in a minute.' }
+  message: { error: 'Rate limit exceeded', message: 'Ingest rate limit exceeded. Try again in a minute.' },
 });
 app.use('/v1', apiLimiter);
 app.use('/v1/memory/ingest', ingestLimiter);
@@ -108,39 +108,39 @@ app.use('/v1/watchdog/ingest', ingestLimiter);
 
 // Set up static file serving immediately so UI is accessible
 StructuredLogger.info('UI_SETUP', { static_path: '/static' });
-app.use("/static", express.static(path.join(__dirname, "../dist"), {
+app.use('/static', express.static(path.join(__dirname, '../dist'), {
   setHeaders: (res, path) => {
     // Only log debug-level for static files to avoid spam
     StructuredLogger.silly('STATIC_FILE', { path });
-  }
+  },
 }));
 
 // Serve UI from engine/public (simplified single-file UI)
 // Fallback to external anchor-os UI if running in full system mode
-const internalFrontendDist = path.join(__dirname, "../public");
-const externalFrontendDist = path.join(__dirname, "../../../anchor-os/packages/anchor-ui/dist");
+const internalFrontendDist = path.join(__dirname, '../public');
+const externalFrontendDist = path.join(__dirname, '../../../anchor-os/packages/anchor-ui/dist');
 
 if (existsSync(externalFrontendDist)) {
   StructuredLogger.info('UI_SOURCE', { source: 'external', path: externalFrontendDist });
   app.use(express.static(externalFrontendDist, {
     setHeaders: (res, path) => {
       StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'external' });
-    }
+    },
   }));
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring")) return next();
-    res.sendFile(path.join(externalFrontendDist, "index.html"));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
+    res.sendFile(path.join(externalFrontendDist, 'index.html'));
   });
 } else {
   StructuredLogger.info('UI_SOURCE', { source: 'internal', path: internalFrontendDist });
   app.use(express.static(internalFrontendDist, {
     setHeaders: (res, path) => {
       StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'internal' });
-    }
+    },
   }));
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/v1") || req.path.startsWith("/health") || req.path.startsWith("/monitoring")) return next();
-    res.sendFile(path.join(internalFrontendDist, "index.html"));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
+    res.sendFile(path.join(internalFrontendDist, 'index.html'));
   });
 }
 
@@ -154,9 +154,9 @@ app.get('/chat', (req, res, next) => {
 app.get('/health', async (_req, res) => {
   if (!databaseReady) {
     return res.status(200).json({
-      status: "starting",
+      status: 'starting',
       timestamp: new Date().toISOString(),
-      message: "Engine is starting up, database not yet initialized"
+      message: 'Engine is starting up, database not yet initialized',
     });
   }
 
@@ -166,23 +166,23 @@ app.get('/health', async (_req, res) => {
     const result = await db.run('SELECT 1 as test');
     if (result && result.rows && result.rows.length > 0) {
       res.status(200).json({
-        status: "healthy",
+        status: 'healthy',
         timestamp: new Date().toISOString(),
-        message: "Anchor Context Engine is running and database is responsive"
+        message: 'Anchor Context Engine is running and database is responsive',
       });
     } else {
       res.status(503).json({
-        status: "degraded",
+        status: 'degraded',
         timestamp: new Date().toISOString(),
-        message: "Engine is running but database query returned unexpected results"
+        message: 'Engine is running but database query returned unexpected results',
       });
     }
   } catch (dbError) {
     res.status(503).json({
-      status: "unhealthy",
+      status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      message: "Database is not responding properly",
-      error: (dbError as Error).message
+      message: 'Database is not responding properly',
+      error: (dbError as Error).message,
     });
   }
 });
@@ -218,7 +218,7 @@ app.get('/v1/models', (req, res) => {
         id: file,
         object: 'model',
         created: Math.floor(Date.now() / 1000),
-        owned_by: 'anchor-os'
+        owned_by: 'anchor-os',
       }));
       res.json({ object: 'list', data: models });
     });
@@ -238,8 +238,8 @@ async function startServer() {
   const startupStartTime = Date.now();
   
   try {
-    console.time("⏱️ Startup Time");
-    console.log("Initializing Anchor Context Engine...");
+    console.time('⏱️ Startup Time');
+    console.log('Initializing Anchor Context Engine...');
 
     // Start the server immediately so health checks pass
     app.listen(PORT, config.HOST, () => {
@@ -248,10 +248,10 @@ async function startServer() {
     });
 
     // Initialize database in the background after server starts
-    console.log("Initializing database in the background...");
+    console.log('Initializing database in the background...');
     await db.init();
     databaseReady = true;
-    console.log("Database initialized successfully");
+    console.log('Database initialized successfully');
 
     // Cleanup blacklisted tags from database
     console.log('[Startup] Cleaning up blacklisted tags...');
@@ -259,16 +259,16 @@ async function startServer() {
     await cleanupBlacklistedTags();
 
     // Initialize Vector Service
-    const { vector } = await import("./core/vector.js");
+    const { vector } = await import('./core/vector.js');
     await vector.init();
 
 
-    console.log("Setting up full routes after database initialization...");
+    console.log('Setting up full routes after database initialization...');
 
     // Now that DB is ready, import and set up full routes
-    const { setupRoutes } = await import("./routes/api.js");
-    const { setupHealthRoutes } = await import("./routes/health.js");
-    const { monitoringRouter } = await import("./routes/monitoring.js");
+    const { setupRoutes } = await import('./routes/api.js');
+    const { setupHealthRoutes } = await import('./routes/health.js');
+    const { monitoringRouter } = await import('./routes/monitoring.js');
 
     // Set up all API routes (delegates to v1 modules including system + settings)
     setupRoutes(app);
@@ -279,8 +279,8 @@ async function startServer() {
     // Set up monitoring routes
     app.use('/monitoring', monitoringRouter);
 
-    console.log("Full routes set up, server is ready for all requests");
-    console.timeEnd("⏱️ Startup Time");
+    console.log('Full routes set up, server is ready for all requests');
+    console.timeEnd('⏱️ Startup Time');
 
     // Start other services after database is ready
     console.log('[Services] Starting child services via ProcessManager...');
@@ -336,16 +336,16 @@ async function startServer() {
       const synonymPromise = Promise.race([
         generator.generateSynonymRings(),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error('Synonym generation timeout after 5 minutes')), SYNONYM_TIMEOUT)
-        )
+          setTimeout(() => reject(new Error('Synonym generation timeout after 5 minutes')), SYNONYM_TIMEOUT),
+        ),
       ]);
 
-      synonymPromise.then(async (synonyms) => {
+      synonymPromise.then(async synonyms => {
         // Save to auto-generated path (cleared on shutdown)
         const synonymPath = path.join(pathManager.getNotebookDir(), 'synonym-ring-auto.json');
         await generator.saveSynonymRings(synonyms, synonymPath);
         console.log(`[Startup] ✅ Synonym rings generated and saved to ${synonymPath}`);
-      }).catch((error) => {
+      }).catch(error => {
         console.warn(`[Startup] ⚠️ Synonym generation failed or timed out: ${error.message}`);
         console.warn('[Startup] Will retry on next startup or run manually with: pnpm run generate-synonyms');
       });
@@ -367,17 +367,17 @@ async function startServer() {
     const { displayStartupBanner } = await import('./utils/startup-banner.js');
     await displayStartupBanner({
       startupTimeMs: Date.now() - startupStartTime,
-      watchdogEnabled
+      watchdogEnabled,
     });
 
   } catch (error) {
-    console.error("Failed to start Anchor Context Engine:", error);
+    console.error('Failed to start Anchor Context Engine:', error);
     process.exit(1);
   }
 }
 
 // Windows graceful shutdown fix
-process.on("SIGINT", async () => {
+process.on('SIGINT', async () => {
   // Safety net: force exit if cleanup hangs (e.g., db.close deadlock)
   const forceExitTimer = setTimeout(() => {
     console.error('[Shutdown] ⚠ Cleanup timed out after 10s — forcing exit');
@@ -386,13 +386,13 @@ process.on("SIGINT", async () => {
   forceExitTimer.unref();
 
   try {
-    console.log(`[Shutdown] Starting graceful shutdown...`);
+    console.log('[Shutdown] Starting graceful shutdown...');
 
-    const { ProcessManager } = await import("./utils/process-manager.js");
+    const { ProcessManager } = await import('./utils/process-manager.js');
     ProcessManager.getInstance().stopAll();
 
     // Close database connection first (releases file locks)
-    console.log(`[Shutdown] Closing database connection...`);
+    console.log('[Shutdown] Closing database connection...');
     await db.close();
 
     // Standard 110: Ephemeral Index Architecture
@@ -401,36 +401,36 @@ process.on("SIGINT", async () => {
     // 1. Wipe PGlite Database (index/cache)
     const dbPath = process.env.PGLITE_DB_PATH || pathManager.getDatabasePath();
     if (existsSync(dbPath)) {
-      console.log(`[Shutdown] Wiping PGlite database (rebuildable index)...`);
+      console.log('[Shutdown] Wiping PGlite database (rebuildable index)...');
       try {
         rmSync(dbPath, { recursive: true, force: true });
-        console.log(`[Shutdown] ✓ PGlite database wiped.`);
+        console.log('[Shutdown] ✓ PGlite database wiped.');
       } catch (e: any) {
         console.warn(`[Shutdown] ⚠ Could not wipe PGlite database: ${e.message}`);
-        console.warn(`[Shutdown] Will be wiped on next startup`);
+        console.warn('[Shutdown] Will be wiped on next startup');
       }
     }
 
     // 2. Wipe SQLite3 context.db (anchor-core FFI database)
     const contextDbPath = path.join(pathManager.getDatabaseDir(), 'context.db');
     if (existsSync(contextDbPath)) {
-      console.log(`[Shutdown] Wiping SQLite3 context.db (anchor-core FFI)...`);
+      console.log('[Shutdown] Wiping SQLite3 context.db (anchor-core FFI)...');
       try {
         rmSync(contextDbPath, { force: true });
-        console.log(`[Shutdown] ✓ SQLite3 context.db wiped.`);
+        console.log('[Shutdown] ✓ SQLite3 context.db wiped.');
       } catch (e: any) {
         console.warn(`[Shutdown] ⚠ Could not wipe SQLite3 context.db: ${e.message}`);
-        console.warn(`[Shutdown] Will be wiped on next startup`);
+        console.warn('[Shutdown] Will be wiped on next startup');
       }
     }
 
     // 3. Clear mirrored_brain/ (extracted from inbox/, regenerated on start)
     const { MIRRORED_BRAIN_PATH } = await import('./services/mirror/mirror.js');
     if (existsSync(MIRRORED_BRAIN_PATH)) {
-      console.log(`[Shutdown] Clearing mirrored_brain/ (regenerated from inbox/ on start)...`);
+      console.log('[Shutdown] Clearing mirrored_brain/ (regenerated from inbox/ on start)...');
       try {
         rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
-        console.log(`[Shutdown] ✓ mirrored_brain/ cleared.`);
+        console.log('[Shutdown] ✓ mirrored_brain/ cleared.');
       } catch (e: any) {
         console.warn(`[Shutdown] ⚠ Could not clear mirrored_brain/: ${e.message}`);
       }
@@ -439,10 +439,10 @@ process.on("SIGINT", async () => {
     // 4. Clear Auto-Generated Synonym Rings (derived from data, regenerated on start)
     const synonymPath = path.join(pathManager.getNotebookDir(), 'synonym-ring-auto.json');
     if (existsSync(synonymPath)) {
-      console.log(`[Shutdown] Clearing auto-generated synonym rings...`);
+      console.log('[Shutdown] Clearing auto-generated synonym rings...');
       try {
         rmSync(synonymPath, { force: true });
-        console.log(`[Shutdown] ✓ Synonym rings cleared.`);
+        console.log('[Shutdown] ✓ Synonym rings cleared.');
       } catch (e: any) {
         console.warn(`[Shutdown] ⚠ Could not clear synonym rings: ${e.message}`);
       }
@@ -451,18 +451,18 @@ process.on("SIGINT", async () => {
     // 5. Clear Tag Audit Cache (derived from tags, regenerated on demand)
     const tagAuditPath = path.join(pathManager.getNotebookDir(), 'tag-audit-cache.json');
     if (existsSync(tagAuditPath)) {
-      console.log(`[Shutdown] Clearing tag audit cache...`);
+      console.log('[Shutdown] Clearing tag audit cache...');
       try {
         rmSync(tagAuditPath, { force: true });
-        console.log(`[Shutdown] ✓ Tag audit cache cleared.`);
+        console.log('[Shutdown] ✓ Tag audit cache cleared.');
       } catch (e: any) {
         console.warn(`[Shutdown] ⚠ Could not clear tag audit cache: ${e.message}`);
       }
     }
 
-    console.log(`[Shutdown] ✓ Cleanup complete.`);
-    console.log(`[Shutdown] Source of truth preserved: inbox/ + external-inbox/`);
-    console.log(`[Shutdown] On restart: mirror + index + synonyms regenerated from inbox/`);
+    console.log('[Shutdown] ✓ Cleanup complete.');
+    console.log('[Shutdown] Source of truth preserved: inbox/ + external-inbox/');
+    console.log('[Shutdown] On restart: mirror + index + synonyms regenerated from inbox/');
 
     process.exit(0);
   } catch (e) {
@@ -473,7 +473,7 @@ process.on("SIGINT", async () => {
 
 // Memory warning event handler
 import { resourceManager } from './utils/resource-manager.js';
-process.on('warning', (warning) => {
+process.on('warning', warning => {
   console.warn('Process warning:', warning.name, warning.message);
   if (warning.name.includes('Memory') || warning.message.includes('heap')) {
     console.log('Performing memory optimization due to warning...');

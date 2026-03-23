@@ -4,11 +4,11 @@ import {
   assembleContextPackage, 
   serializeForLLM, 
   detectIntent,
-  assembleAndSerialize
+  assembleAndSerialize,
 } from '../../services/search/graph-context-serializer.js';
 import {
   generateSystemPrompt,
-  buildSovereignPrompt
+  buildSovereignPrompt,
 } from '../../services/search/sovereign-system-prompt.js';
 
 export interface ContextAtom {
@@ -48,7 +48,7 @@ export interface ContextResult {
 export function composeRollingContext(
     query: string,
     results: ContextAtom[],
-    tokenBudget: number = 4096
+    tokenBudget: number = 4096,
 ): ContextResult {
     // Constants
     const CHARS_PER_TOKEN = 4; // Rough estimate
@@ -59,7 +59,7 @@ export function composeRollingContext(
 
     // 1. Dynamic Recency Analysis
     // Check for temporal signals in query
-    const temporalSignals = ["recent", "latest", "new", "today", "now", "current", "last"];
+    const temporalSignals = ['recent', 'latest', 'new', 'today', 'now', 'current', 'last'];
     const hasTemporalSignal = temporalSignals.some(signal => query.toLowerCase().includes(signal));
 
     // Adjust weights based on intent
@@ -121,7 +121,7 @@ export function composeRollingContext(
 
                 if (bestCut > (remaining * 0.5)) {
                     // If punctuation is reasonably far in, use it
-                    const slicedContent = atom.content.substring(0, bestCut + 1) + " [Truncated]";
+                    const slicedContent = atom.content.substring(0, bestCut + 1) + ' [Truncated]';
                     selectedAtoms.push({ ...atom, content: slicedContent });
                     currentChars += slicedContent.length;
                 } else {
@@ -129,7 +129,7 @@ export function composeRollingContext(
                     // Try to cut at the last space to avoid cutting mid-word
                     const lastSpace = safeContent.lastIndexOf(' ');
                     const cutIndex = lastSpace > (remaining * 0.5) ? lastSpace : remaining;
-                    const slicedContent = atom.content.substring(0, cutIndex) + "...";
+                    const slicedContent = atom.content.substring(0, cutIndex) + '...';
                     selectedAtoms.push({ ...atom, content: slicedContent });
                     currentChars += slicedContent.length;
                 }
@@ -158,13 +158,13 @@ export function composeRollingContext(
                     return new Date().toISOString();
                 }
             })(),
-            provenance: a.provenance || 'internal'
-        }
+            provenance: a.provenance || 'internal',
+        },
     }));
 
     const graph = {
         intent: query,
-        nodes: graphNodes
+        nodes: graphNodes,
     };
 
     const jsonString = JSON.stringify(graph, null, 2);
@@ -178,8 +178,8 @@ export function composeRollingContext(
             tokenCount: Math.ceil(currentChars / CHARS_PER_TOKEN),
             charCount: currentChars,
             filledPercent: Math.min(100, (currentChars / charBudget) * 100),
-            atomCount: selectedAtoms.length
-        }
+            atomCount: selectedAtoms.length,
+        },
     };
 }
 
@@ -201,7 +201,7 @@ export function composeGraphContext(
     anchors: ContextAtom[],
     walkerResults: ContextAtom[],
     user: UserContext,
-    tokenBudget: number = 4096
+    tokenBudget: number = 4096,
 ): { system: string; user: string; stats: ContextResult['stats'] } {
     const CHARS_PER_TOKEN_GCP = 4;
     const charBudget = Math.floor(tokenBudget * 0.95 * CHARS_PER_TOKEN_GCP);
@@ -263,6 +263,6 @@ export function composeGraphContext(
             charCount: totalChars,
             filledPercent: Math.min(100, (totalChars / charBudget) * 100),
             atomCount: anchors.length + walkerResults.length,
-        }
+        },
     };
 }

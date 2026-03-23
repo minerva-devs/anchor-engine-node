@@ -1,5 +1,5 @@
 
-import { UserContext } from './context.js';
+import type { UserContext } from './context.js';
 
 export interface Menu {
     id: string;

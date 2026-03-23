@@ -10,8 +10,8 @@
 import { config } from '../../config/index.js';
 import { smartChatSearch } from './search.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
-import { SearchResult } from './search-utils.js';
-import { UserContext } from '../../types/context.js';
+import type { SearchResult } from './search-utils.js';
+import type { UserContext } from '../../types/context.js';
 
 export interface StreamingSearchOptions {
   query: string;
@@ -54,7 +54,7 @@ export type StreamingSearchEvent = SearchBatch | SearchMetadata | SearchError;
  * Yields batches of results as they're processed
  */
 export async function* executeStreamingSearch(
-  options: StreamingSearchOptions
+  options: StreamingSearchOptions,
 ): AsyncGenerator<StreamingSearchEvent> {
   const startTime = Date.now();
   const batchSize = options.batchSize || config.MEMORY?.SEARCH_RESULTS_BATCH_SIZE || 20;
@@ -62,7 +62,7 @@ export async function* executeStreamingSearch(
   try {
     StructuredLogger.info('STREAMING_SEARCH_START', {
       query: options.query.substring(0, 100),
-      batchSize
+      batchSize,
     });
 
     // Execute the full search first (this is the expensive part)
@@ -74,7 +74,7 @@ export async function* executeStreamingSearch(
       options.tags || [],
       options.provenance || 'all',
       options.useMaxRecall || false,
-      options.userContext
+      options.userContext,
     );
 
     const allResults = searchResult.results;
@@ -86,7 +86,7 @@ export async function* executeStreamingSearch(
       strategy: searchResult.strategy,
       totalResults: allResults.length,
       query: options.query,
-      splitQueries: searchResult.splitQueries
+      splitQueries: searchResult.splitQueries,
     };
 
     // Stream results in batches
@@ -107,13 +107,13 @@ export async function* executeStreamingSearch(
         results: batch,
         batchNumber,
         totalBatches,
-        isComplete: batchNumber === totalBatches
+        isComplete: batchNumber === totalBatches,
       };
 
       StructuredLogger.info('STREAMING_BATCH_SENT', {
         batchNumber,
         totalBatches,
-        resultsInBatch: batch.length
+        resultsInBatch: batch.length,
       });
     }
 
@@ -126,25 +126,25 @@ export async function* executeStreamingSearch(
       totalResults: allResults.length,
       query: options.query,
       splitQueries: searchResult.splitQueries,
-      durationMs: duration
+      durationMs: duration,
     };
 
     StructuredLogger.info('STREAMING_SEARCH_COMPLETE', {
       query: options.query.substring(0, 100),
       totalResults: allResults.length,
       durationMs: duration,
-      batches: totalBatches
+      batches: totalBatches,
     });
 
   } catch (error: any) {
     StructuredLogger.error('STREAMING_SEARCH_ERROR', error, {
-      query: options.query.substring(0, 100)
+      query: options.query.substring(0, 100),
     });
 
     yield {
       type: 'error',
       message: error.message,
-      details: error.stack
+      details: error.stack,
     };
   }
 }

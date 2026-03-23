@@ -105,7 +105,7 @@ export async function createMirror() {
 export async function writeMirroredFile(
     relativePath: string,
     cleanedContent: string,
-    provenance: 'internal' | 'external' | 'quarantine' = 'internal'
+    provenance: 'internal' | 'external' | 'quarantine' = 'internal',
 ): Promise<void> {
     console.log(`[MirrorWrite] Starting write for: ${relativePath}`);
     console.log(`[MirrorWrite] Content length: ${cleanedContent?.length || 0} chars`);
@@ -113,9 +113,9 @@ export async function writeMirroredFile(
     console.log(`[MirrorWrite] MIRRORED_BRAIN_PATH: ${MIRRORED_BRAIN_PATH}`);
 
     if (!fs.existsSync(MIRRORED_BRAIN_PATH)) {
-        console.log(`[MirrorWrite] Creating mirrored_brain directory...`);
+        console.log('[MirrorWrite] Creating mirrored_brain directory...');
         fs.mkdirSync(MIRRORED_BRAIN_PATH, { recursive: true });
-        console.log(`[MirrorWrite] ✓ Directory created`);
+        console.log('[MirrorWrite] ✓ Directory created');
     }
     const mirrorPath = getMirrorPath(relativePath, provenance);
     console.log(`[MirrorWrite] Target path: ${mirrorPath}`);
@@ -158,7 +158,7 @@ async function tryRehydrateYAML(yamlPath: string, provenanceDir: string): Promis
                 MIRRORED_BRAIN_PATH,
                 provenanceDir,
                 projectName,
-                file.path
+                file.path,
             );
 
             await writeFile(mirrorPath, file.content);

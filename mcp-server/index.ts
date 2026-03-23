@@ -13,37 +13,38 @@
  * - anchor_list_compounds: List available compounds
  */
 
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import type {
+  Tool,
+  Resource } from '@modelcontextprotocol/sdk/types.js';
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   ListResourcesRequestSchema,
   ReadResourceRequestSchema,
-  Tool,
-  Resource,
-} from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+} from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
+import { readFileSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 // Get MCP server directory
 // dist/ is at mcp-server/dist/, so we need to go up 2 levels to reach project root
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(__dirname, "..", "..");
+const projectRoot = join(__dirname, '..', '..');
 
 // Try to load settings from user_settings.json (unity of abstraction)
-let settingsApiKey = "";
-let settingsApiUrl = "http://localhost:3161";
+let settingsApiKey = '';
+let settingsApiUrl = 'http://localhost:3161';
 let settingsMcpConfig: Partial<MCPSecuritySettings> = {};
 
 try {
   // Try project root first
-  const settingsPath = join(projectRoot, "user_settings.json");
+  const settingsPath = join(projectRoot, 'user_settings.json');
   if (existsSync(settingsPath)) {
-    const settings = JSON.parse(readFileSync(settingsPath, "utf8"));
-    settingsApiKey = settings.server?.api_key || "";
+    const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+    settingsApiKey = settings.server?.api_key || '';
     settingsApiUrl = `http://localhost:${settings.server?.port || 3161}`;
     
     // Load MCP-specific settings if present
@@ -52,19 +53,19 @@ try {
         enabled: settings.mcp.enabled ?? false,
         rate_limit_requests_per_minute: settings.mcp.rate_limit_requests_per_minute ?? 60,
         max_query_results: settings.mcp.max_query_results ?? 50,
-        allowed_operations: settings.mcp.allowed_operations ?? ["query", "read_file", "get_stats"],
+        allowed_operations: settings.mcp.allowed_operations ?? ['query', 'read_file', 'get_stats'],
         blocked_operations: settings.mcp.blocked_operations ?? [],
-        allow_write_operations: settings.mcp.allowed_operations?.includes("ingest") ?? false,
-        default_bucket_for_writes: "external-inbox"
+        allow_write_operations: settings.mcp.allowed_operations?.includes('ingest') ?? false,
+        default_bucket_for_writes: 'external-inbox',
       };
     }
     
-    console.error("✅ MCP: Loaded settings from user_settings.json");
+    console.error('✅ MCP: Loaded settings from user_settings.json');
     console.error(`   Engine URL: ${settingsApiUrl}`);
     console.error(`   API Key: ${settingsApiKey ? 'set (' + settingsApiKey.substring(0, 8) + '...)' : 'not set'}`);
   }
 } catch (error) {
-  console.error("⚠️  MCP: Could not load user_settings.json, using defaults");
+  console.error('⚠️  MCP: Could not load user_settings.json, using defaults');
 }
 
 // Anchor Engine API base URL
@@ -92,15 +93,15 @@ interface MCPSecuritySettings {
 let securitySettings: MCPSecuritySettings = {
   enabled: false,
   require_api_key: true,
-  api_key: "",
+  api_key: '',
   rate_limit_requests_per_minute: 60,
   max_query_results: 50,
   restrict_to_localhost: true,
-  allowed_operations: ["query", "read_file", "get_stats"],
+  allowed_operations: ['query', 'read_file', 'get_stats'],
   blocked_operations: [],
   allow_write_operations: false,  // Disabled by default for safety
-  default_bucket_for_writes: "external-inbox",  // Safer default
-  ...settingsMcpConfig  // Apply settings from user_settings.json
+  default_bucket_for_writes: 'external-inbox',  // Safer default
+  ...settingsMcpConfig,  // Apply settings from user_settings.json
 };
 
 // Rate limiting
@@ -124,6 +125,86 @@ function recordRequest(clientId: string): void {
   requestCounts.set(clientId, counts);
 }
 
+/**
+ * Security validation helpers for MCP write operations
+ */
+
+// Maximum content size for ingestion (100KB)
+const MAX_CONTENT_SIZE = 100_000;
+
+// Maximum filename length
+const MAX_FILENAME_LENGTH = 255;
+
+// Dangerous patterns to block
+const DANGEROUS_PATTERNS = [
+  /eval\s*\(/i,
+  /process\s*\.\s*env/i,
+  /require\s*\(/i,
+  /document\s*\./i,
+  /window\s*\./i,
+  /setTimeout\s*\(\s*[^,)]*[,)]/i,
+  /setInterval\s*\(\s*[^,)]*[,)]/i,
+  /Function\s*\(/i,
+  /\beval\b/i,
+];
+
+/**
+ * Validate filename for security
+ */
+function isValidFilename(filename: string): boolean {
+  // Check length
+  if (filename.length === 0 || filename.length > MAX_FILENAME_LENGTH) {
+    return false;
+  }
+
+  // Check for path traversal
+  if (filename.includes('..') || filename.includes('//')) {
+    return false;
+  }
+
+  // Check for absolute paths in filename (should be just basename)
+  if (filename.startsWith('/') || filename.startsWith('\\')) {
+    return false;
+  }
+
+  // Check for dangerous characters
+  const dangerousChars = ['\0', '\n', '\r', '<', '>', '|', '"', "'", '`'];
+  for (const char of dangerousChars) {
+    if (filename.includes(char)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Validate content for security
+ */
+function isValidContent(content: string): { valid: boolean; error?: string } {
+  // Check size
+  if (content.length > MAX_CONTENT_SIZE) {
+    return { valid: false, error: `Content too large (max ${MAX_CONTENT_SIZE.toLocaleString()} characters)` };
+  }
+
+  // Check for dangerous patterns
+  for (const pattern of DANGEROUS_PATTERNS) {
+    if (pattern.test(content)) {
+      return { valid: false, error: 'Content contains potentially dangerous patterns' };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Validate bucket for security
+ */
+function isValidBucket(bucket: string): boolean {
+  const allowedBuckets = ['inbox', 'external-inbox', 'code', 'docs', 'notes'];
+  return allowedBuckets.includes(bucket);
+}
+
 function isOperationAllowed(operation: string): boolean {
   if (securitySettings.blocked_operations.includes(operation)) {
     return false;
@@ -137,180 +218,214 @@ function isOperationAllowed(operation: string): boolean {
 // Tool definitions
 const TOOLS: Tool[] = [
   {
-    name: "anchor_query",
-    description: "Search the Anchor memory graph using semantic/graph search. Returns relevant atoms/molecules with content, source, and relevance scores.",
+    name: 'anchor_query',
+    description: 'Search the Anchor memory graph using semantic/graph search. Returns relevant atoms/molecules with content, source, and relevance scores.',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {
         query: {
-          type: "string",
-          description: "Search query string",
+          type: 'string',
+          description: 'Search query string',
         },
         max_results: {
-          type: "number",
-          description: "Maximum number of results to return (default: 20)",
+          type: 'number',
+          description: 'Maximum number of results to return (default: 20)',
         },
         buckets: {
-          type: "array",
-          items: { type: "string" },
-          description: "Optional bucket filters",
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional bucket filters',
         },
         strategy: {
-          type: "string",
-          enum: ["standard", "max-recall"],
-          description: "Search strategy (default: standard)",
+          type: 'string',
+          enum: ['standard', 'max-recall'],
+          description: 'Search strategy (default: standard)',
         },
       },
-      required: ["query"],
+      required: ['query'],
     },
   },
   {
-    name: "anchor_distill",
-    description: "Run radial distillation on the corpus. Compresses knowledge into a deduplicated YAML/MD file that serves as a source of truth. Returns the output file path and compression stats.",
+    name: 'anchor_distill',
+    description: 'Run radial distillation on the corpus. Compresses knowledge into a deduplicated YAML/MD file that serves as a source of truth. Returns the output file path and compression stats.',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {
         seed: {
-          type: "string",
-          description: "Seed query for radial distillation (optional, uses global if empty)",
+          type: 'string',
+          description: 'Seed query for radial distillation (optional, uses global if empty)',
         },
         radius: {
-          type: "number",
-          description: "Search radius in graph hops (default: 3)",
+          type: 'number',
+          description: 'Search radius in graph hops (default: 3)',
         },
         max_nodes: {
-          type: "number",
-          description: "Maximum nodes to process (default: 500)",
+          type: 'number',
+          description: 'Maximum nodes to process (default: 500)',
         },
         output_format: {
-          type: "string",
-          enum: ["yaml", "md"],
-          description: "Output format (default: yaml)",
+          type: 'string',
+          enum: ['yaml', 'md'],
+          description: 'Output format (default: yaml)',
         },
       },
     },
   },
   {
-    name: "anchor_illuminate",
-    description: "Perform BFS graph traversal (illuminate) from a seed query. Explores connected concepts in the knowledge graph.",
+    name: 'anchor_illuminate',
+    description: 'Perform BFS graph traversal (illuminate) from a seed query. Explores connected concepts in the knowledge graph.',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {
         seed: {
-          type: "string",
-          description: "Seed query or topic to explore",
+          type: 'string',
+          description: 'Seed query or topic to explore',
         },
         depth: {
-          type: "number",
-          description: "Maximum traversal depth (default: 3)",
+          type: 'number',
+          description: 'Maximum traversal depth (default: 3)',
         },
         max_nodes: {
-          type: "number",
-          description: "Maximum nodes to explore (default: 50)",
+          type: 'number',
+          description: 'Maximum nodes to explore (default: 50)',
         },
       },
-      required: ["seed"],
+      required: ['seed'],
     },
   },
   {
-    name: "anchor_read_file",
-    description: "Read a file (e.g., distilled output) with optional line range. Use this for token-efficient recursive search of large files.",
+    name: 'anchor_read_file',
+    description: 'Read a file (e.g., distilled output) with optional line range. Use this for token-efficient recursive search of large files.',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {
         path: {
-          type: "string",
-          description: "File path to read (relative to project root or absolute)",
+          type: 'string',
+          description: 'File path to read (relative to project root or absolute)',
         },
         start_line: {
-          type: "number",
-          description: "Starting line number (0-indexed, inclusive)",
+          type: 'number',
+          description: 'Starting line number (0-indexed, inclusive)',
         },
         end_line: {
-          type: "number",
-          description: "Ending line number (exclusive)",
+          type: 'number',
+          description: 'Ending line number (exclusive)',
         },
       },
-      required: ["path"],
+      required: ['path'],
     },
   },
   {
-    name: "anchor_list_compounds",
-    description: "List available compounds (source files) in the Anchor database with metadata.",
+    name: 'anchor_list_compounds',
+    description: 'List available compounds (source files) in the Anchor database with metadata.',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {
         filter: {
-          type: "string",
-          description: "Optional filter string for compound names",
+          type: 'string',
+          description: 'Optional filter string for compound names',
         },
         limit: {
-          type: "number",
-          description: "Maximum compounds to return (default: 50)",
+          type: 'number',
+          description: 'Maximum compounds to return (default: 50)',
         },
       },
     },
   },
   {
-    name: "anchor_get_stats",
-    description: "Get Anchor Engine statistics including atom/molecule counts, database size, and system health.",
+    name: 'anchor_get_stats',
+    description: 'Get Anchor Engine statistics including atom/molecule counts, database size, and system health.',
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {},
     },
   },
   {
-    name: "anchor_ingest_text",
+    name: 'anchor_ingest_text',
     description: "Ingest raw text content into Anchor Engine memory. Content is atomized deterministically (no LLM processing). Defaults to external-inbox for safety. Use 'inbox' only for content you created yourself (notes, thoughts, code).",
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {
         content: {
-          type: "string",
-          description: "Raw text content to ingest",
+          type: 'string',
+          description: 'Raw text content to ingest',
         },
         filename: {
-          type: "string",
+          type: 'string',
           description: "Filename (e.g., 'meeting-notes-2026-03-18.md')",
         },
         bucket: {
-          type: "string",
-          enum: ["inbox", "external-inbox"],
-          default: "external-inbox",
-          description: "inbox=sovereign data (you created), external-inbox=external data (scraped/imported). Defaults to external-inbox for safety.",
+          type: 'string',
+          enum: ['inbox', 'external-inbox'],
+          default: 'external-inbox',
+          description: 'inbox=sovereign data (you created), external-inbox=external data (scraped/imported). Defaults to external-inbox for safety.',
         },
         tags: {
-          type: "array",
-          items: { type: "string" },
-          description: "Optional tags (auto-extracted if not provided)",
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Optional tags (auto-extracted if not provided)',
         },
       },
-      required: ["content", "filename"],
+      required: ['content', 'filename'],
     },
   },
   {
-    name: "anchor_ingest_file",
+    name: 'anchor_ingest_file',
     description: "Ingest a file from filesystem into Anchor Engine. Content is atomized deterministically. Defaults to external-inbox for safety. Use 'inbox' only for files you created yourself.",
     inputSchema: {
-      type: "object",
+      type: 'object',
       properties: {
         path: {
-          type: "string",
-          description: "Absolute or relative path to file",
+          type: 'string',
+          description: 'Absolute or relative path to file',
         },
         bucket: {
-          type: "string",
-          enum: ["inbox", "external-inbox"],
-          default: "external-inbox",
-          description: "inbox=sovereign data, external-inbox=external data. Defaults to external-inbox.",
+          type: 'string',
+          enum: ['inbox', 'external-inbox'],
+          default: 'external-inbox',
+          description: 'inbox=sovereign data, external-inbox=external data. Defaults to external-inbox.',
         },
         delete_original: {
-          type: "boolean",
+          type: 'boolean',
           default: false,
-          description: "Delete original file after ingestion",
+          description: 'Delete original file after ingestion',
         },
       },
-      required: ["path"],
+      required: ['path'],
+    },
+  },
+  {
+    name: 'anchor_github_ingest',
+    description: 'Ingest a GitHub repository into Anchor Engine. Downloads source files and optionally runs code analysis (ESLint, unused exports, duplicates) and/or includes full commit history.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: "GitHub repository URL (e.g., 'https://github.com/user/repo')",
+        },
+        branch: {
+          type: 'string',
+          default: 'main',
+          description: 'Branch to ingest (default: main)',
+        },
+        bucket: {
+          type: 'string',
+          default: 'code',
+          description: 'Bucket for ingested content (default: code)',
+        },
+        run_analysis: {
+          type: 'boolean',
+          default: false,
+          description: 'Run code analysis (ESLint, unused exports, duplicates)',
+        },
+        include_history: {
+          type: 'boolean',
+          default: true,
+          description: 'Include full commit history (search code changes over time)',
+        },
+      },
+      required: ['url'],
     },
   },
 ];
@@ -318,37 +433,37 @@ const TOOLS: Tool[] = [
 // Resource definitions
 const RESOURCES: Resource[] = [
   {
-    uri: "anchor://stats",
-    name: "Anchor Statistics",
-    description: "Real-time statistics about the Anchor knowledge graph",
-    mimeType: "application/json",
+    uri: 'anchor://stats',
+    name: 'Anchor Statistics',
+    description: 'Real-time statistics about the Anchor knowledge graph',
+    mimeType: 'application/json',
   },
   {
-    uri: "anchor://compounds",
-    name: "Available Compounds",
-    description: "List of all compounds (source files) in the database",
-    mimeType: "application/json",
+    uri: 'anchor://compounds',
+    name: 'Available Compounds',
+    description: 'List of all compounds (source files) in the database',
+    mimeType: 'application/json',
   },
 ];
 
 // Helper function for API calls
-async function callAnchorAPI(endpoint: string, method: string = "GET", body?: any): Promise<any> {
+async function callAnchorAPI(endpoint: string, method: string = 'GET', body?: any): Promise<any> {
   const url = `${ANCHOR_API_URL}${endpoint}`;
   console.error(`[MCP] Calling: ${method} ${url}`);
 
   const options: RequestInit = {
     method,
     headers: {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     },
   };
 
   // Add API key if configured
   if (ANCHOR_API_KEY) {
-    (options.headers as Record<string, string>)["Authorization"] = `Bearer ${ANCHOR_API_KEY}`;
+    (options.headers as Record<string, string>).Authorization = `Bearer ${ANCHOR_API_KEY}`;
   }
 
-  if (body && method !== "GET") {
+  if (body && method !== 'GET') {
     options.body = JSON.stringify(body);
   }
 
@@ -361,14 +476,14 @@ async function callAnchorAPI(endpoint: string, method: string = "GET", body?: an
     }
 
     // Handle streaming responses (SSE)
-    const contentType = response.headers.get("content-type");
-    if (contentType?.includes("text/event-stream")) {
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('text/event-stream')) {
       const text = await response.text();
       // Parse SSE events
       const events = text
-        .split("\n\n")
-        .filter((e) => e.trim())
-        .map((event) => {
+        .split('\n\n')
+        .filter(e => e.trim())
+        .map(event => {
           const dataMatch = event.match(/data: (.+)/);
           return dataMatch ? JSON.parse(dataMatch[1]) : null;
         })
@@ -386,57 +501,57 @@ async function callAnchorAPI(endpoint: string, method: string = "GET", body?: an
 
 // Tool handlers
 async function handleQuery(args: any): Promise<string> {
-  const { query, max_results = 20, buckets = [], strategy = "standard" } = args;
+  const { query, max_results = 20, buckets = [], strategy = 'standard' } = args;
 
-  const results = await callAnchorAPI("/v1/memory/search", "POST", {
+  const results = await callAnchorAPI('/v1/memory/search', 'POST', {
     query,
     max_chars: max_results * 500,
     token_budget: max_results * 125,
     buckets,
     strategy,
-    provenance: "all",
+    provenance: 'all',
   });
 
   // Handle streaming results
   if (Array.isArray(results)) {
-    const batches = results.filter((e: any) => e.type === "batch");
+    const batches = results.filter((e: any) => e.type === 'batch');
     const allResults = batches.flatMap((b: any) => b.results || []);
 
     if (allResults.length === 0) {
-      return "No results found for query.";
+      return 'No results found for query.';
     }
 
     return allResults
       .map(
         (r: any, i: number) =>
-          `[${i + 1}] Score: ${(r.score || 0).toFixed(3)} | Source: ${r.source || "unknown"}\n${r.content?.substring(0, 500) || "[no content]"}${r.content?.length > 500 ? "..." : ""}`
+          `[${i + 1}] Score: ${(r.score || 0).toFixed(3)} | Source: ${r.source || 'unknown'}\n${r.content?.substring(0, 500) || '[no content]'}${r.content?.length > 500 ? '...' : ''}`,
       )
-      .join("\n\n---\n\n");
+      .join('\n\n---\n\n');
   }
 
-  return "Search completed but returned unexpected format.";
+  return 'Search completed but returned unexpected format.';
 }
 
 async function handleDistill(args: any): Promise<string> {
-  const { seed = "", radius = 3, max_nodes = 500, output_format = "yaml" } = args;
+  const { seed = '', radius = 3, max_nodes = 500, output_format = 'yaml' } = args;
 
-  const result = await callAnchorAPI("/v1/memory/distill", "POST", {
+  const result = await callAnchorAPI('/v1/memory/distill', 'POST', {
     seed: seed ? { query: seed } : { global: true },
     radius,
     max_nodes,
     output_format,
   });
 
-  if (result.status === "success" || result.output) {
+  if (result.status === 'success' || result.output) {
     const stats = result.stats || {};
     return `✅ Distillation Complete
 
 📊 Stats:
-- Compression Ratio: ${stats.compression_ratio || "N/A"}
+- Compression Ratio: ${stats.compression_ratio || 'N/A'}
 - Lines: ${stats.lines_unique || 0} unique / ${stats.lines_total || 0} total
 - Duration: ${((stats.duration_ms || 0) / 1000).toFixed(1)}s
 
-📁 Output File: ${result.output?.path || "N/A"}
+📁 Output File: ${result.output?.path || 'N/A'}
 
 💡 Use anchor_read_file to read this file efficiently.`;
   }
@@ -447,90 +562,124 @@ async function handleDistill(args: any): Promise<string> {
 async function handleIlluminate(args: any): Promise<string> {
   const { seed, depth = 3, max_nodes = 50 } = args;
 
-  const result = await callAnchorAPI("/v1/memory/explore", "POST", {
+  const result = await callAnchorAPI('/v1/memory/explore', 'POST', {
     seed: { query: seed, limit_seeds: 8 },
     max_depth: depth,
     max_nodes,
-    format: "flat",
+    format: 'flat',
   });
 
   const nodes = result.results || result.nodes || [];
 
   if (nodes.length === 0) {
-    return "No connected nodes found from seed.";
+    return 'No connected nodes found from seed.';
   }
 
   return nodes
     .map(
       (n: any, i: number) =>
-        `[${i + 1}] ${n.id}\nSource: ${n.source || "unknown"}\n${n.content?.substring(0, 400) || "[no content]"}${n.content?.length > 400 ? "..." : ""}`
+        `[${i + 1}] ${n.id}\nSource: ${n.source || 'unknown'}\n${n.content?.substring(0, 400) || '[no content]'}${n.content?.length > 400 ? '...' : ''}`,
     )
-    .join("\n\n---\n\n");
+    .join('\n\n---\n\n');
 }
 
 async function handleReadFile(args: any): Promise<string> {
-  const { path: filePath, start_line, end_line } = args;
+  const { path: filePath, start_line, end_line, max_chars = 10000 } = args;
 
-  // Normalize path
-  const normalizedPath = filePath.startsWith("/")
-    ? filePath
-    : `${ANCHOR_API_URL}/v1/files/read?path=${encodeURIComponent(filePath)}`;
-
-  const result = await callAnchorAPI(
-    `/v1/files/read?path=${encodeURIComponent(filePath)}`,
-    "GET"
-  );
-
-  if (!result.content) {
-    return `Error: Could not read file ${filePath}`;
+  // Resolve file path relative to project root
+  const fs = await import('fs');
+  const path = await import('path');
+  
+  // Try to read from project root first
+  let absolutePath = path.resolve(projectRoot, filePath);
+  
+  // If file doesn't exist, try absolute path
+  if (!fs.existsSync(absolutePath)) {
+    absolutePath = path.resolve(filePath);
   }
-
-  let content = result.content;
-  const lines = content.split("\n");
-
-  // Apply line range if specified
-  if (start_line !== undefined || end_line !== undefined) {
-    const start = start_line || 0;
-    const end = end_line || lines.length;
-    content = lines.slice(start, end).join("\n");
+  
+  // If still not found, try common locations
+  if (!fs.existsSync(absolutePath)) {
+    const commonLocations = [
+      path.resolve(projectRoot, 'local-data', 'inbox', filePath),
+      path.resolve(projectRoot, 'local-data', 'distilled', filePath),
+      path.resolve(projectRoot, 'mirrored_brain', filePath),
+    ];
+    
+    for (const loc of commonLocations) {
+      if (fs.existsSync(loc)) {
+        absolutePath = loc;
+        break;
+      }
+    }
   }
-
-  const lineInfo =
-    start_line !== undefined || end_line !== undefined
-      ? ` (lines ${start_line || 0}-${end_line || lines.length})`
-      : "";
-
-  return `📄 File: ${filePath}${lineInfo}\n${"=".repeat(40)}\n\n${content.substring(0, 10000)}${content.length > 10000 ? "\n\n[Content truncated...]" : ""}`;
+  
+  if (!fs.existsSync(absolutePath)) {
+    return `Error: File not found: ${filePath}`;
+  }
+  
+  // Security: Verify path is within project root
+  const relativePath = path.relative(projectRoot, absolutePath);
+  if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return 'Error: Access denied: file outside project directory';
+  }
+  
+  try {
+    const content = fs.readFileSync(absolutePath, 'utf8');
+    let lines = content.split('\n');
+    
+    // Apply line range if specified
+    if (start_line !== undefined || end_line !== undefined) {
+      const start = start_line !== undefined ? Math.max(0, start_line) : 0;
+      const end = end_line !== undefined ? Math.min(lines.length, end_line) : lines.length;
+      lines = lines.slice(start, end);
+    }
+    
+    let resultContent = lines.join('\n');
+    
+    // Apply character limit
+    if (resultContent.length > max_chars) {
+      resultContent = resultContent.substring(0, max_chars) + '\n\n[Content truncated...]';
+    }
+    
+    const lineInfo = (start_line !== undefined || end_line !== undefined)
+      ? ` (lines ${start_line ?? 0}-${end_line ?? lines.length})`
+      : '';
+    
+    return `📄 File: ${filePath}${lineInfo}\n${'='.repeat(40)}\n\n${resultContent}`;
+  } catch (error: any) {
+    return `Error reading file ${filePath}: ${error.message}`;
+  }
 }
 
 async function handleListCompounds(args: any): Promise<string> {
-  const { filter = "", limit = 50 } = args;
+  const { filter = '', limit = 50 } = args;
 
-  const result = await callAnchorAPI("/v1/compounds/list", "GET");
+  const result = await callAnchorAPI('/v1/compounds/list', 'GET');
   let compounds = result.compounds || [];
 
   if (filter) {
     compounds = compounds.filter((c: any) =>
-      c.name?.toLowerCase().includes(filter.toLowerCase())
+      c.name?.toLowerCase().includes(filter.toLowerCase()),
     );
   }
 
   compounds = compounds.slice(0, limit);
 
   if (compounds.length === 0) {
-    return "No compounds found.";
+    return 'No compounds found.';
   }
 
   return compounds
     .map(
       (c: any) =>
-        `- ${c.name} (${c.molecule_count || 0} molecules, ${c.atom_count || 0} atoms)`
+        `- ${c.name} (${c.molecule_count || 0} molecules, ${c.atom_count || 0} atoms)`,
     )
-    .join("\n");
+    .join('\n');
 }
 
 async function handleGetStats(args: any): Promise<string> {
-  const result = await callAnchorAPI("/v1/stats", "GET");
+  const result = await callAnchorAPI('/v1/stats', 'GET');
 
   return `📊 Anchor Engine Statistics
 
@@ -540,12 +689,12 @@ async function handleGetStats(args: any): Promise<string> {
 - Compounds: ${result.compounds?.toLocaleString() || 0}
 
 💾 Storage:
-- Database Size: ${result.dbSize || "N/A"}
-- Index Size: ${result.indexSize || "N/A"}
+- Database Size: ${result.dbSize || 'N/A'}
+- Index Size: ${result.indexSize || 'N/A'}
 
 ⚡ System:
-- Status: ${result.status || "unknown"}
-- Uptime: ${result.uptime || "N/A"}
+- Status: ${result.status || 'unknown'}
+- Uptime: ${result.uptime || 'N/A'}
 `;
 }
 
@@ -570,25 +719,56 @@ To enable text ingestion, add this to your user_settings.json:
 
   const { content, filename, bucket = securitySettings.default_bucket_for_writes, tags = [] } = args;
 
+  // === SECURITY VALIDATION ===
+
+  // 1. Validate filename
+  if (!isValidFilename(filename)) {
+    return `❌ Invalid filename: ${filename}
+
+Security checks failed:
+- Filename must not be empty or exceed ${MAX_FILENAME_LENGTH} characters
+- Filename must not contain path traversal (..) or absolute paths
+- Filename must not contain dangerous characters`;
+  }
+
+  // 2. Validate content
+  const contentValidation = isValidContent(content);
+  if (!contentValidation.valid) {
+    return `❌ Content validation failed: ${contentValidation.error}`;
+  }
+
+  // 3. Validate bucket
+  if (!isValidBucket(bucket)) {
+    return `❌ Invalid bucket: ${bucket}
+
+Allowed buckets: inbox, external-inbox, code, docs, notes`;
+  }
+
+  // 4. Rate limiting check
+  const clientId = args.clientId || 'mcp-client';
+  if (isRateLimited(clientId)) {
+    return '❌ Rate limit exceeded. Please wait before making another request.';
+  }
+
   try {
-    const result = await callAnchorAPI("/v1/research/upload-raw", "POST", {
+    const result = await callAnchorAPI('/v1/research/upload-raw', 'POST', {
       content,
       filename,
       bucket,
-      tags
+      tags,
     });
 
-    const bucketEmoji = bucket === "inbox" ? "👑" : "🌐";
-    const bucketNote = bucket === "inbox" 
-      ? "Sovereign data (3.0x retrieval boost)" 
-      : "External data (1.0x boost)";
+    const bucketEmoji = bucket === 'inbox' ? '👑' : '🌐';
+    const bucketNote = bucket === 'inbox' 
+      ? 'Sovereign data (3.0x retrieval boost)' 
+      : 'External data (1.0x boost)';
 
     return `✅ Text ingested successfully!
 
 ${bucketEmoji} Bucket: ${bucket} - ${bucketNote}
 📄 Filename: ${filename}
 📊 Size: ${content.length.toLocaleString()} characters
-🏷️ Tags: ${tags.length > 0 ? tags.join(", ") : "(auto-extracted)" }
+🏷️ Tags: ${tags.length > 0 ? tags.join(', ') : '(auto-extracted)' }
 
 💡 Content will be atomized deterministically (no LLM processing).
    Use anchor_query to search for this content after ingestion.`;
@@ -618,33 +798,56 @@ To enable file ingestion, add this to your user_settings.json:
 
   const { path: filePath, bucket = securitySettings.default_bucket_for_writes, delete_original = false } = args;
 
+  // === SECURITY VALIDATION ===
+
+  // 1. Validate bucket
+  if (!isValidBucket(bucket)) {
+    return `❌ Invalid bucket: ${bucket}
+
+Allowed buckets: inbox, external-inbox, code, docs, notes`;
+  }
+
+  // 2. Rate limiting check
+  const clientId = args.clientId || 'mcp-client';
+  if (isRateLimited(clientId)) {
+    return '❌ Rate limit exceeded. Please wait before making another request.';
+  }
+
   try {
     // First, read the file
-    const fileResult = await callAnchorAPI(`/v1/files/read?path=${encodeURIComponent(filePath)}`, "GET");
-    
+    const fileResult = await callAnchorAPI(`/v1/files/read?path=${encodeURIComponent(filePath)}`, 'GET');
+
     if (!fileResult.content) {
       return `❌ Could not read file: ${filePath}`;
     }
 
-    const filename = filePath.split("/").pop() || filePath;
-    const content = fileResult.content;
+    const filename = filePath.split('/').pop() || filePath;
+    const { content } = fileResult;
+
+    // 3. Validate content size (for large files)
+    const contentValidation = isValidContent(content);
+    if (!contentValidation.valid) {
+      return `❌ File too large: ${contentValidation.error}
+
+To ingest larger files, use the web UI or API directly.`;
+    }
 
     // Then ingest it
-    const ingestResult = await callAnchorAPI("/v1/research/upload-raw", "POST", {
+    const ingestResult = await callAnchorAPI('/v1/research/upload-raw', 'POST', {
       content,
       filename,
       bucket,
-      tags: []
+      tags: [],
     });
 
-    const bucketEmoji = bucket === "inbox" ? "👑" : "🌐";
-    const bucketNote = bucket === "inbox" 
-      ? "Sovereign data (3.0x retrieval boost)" 
-      : "External data (1.0x boost)";
+    const bucketEmoji = bucket === 'inbox' ? '👑' : '🌐';
+    const bucketNote = bucket === 'inbox' 
+      ? 'Sovereign data (3.0x retrieval boost)' 
+      : 'External data (1.0x boost)';
 
-    let deleteNote = "";
+    let deleteNote = '';
     if (delete_original) {
-      deleteNote = "\n🗑️ Original file will be deleted (not implemented yet - manual deletion required)";
+      deleteNote = '\n🗑️ Original file will be deleted (not implemented yet - manual deletion required)';
     }
 
     return `✅ File ingested successfully!
@@ -661,29 +864,83 @@ ${bucketEmoji} Bucket: ${bucket} - ${bucketNote}
   }
 }
 
+async function handleGithubIngest(args: any): Promise<string> {
+  const { 
+    url, 
+    branch = 'main', 
+    bucket = 'code', 
+    run_analysis = false, 
+    include_history = true, 
+  } = args;
+
+  if (!url) {
+    return '❌ GitHub URL is required.';
+  }
+
+  // Parse URL to get owner/repo for display
+  let ownerRepo = url;
+  try {
+    const parsed = new URL(url);
+    ownerRepo = parsed.pathname.replace(/^\//, '').replace(/\.git$/, '');
+  } catch {
+    // Use as-is if parsing fails
+  }
+
+  try {
+    const result = await callAnchorAPI('/v1/github/repos', 'POST', {
+      url,
+      branch,
+      bucket,
+      run_analysis,
+      include_history,
+    });
+
+    const features: string[] = [];
+    if (include_history) features.push('📝 commit history');
+    if (run_analysis) features.push('🔍 code analysis');
+
+    return `✅ GitHub ingestion started!
+
+📦 Repository: ${ownerRepo}
+🌿 Branch: ${branch}
+🪣 Bucket: ${bucket}
+
+${features.length > 0 ? `Features enabled:\n${features.map(f => `  ${f}`).join('\n')}` : 'No additional features enabled.'}
+
+⏳ Ingestion runs in the background. Use anchor_query to search for content after a few moments.
+
+💡 Tips:
+  - Use anchor_get_stats to check ingestion progress
+  - Search with: anchor_query({ query: "topic in ${ownerRepo}" })
+  - Analysis results tagged with #analysis`;
+  } catch (error: any) {
+    return `❌ GitHub ingestion failed: ${error.message}`;
+  }
+}
+
 // Resource handlers
 async function handleResourceStats(): Promise<string> {
-  const result = await callAnchorAPI("/v1/stats", "GET");
+  const result = await callAnchorAPI('/v1/stats', 'GET');
   return JSON.stringify(result, null, 2);
 }
 
 async function handleResourceCompounds(): Promise<string> {
-  const result = await callAnchorAPI("/v1/compounds/list", "GET");
+  const result = await callAnchorAPI('/v1/compounds/list', 'GET');
   return JSON.stringify(result.compounds || [], null, 2);
 }
 
 // Main server setup
 const server = new Server(
   {
-    name: "anchor-engine-mcp",
-    version: "4.8.0",
+    name: 'anchor-engine-mcp',
+    version: '4.9.5',
   },
   {
     capabilities: {
       tools: {},
       resources: {},
     },
-  }
+  },
 );
 
 // List available tools
@@ -697,7 +954,7 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 });
 
 // Handle tool calls
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async request => {
   const { name, arguments: args } = request.params;
 
   // Security check: MCP must be enabled
@@ -705,8 +962,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return {
       content: [
         {
-          type: "text",
-          text: "🔒 MCP server is disabled. Enable it in user_settings.json (mcp.enabled: true) to use this feature.",
+          type: 'text',
+          text: '🔒 MCP server is disabled. Enable it in user_settings.json (mcp.enabled: true) to use this feature.',
         },
       ],
       isError: true,
@@ -714,13 +971,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   // Security check: Rate limiting
-  const clientId = "stdio-client"; // In stdio mode, we have one client
+  const clientId = 'stdio-client'; // In stdio mode, we have one client
   if (isRateLimited(clientId)) {
     return {
       content: [
         {
-          type: "text",
-          text: "⏱️ Rate limit exceeded. Please wait before making more requests.",
+          type: 'text',
+          text: '⏱️ Rate limit exceeded. Please wait before making more requests.',
         },
       ],
       isError: true,
@@ -730,14 +987,15 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   // Security check: Operation allowed
   const operationMap: Record<string, string> = {
-    "anchor_query": "query",
-    "anchor_distill": "distill",
-    "anchor_illuminate": "illuminate",
-    "anchor_read_file": "read_file",
-    "anchor_list_compounds": "list",
-    "anchor_get_stats": "get_stats",
-    "anchor_ingest_text": "ingest_text",
-    "anchor_ingest_file": "ingest_file"
+    'anchor_query': 'query',
+    'anchor_distill': 'distill',
+    'anchor_illuminate': 'illuminate',
+    'anchor_read_file': 'read_file',
+    'anchor_list_compounds': 'list',
+    'anchor_get_stats': 'get_stats',
+    'anchor_ingest_text': 'ingest_text',
+    'anchor_ingest_file': 'ingest_file',
+    'anchor_github_ingest': 'github_ingest',
   };
   
   const operation = operationMap[name] || name;
@@ -745,7 +1003,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `🚫 Operation '${name}' is not allowed. Check mcp.allowed_operations in settings.`,
         },
       ],
@@ -765,29 +1023,32 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     let result: string;
 
     switch (name) {
-      case "anchor_query":
+      case 'anchor_query':
         result = await handleQuery(args);
         break;
-      case "anchor_distill":
+      case 'anchor_distill':
         result = await handleDistill(args);
         break;
-      case "anchor_illuminate":
+      case 'anchor_illuminate':
         result = await handleIlluminate(args);
         break;
-      case "anchor_read_file":
+      case 'anchor_read_file':
         result = await handleReadFile(args);
         break;
-      case "anchor_list_compounds":
+      case 'anchor_list_compounds':
         result = await handleListCompounds(args);
         break;
-      case "anchor_get_stats":
+      case 'anchor_get_stats':
         result = await handleGetStats(args);
         break;
-      case "anchor_ingest_text":
+      case 'anchor_ingest_text':
         result = await handleIngestText(args);
         break;
-      case "anchor_ingest_file":
+      case 'anchor_ingest_file':
         result = await handleIngestFile(args);
+        break;
+      case 'anchor_github_ingest':
+        result = await handleGithubIngest(args);
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);
@@ -796,7 +1057,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: result,
         },
       ],
@@ -805,7 +1066,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     return {
       content: [
         {
-          type: "text",
+          type: 'text',
           text: `Error: ${error.message}`,
         },
       ],
@@ -815,17 +1076,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // Handle resource requests
-server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+server.setRequestHandler(ReadResourceRequestSchema, async request => {
   const { uri } = request.params;
 
   try {
     let content: string;
 
     switch (uri) {
-      case "anchor://stats":
+      case 'anchor://stats':
         content = await handleResourceStats();
         break;
-      case "anchor://compounds":
+      case 'anchor://compounds':
         content = await handleResourceCompounds();
         break;
       default:
@@ -836,7 +1097,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       contents: [
         {
           uri,
-          mimeType: "application/json",
+          mimeType: 'application/json',
           text: content,
         },
       ],
@@ -849,11 +1110,11 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 // Load security settings from Anchor
 async function loadSecuritySettings(): Promise<void> {
   try {
-    const settings = await callAnchorAPI("/v1/settings", "GET");
+    const settings = await callAnchorAPI('/v1/settings', 'GET');
     if (settings.settings?.mcp) {
       securitySettings = {
         ...securitySettings,
-        ...settings.settings.mcp
+        ...settings.settings.mcp,
       };
       console.error(`🔒 MCP Security: ${securitySettings.enabled ? 'ENABLED' : 'DISABLED'}`);
       if (securitySettings.enabled) {
@@ -862,11 +1123,11 @@ async function loadSecuritySettings(): Promise<void> {
         console.error(`   - Allowed ops: ${securitySettings.allowed_operations.join(', ')}`);
       }
     } else {
-      console.error("⚠️ No MCP settings found in Anchor config. Using settings from user_settings.json.");
+      console.error('⚠️ No MCP settings found in Anchor config. Using settings from user_settings.json.');
     }
   } catch (error: any) {
     console.error(`⚠️ Failed to load security settings from engine: ${error.message}`);
-    console.error("   Using settings from user_settings.json (already loaded at startup).");
+    console.error('   Using settings from user_settings.json (already loaded at startup).');
     // Don't disable - keep the settings loaded from user_settings.json at startup
   }
 }
@@ -877,20 +1138,20 @@ async function main() {
   await loadSecuritySettings();
 
   // Show configuration summary
-  console.error("");
-  console.error("🔌 MCP Server Configuration:");
+  console.error('');
+  console.error('🔌 MCP Server Configuration:');
   console.error(`   Engine URL: ${ANCHOR_API_URL}`);
   console.error(`   API Key: ${ANCHOR_API_KEY ? 'set (' + ANCHOR_API_KEY.substring(0, 8) + '...)' : 'not set'}`);
   console.error(`   Source: ${process.env.ANCHOR_API_KEY ? 'environment variables' : 'user_settings.json'}`);
   console.error(`   MCP Enabled: ${securitySettings.enabled ? '✅' : '❌'}`);
-  console.error("");
+  console.error('');
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Anchor Engine MCP Server running on stdio");
+  console.error('Anchor Engine MCP Server running on stdio');
 }
 
-main().catch((error) => {
-  console.error("Fatal error:", error);
+main().catch(error => {
+  console.error('Fatal error:', error);
   process.exit(1);
 });

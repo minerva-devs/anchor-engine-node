@@ -95,10 +95,10 @@ export class VectorService {
                 console.log(`[Vector] Loading existing index from ${indexPath}`);
                 // Use view for instant mmap loading
                 try {
-                    this.index!.view(indexPath);
-                    console.log(`[Vector] Loaded index with ${this.index!.size()} vectors.`);
+                    this.index.view(indexPath);
+                    console.log(`[Vector] Loaded index with ${this.index.size()} vectors.`);
                 } catch (e) {
-                    console.warn(`[Vector] Failed to view index, it might be corrupt or empty. Creating new.`, e);
+                    console.warn('[Vector] Failed to view index, it might be corrupt or empty. Creating new.', e);
                     // If view fails, we might want to delete it and start fresh or just proceed with empty in-memory
                     // For now, proceeding with validation
                 }

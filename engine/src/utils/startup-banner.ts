@@ -46,14 +46,14 @@ async function getDatabaseStats(): Promise<DatabaseStats> {
       db.run('SELECT COUNT(*) as count FROM atoms'),
       db.run('SELECT COUNT(*) as count FROM sources'),
       db.run('SELECT COUNT(DISTINCT tag) as count FROM tags WHERE tag IS NOT NULL'),
-      db.run('SELECT COUNT(*) as count FROM molecules')
+      db.run('SELECT COUNT(*) as count FROM molecules'),
     ]);
 
     return {
       atoms: parseInt(atomsResult.rows?.[0]?.count || '0'),
       sources: parseInt(sourcesResult.rows?.[0]?.count || '0'),
       tags: parseInt(tagsResult.rows?.[0]?.count || '0'),
-      molecules: parseInt(moleculesResult.rows?.[0]?.count || '0')
+      molecules: parseInt(moleculesResult.rows?.[0]?.count || '0'),
     };
   } catch (error: any) {
     console.warn('[StartupBanner] Failed to retrieve database stats:', error.message);
@@ -98,8 +98,8 @@ function getWatchdogStatus(): { status: string; paths: string[] } {
   }
   
   return { 
-    status: `active`, 
-    paths: extraPaths 
+    status: 'active', 
+    paths: extraPaths, 
   };
 }
 
@@ -143,7 +143,7 @@ export async function displayStartupBanner(options: BannerOptions): Promise<void
     // Database stats
     const isFresh = dbStats.atoms === 0;
     if (isFresh) {
-      lines.push(`✅ Database: fresh (ready for ingestion)`);
+      lines.push('✅ Database: fresh (ready for ingestion)');
     } else {
       lines.push(`✅ Database: ${formatNumber(dbStats.atoms)} atoms, ${formatNumber(dbStats.sources)} sources, ${formatNumber(dbStats.tags)} tags`);
     }
@@ -157,7 +157,7 @@ export async function displayStartupBanner(options: BannerOptions): Promise<void
     } else if (watchdogEnabled) {
       lines.push(`✅ Watchdog: ${watchdogStatus.status}`);
     } else {
-      lines.push(`⚪ Watchdog: disabled (no extra_paths configured)`);
+      lines.push('⚪ Watchdog: disabled (no extra_paths configured)');
     }
     
     // MCP server status

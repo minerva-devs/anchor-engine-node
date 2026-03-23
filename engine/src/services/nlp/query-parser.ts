@@ -7,7 +7,7 @@
 
 const STOP_PHRASES = [
   'show me', 'what is', 'what are', 'can you find', 'search for', 'look for', 'find', 'display', 'list',
-  'tell me about', 'give me', 'bring up', 'what do we know about', 'what can we see from', 'how about', 'describe', 'explain'
+  'tell me about', 'give me', 'bring up', 'what do we know about', 'what can we see from', 'how about', 'describe', 'explain',
 ];
 
 export function parseNaturalLanguage(query: string): string {

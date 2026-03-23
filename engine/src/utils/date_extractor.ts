@@ -15,7 +15,7 @@ export function extractDateFromContent(text: string): number | null {
         // US: 01/24/2025
         /\b(\d{1,2})[-/](\d{1,2})[-/](\d{4})\b/,
         // Text: Jan 24, 2025 or January 24th, 2025
-        /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})(?:st|nd|rd|th)?,\s+(\d{4})\b/i
+        /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(\d{1,2})(?:st|nd|rd|th)?,\s+(\d{4})\b/i,
     ];
 
     for (const pattern of patterns) {

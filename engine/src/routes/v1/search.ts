@@ -1,8 +1,8 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import { validate, schemas } from '../../middleware/validate.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { smartChatSearch, executeMoleculeSearch } from '../../services/search/search.js';
-import { SearchRequest } from '../../types/api.js';
+import type { SearchRequest } from '../../types/api.js';
 import { executeStreamingSearch, formatSSE } from '../../services/search/streaming-search.js';
 
 export function setupSearchRoutes(app: Application) {
@@ -22,10 +22,10 @@ export function setupSearchRoutes(app: Application) {
       // Check for non-streaming mode (FRICTIONLESS_SPEC.md section 4.3)
       const streamMode = req.query.stream !== 'false';
       
-      const strategy = (req.body as any).strategy || 'standard';
+      const strategy = (req.body).strategy || 'standard';
       const maxChars = body.max_chars || 5000;
       const estimatedTokens = maxChars / 4;
-      const batchSize = (req.body as any).batch_size || 20;
+      const batchSize = (req.body).batch_size || 20;
 
       // Auto-switch to max-recall for large budgets
       let useMaxRecall = strategy === 'max-recall';
@@ -37,14 +37,14 @@ export function setupSearchRoutes(app: Application) {
         query: body.query.substring(0, 100),
         strategy: useMaxRecall ? 'max-recall' : 'standard',
         batchSize,
-        streamMode
+        streamMode,
       });
 
       // Handle legacy params
-      const bucketParam = (req.body as any).bucket;
+      const bucketParam = (req.body).bucket;
       const buckets = body.buckets || [];
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
-      const tags = (req.body as any).tags || [];
+      const tags = (req.body).tags || [];
 
       if (!streamMode) {
         // Non-streaming mode: Return single JSON response with content (FRICTIONLESS_SPEC.md section 4.1)
@@ -53,9 +53,9 @@ export function setupSearchRoutes(app: Application) {
           allBuckets,
           maxChars,
           tags,
-          (req.body as any).provenance || 'all',
+          (req.body).provenance || 'all',
           useMaxRecall,
-          body.user_context
+          body.user_context,
         );
 
         const duration = Date.now() - startTime;
@@ -72,16 +72,16 @@ export function setupSearchRoutes(app: Application) {
           provenance: r.provenance,
           compound_id: r.compound_id,
           start_byte: r.start_byte,
-          end_byte: r.end_byte
+          end_byte: r.end_byte,
         }));
 
         const response: any = {
           metadata: {
             totalResults: formattedResults.length,
             durationMs: duration,
-            strategy: searchResult.strategy
+            strategy: searchResult.strategy,
           },
-          results: formattedResults
+          results: formattedResults,
         };
 
         // Add debug info if requested (FRICTIONLESS_SPEC.md section 4.2)
@@ -92,14 +92,14 @@ export function setupSearchRoutes(app: Application) {
             useMaxRecall,
             charBudget: maxChars,
             splitQueries: searchResult.splitQueries || [],
-            metadataFromSearch: searchResult.metadata || {}
+            metadataFromSearch: searchResult.metadata || {},
           };
         }
 
         StructuredLogger.info('NON_STREAMING_SEARCH_COMPLETE', {
           query: body.query.substring(0, 100),
           totalResults: formattedResults.length,
-          durationMs: duration
+          durationMs: duration,
         });
 
         res.status(200).json(response);
@@ -112,10 +112,10 @@ export function setupSearchRoutes(app: Application) {
         buckets: allBuckets,
         maxChars,
         tags,
-        provenance: (req.body as any).provenance || 'all',
+        provenance: (req.body).provenance || 'all',
         useMaxRecall,
         userContext: body.user_context,
-        batchSize
+        batchSize,
       });
 
       // Set up SSE headers
@@ -147,32 +147,32 @@ export function setupSearchRoutes(app: Application) {
         strategy: useMaxRecall ? 'max-recall' : 'standard',
         totalResults,
         query: body.query,
-        durationMs: duration
+        durationMs: duration,
       }));
 
       res.end();
 
       StructuredLogger.info('STREAMING_SEARCH_COMPLETE', {
         query: body.query.substring(0, 100),
-        durationMs: duration
+        durationMs: duration,
       });
 
     } catch (error: any) {
       const duration = Date.now() - startTime;
       StructuredLogger.error('STREAMING_SEARCH_ERROR', error, {
-        durationMs: duration
+        durationMs: duration,
       });
 
       if (!res.headersSent) {
         res.status(500).json({
           error: 'Internal server error during streaming search',
-          details: error.message
+          details: error.message,
         });
       } else {
         res.write(formatSSE({
           type: 'error',
           message: error.message,
-          details: error.stack
+          details: error.stack,
         }));
         res.end();
       }
@@ -181,13 +181,13 @@ export function setupSearchRoutes(app: Application) {
 
   // GET Search (Legacy support) - redirect to use POST effectively
   app.get('/v1/memory/search', async (_req: Request, res: Response) => {
-    res.status(400).json({ error: "Use POST /v1/memory/search for complex queries." });
+    res.status(400).json({ error: 'Use POST /v1/memory/search for complex queries.' });
   });
 
   // POST Molecule Search endpoint - splits query into sentence-like chunks
   app.post('/v1/memory/molecule-search', async (req: Request, res: Response) => {
     try {
-      const body = req.body;
+      const { body } = req;
       if (!body.query) {
         res.status(400).json({ error: 'Query is required' });
         return;
@@ -209,7 +209,7 @@ export function setupSearchRoutes(app: Application) {
         false, // deep
         'all', // provenance
         tags,
-        body.user_context
+        body.user_context,
       );
 
       // Construct standard response
@@ -224,8 +224,8 @@ export function setupSearchRoutes(app: Application) {
           engram_hits: 0,
           vector_latency: 0,
           provenance_boost_active: true,
-          ...(result.metadata || {})
-        }
+          ...(result.metadata || {}),
+        },
       });
     } catch (error: any) {
       console.error('Molecule Search error:', error);
@@ -236,7 +236,7 @@ export function setupSearchRoutes(app: Application) {
   // POST Maximum Recall Search - uses MAX_RECALL_CONFIG for comprehensive retrieval
   app.post('/v1/memory/search-max-recall', async (req: Request, res: Response) => {
     try {
-      const body = req.body;
+      const { body } = req;
       if (!body.query) {
         res.status(400).json({ error: 'Query is required' });
         return;
@@ -258,7 +258,7 @@ export function setupSearchRoutes(app: Application) {
         tags,
         'all', // provenance
         true,   // useMaxRecall = true
-        body.user_context
+        body.user_context,
       );
 
       console.log(`[API] Max Recall Search "${body.query}" -> Found ${result.results.length} results`);
@@ -275,8 +275,8 @@ export function setupSearchRoutes(app: Application) {
           temporal_decay: 0.0,
           max_hops: 3,
           damping: 1.0,
-          min_relevance: 0.0
-        }
+          min_relevance: 0.0,
+        },
       });
     } catch (error: any) {
       console.error('Max Recall Search error:', error);

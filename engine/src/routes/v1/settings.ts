@@ -4,7 +4,7 @@
  * Provides endpoints for reading and updating user_settings.json
  */
 
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -20,13 +20,13 @@ const DEFAULT_SETTINGS = {
   server: {
     host: '0.0.0.0',
     port: 3160,
-    api_key: ''
+    api_key: '',
   },
   database: {
     // Standard 051: Ephemeral Index.
     // true = wipe PGlite index on each restart (default, safest).
     // false = retain index across restarts (faster startup, risks stale data).
-    wipe_on_startup: true
+    wipe_on_startup: true,
   },
   tagging: {
     modulation_level: 50,
@@ -39,8 +39,8 @@ const DEFAULT_SETTINGS = {
     entity_extraction: {
       enabled: true,
       min_confidence: 0.6,
-      categories: ['PERSON', 'ORG', 'PRODUCT', 'EVENT', 'LOCATION']
-    }
+      categories: ['PERSON', 'ORG', 'PRODUCT', 'EVENT', 'LOCATION'],
+    },
   },
   search: {
     strategy: 'hybrid',
@@ -48,12 +48,12 @@ const DEFAULT_SETTINGS = {
     max_chars_default: 524288,
     max_chars_limit: 2000000,
     fts_window_size: 1500,
-    fts_padding: 750
+    fts_padding: 750,
   },
   context: {
     relevance_weight: 0.7,
     recency_weight: 0.3,
-    clustering_gap_ms: 900000
+    clustering_gap_ms: 900000,
   },
   physics: {
     damping_factor: 0.85,
@@ -63,17 +63,17 @@ const DEFAULT_SETTINGS = {
     walk_radius: 1,
     max_per_hop: 50,
     direct_limit: 5,
-    walker_limit: 10
+    walker_limit: 10,
   },
   resource_management: {
     gc_cooldown_ms: 30000,
     max_atoms_in_memory: 10000,
-    monitoring_interval_ms: 30000
+    monitoring_interval_ms: 30000,
   },
   watcher: {
     debounce_ms: 2000,
     stability_threshold_ms: 2000,
-    extra_paths: []
+    extra_paths: [],
   },
   // Standard 132: Adaptive Concurrency Control
   // Automatically adjusts parallel processing based on available memory
@@ -92,8 +92,8 @@ const DEFAULT_SETTINGS = {
     // Batch size for low-memory mode (default: 1)
     low_memory_batch_size: 1,
     // Batch size for high-memory mode (default: 20)
-    high_memory_batch_size: 20
-  }
+    high_memory_batch_size: 20,
+  },
 };
 
 export function setupSettingsRoutes(app: Application) {
@@ -104,12 +104,12 @@ export function setupSettingsRoutes(app: Application) {
       const settings = JSON.parse(await fs.promises.readFile(SETTINGS_PATH, 'utf-8'));
       res.status(200).json({
         status: 'success',
-        settings
+        settings,
       });
     } catch (error: any) {
       res.status(500).json({
         status: 'error',
-        error: `Failed to read settings: ${error.message}`
+        error: `Failed to read settings: ${error.message}`,
       });
     }
   });
@@ -123,7 +123,7 @@ export function setupSettingsRoutes(app: Application) {
       if (!newSettings || typeof newSettings !== 'object') {
         return res.status(400).json({
           status: 'error',
-          error: 'Invalid settings format'
+          error: 'Invalid settings format',
         });
       }
 
@@ -132,12 +132,12 @@ export function setupSettingsRoutes(app: Application) {
       
       res.status(200).json({
         status: 'success',
-        message: 'Settings updated successfully'
+        message: 'Settings updated successfully',
       });
     } catch (error: any) {
       res.status(500).json({
         status: 'error',
-        error: `Failed to write settings: ${error.message}`
+        error: `Failed to write settings: ${error.message}`,
       });
     }
   });
@@ -154,7 +154,7 @@ export function setupSettingsRoutes(app: Application) {
       // Update specific category
       settings[category] = {
         ...settings[category],
-        ...newCategorySettings
+        ...newCategorySettings,
       };
 
       // Write back
@@ -163,12 +163,12 @@ export function setupSettingsRoutes(app: Application) {
       res.status(200).json({
         status: 'success',
         message: `${category} settings updated`,
-        settings: settings[category]
+        settings: settings[category],
       });
     } catch (error: any) {
       res.status(500).json({
         status: 'error',
-        error: `Failed to update settings: ${error.message}`
+        error: `Failed to update settings: ${error.message}`,
       });
     }
   });
@@ -177,7 +177,7 @@ export function setupSettingsRoutes(app: Application) {
   app.get('/v1/settings/defaults', (_req: Request, res: Response) => {
     res.status(200).json({
       status: 'success',
-      settings: DEFAULT_SETTINGS
+      settings: DEFAULT_SETTINGS,
     });
   });
 
@@ -188,12 +188,12 @@ export function setupSettingsRoutes(app: Application) {
 
       res.status(200).json({
         status: 'success',
-        message: 'Settings reset to defaults'
+        message: 'Settings reset to defaults',
       });
     } catch (error: any) {
       res.status(500).json({
         status: 'error',
-        error: `Failed to reset settings: ${error.message}`
+        error: `Failed to reset settings: ${error.message}`,
       });
     }
   });
@@ -212,13 +212,13 @@ export function setupSettingsRoutes(app: Application) {
           backups: PATHS.BACKUPS_DIR,
           logs: PATHS.LOGS_DIR,
           database: PATHS.DATABASE_FILE,
-          user_settings: PATHS.USER_SETTINGS
-        }
+          user_settings: PATHS.USER_SETTINGS,
+        },
       });
     } catch (error: any) {
       res.status(500).json({
         status: 'error',
-        error: `Failed to discover paths: ${error.message}`
+        error: `Failed to discover paths: ${error.message}`,
       });
     }
   });

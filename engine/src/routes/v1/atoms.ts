@@ -1,4 +1,4 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import * as crypto from 'crypto';
 import { db } from '../../core/db.js';
 
@@ -18,8 +18,8 @@ export function setupAtomRoutes(app: Application) {
       // We use a transaction-like update: Read -> Modify -> Write
       // 1. Get current record
       const check = await db.run(
-        `SELECT tags FROM atoms WHERE id = $1`,
-        [id]
+        'SELECT tags FROM atoms WHERE id = $1',
+        [id],
       );
       if (!check.rows || check.rows.length === 0) {
         res.status(404).json({ error: 'Atom not found' });
@@ -31,8 +31,8 @@ export function setupAtomRoutes(app: Application) {
 
       // 2. Update Record
       await db.run(
-        `UPDATE atoms SET tags = $1, provenance = $2 WHERE id = $3`,
-        [newTags, 'quarantine', id]
+        'UPDATE atoms SET tags = $1, provenance = $2 WHERE id = $3',
+        [newTags, 'quarantine', id],
       );
 
       res.status(200).json({ status: 'success', message: `Atom ${id} quarantined.` });
@@ -62,7 +62,7 @@ export function setupAtomRoutes(app: Application) {
         buckets: row.buckets,
         tags: row.tags,
         provenance: row.provenance,
-        simhash: row.simhash
+        simhash: row.simhash,
       }));
 
       res.status(200).json(atoms);
@@ -84,7 +84,7 @@ export function setupAtomRoutes(app: Application) {
       const fullRecord = await db.run(
         `SELECT id, timestamp, content, source_path, source_id, sequence, type, hash, buckets, epochs, tags, provenance, simhash, embedding
          FROM atoms WHERE id = $1`,
-        [id]
+        [id],
       );
 
       if (!fullRecord.rows || fullRecord.rows.length === 0) {
@@ -96,8 +96,8 @@ export function setupAtomRoutes(app: Application) {
       const newEmbedding = new Array(384).fill(0.1);
 
       await db.run(
-        `UPDATE atoms SET content = $1, hash = $2, embedding = $3 WHERE id = $4`,
-        [content, newHash, newEmbedding, id]
+        'UPDATE atoms SET content = $1, hash = $2, embedding = $3 WHERE id = $4',
+        [content, newHash, newEmbedding, id],
       );
 
       res.status(200).json({ status: 'success', message: `Atom ${id} updated.` });
@@ -117,7 +117,7 @@ export function setupAtomRoutes(app: Application) {
       const fullRecord = await db.run(
         `SELECT id, timestamp, content, source_path, source_id, sequence, type, hash, buckets, epochs, tags, provenance, simhash, embedding
          FROM atoms WHERE id = $1`,
-        [id]
+        [id],
       );
 
       if (!fullRecord.rows || fullRecord.rows.length === 0) {
@@ -132,8 +132,8 @@ export function setupAtomRoutes(app: Application) {
       const newTags = currentTags.filter(t => t !== '#manually_quarantined' && t !== '#auto_quarantined');
 
       await db.run(
-        `UPDATE atoms SET tags = $1, provenance = $2 WHERE id = $3`,
-        [newTags, 'internal', id]
+        'UPDATE atoms SET tags = $1, provenance = $2 WHERE id = $3',
+        [newTags, 'internal', id],
       );
 
       res.status(200).json({ status: 'success', message: `Atom ${id} restored to Graph.` });
@@ -165,7 +165,7 @@ export function setupAtomRoutes(app: Application) {
         buckets: row.buckets,
         tags: row.tags,
         provenance: row.provenance,
-        simhash: row.simhash
+        simhash: row.simhash,
       }));
 
       res.status(200).json({ atoms, total: atoms.length });
@@ -184,7 +184,7 @@ export function setupAtomRoutes(app: Application) {
       const fullRecord = await db.run(
         `SELECT id, timestamp, content, source_path, source_id, sequence, type, hash, buckets, epochs, tags, provenance, simhash, embedding
          FROM atoms WHERE id = $1`,
-        [id]
+        [id],
       );
 
       if (!fullRecord.rows || fullRecord.rows.length === 0) {
@@ -199,8 +199,8 @@ export function setupAtomRoutes(app: Application) {
       const newTags = currentTags.filter(t => t !== '#manually_quarantined' && t !== '#auto_quarantined');
 
       await db.run(
-        `UPDATE atoms SET tags = $1, provenance = $2 WHERE id = $3`,
-        [newTags, 'internal', id]
+        'UPDATE atoms SET tags = $1, provenance = $2 WHERE id = $3',
+        [newTags, 'internal', id],
       );
 
       res.status(200).json({ status: 'success', message: `Atom ${id} restored to Graph.` });
@@ -216,7 +216,7 @@ export function setupAtomRoutes(app: Application) {
       const { id } = req.params;
       console.log(`[API] Deleting quarantined atom: ${id}`);
 
-      await db.run(`DELETE FROM atoms WHERE id = $1`, [id]);
+      await db.run('DELETE FROM atoms WHERE id = $1', [id]);
 
       res.status(200).json({ status: 'deleted', id });
     } catch (e: any) {

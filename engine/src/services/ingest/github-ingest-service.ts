@@ -14,6 +14,7 @@ import { db } from '../../core/db.js';
 import { AtomizerService } from './atomizer-service.js';
 import { AtomicIngestService } from './ingest-atomic.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
+import { CodeAnalyzer, getAnalysisSummary, type ToolOutput } from '../analysis/code-analyzer.js';
 
 interface GitHubRepoRecord {
   id: string;
@@ -36,6 +37,13 @@ interface SyncResult {
   molecules_created: number;
   total_size_bytes: number;
   duration_ms: number;
+  analysis?: {
+    total_issues: number;
+    errors: number;
+    warnings: number;
+    info: number;
+    by_tool: Record<string, number>;
+  };
 }
 
 // File exclusion patterns (Standard 115, Section 3.3)
@@ -163,7 +171,7 @@ export class GitHubIngestService {
     owner: string,
     repo: string,
     branch: string,
-    token?: string
+    token?: string,
   ): Promise<string> {
     const tarballUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${branch}`;
     
@@ -173,7 +181,7 @@ export class GitHubIngestService {
     };
 
     if (token) {
-      headers['Authorization'] = `token ${token}`;
+      headers.Authorization = `token ${token}`;
     }
 
     const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'github-ingest-'));
@@ -367,7 +375,7 @@ export class GitHubIngestService {
          bucket = $5,
          github_url = $6,
          updated_at = CURRENT_TIMESTAMP`,
-      [id, owner, repo, branch, bucket, url]
+      [id, owner, repo, branch, bucket, url],
     );
 
     return {
@@ -385,14 +393,16 @@ export class GitHubIngestService {
 
   /**
    * Sync a repository (download, extract, ingest)
+   * @param repoId Repository ID to sync
+   * @param options Optional settings including runAnalysis flag
    */
-  async syncRepo(repoId: string): Promise<SyncResult> {
+  async syncRepo(repoId: string, options?: { runAnalysis?: boolean }): Promise<SyncResult> {
     const startTime = Date.now();
     
     // Get repo record
     const result = await db.run(
-      `SELECT * FROM github_repos WHERE id = $1`,
-      [repoId]
+      'SELECT * FROM github_repos WHERE id = $1',
+      [repoId],
     );
 
     if (!result.rows || result.rows.length === 0) {
@@ -404,8 +414,8 @@ export class GitHubIngestService {
 
     // Update status to in_progress
     await db.run(
-      `UPDATE github_repos SET last_sync_status = 'in_progress', last_error = NULL WHERE id = $1`,
-      [repoId]
+      'UPDATE github_repos SET last_sync_status = \'in_progress\', last_error = NULL WHERE id = $1',
+      [repoId],
     );
 
     try {
@@ -445,7 +455,7 @@ export class GitHubIngestService {
           const atomizeResult = await this.atomizer.atomize(
             content,
             sourcePath,
-            'external'
+            'external',
           );
 
           // Skip if transient data detected
@@ -473,6 +483,65 @@ export class GitHubIngestService {
         }
       }
 
+      // Run code analysis if requested
+      let analysisSummary: SyncResult['analysis'] = undefined;
+      if (options?.runAnalysis) {
+        console.log('[GitHub] Running code analysis...');
+        
+        try {
+          const analyzer = new CodeAnalyzer();
+          const analysisOutputs = await analyzer.analyze(extractDir);
+          
+          if (analysisOutputs.length > 0) {
+            // Quarantine old analysis results
+            await this.quarantineOldAnalysis(repoId);
+            
+            // Save analysis results
+            const analysisDir = path.join(extractDir, '.anchor-analysis');
+            const { jsonlPath } = analyzer.saveResults(analysisOutputs, analysisDir);
+            
+            // Ingest analysis results
+            const analysisContent = await fs.promises.readFile(jsonlPath, 'utf8');
+            const analysisSourcePath = `github:${repo.owner}/${repo.repo}/analysis.jsonl`;
+            
+            const analysisAtomizeResult = await this.atomizer.atomize(
+              analysisContent,
+              analysisSourcePath,
+              'external',
+            );
+            
+            if (analysisAtomizeResult) {
+              const { compound, molecules, atoms } = analysisAtomizeResult;
+              
+              // Add analysis-specific tags to molecules
+              for (const molecule of molecules) {
+                molecule.tags = molecule.tags || [];
+                if (!molecule.tags.includes('#analysis')) molecule.tags.push('#analysis');
+              }
+              
+              await this.atomicIngest.ingestResult(compound, molecules, atoms, [repo.bucket, 'analysis']);
+              
+              // Get summary
+              const summary = getAnalysisSummary(analysisOutputs);
+              analysisSummary = {
+                total_issues: summary.totalIssues,
+                errors: summary.errors,
+                warnings: summary.warnings,
+                info: summary.info,
+                by_tool: summary.byTool,
+              };
+              
+              console.log(`[GitHub] Analysis complete: ${summary.totalIssues} issues found`);
+            }
+          } else {
+            console.log('[GitHub] No analysis results (no applicable tools or no issues found)');
+          }
+        } catch (error: any) {
+          console.warn(`[GitHub] Code analysis failed: ${error.message}`);
+          // Don't fail the entire sync if analysis fails
+        }
+      }
+
       // Cleanup temp directory
       await fs.promises.rm(path.dirname(tarballPath), { recursive: true, force: true });
 
@@ -486,7 +555,7 @@ export class GitHubIngestService {
           total_size_bytes = $3,
           updated_at = CURRENT_TIMESTAMP
          WHERE id = $4`,
-        [filesIngested, totalAtoms, totalSize, repoId]
+        [filesIngested, totalAtoms, totalSize, repoId],
       );
 
       const duration = Date.now() - startTime;
@@ -498,12 +567,13 @@ export class GitHubIngestService {
         molecules_created: totalMolecules,
         total_size_bytes: totalSize,
         duration_ms: duration,
+        analysis: analysisSummary,
       };
     } catch (error: any) {
       // Update status to failed
       await db.run(
-        `UPDATE github_repos SET last_sync_status = 'failed', last_error = $1 WHERE id = $2`,
-        [error.message, repoId]
+        'UPDATE github_repos SET last_sync_status = \'failed\', last_error = $1 WHERE id = $2',
+        [error.message, repoId],
       );
 
       throw error;
@@ -515,8 +585,8 @@ export class GitHubIngestService {
    */
   private async quarantineOldAtoms(repoId: string): Promise<void> {
     const result = await db.run(
-      `SELECT owner, repo FROM github_repos WHERE id = $1`,
-      [repoId]
+      'SELECT owner, repo FROM github_repos WHERE id = $1',
+      [repoId],
     );
 
     if (!result.rows || result.rows.length === 0) return;
@@ -532,7 +602,33 @@ export class GitHubIngestService {
         tags = array_cat(COALESCE(tags, '{}'), ARRAY['#quarantined']),
         provenance = 'quarantine'
        WHERE source_path LIKE $1`,
-      [`${sourcePrefix}%`]
+      [`${sourcePrefix}%`],
+    );
+  }
+
+  /**
+   * Quarantine old analysis results from a repository
+   */
+  private async quarantineOldAnalysis(repoId: string): Promise<void> {
+    const result = await db.run(
+      'SELECT owner, repo FROM github_repos WHERE id = $1',
+      [repoId],
+    );
+
+    if (!result.rows || result.rows.length === 0) return;
+
+    const { owner, repo } = result.rows[0];
+    const analysisSourcePath = `github:${owner}/${repo}/analysis.jsonl`;
+
+    console.log(`[GitHub] Quarantining old analysis results: ${analysisSourcePath}`);
+
+    // Add #quarantined tag to old analysis atoms
+    await db.run(
+      `UPDATE atoms SET
+        tags = array_cat(COALESCE(tags, '{}'), ARRAY['#quarantined']),
+        provenance = 'quarantine'
+       WHERE source_path = $1`,
+      [analysisSourcePath],
     );
   }
 
@@ -541,7 +637,7 @@ export class GitHubIngestService {
    */
   async listRepos(): Promise<GitHubRepoRecord[]> {
     const result = await db.run(
-      `SELECT * FROM github_repos ORDER BY created_at DESC`
+      'SELECT * FROM github_repos ORDER BY created_at DESC',
     );
 
     return result.rows || [];
@@ -553,8 +649,8 @@ export class GitHubIngestService {
   async removeRepo(repoId: string): Promise<number> {
     // First, quarantine all atoms from this repo
     const result = await db.run(
-      `SELECT owner, repo FROM github_repos WHERE id = $1`,
-      [repoId]
+      'SELECT owner, repo FROM github_repos WHERE id = $1',
+      [repoId],
     );
 
     let quarantinedCount = 0;
@@ -567,7 +663,7 @@ export class GitHubIngestService {
           tags = array_cat(COALESCE(tags, '{}'), ARRAY['#quarantined']),
           provenance = 'quarantine'
          WHERE source_path LIKE $1`,
-        [`${sourcePrefix}%`]
+        [`${sourcePrefix}%`],
       );
 
       quarantinedCount = updateResult.rowCount || 0;
@@ -575,8 +671,8 @@ export class GitHubIngestService {
 
     // Delete repo record
     await db.run(
-      `DELETE FROM github_repos WHERE id = $1`,
-      [repoId]
+      'DELETE FROM github_repos WHERE id = $1',
+      [repoId],
     );
 
     return quarantinedCount;
@@ -592,13 +688,13 @@ export class GitHubIngestService {
     repo: string,
     branch: string,
     bucket: string,
-    token?: string
+    token?: string,
   ): Promise<number> {
     const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json',
       'User-Agent': 'anchor-engine-node',
     };
-    if (token) headers['Authorization'] = `token ${token}`;
+    if (token) headers.Authorization = `token ${token}`;
 
     const commits: string[] = [];
     let page = 1;
@@ -628,7 +724,7 @@ export class GitHubIngestService {
           : '';
 
         commits.push(
-          `## ${sha} — ${date}\nAuthor: ${author}\n\n${message}${filesLine ? '\n\nFiles:\n' + filesLine : ''}`
+          `## ${sha} — ${date}\nAuthor: ${author}\n\n${message}${filesLine ? '\n\nFiles:\n' + filesLine : ''}`,
         );
       }
 
@@ -681,13 +777,13 @@ export class GitHubIngestService {
       };
 
       if (token) {
-        headers['Authorization'] = `token ${token}`;
+        headers.Authorization = `token ${token}`;
       }
 
       const response = await gotScraping(url, { headers });
       const data = JSON.parse(response.body);
 
-      const core = data.resources.core;
+      const { core } = data.resources;
 
       return {
         limit: core.limit,

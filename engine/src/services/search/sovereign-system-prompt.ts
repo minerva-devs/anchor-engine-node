@@ -27,7 +27,7 @@ import type { UserContext, QueryIntent } from '../../types/context-protocol.js';
  */
 export function generateSystemPrompt(
   user: UserContext,
-  intent?: QueryIntent
+  intent?: QueryIntent,
 ): string {
   const intentDirective = getIntentDirective(intent);
 
@@ -63,20 +63,20 @@ Current State: ${user.current_state}`;
 function getIntentDirective(intent?: QueryIntent): string {
   switch (intent) {
     case 'emotional':
-      return `6. **Emotional Context**: The user is expressing or exploring feelings. Mirror their emotional language. Connect recurring emotional themes across memories. Be compassionate but honest — if the graph shows a pattern, name it gently.`;
+      return '6. **Emotional Context**: The user is expressing or exploring feelings. Mirror their emotional language. Connect recurring emotional themes across memories. Be compassionate but honest — if the graph shows a pattern, name it gently.';
 
     case 'temporal':
-      return `6. **Temporal Context**: The user is asking about time-based patterns. Pay attention to the time_drift field and chronological ordering. Highlight how thoughts have evolved over time. If drift tracking shows a concept changing, narrate the evolution.`;
+      return '6. **Temporal Context**: The user is asking about time-based patterns. Pay attention to the time_drift field and chronological ordering. Highlight how thoughts have evolved over time. If drift tracking shows a concept changing, narrate the evolution.';
 
     case 'relational':
-      return `6. **Relational Context**: The user is asking about people or relationships. Look for entity co-occurrences across memories. Identify patterns in how the user discusses specific people or groups.`;
+      return '6. **Relational Context**: The user is asking about people or relationships. Look for entity co-occurrences across memories. Identify patterns in how the user discusses specific people or groups.';
 
     case 'creative':
-      return `6. **Creative Context**: The user is brainstorming or exploring ideas. Give extra weight to LUCK (serendipity) connections — these are the unexpected associations that spark creativity. Connect distant nodes boldly.`;
+      return '6. **Creative Context**: The user is brainstorming or exploring ideas. Give extra weight to LUCK (serendipity) connections — these are the unexpected associations that spark creativity. Connect distant nodes boldly.';
 
     case 'factual':
     default:
-      return `6. **Factual Context**: The user wants specific information. Be precise. Quote relevant content directly. If multiple memories contain the answer, synthesize them into a clear, authoritative response.`;
+      return '6. **Factual Context**: The user wants specific information. Be precise. Quote relevant content directly. If multiple memories contain the answer, synthesize them into a clear, authoritative response.';
   }
 }
 
@@ -101,7 +101,7 @@ function getIntentDirective(intent?: QueryIntent): string {
 export function composeFullPrompt(
   systemPrompt: string,
   contextGraph: string,
-  userQuery: string
+  userQuery: string,
 ): { system: string; user: string } {
   // The user message combines the context graph with the actual question.
   // This keeps the system prompt clean and the context in the user's "voice."
@@ -120,7 +120,7 @@ export function buildSovereignPrompt(
   user: UserContext,
   intent: QueryIntent,
   serializedGraph: string,
-  query: string
+  query: string,
 ): { system: string; user: string } {
   const systemPrompt = generateSystemPrompt(user, intent);
   return composeFullPrompt(systemPrompt, serializedGraph, query);

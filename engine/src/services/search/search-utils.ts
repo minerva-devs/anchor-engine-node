@@ -9,7 +9,7 @@
 import { config } from '../../config/index.js';
 import { composeRollingContext } from '../../core/inference/context_manager.js';
 import { wasmModuleLoader } from '../../utils/wasm-module-loader.js';
-import { SemanticCategory } from '../../types/taxonomy.js';
+import type { SemanticCategory } from '../../types/taxonomy.js';
 import { ContextInflator } from './context-inflator.js';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -168,7 +168,7 @@ export function getItems(input: string[] | undefined): string[] {
 export async function coalesceByProximity(
   results: SearchResult[],
   proximityThreshold: number = 500,
-  maxSnippets: number = 500
+  maxSnippets: number = 500,
 ): Promise<CoalescedSnippet[]> {
   // Group by compound_id (source file)
   const byCompound = new Map<string, SearchResult[]>();
@@ -197,7 +197,7 @@ export async function coalesceByProximity(
 
       if (!current) {
         current = {
-          source: atom.source!,
+          source: atom.source,
           compoundId,
           startByte: atomStart,
           endByte: atomEnd,
@@ -206,7 +206,7 @@ export async function coalesceByProximity(
           sourceAtoms: [atom],
           relevanceScore: atom.score,
           provenance: atom.provenance || 'internal',
-          tags: (atom.tags || []).slice(0, 10) // Limit to top 10 tags initially
+          tags: (atom.tags || []).slice(0, 10), // Limit to top 10 tags initially
         };
       } else {
         const gap = atomStart - current.endByte;
@@ -226,7 +226,7 @@ export async function coalesceByProximity(
           // Push current and start new
           merged.push(current);
           current = {
-            source: atom.source!,
+            source: atom.source,
             compoundId,
             startByte: atomStart,
             endByte: atomEnd,
@@ -235,7 +235,7 @@ export async function coalesceByProximity(
             sourceAtoms: [atom],
             relevanceScore: atom.score,
             provenance: atom.provenance || 'internal',
-            tags: (atom.tags || []).slice(0, 10) // Limit to top 10 tags for new snippets
+            tags: (atom.tags || []).slice(0, 10), // Limit to top 10 tags for new snippets
           };
         }
       }
@@ -330,11 +330,11 @@ async function inflateSnippetFromDisk(snippet: CoalescedSnippet): Promise<string
 
     // Add ellipsis to indicate truncation
     if (start > 0) content = '...' + content;
-    if (truncated || end < fileSize) content = content + '...';
+    if (truncated || end < fileSize) content += '...';
 
     return content.trim();
   } catch (e) {
-    console.warn(`[Coalesce] inflateSnippetFromDisk failed:`, e);
+    console.warn('[Coalesce] inflateSnippetFromDisk failed:', e);
     return null;
   }
 }
@@ -360,7 +360,7 @@ function snapToSentenceBoundaries(content: string, targetStart: number, targetEn
   return {
     start: snappedStart,
     end: snappedEnd,
-    text: content.substring(snappedStart, snappedEnd).trim()
+    text: content.substring(snappedStart, snappedEnd).trim(),
   };
 }
 
@@ -377,7 +377,7 @@ function snapToSentenceBoundaries(content: string, targetStart: number, targetEn
 export async function formatResults(
   results: SearchResult[],
   maxChars: number,
-  options?: { enableCoalescing?: boolean; proximityThreshold?: number; }
+  options?: { enableCoalescing?: boolean; proximityThreshold?: number; },
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
   try {
     const enableCoalescing = options?.enableCoalescing ?? true;
@@ -388,7 +388,7 @@ export async function formatResults(
     let coalescingStats = { 
       original_atoms: results.length, 
       coalesced_snippets: results.length, 
-      compression_ratio: 1.0 
+      compression_ratio: 1.0, 
     };
 
     if (enableCoalescing) {
@@ -399,7 +399,7 @@ export async function formatResults(
       coalescingStats = {
         original_atoms: results.length,
         coalesced_snippets: snippets.length,
-        compression_ratio: results.length > 0 ? (results.length / snippets.length) : 1.0
+        compression_ratio: results.length > 0 ? (results.length / snippets.length) : 1.0,
       };
     } else {
       // Convert SearchResult[] to CoalescedSnippet[] for uniform handling
@@ -413,7 +413,7 @@ export async function formatResults(
         sourceAtoms: [r],
         relevanceScore: r.score,
         provenance: r.provenance || 'internal',
-        tags: (r.tags || []).slice(0, 10) // Limit to top 10 most relevant tags per molecule
+        tags: (r.tags || []).slice(0, 10), // Limit to top 10 most relevant tags per molecule
       }));
     }
 
@@ -436,7 +436,7 @@ export async function formatResults(
         content: stripInlineTags(s.content),   // Standard 123: strip inline #Tag tokens
         temporal_weight: temporalWeight,
         decay_factor: decayFactor,
-        weighted_score: relevanceScore
+        weighted_score: relevanceScore,
       };
     });
 
@@ -526,7 +526,7 @@ ${s.content}
       end_byte: s.endByte,
       temporal_weight: s.temporal_weight,
       decay_factor: s.decay_factor,
-      is_inflated: true
+      is_inflated: true,
     }));
 
     return {
@@ -534,7 +534,7 @@ ${s.content}
       results: enrichedResults,
       toAgentString: () => {
         return deduplicatedSnippets.map(s =>
-          `[${s.provenance}] ${s.source} (t=${s.temporal_weight.toFixed(3)}, atoms=${s.sourceAtoms.length}): ${s.content.substring(0, 200)}...`
+          `[${s.provenance}] ${s.source} (t=${s.temporal_weight.toFixed(3)}, atoms=${s.sourceAtoms.length}): ${s.content.substring(0, 200)}...`,
         ).join('\n');
       },
       metadata: {
@@ -544,13 +544,13 @@ ${s.content}
           total_chars: totalContentChars + overheadChars,
           content_chars: totalContentChars,
           overhead_chars: overheadChars,
-          utilization_percent: parseFloat(budgetUtilization)
+          utilization_percent: parseFloat(budgetUtilization),
         },
         provenance_enabled: true,
         temporal_decay_lambda: lambda,
         xml_wrapped: true,
-        chronological_sort: true
-      }
+        chronological_sort: true,
+      },
     };
   } catch (error) {
     console.error('[Search] formatResults failed:', error);
@@ -558,7 +558,7 @@ ${s.content}
       context: 'Error occurred during result formatting.',
       results: [],
       toAgentString: () => 'Error occurred during result formatting.',
-      metadata: { error: true, message: 'Failed to format search results' }
+      metadata: { error: true, message: 'Failed to format search results' },
     };
   }
 }

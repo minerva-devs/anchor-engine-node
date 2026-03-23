@@ -40,7 +40,7 @@ export interface BrightNodeRelationship {
 export async function getBrightNodes(
     query: string,
     buckets: string[] = [],
-    maxNodes: number = config.SEARCH.max_chars_limit
+    maxNodes: number = config.SEARCH.max_chars_limit,
 ): Promise<BrightNode[]> {
     console.log(`[BrightNode] Illuminating graph for query: "${query}"`);
 
@@ -70,7 +70,7 @@ export async function getBrightNodes(
         score: result.score,
         sequence: result.sequence, // Pass through sequence
         molecular_signature: result.molecular_signature,   // V4 Nomenclature
-        relationships: [] // Will be populated based on shared tags/buckets
+        relationships: [], // Will be populated based on shared tags/buckets
     }));
 
     // Identify relationships between nodes based on shared attributes
@@ -111,7 +111,7 @@ export async function getBrightNodes(
                 relationships.push({
                     targetId: otherNode.id,
                     relationshipType,
-                    strength: relationshipStrength
+                    strength: relationshipStrength,
                 });
             }
         }
@@ -135,7 +135,7 @@ export async function getBrightNodes(
  */
 export async function getStructuredGraph(
     query: string,
-    buckets: string[] = []
+    buckets: string[] = [],
 ): Promise<any> {
     const brightNodes = await getBrightNodes(query, buckets);
 
@@ -147,17 +147,17 @@ export async function getStructuredGraph(
             tags: node.tags,
             buckets: node.buckets,
             provenance: node.provenance,
-            score: node.score
+            score: node.score,
         })),
         edges: brightNodes.flatMap(node =>
             node.relationships.map(rel => ({
                 source: node.id,
                 target: rel.targetId,
                 type: rel.relationshipType,
-                strength: rel.strength
-            }))
+                strength: rel.strength,
+            })),
         ),
         query: query,
-        timestamp: Date.now()
+        timestamp: Date.now(),
     };
 }

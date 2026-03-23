@@ -4,7 +4,8 @@
  * Tests to detect performance degradation between releases
  */
 
-import { TestFramework, TestConfig } from './core.js';
+import type { TestConfig } from './core.js';
+import { TestFramework } from './core.js';
 import { performanceMonitor } from '../utils/performance-monitor.js';
 import axios from 'axios';
 
@@ -13,7 +14,7 @@ const BASELINE_PERFORMANCE = {
   ingestionRate: 50, // atoms per second
   searchLatency: 200, // milliseconds
   memoryUsage: 500, // MB
-  startupTime: 10000 // milliseconds
+  startupTime: 10000, // milliseconds
 };
 
 // Performance test configurations
@@ -27,7 +28,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
       try {
         // Create test content
         const testContent = Array.from({ length: 50 }, (_, i) =>
-          `Performance test content block ${i}. This is test content to measure ingestion performance. The quick brown fox jumps over the lazy dog. ${Math.random().toString(36).substring(2, 15)}`
+          `Performance test content block ${i}. This is test content to measure ingestion performance. The quick brown fox jumps over the lazy dog. ${Math.random().toString(36).substring(2, 15)}`,
         ).join('\n\n');
 
         const startTime = Date.now();
@@ -37,7 +38,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
           content: testContent,
           source: 'performance-regression-test',
           type: 'test',
-          buckets: ['performance']
+          buckets: ['performance'],
         });
 
         if (response.status !== 200) {
@@ -63,7 +64,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
         endTiming();
       }
     },
-    timeout: 60000
+    timeout: 60000,
   },
   {
     name: 'Search Latency Regression',
@@ -79,7 +80,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
           'performance test content',
           'quick brown fox',
           'test content block',
-          Math.random().toString(36).substring(2, 10)
+          Math.random().toString(36).substring(2, 10),
         ];
 
         let totalLatency = 0;
@@ -90,7 +91,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
 
           const response = await axios.post('http://localhost:3000/v1/memory/search', {
             query,
-            buckets: ['performance']
+            buckets: ['performance'],
           });
 
           if (response.status !== 200) {
@@ -122,7 +123,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
         endTiming();
       }
     },
-    timeout: 45000
+    timeout: 45000,
   },
   {
     name: 'Memory Usage Regression',
@@ -141,7 +142,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
         for (let i = 0; i < 10; i++) {
           await axios.post('http://localhost:3000/v1/memory/search', {
             query: `test query ${i}`,
-            buckets: ['performance']
+            buckets: ['performance'],
           });
         }
 
@@ -168,7 +169,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
         endTiming();
       }
     },
-    timeout: 30000
+    timeout: 30000,
   },
   {
     name: 'Concurrent Request Performance',
@@ -181,8 +182,8 @@ const PERFORMANCE_TESTS: TestConfig[] = [
         const requests = Array.from({ length: 5 }, (_, i) =>
           axios.post('http://localhost:3000/v1/memory/search', {
             query: `concurrent test ${i}`,
-            buckets: ['performance']
-          })
+            buckets: ['performance'],
+          }),
         );
 
         const start = Date.now();
@@ -209,7 +210,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
         endTiming();
       }
     },
-    timeout: 60000
+    timeout: 60000,
   },
   {
     name: 'Large Payload Handling',
@@ -220,7 +221,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
       try {
         // Create a large content payload
         const largeContent = Array.from({ length: 200 }, (_, i) =>
-          `Large payload test block ${i}. This is a moderately long sentence to increase the content size. The performance of the system when handling large payloads is critical for real-world usage. ${Math.random().toString(36).substring(2, 15)}. `.repeat(10)
+          `Large payload test block ${i}. This is a moderately long sentence to increase the content size. The performance of the system when handling large payloads is critical for real-world usage. ${Math.random().toString(36).substring(2, 15)}. `.repeat(10),
         ).join('\n\n');
 
         console.log(`📊 Testing with large payload (${(largeContent.length / 1024).toFixed(2)}KB)`);
@@ -230,7 +231,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
           content: largeContent,
           source: 'large-payload-test',
           type: 'test',
-          buckets: ['performance', 'large-payload']
+          buckets: ['performance', 'large-payload'],
         });
 
         if (response.status !== 200) {
@@ -248,7 +249,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
         endTiming();
       }
     },
-    timeout: 120000 // 2 minutes for large payload
+    timeout: 120000, // 2 minutes for large payload
   },
   {
     name: 'Database Query Performance',
@@ -262,7 +263,7 @@ const PERFORMANCE_TESTS: TestConfig[] = [
           { query: 'performance', buckets: ['performance'] },
           { query: 'test', buckets: ['performance'] },
           { query: 'content', buckets: ['performance'] },
-          { query: 'block', buckets: ['performance'] }
+          { query: 'block', buckets: ['performance'] },
         ];
 
         let totalQueryTime = 0;
@@ -292,8 +293,8 @@ const PERFORMANCE_TESTS: TestConfig[] = [
         endTiming();
       }
     },
-    timeout: 40000
-  }
+    timeout: 40000,
+  },
 ];
 
 // Performance regression test runner
@@ -318,7 +319,7 @@ export class PerformanceRegressionTester {
       tests: PERFORMANCE_TESTS,
       timeout: 120000, // 2 minutes for the whole suite
       environment: 'performance',
-      tags: ['performance', 'regression', 'baseline']
+      tags: ['performance', 'regression', 'baseline'],
     };
 
     // Add the suite to the framework and run it
@@ -343,7 +344,7 @@ export class PerformanceRegressionTester {
       tests: taggedTests,
       timeout: 120000,
       environment: 'performance',
-      tags: ['performance', 'regression', tag]
+      tags: ['performance', 'regression', tag],
     };
 
     this.framework.addTestSuite(performanceSuite);
@@ -378,7 +379,7 @@ export class PerformanceRegressionTester {
       passed: regressions.length === 0,
       regressions,
       improvements,
-      summary
+      summary,
     };
   }
 }
@@ -398,7 +399,7 @@ if (require.main === module) {
       console.log('\n✅ Performance regression tests completed');
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(error => {
       console.error('\n❌ Performance regression tests failed:', error);
       process.exit(1);
     });

@@ -10,10 +10,12 @@
  *   Line-level deduplication with radial inflation.
  */
 
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import { StructuredLogger } from '../../utils/structured-logger.js';
-import { exploreMemory, ExploreRequest } from '../../services/search/explore.js';
-import { radialDistill, RadialDistillRequest } from '../../services/distillation/radial-distiller.js';
+import type { ExploreRequest } from '../../services/search/explore.js';
+import { exploreMemory } from '../../services/search/explore.js';
+import type { RadialDistillRequest } from '../../services/distillation/radial-distiller.js';
+import { radialDistill } from '../../services/distillation/radial-distiller.js';
 import { validate, schemas } from '../../middleware/validate.js';
 
 export function setupMemoryRoutes(app: Application) {
@@ -36,7 +38,7 @@ export function setupMemoryRoutes(app: Application) {
       StructuredLogger.info('EXPLORE_COMPLETE', {
         nodes: result.stats.nodes_count,
         strategy: result.stats.strategy,
-        duration_ms: duration
+        duration_ms: duration,
       });
 
       // Normalise to a consistent shape regardless of flat/graph format
@@ -49,9 +51,9 @@ export function setupMemoryRoutes(app: Application) {
             content: n.content,
             source: n.source,
             tags: n.tags,
-            score: 1
+            score: 1,
           })),
-          duration_ms: duration
+          duration_ms: duration,
         });
       } else {
         res.json({ ...result, duration_ms: duration });
@@ -68,7 +70,7 @@ export function setupMemoryRoutes(app: Application) {
 
     StructuredLogger.info('DISTILL_REQUEST', {
       endpoint: '/v1/memory/distill',
-      mode: 'radial'
+      mode: 'radial',
     });
 
     try {
@@ -82,12 +84,12 @@ export function setupMemoryRoutes(app: Application) {
         lines_total: result.stats.lines_total,
         lines_unique: result.stats.lines_unique,
         compression_ratio: result.stats.compression_ratio,
-        duration_ms: duration
+        duration_ms: duration,
       });
 
       res.json({
         ...result,
-        duration_ms: duration
+        duration_ms: duration,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

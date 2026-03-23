@@ -14,6 +14,7 @@ import { ContextInflator } from '../search/context-inflator.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { getMirrorPath } from '../mirror/mirror.js';
 import { pathManager } from '../../utils/path-manager.js';
+import { recordDistill } from './distill-manager.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -27,7 +28,7 @@ const MOBILE_MEMORY_THRESHOLD = 500 * 1024 * 1024;
 const DISTILLATION_OUTPUT_PATTERNS = [
   /distilled_.*\.(yaml|json|md)$/i,
   /MASTER_DISTILLED_.*\.(yaml|json|md)$/i,
-  /_distilled_.*\.(yaml|json|md)$/i
+  /_distilled_.*\.(yaml|json|md)$/i,
 ];
 
 /**
@@ -193,7 +194,7 @@ function extractSemanticBlocks(content: string, sourcePath: string, mtime: numbe
     'why': 'rationale',
     'reason': 'rationale',
     'status': 'status',
-    'state': 'status'
+    'state': 'status',
   };
   
   function saveBlock() {
@@ -210,7 +211,7 @@ function extractSemanticBlocks(content: string, sourcePath: string, mtime: numbe
           provenance: [sourcePath],
           mtime,
           simhash,
-          tags: extractTags(blockContent)
+          tags: extractTags(blockContent),
         });
       }
     }
@@ -378,7 +379,7 @@ function assembleDecisionRecords(blocks: SemanticBlock[]): DecisionRecord[] {
       status,
       timestamp,
       provenance: sourceBlocks.flatMap(b => b.provenance),
-      tags: allTags
+      tags: allTags,
     });
   }
   
@@ -393,7 +394,7 @@ function extractDigitalObjectMetadata(
   compound: any,
   content: string,
   mtime: number,
-  ingestedAt: string
+  ingestedAt: string,
 ): DigitalObjectMetadata {
   const pathExt = path.extname(compound.path).toLowerCase();
   const sourceType = pathExt.slice(1) || 'unknown';
@@ -412,7 +413,7 @@ function extractDigitalObjectMetadata(
     char_count: content.length,
     topics: [],
     entities: [],
-    tags: []
+    tags: [],
   };
   
   // Extract topics from content (simple keyword extraction)
@@ -433,7 +434,7 @@ function extractDigitalObjectMetadata(
 function extractChatSessionMetadata(
   baseMetadata: DigitalObjectMetadata,
   content: string,
-  compound: any
+  compound: any,
 ): ChatSessionMetadata | null {
   // Only process JSONL files from inbox
   if (baseMetadata.source_type !== 'jsonl' || !baseMetadata.bucket.includes('inbox')) {
@@ -500,7 +501,7 @@ function extractChatSessionMetadata(
     commands,
     message_count: messages.length,
     participants: Array.from(participants),
-    models_used: Array.from(modelsUsed)
+    models_used: Array.from(modelsUsed),
   };
 }
 
@@ -515,7 +516,7 @@ function buildSessionIndex(chatSessions: ChatSessionMetadata[]): SessionIndexEnt
     topics: session.topics || [],
     full_log_path: session.source_path,
     message_count: session.message_count,
-    participants: session.participants
+    participants: session.participants,
   }));
 }
 
@@ -528,7 +529,7 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
 
   StructuredLogger.info('RADIAL_DISTILL_V2', {
     endpoint: '/v1/memory/distill',
-    format: request.output_format || 'decision-records'
+    format: request.output_format || 'decision-records',
   });
 
   try {
@@ -620,11 +621,11 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
           distilled_at: new Date().toISOString(),
           decision_records: decisionRecords.length,
           digital_objects_count: digitalObjects.length,
-          session_index_count: sessionIndex.length
+          session_index_count: sessionIndex.length,
         },
         records: decisionRecords,
         digital_objects: digitalObjects,
-        session_index: sessionIndex
+        session_index: sessionIndex,
       };
       const jsonOutput = JSON.stringify(fullOutput, null, 2);
       outputSize = jsonOutput.length;
@@ -636,7 +637,7 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
         }
         outputPath = request.output_path || path.join(
           distillsDir,
-          `distilled_standards_${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+          `distilled_standards_${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
         );
         fs.writeFileSync(outputPath, jsonOutput);
       }
@@ -648,11 +649,11 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
           distilled_at: new Date().toISOString(),
           decision_records: decisionRecords.length,
           digital_objects_count: digitalObjects.length,
-          session_index_count: sessionIndex.length
+          session_index_count: sessionIndex.length,
         },
         records: decisionRecords,
         digital_objects: digitalObjects,
-        session_index: sessionIndex
+        session_index: sessionIndex,
       });
 
       outputSize = yamlOutput.length;
@@ -664,7 +665,7 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
         }
         outputPath = request.output_path || path.join(
           distillsDir,
-          `distilled_${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`
+          `distilled_${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`,
         );
         fs.writeFileSync(outputPath, yamlOutput);
       }
@@ -680,33 +681,63 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
         decision_records: decisionRecords.length,
         compression_ratio: `${(allBlocks.length / Math.max(1, uniqueBlocks.length)).toFixed(1)}:1`,
         duration_ms: duration,
-        memory_peak_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024)
+        memory_peak_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
       },
       output: {
         format: outputFormat,
         path: outputPath,
         size_bytes: outputSize,
-        records_created: decisionRecords.length
+        records_created: decisionRecords.length,
       },
       provenance: {
         source_compounds: compounds.map((c: any) => c.path),
         distilled_at: new Date().toISOString(),
-        parameters: request
+        parameters: request,
       },
       // New: Digital object metadata for all processed compounds
       digital_objects: digitalObjects,
       // New: Session index for chat sessions (empty array if no chat sessions)
-      session_index: sessionIndex
+      session_index: sessionIndex,
     };
-    
+
     StructuredLogger.info('RADIAL_DISTILL_V2_COMPLETE', {
       records: result.stats.decision_records,
       compression: result.stats.compression_ratio,
-      duration_ms: duration
+      duration_ms: duration,
     });
-    
+
+    // Standard 016: Record distill in database with pointers to file
+    try {
+      if (outputPath) {
+        const sourceSessions = sessionIndex.map((s: any) => s.session_id || s.id).filter(Boolean);
+        const sourceFiles = compounds.map((c: any) => c.path);
+
+        await recordDistill({
+          timestamp: new Date().toISOString(),
+          filename: path.basename(outputPath),
+          file_path: outputPath,
+          line_count: allBlocks.length,
+          lines_unique: uniqueBlocks.length,
+          compression_ratio: parseFloat(result.stats.compression_ratio.replace(':1', '')),
+          source_sessions: sourceSessions,
+          source_files: sourceFiles,
+          parameters: {
+            radius: request.radius,
+            output_format: outputFormat,
+            decision_records: decisionRecords.length,
+            digital_objects: digitalObjects.length,
+            session_index: sessionIndex.length,
+          },
+        });
+        console.log('[Distill] ✅ Distill recorded in database');
+      }
+    } catch (dbError: any) {
+      console.warn('[Distill] Could not record distill in database:', dbError.message);
+      // Don't fail the distill if DB recording fails
+    }
+
     return result;
-    
+
   } catch (error: any) {
     StructuredLogger.error('RADIAL_DISTILL_V2_ERROR', error);
     throw error;

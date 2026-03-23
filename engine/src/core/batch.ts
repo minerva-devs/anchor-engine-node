@@ -20,7 +20,7 @@ export interface BatchOptions {
 export async function processInBatches<T, R>(
     items: T[],
     processor: (batch: T[], batchIndex: number, startItemIndex: number) => Promise<R>,
-    options: BatchOptions
+    options: BatchOptions,
 ): Promise<R[]> {
     const { batchSize, delayMs } = options;
     const results: R[] = [];

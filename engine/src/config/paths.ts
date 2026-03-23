@@ -15,13 +15,13 @@ const __dirname = path.dirname(__filename);
 
 // Define base paths
 // __dirname is engine/src/config, so we need to go up 3 levels to reach project root
-export const PROJECT_ROOT = path.resolve(process.env['PROJECT_ROOT'] || path.join(__dirname, '..', '..', '..'));
-export const CONTEXT_DIR = path.resolve(process.env['CONTEXT_DIR'] || path.join(PROJECT_ROOT, 'engine', 'context'));
-export const MODELS_DIR = path.resolve(process.env['MODELS_DIR'] || path.join(PROJECT_ROOT, 'models'));
-export const DIST_DIR = path.resolve(process.env['DIST_DIR'] || path.join(PROJECT_ROOT, 'dist'));
+export const PROJECT_ROOT = path.resolve(process.env.PROJECT_ROOT || path.join(__dirname, '..', '..', '..'));
+export const CONTEXT_DIR = path.resolve(process.env.CONTEXT_DIR || path.join(PROJECT_ROOT, 'engine', 'context'));
+export const MODELS_DIR = path.resolve(process.env.MODELS_DIR || path.join(PROJECT_ROOT, 'models'));
+export const DIST_DIR = path.resolve(process.env.DIST_DIR || path.join(PROJECT_ROOT, 'dist'));
 export const BASE_PATH = PROJECT_ROOT;
 export const LOGS_DIR = path.join(PROJECT_ROOT, 'logs');
-export const NOTEBOOK_DIR = path.resolve(process.env['NOTEBOOK_DIR'] || PROJECT_ROOT);
+export const NOTEBOOK_DIR = path.resolve(process.env.NOTEBOOK_DIR || PROJECT_ROOT);
 
 // Define specific paths
 export const PATHS = {

@@ -139,25 +139,25 @@ function toTable(results: any[]): string {
   for (const header of headers) {
     colWidths[header] = Math.max(
       header.length,
-      ...results.map(row => String(row[header] ?? '').length)
+      ...results.map(row => String(row[header] ?? '').length),
     );
   }
 
   // Create header row
   const headerRow = headers.map(header => 
-    header.padEnd(colWidths[header])
+    header.padEnd(colWidths[header]),
   ).join(' | ');
 
   // Create separator row
   const separatorRow = headers.map(header => 
-    '-'.repeat(colWidths[header])
+    '-'.repeat(colWidths[header]),
   ).join('-|-');
 
   // Create data rows
   const dataRows = results.map(row => 
     headers.map(header => 
-      String(row[header] ?? '').padEnd(colWidths[header])
-    ).join(' | ')
+      String(row[header] ?? '').padEnd(colWidths[header]),
+    ).join(' | '),
   );
 
   // Combine all rows

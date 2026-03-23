@@ -4,7 +4,7 @@
  * Defines the interfaces for semantic molecules and atoms
  */
 
-import { SemanticCategory } from '../../../types/taxonomy.js';
+import type { SemanticCategory } from '../../../types/taxonomy.js';
 
 export interface SemanticMolecule {
   id: string;

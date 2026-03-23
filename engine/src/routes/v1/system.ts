@@ -1,4 +1,4 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import { db } from '../../core/db.js';
 import { getState, clearState } from '../../services/scribe/scribe.js';
 import { PATHS, PROJECT_ROOT } from '../../config/paths.js';
@@ -23,7 +23,7 @@ export function setupSystemRoutes(app: Application) {
       const criticalDirs = [
         PATHS.INBOX_DIR,
         PATHS.EXTERNAL_INBOX_DIR,
-        PATHS.CONTEXT_DIR
+        PATHS.CONTEXT_DIR,
       ];
 
       const dirsExist = await Promise.all(
@@ -34,7 +34,7 @@ export function setupSystemRoutes(app: Application) {
           } catch {
             return false;
           }
-        })
+        }),
       );
 
       const allDirsOk = dirsExist.every(d => d);
@@ -45,8 +45,8 @@ export function setupSystemRoutes(app: Application) {
           timestamp: new Date().toISOString(),
           checks: {
             database: 'connected',
-            directories: 'accessible'
-          }
+            directories: 'accessible',
+          },
         });
       } else {
         res.status(503).json({
@@ -54,8 +54,8 @@ export function setupSystemRoutes(app: Application) {
           timestamp: new Date().toISOString(),
           checks: {
             database: dbHealthy ? 'connected' : 'disconnected',
-            directories: allDirsOk ? 'accessible' : 'some missing'
-          }
+            directories: allDirsOk ? 'accessible' : 'some missing',
+          },
         });
       }
     } catch (error: any) {
@@ -65,8 +65,8 @@ export function setupSystemRoutes(app: Application) {
         error: error.message,
         checks: {
           database: 'error',
-          directories: 'unknown'
-        }
+          directories: 'unknown',
+        },
       });
     }
   });
@@ -81,7 +81,7 @@ export function setupSystemRoutes(app: Application) {
           status: 'already_running',
           message: 'Server is already running',
           started_at: serverStartTime.toISOString(),
-          uptime_seconds: Math.floor((Date.now() - serverStartTime.getTime()) / 1000)
+          uptime_seconds: Math.floor((Date.now() - serverStartTime.getTime()) / 1000),
         });
         return;
       }
@@ -93,7 +93,7 @@ export function setupSystemRoutes(app: Application) {
       res.json({
         status: 'starting',
         message: 'Server start initiated',
-        started_at: serverStartTime.toISOString()
+        started_at: serverStartTime.toISOString(),
       });
 
       // Note: Actual server restart would require process management
@@ -118,7 +118,7 @@ export function setupSystemRoutes(app: Application) {
         status: 'shutting_down',
         message: 'Graceful shutdown initiated',
         timeout_ms: timeout,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Note: Actual shutdown would require process management
@@ -148,8 +148,8 @@ export function setupSystemRoutes(app: Application) {
           uptime_seconds: serverStartTime ? Math.floor((Date.now() - serverStartTime.getTime()) / 1000) : 0,
           port: config.PORT,
           host: config.HOST,
-          version: '4.8.2'
-        }
+          version: '4.8.2',
+        },
       });
     } catch (error: any) {
       console.error('Server info error:', error);
@@ -167,7 +167,7 @@ export function setupSystemRoutes(app: Application) {
         db.run('SELECT COUNT(*) as count FROM atoms'),
         db.run('SELECT COUNT(*) as count FROM sources'),
         db.run('SELECT COUNT(DISTINCT tag) as count FROM tags WHERE tag IS NOT NULL'),
-        db.run('SELECT COUNT(*) as count FROM molecules')
+        db.run('SELECT COUNT(*) as count FROM molecules'),
       ]);
 
       const stats = {
@@ -175,7 +175,7 @@ export function setupSystemRoutes(app: Application) {
         sources: parseInt(sourcesResult.rows?.[0]?.count || '0'),
         tags: parseInt(tagsResult.rows?.[0]?.count || '0'),
         molecules: parseInt(moleculesResult.rows?.[0]?.count || '0'),
-        query_time_ms: Date.now() - startTime
+        query_time_ms: Date.now() - startTime,
       };
 
       res.status(200).json(stats);
@@ -196,7 +196,7 @@ export function setupSystemRoutes(app: Application) {
         state: ingestStatus.status,
         currentJob: ingestStatus.currentJob,
         lastCompleted: ingestStatus.lastCompleted,
-        queueDepth: ingestStatus.queueDepth
+        queueDepth: ingestStatus.queueDepth,
       });
     } catch (error: any) {
       console.error('Ingest status retrieval error:', error);
@@ -222,7 +222,7 @@ export function setupSystemRoutes(app: Application) {
             status: 'complete',
             final_status: status.status,
             duration_ms: Date.now() - startTime,
-            job: status.currentJob
+            job: status.currentJob,
           });
           return;
         }
@@ -232,7 +232,7 @@ export function setupSystemRoutes(app: Application) {
           res.status(408).json({
             status: 'timeout',
             duration_ms: Date.now() - startTime,
-            message: `Ingestion did not complete within ${timeout}ms`
+            message: `Ingestion did not complete within ${timeout}ms`,
           });
           return;
         }
@@ -253,7 +253,7 @@ export function setupSystemRoutes(app: Application) {
       
       res.json({
         status: 'success',
-        config: config.INGESTION
+        config: config.INGESTION,
       });
     } catch (error: any) {
       console.error('Get ingestion config error:', error);
@@ -295,7 +295,7 @@ export function setupSystemRoutes(app: Application) {
       res.json({
         status: 'success',
         message: 'Ingestion config updated',
-        config: config.INGESTION
+        config: config.INGESTION,
       });
     } catch (error: any) {
       console.error('Update ingestion config error:', error);
@@ -329,8 +329,8 @@ export function setupSystemRoutes(app: Application) {
       config: {
         version: '1.0.0',
         engine: 'Sovereign Context Engine',
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     });
   });
 
@@ -351,14 +351,14 @@ export function setupSystemRoutes(app: Application) {
           rss: Math.round(memoryStats.rss / 1024 / 1024),
           heapUsed: Math.round(memoryStats.heapUsed / 1024 / 1024),
           heapTotal: Math.round(memoryStats.heapTotal / 1024 / 1024),
-          percentageUsed: Math.round(memoryStats.percentageUsed * 100) / 100
+          percentageUsed: Math.round(memoryStats.percentageUsed * 100) / 100,
         },
         idle: idleStatus,
         models: {
           nlpLoaded: NlpService.isModelLoadedStatus(),
-          nerLoaded: isNerModelLoaded()
+          nerLoaded: isNerModelLoaded(),
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -406,7 +406,7 @@ export function setupSystemRoutes(app: Application) {
       if (!pathModule.isAbsolute(newPath)) {
         res.status(400).json({ 
           error: 'Path must be absolute for security reasons',
-          hint: 'Use an absolute path starting with / or C:\\'
+          hint: 'Use an absolute path starting with / or C:\\',
         });
         return;
       }
@@ -425,7 +425,7 @@ export function setupSystemRoutes(app: Application) {
           status: 'warning',
           message: 'Path is outside PROJECT_ROOT. Ensure this is intentional.',
           path: resolvedPath,
-          security_note: 'External paths are allowed but should be trusted directories only'
+          security_note: 'External paths are allowed but should be trusted directories only',
         });
         // Still allow the path but log it
         console.warn('[Security] Adding external watch path:', resolvedPath);
@@ -438,7 +438,7 @@ export function setupSystemRoutes(app: Application) {
         status: success ? 'success' : 'failed',
         message: success ? `Now watching: ${resolvedPath}` : 'Failed to add path',
         path: resolvedPath,
-        within_project_root: isWithinProjectRoot
+        within_project_root: isWithinProjectRoot,
       });
     } catch (e: any) {
       console.error('[API] Failed to add watch path:', e);
@@ -461,7 +461,7 @@ export function setupSystemRoutes(app: Application) {
       res.status(200).json({
         status: success ? 'success' : 'failed',
         message: success ? `Stopped watching: ${path}` : 'Failed to remove path',
-        path
+        path,
       });
     } catch (e: any) {
       console.error('[API] Failed to remove watch path:', e);
@@ -483,7 +483,7 @@ export function setupSystemRoutes(app: Application) {
       const pathModule = await import('path');
       const { PROJECT_ROOT } = await import('../../config/paths.js');
       const execFilePromise = util.promisify(execFile);
-      const platform = process.platform;
+      const { platform } = process;
 
       // Security: Resolve requested directory to absolute path and verify it's within PROJECT_ROOT
       const absoluteRequestedDir = pathModule.resolve(path);
@@ -508,7 +508,7 @@ export function setupSystemRoutes(app: Application) {
 
       res.status(200).json({
         status: 'success',
-        message: `Opened file explorer at: ${absoluteRequestedDir}`
+        message: `Opened file explorer at: ${absoluteRequestedDir}`,
       });
     } catch (e: any) {
       console.error('[API] Failed to open file explorer:', e);
@@ -528,7 +528,7 @@ export function setupSystemRoutes(app: Application) {
         server_url: `http://${config.HOST}:${config.PORT}`,
         llm_provider: config.LLM_PROVIDER,
         search_strategy: config.SEARCH.strategy,
-        features: config.FEATURES
+        features: config.FEATURES,
       };
 
       res.status(200).json(serverConfig);
@@ -539,8 +539,8 @@ export function setupSystemRoutes(app: Application) {
         fallback_config: {
           port: 3160,
           host: '127.0.0.1',
-          server_url: 'http://127.0.0.1:3160'
-        }
+          server_url: 'http://127.0.0.1:3160',
+        },
       });
     }
   });
@@ -593,7 +593,7 @@ export function setupSystemRoutes(app: Application) {
       const status = systemStatus.getStatus();
       res.json({
         status: 'success',
-        ...status
+        ...status,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -656,7 +656,7 @@ export function setupSystemRoutes(app: Application) {
       res.json({
         status: 'success',
         path: filePath,
-        content: content
+        content: content,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -679,7 +679,7 @@ export function setupSystemRoutes(app: Application) {
       res.status(200).json({
         status: 'success',
         count: agents.length,
-        agents
+        agents,
       });
     } catch (error: any) {
       console.error('[API] Agent discovery error:', error);
@@ -705,7 +705,7 @@ export function setupSystemRoutes(app: Application) {
         res.status(404).json({
           error: `Agent '${agent_id}' not found on this system`,
           possible_locations: possiblePaths,
-          supported_agents: Object.keys(KNOWN_AGENTS)
+          supported_agents: Object.keys(KNOWN_AGENTS),
         });
         return;
       }
@@ -719,13 +719,13 @@ export function setupSystemRoutes(app: Application) {
           status: 'success',
           message: `Added ${agent_id} chat directory to watched paths`,
           agent_id,
-          path: agentPath
+          path: agentPath,
         });
       } else {
         res.status(500).json({
           error: 'Failed to add agent path to watched paths',
           agent_id,
-          path: agentPath
+          path: agentPath,
         });
       }
     } catch (error: any) {
@@ -751,7 +751,7 @@ export function setupSystemRoutes(app: Application) {
         errors: [],
         startedAt: ingestStatus.currentJob?.startedAt?.toISOString() || null,
         lastCompleted: ingestStatus.lastCompleted?.toISOString() || null,
-        queueDepth: ingestStatus.queueDepth
+        queueDepth: ingestStatus.queueDepth,
       };
 
       res.status(200).json(response);
@@ -772,7 +772,7 @@ export function setupSystemRoutes(app: Application) {
         includeContent: req.query.includeContent !== 'false',
         maxContentLength: parseInt(req.query.maxContentLength as string) || 200,
         bucket: req.query.bucket as string,
-        tag: req.query.tag as string
+        tag: req.query.tag as string,
       };
 
       const outputPath = req.query.output as string;
@@ -784,7 +784,7 @@ export function setupSystemRoutes(app: Application) {
           message: `Exported ${result.nodeCount} nodes to ${result.outputPath}`,
           nodeCount: result.nodeCount,
           edgeCount: result.edgeCount,
-          outputPath: result.outputPath
+          outputPath: result.outputPath,
         });
       } else {
         const result = await exportGraph(options);
@@ -792,7 +792,7 @@ export function setupSystemRoutes(app: Application) {
           status: 'success',
           nodeCount: result.nodeCount,
           edgeCount: result.edgeCount,
-          content: result.content
+          content: result.content,
         });
       }
     } catch (error: any) {

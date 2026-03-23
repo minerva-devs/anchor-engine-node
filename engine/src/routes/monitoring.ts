@@ -4,7 +4,8 @@
  * Implements health monitoring endpoints following Standard 078: Process Isolation & Live Diagnostics
  */
 
-import express, { Request, Response, Router } from 'express';
+import type { Request, Response } from 'express';
+import express, { Router } from 'express';
 import { performanceMonitor } from '../utils/performance-monitor.js';
 import { logWithContext } from '../utils/structured-logger.js';
 import * as os from 'os';
@@ -57,7 +58,7 @@ monitoringRouter.get('/health', async (_req: Request, res: Response) => {
         memory: memoryUsage,
         uptime: uptime,
         platform: process.platform,
-        version: process.version
+        version: process.version,
       },
       system: {
         platform: os.platform(),
@@ -65,19 +66,19 @@ monitoringRouter.get('/health', async (_req: Request, res: Response) => {
         totalMemory: os.totalmem(),
         freeMemory: os.freemem(),
         cpuCount: cpuInfo.length,
-        loadAverage: os.loadavg()
+        loadAverage: os.loadavg(),
       },
       components: {
         database: dbStatus,
         logging: logStatus,
-        nativeModules: 'healthy' // Would check actual native module status in real implementation
-      }
+        nativeModules: 'healthy', // Would check actual native module status in real implementation
+      },
     };
 
     // Log health check
     logWithContext.health(overallStatus, {
       components: healthData.components,
-      memoryUsed: memoryUsage.heapUsed / 1024 / 1024
+      memoryUsed: memoryUsage.heapUsed / 1024 / 1024,
     });
 
     const statusCode = overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 207 : 503;
@@ -87,7 +88,7 @@ monitoringRouter.get('/health', async (_req: Request, res: Response) => {
     res.status(500).json({
       status: 'unhealthy',
       error: error.message,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
   }
 });
@@ -103,8 +104,8 @@ monitoringRouter.get('/metrics', (_req: Request, res: Response) => {
       system: {
         memory: process.memoryUsage(),
         uptime: process.uptime(),
-        pid: process.pid
-      }
+        pid: process.pid,
+      },
     });
   } catch (error: any) {
     logWithContext.error('Metrics collection failed', error);
@@ -119,7 +120,7 @@ monitoringRouter.get('/performance-summary', (_req: Request, res: Response) => {
 
     res.status(200).json({
       timestamp: new Date().toISOString(),
-      ...summary
+      ...summary,
     });
   } catch (error: any) {
     logWithContext.error('Performance summary collection failed', error);
@@ -142,10 +143,10 @@ monitoringRouter.get('/resources', (_req: Request, res: Response) => {
           heapTotal: memoryUsage.heapTotal,
           heapUsed: memoryUsage.heapUsed,
           external: memoryUsage.external,
-          arrayBuffers: memoryUsage.arrayBuffers
+          arrayBuffers: memoryUsage.arrayBuffers,
         },
         cpu: cpuUsage,
-        uptime: process.uptime()
+        uptime: process.uptime(),
       },
       system: {
         platform: os.platform(),
@@ -153,9 +154,9 @@ monitoringRouter.get('/resources', (_req: Request, res: Response) => {
         totalMemory: os.totalmem(),
         freeMemory: os.freemem(),
         cpuCount: os.cpus().length,
-        loadAverage: os.loadavg()
+        loadAverage: os.loadavg(),
       },
-      disk: getDiskUsage() // Custom function to get disk usage
+      disk: getDiskUsage(), // Custom function to get disk usage
     };
 
     res.status(200).json(resourceData);
@@ -179,7 +180,7 @@ function getDiskUsage() {
       total,
       available,
       used: total - available,
-      percentUsed: ((total - available) / total * 100).toFixed(2) + '%'
+      percentUsed: ((total - available) / total * 100).toFixed(2) + '%',
     };
   } catch (error) {
     // Return safe defaults if we can't determine actual values
@@ -187,7 +188,7 @@ function getDiskUsage() {
       total: 1024 * 1024 * 1024 * 500, // 500GB
       available: 1024 * 1024 * 1024 * 100, // 100GB
       used: 1024 * 1024 * 1024 * 400,  // 400GB
-      percentUsed: '80%'
+      percentUsed: '80%',
     };
   }
 }
@@ -201,7 +202,7 @@ monitoringRouter.get('/db-health', async (_req: Request, res: Response) => {
       basicQuery: false,
       writePermission: false,
       readPermission: false,
-      performance: 0
+      performance: 0,
     };
 
     // Check connectivity
@@ -225,19 +226,19 @@ monitoringRouter.get('/db-health', async (_req: Request, res: Response) => {
            ON CONFLICT (id) DO UPDATE SET
              content = EXCLUDED.content,
              timestamp = EXCLUDED.timestamp`,
-          [testId, 'health check', 'health_test', Date.now(), '0', new Array(768).fill(0.1), 'internal']
+          [testId, 'health check', 'health_test', Date.now(), '0', new Array(768).fill(0.1), 'internal'],
         );
         checks.writePermission = true;
 
         // Try to read
         const readResult = await db.run(
-          `SELECT id, content FROM atoms WHERE id = $1`,
-          [testId]
+          'SELECT id, content FROM atoms WHERE id = $1',
+          [testId],
         );
         checks.readPermission = readResult && readResult.rows && readResult.rows.length > 0;
 
         // Clean up test record
-        await db.run(`DELETE FROM atoms WHERE id = $1`, [testId]);
+        await db.run('DELETE FROM atoms WHERE id = $1', [testId]);
       } catch (error) {
         // Write/read failed
       }
@@ -266,7 +267,7 @@ monitoringRouter.get('/db-health', async (_req: Request, res: Response) => {
     res.status(statusCode).json({
       status: dbHealthStatus,
       timestamp: new Date().toISOString(),
-      checks
+      checks,
     });
   } catch (error: any) {
     logWithContext.error('Database health check failed', error);
@@ -286,14 +287,14 @@ monitoringRouter.get('/native-health', (_req: Request, res: Response) => {
         ece_native: {
           loaded: true,
           version: '1.0.0',
-          status: 'operational'
+          status: 'operational',
         },
         cozo_node: {
           loaded: true,
           version: '1.0.0',
-          status: 'operational'
-        }
-      }
+          status: 'operational',
+        },
+      },
     };
 
     res.status(200).json(nativeModuleStatus);
@@ -312,7 +313,7 @@ monitoringRouter.get('/ingestion-health', async (_req: Request, res: Response) =
       sanitizer: false,
       fingerprinter: false,
       databaseWrite: false,
-      performance: 0
+      performance: 0,
     };
 
     // This would check actual ingestion components in a real implementation
@@ -336,11 +337,11 @@ monitoringRouter.get('/ingestion-health', async (_req: Request, res: Response) =
          ON CONFLICT (id) DO UPDATE SET
            content = EXCLUDED.content,
            timestamp = EXCLUDED.timestamp`,
-        [testId, 'ingestion health check', 'ingest_health_test', Date.now(), '0', new Array(768).fill(0.1), 'internal']
+        [testId, 'ingestion health check', 'ingest_health_test', Date.now(), '0', new Array(768).fill(0.1), 'internal'],
       );
 
       // Clean up
-      await db.run(`DELETE FROM atoms WHERE id = $1`, [testId]);
+      await db.run('DELETE FROM atoms WHERE id = $1', [testId]);
       checks.databaseWrite = true;
     } catch (error) {
       // Database write failed
@@ -363,7 +364,7 @@ monitoringRouter.get('/ingestion-health', async (_req: Request, res: Response) =
     res.status(statusCode).json({
       status: ingestHealthStatus,
       timestamp: new Date().toISOString(),
-      checks
+      checks,
     });
   } catch (error: any) {
     logWithContext.error('Ingestion health check failed', error);
@@ -378,7 +379,7 @@ monitoringRouter.get('/search-health', async (_req: Request, res: Response) => {
       searchIndex: false,
       queryProcessing: false,
       resultQuality: false,
-      performance: 0
+      performance: 0,
     };
 
     // Check if search index is accessible
@@ -420,7 +421,7 @@ monitoringRouter.get('/search-health', async (_req: Request, res: Response) => {
     res.status(statusCode).json({
       status: searchHealthStatus,
       timestamp: new Date().toISOString(),
-      checks
+      checks,
     });
   } catch (error: any) {
     logWithContext.error('Search health check failed', error);
@@ -441,7 +442,7 @@ monitoringRouter.get('/status', async (_req: Request, res: Response) => {
         memory: process.memoryUsage(),
         uptime: process.uptime(),
         platform: process.platform,
-        version: process.version
+        version: process.version,
       },
       system: {
         platform: os.platform(),
@@ -449,16 +450,16 @@ monitoringRouter.get('/status', async (_req: Request, res: Response) => {
         totalMemory: os.totalmem(),
         freeMemory: os.freemem(),
         cpuCount: os.cpus().length,
-        loadAverage: os.loadavg()
+        loadAverage: os.loadavg(),
       },
       components: {
         database: 'checking...',
         nativeModules: 'checking...',
         ingestion: 'checking...',
         search: 'checking...',
-        api: 'running'
+        api: 'running',
       },
-      performance: performanceMonitor.getPerformanceSummary()
+      performance: performanceMonitor.getPerformanceSummary(),
     };
 
     // Run all health checks in parallel
@@ -466,7 +467,7 @@ monitoringRouter.get('/status', async (_req: Request, res: Response) => {
       db.run('SELECT 1 as a', []),
       Promise.resolve({}), // Native modules check
       db.run('SELECT id FROM atoms LIMIT 1', []),
-      db.run('SELECT id, content, ts_rank(to_tsvector(\'simple\', content), plainto_tsquery(\'simple\', $1)) as score FROM atoms WHERE to_tsvector(\'simple\', content) @@ plainto_tsquery(\'simple\', $1) LIMIT 1', ['test'])
+      db.run('SELECT id, content, ts_rank(to_tsvector(\'simple\', content), plainto_tsquery(\'simple\', $1)) as score FROM atoms WHERE to_tsvector(\'simple\', content) @@ plainto_tsquery(\'simple\', $1) LIMIT 1', ['test']),
     ]);
 
     // Update component statuses
@@ -503,7 +504,7 @@ monitoringRouter.get('/counters', (_req: Request, res: Response) => {
 
     res.status(200).json({
       timestamp: new Date().toISOString(),
-      counters
+      counters,
     });
   } catch (error: any) {
     logWithContext.error('Counters retrieval failed', error);
@@ -518,7 +519,7 @@ monitoringRouter.post('/counters/reset', (_req: Request, res: Response) => {
 
     res.status(200).json({
       status: 'success',
-      message: 'Performance counters reset'
+      message: 'Performance counters reset',
     });
   } catch (error: any) {
     logWithContext.error('Counters reset failed', error);
@@ -533,7 +534,7 @@ monitoringRouter.get('/slow-operations', (_req: Request, res: Response) => {
 
     res.status(200).json({
       timestamp: new Date().toISOString(),
-      slowestOperations: slowest
+      slowestOperations: slowest,
     });
   } catch (error: any) {
     logWithContext.error('Slow operations retrieval failed', error);
@@ -548,7 +549,7 @@ monitoringRouter.get('/busiest-operations', (_req: Request, res: Response) => {
 
     res.status(200).json({
       timestamp: new Date().toISOString(),
-      busiestOperations: busiest
+      busiestOperations: busiest,
     });
   } catch (error: any) {
     logWithContext.error('Busiest operations retrieval failed', error);

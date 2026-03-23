@@ -4,7 +4,8 @@
  * Quick diagnostic tests designed for rapid issue reproduction and validation
  */
 
-import { TestFramework, TestConfig } from './core.js';
+import type { TestConfig } from './core.js';
+import { TestFramework } from './core.js';
 import { DatasetTestRunner } from './dataset-runner.js';
 import axios from 'axios';
 
@@ -28,7 +29,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         throw error;
       }
     },
-    timeout: 10000
+    timeout: 10000,
   },
   {
     name: 'Database Connectivity',
@@ -38,7 +39,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         // Test basic database operation
         const response = await axios.post('http://localhost:3000/v1/memory/search', {
           query: 'test',
-          buckets: []
+          buckets: [],
         });
 
         if (response.status !== 200 && response.status !== 207) {
@@ -51,7 +52,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         throw error;
       }
     },
-    timeout: 15000
+    timeout: 15000,
   },
   {
     name: 'Native Module Availability',
@@ -75,7 +76,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         console.log('ℹ️  Native modules not available - using JavaScript fallbacks');
       }
     },
-    timeout: 10000
+    timeout: 10000,
   },
   {
     name: 'Ingestion Pipeline',
@@ -88,7 +89,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
           content: testContent,
           source: 'diagnostic-test',
           type: 'test',
-          buckets: ['diagnostic']
+          buckets: ['diagnostic'],
         });
 
         if (response.status !== 200) {
@@ -105,7 +106,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         throw error;
       }
     },
-    timeout: 20000
+    timeout: 20000,
   },
   {
     name: 'Search Functionality',
@@ -117,7 +118,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
 
         const response = await axios.post('http://localhost:3000/v1/memory/search', {
           query: 'diagnostic test content',
-          buckets: ['diagnostic']
+          buckets: ['diagnostic'],
         });
 
         if (response.status !== 200) {
@@ -134,7 +135,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         throw error;
       }
     },
-    timeout: 25000
+    timeout: 25000,
   },
   {
     name: 'Memory Retrieval Consistency',
@@ -144,12 +145,12 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         // Test different search approaches
         const basicSearch = await axios.post('http://localhost:3000/v1/memory/search', {
           query: 'diagnostic',
-          buckets: ['diagnostic']
+          buckets: ['diagnostic'],
         });
 
         const tagSearch = await axios.post('http://localhost:3000/v1/memory/search', {
           query: '#diagnostic',
-          buckets: []
+          buckets: [],
         });
 
         if (basicSearch.status !== 200) {
@@ -167,7 +168,7 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         throw error;
       }
     },
-    timeout: 20000
+    timeout: 20000,
   },
   {
     name: 'API Rate Limits & Concurrency',
@@ -178,8 +179,8 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         const requests = Array.from({ length: 3 }, (_, i) =>
           axios.post('http://localhost:3000/v1/memory/search', {
             query: `diagnostic test ${i}`,
-            buckets: ['diagnostic']
-          })
+            buckets: ['diagnostic'],
+          }),
         );
 
         const responses = await Promise.all(requests.map(p => p.catch(e => e)));
@@ -199,8 +200,8 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
         console.log('ℹ️  API concurrency test completed with some errors (this may be normal)');
       }
     },
-    timeout: 30000
-  }
+    timeout: 30000,
+  },
 ];
 
 // Create a diagnostic test runner
@@ -226,7 +227,7 @@ export class DiagnosticTestRunner {
       tests: DIAGNOSTIC_TESTS,
       timeout: 30000,
       environment: 'integration',
-      tags: ['diagnostic', 'health', 'quick']
+      tags: ['diagnostic', 'health', 'quick'],
     };
 
     // Add the suite to the framework and run it
@@ -251,7 +252,7 @@ export class DiagnosticTestRunner {
       tests: taggedTests,
       timeout: 30000,
       environment: 'integration',
-      tags: ['diagnostic', 'health', tag]
+      tags: ['diagnostic', 'health', tag],
     };
 
     this.framework.addTestSuite(diagnosticSuite);
@@ -303,7 +304,7 @@ if (require.main === module) {
       console.log('\n✅ Diagnostic tests completed');
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(error => {
       console.error('\n❌ Diagnostic tests failed:', error);
       process.exit(1);
     });

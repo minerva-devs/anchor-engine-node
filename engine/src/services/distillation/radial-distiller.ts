@@ -14,6 +14,7 @@ import { ContextInflator } from '../search/context-inflator.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { getMirrorPath } from '../mirror/mirror.js';
 import { PATHS } from '../../config/paths.js';
+import { recordDistill } from './distill-manager.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -136,14 +137,14 @@ function hashLine(line: string): string {
  * Stream compounds and radially inflate each
  */
 async function* collectCompounds(
-  request: RadialDistillRequest
+  request: RadialDistillRequest,
 ): AsyncGenerator<{ compoundId: string; content: string; source: string; timestamp: number }> {
   const radius = request.radius || 2000;
   const maxRadius = request.max_radius || 10000;
   const effectiveRadius = Math.min(radius, maxRadius);
 
   // Build compound query
-  let query = `SELECT id, path, timestamp, provenance FROM compounds`;
+  let query = 'SELECT id, path, timestamp, provenance FROM compounds';
   const params: any[] = [];
   const conditions: string[] = [];
 
@@ -178,14 +179,14 @@ async function* collectCompounds(
     params.push(tsQuery);
   }
 
-  query += ` ORDER BY timestamp DESC`;
+  query += ' ORDER BY timestamp DESC';
 
   const result = await db.run(query, params);
   const compounds = result.rows as any[];
 
   StructuredLogger.info('DISTILL_COLLECT_START', {
     compounds_found: compounds.length,
-    radius: effectiveRadius
+    radius: effectiveRadius,
   });
 
   // Process each compound with radial inflation
@@ -207,7 +208,7 @@ async function* collectCompounds(
         compound_id: compound.id,
         start_byte: 0,
         end_byte: 0,
-        is_inflated: false
+        is_inflated: false,
       };
 
       // Radially inflate from disk
@@ -218,7 +219,7 @@ async function* collectCompounds(
           compoundId: compound.id,
           content: inflated[0].content,
           source: compound.path,
-          timestamp: compound.timestamp
+          timestamp: compound.timestamp,
         };
       }
 
@@ -228,7 +229,7 @@ async function* collectCompounds(
       }
     } catch (e) {
       StructuredLogger.error('DISTILL_INFLATE_ERROR', e instanceof Error ? e : new Error(String(e)), {
-        compound_id: compound.id
+        compound_id: compound.id,
       });
     }
   }
@@ -240,7 +241,7 @@ async function* collectCompounds(
  */
 async function deduplicateLines(
   compoundGenerator: AsyncGenerator<{ compoundId: string; content: string; source: string; timestamp: number }>,
-  request: RadialDistillRequest
+  request: RadialDistillRequest,
 ): Promise<{
   uniqueLines: Map<string, DistillLine>;
   stats: { total: number; unique: number; duplicate: number };
@@ -283,7 +284,7 @@ async function deduplicateLines(
           provenance: [compound.source],
           timestamps: [compound.timestamp],
           compoundId: compound.compoundId,
-          lineNumber: lineNum
+          lineNumber: lineNum,
         });
       }
     }
@@ -293,7 +294,7 @@ async function deduplicateLines(
       const memUsage = process.memoryUsage();
       if (memUsage.heapUsed > MOBILE_MEMORY_THRESHOLD) {
         StructuredLogger.warn('DISTILL_MEMORY_PRESSURE', {
-          heap_used_mb: Math.floor(memUsage.heapUsed / 1024 / 1024)
+          heap_used_mb: Math.floor(memUsage.heapUsed / 1024 / 1024),
         });
         if (global.gc) global.gc();
       }
@@ -305,8 +306,8 @@ async function deduplicateLines(
     stats: {
       total: totalLines,
       unique: uniqueLines.size,
-      duplicate: duplicateLines
-    }
+      duplicate: duplicateLines,
+    },
   };
 }
 
@@ -316,7 +317,7 @@ async function deduplicateLines(
  */
 async function reassembleCompounds(
   uniqueLines: Map<string, DistillLine>,
-  request: RadialDistillRequest
+  request: RadialDistillRequest,
 ): Promise<{ outputPath: string; sizeBytes: number; compoundsCreated: number }> {
   const lines = Array.from(uniqueLines.values());
 
@@ -355,14 +356,14 @@ async function reassembleCompounds(
         line_count: lines.length,
         parameters: {
           radius: request.radius,
-          normalization: request.normalization
-        }
+          normalization: request.normalization,
+        },
       },
       lines: lines.map(l => ({
         content: l.content,
         provenance: l.provenance,
-        first_seen: new Date(Math.min(...l.timestamps)).toISOString()
-      }))
+        first_seen: new Date(Math.min(...l.timestamps)).toISOString(),
+      })),
     });
     fs.writeFileSync(outputPath, yamlContent, 'utf-8');
     compoundsCreated = 1;
@@ -371,13 +372,13 @@ async function reassembleCompounds(
       metadata: {
         source: 'Anchor Engine Radial Distiller',
         distilled_at: new Date().toISOString(),
-        line_count: lines.length
+        line_count: lines.length,
       },
       lines: lines.map(l => ({
         content: l.content,
         provenance: l.provenance,
-        first_seen: new Date(Math.min(...l.timestamps)).toISOString()
-      }))
+        first_seen: new Date(Math.min(...l.timestamps)).toISOString(),
+      })),
     }, null, 2);
     fs.writeFileSync(outputPath, jsonContent, 'utf-8');
     compoundsCreated = 1;
@@ -423,7 +424,7 @@ async function reassembleCompounds(
   StructuredLogger.info('DISTILL_REASSEMBLE_COMPLETE', {
     output_path: outputPath,
     lines_written: lines.length,
-    compounds_created: compoundsCreated
+    compounds_created: compoundsCreated,
   });
 
   return { outputPath, sizeBytes: stats.size, compoundsCreated };
@@ -434,7 +435,7 @@ async function reassembleCompounds(
  * Standard 133 implementation
  */
 export async function radialDistill(
-  request: RadialDistillRequest
+  request: RadialDistillRequest,
 ): Promise<RadialDistillResult> {
   const startTime = Date.now();
   const memBefore = process.memoryUsage();
@@ -443,7 +444,7 @@ export async function radialDistill(
     seed: request.seed,
     radius: request.radius,
     normalization: request.normalization,
-    is_mobile: isMobileEnvironment()
+    is_mobile: isMobileEnvironment(),
   });
 
   try {
@@ -478,28 +479,54 @@ export async function radialDistill(
         lines_duplicate: dedupStats.duplicate,
         compression_ratio: `${compressionRatio}:1`,
         duration_ms: duration,
-        memory_peak_mb: Math.floor(memPeak / 1024 / 1024)
+        memory_peak_mb: Math.floor(memPeak / 1024 / 1024),
       },
       output: {
         format: request.output_format || 'compound',
         path: outputPath,
         size_bytes: sizeBytes,
-        compounds_created: compoundsCreated
+        compounds_created: compoundsCreated,
       },
       provenance: {
         source_compounds: sourceCompounds,
         unique_sources: sourceCompounds.length,
         distilled_at: new Date().toISOString(),
-        parameters: request
-      }
+        parameters: request,
+      },
     };
 
     StructuredLogger.info('RADIAL_DISTILL_COMPLETE', {
       duration_ms: duration,
       compression_ratio: compressionRatio,
       lines_unique: dedupStats.unique,
-      lines_total: dedupStats.total
+      lines_total: dedupStats.total,
     });
+
+    // Standard 016: Record distill in database with pointers to file
+    try {
+      const outputFormat = request.output_format || 'compound';
+      const sourceFiles = sourceCompounds.map((c: any) => c.path);
+
+      await recordDistill({
+        timestamp: new Date().toISOString(),
+        filename: path.basename(outputPath),
+        file_path: outputPath,
+        line_count: dedupStats.total,
+        lines_unique: dedupStats.unique,
+        compression_ratio: parseFloat(compressionRatio.replace(':1', '')),
+        source_sessions: [],
+        source_files: sourceFiles,
+        parameters: {
+          radius: request.radius,
+          normalization: request.normalization,
+          output_format: outputFormat,
+        },
+      });
+      console.log('[Distill] ✅ Distill recorded in database');
+    } catch (dbError: any) {
+      console.warn('[Distill] Could not record distill in database:', dbError.message);
+      // Don't fail the distill if DB recording fails
+    }
 
     return result;
   } catch (error) {

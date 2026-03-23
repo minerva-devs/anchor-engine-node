@@ -1,6 +1,6 @@
 /**
  * Configuration Module for Sovereign Context Engine
- * 
+ *
  * This module manages all configuration for the context engine including
  * paths, model settings, and system parameters.
  */
@@ -9,10 +9,84 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
+import { z } from 'zod';
 
 // For __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// === Configuration Schema with Zod Validation ===
+
+// Server Settings Schema
+const ServerSettingsSchema = z.object({
+  host: z.string().optional(),
+  port: z.number().int().min(1).max(65535).optional(),
+  api_key: z.string().min(16, 'API key must be at least 16 characters').optional(),
+});
+
+// Resource Management Schema
+const ResourceManagementSchema = z.object({
+  gc_cooldown_ms: z.number().int().positive().optional(),
+  max_atoms_in_memory: z.number().int().positive().optional(),
+  monitoring_interval_ms: z.number().int().positive().optional(),
+});
+
+// Watcher Settings Schema
+const WatcherSettingsSchema = z.object({
+  debounce_ms: z.number().int().positive().optional(),
+  stability_threshold_ms: z.number().int().positive().optional(),
+  extra_paths: z.array(z.string()).optional(),
+});
+
+// Search Settings Schema
+const SearchSettingsSchema = z.object({
+  strategy: z.string().optional(),
+  hide_years_in_tags: z.boolean().optional(),
+  whitelist: z.array(z.string()).optional(),
+  max_chars_default: z.number().int().positive().optional(),
+  max_chars_limit: z.number().int().positive().optional(),
+  fts_window_size: z.number().int().positive().optional(),
+  fts_padding: z.number().int().positive().optional(),
+});
+
+// Database Settings Schema
+const DatabaseSettingsSchema = z.object({
+  wipe_on_startup: z.boolean().optional(),
+});
+
+// Memory Settings Schema
+const MemorySettingsSchema = z.object({
+  heap_pressure_mb: z.number().int().positive().optional(),
+  throttle_start_mb: z.number().int().positive().optional(),
+  throttle_max_mb: z.number().int().positive().optional(),
+  emergency_stop_mb: z.number().int().positive().optional(),
+  search_results_batch_size: z.number().int().positive().optional(),
+  enable_streaming_results: z.boolean().optional(),
+});
+
+// Limits Schema
+const LimitsSchema = z.object({
+  max_file_size_bytes: z.number().int().positive().optional(),
+  max_content_length_chars: z.number().int().positive().optional(),
+  max_chunk_size_chars: z.number().int().positive().optional(),
+  max_summary_length_chars: z.number().int().positive().optional(),
+  date_extractor_scan_limit: z.number().int().positive().optional(),
+});
+
+// User Settings Schema (all optional, with defaults applied)
+const _UserSettingsSchema = z.object({
+  server: ServerSettingsSchema.optional(),
+  resource_management: ResourceManagementSchema.optional(),
+  watcher: WatcherSettingsSchema.optional(),
+  search: SearchSettingsSchema.optional(),
+  database: DatabaseSettingsSchema.optional(),
+  memory: MemorySettingsSchema.optional(),
+  limits: LimitsSchema.optional(),
+  // Allow additional properties for backward compatibility
+}).passthrough();
+
+// Type inference from schema (used for type checking in loadConfig)
+type _UserSettings = z.infer<typeof _UserSettingsSchema>;
 
 // Define configuration interface
 interface Config {
@@ -165,16 +239,16 @@ interface Config {
 const DEFAULT_CONFIG: Config = {
   // Core
   PORT: 3160,
-  HOST: "0.0.0.0",
-  API_KEY: "", // REQUIRED: Must be set in user_settings.json -> server.api_key
-  LOG_LEVEL: "INFO",
+  HOST: '0.0.0.0',
+  API_KEY: '', // REQUIRED: Must be set in user_settings.json -> server.api_key
+  LOG_LEVEL: 'INFO',
   OVERLAY_PORT: 3002,
 
   // LLM Provider
   LLM_PROVIDER: 'local',
-  REMOTE_LLM_URL: "http://localhost:8000/v1",
-  REMOTE_MODEL_NAME: "default",
-  LLM_MODEL_DIR: "models",
+  REMOTE_LLM_URL: 'http://localhost:8000/v1',
+  REMOTE_MODEL_NAME: 'default',
+  LLM_MODEL_DIR: 'models',
 
   // Tuning
   DEFAULT_SEARCH_CHAR_LIMIT: 524288,
@@ -200,14 +274,14 @@ const DEFAULT_CONFIG: Config = {
   // Infrastructure
   REDIS: {
     ENABLED: false,
-    URL: "redis://localhost:6379",
-    TTL: 3600
+    URL: 'redis://localhost:6379',
+    TTL: 3600,
   },
   NEO4J: {
     ENABLED: false,
-    URI: "bolt://localhost:7687",
-    USER: "neo4j",
-    PASS: "password"
+    URI: 'bolt://localhost:7687',
+    USER: 'neo4j',
+    PASS: 'password',
   },
 
   // Features
@@ -217,42 +291,42 @@ const DEFAULT_CONFIG: Config = {
     CODA: true,
     ARCHIVIST: true,
     WEAVER: true,
-    MARKOVIAN: true
+    MARKOVIAN: true,
   },
 
   // Search
   SEARCH: {
-    strategy: "hybrid",
+    strategy: 'hybrid',
     hide_years_in_tags: true,
     whitelist: [],
     max_chars_default: 5000,   // 5k chars = ~1.25k tokens (mobile-friendly)
     max_chars_limit: 20000,    // 20k chars max limit
     fts_window_size: 1500,
-    fts_padding: 750
+    fts_padding: 750,
   },
 
   // Models
   MODELS: {
     EMBEDDING_DIM: 768,
     MAIN: {
-      PATH: "glm-edge-1.5b-chat.Q5_K_M.gguf", // Default from user_settings.json
+      PATH: 'glm-edge-1.5b-chat.Q5_K_M.gguf', // Default from user_settings.json
       CTX_SIZE: 8192, // Default from user_settings.json
       GPU_LAYERS: 11, // Default from user_settings.json
-      MAX_TOKENS: 1024
+      MAX_TOKENS: 1024,
     },
     ORCHESTRATOR: {
-      PATH: "Qwen3-4B-Function-Calling-Pro.gguf", // Default from user_settings.json
+      PATH: 'Qwen3-4B-Function-Calling-Pro.gguf', // Default from user_settings.json
       CTX_SIZE: 8192,
       GPU_LAYERS: 0,
-      MAX_TOKENS: 2048
+      MAX_TOKENS: 2048,
     },
     VISION: {
-      PATH: "",  // MUST BE SET IN user_settings.json
-      PROJECTOR: "", // MUST BE SET IN user_settings.json
+      PATH: '',  // MUST BE SET IN user_settings.json
+      PROJECTOR: '', // MUST BE SET IN user_settings.json
       CTX_SIZE: 2048,
       GPU_LAYERS: 11, // Default from user_settings.json
-      MAX_TOKENS: 1024
-    }
+      MAX_TOKENS: 1024,
+    },
   },
 
   // Services
@@ -260,7 +334,7 @@ const DEFAULT_CONFIG: Config = {
     VISION_SERVER_PORT: 8081,
     CHAT_SERVER_PORT: 8080,
     TAG_INFECTOR_UNLOAD_TIMEOUT: 300000, // 5 minutes
-    TAG_GLINER_CHECK_INTERVAL: 60000 // 1 minute
+    TAG_GLINER_CHECK_INTERVAL: 60000, // 1 minute
   },
 
   // Limits and Thresholds
@@ -269,7 +343,7 @@ const DEFAULT_CONFIG: Config = {
     MAX_CONTENT_LENGTH_CHARS: 5000,
     MAX_CHUNK_SIZE_CHARS: 3000,
     MAX_SUMMARY_LENGTH_CHARS: 2000,
-    DATE_EXTRACTOR_SCAN_LIMIT: 2000
+    DATE_EXTRACTOR_SCAN_LIMIT: 2000,
   },
 
   // Database Settings
@@ -277,7 +351,7 @@ const DEFAULT_CONFIG: Config = {
     // Standard 051: Ephemeral Index
     // Default true: wipe PGlite index on each startup so it rebuilds from mirrored_brain/.
     // Set false to retain the index across restarts (faster startup, but risks stale/corrupt data).
-    WIPE_ON_STARTUP: true
+    WIPE_ON_STARTUP: true,
   },
 
   // Adaptive Concurrency (Standard 132)
@@ -296,7 +370,7 @@ const DEFAULT_CONFIG: Config = {
     // Force sequential mode regardless of memory (default: false)
     FORCE_SEQUENTIAL: process.env['ANCHOR_FORCE_SEQUENTIAL'] === 'true',
     // Force parallel mode regardless of memory (default: false)
-    FORCE_PARALLEL: process.env['ANCHOR_FORCE_PARALLEL'] === 'true'
+    FORCE_PARALLEL: process.env['ANCHOR_FORCE_PARALLEL'] === 'true',
   },
 
   // Memory Management (Standard 127/134/135)
@@ -313,7 +387,7 @@ const DEFAULT_CONFIG: Config = {
     // Batch size for streaming search results (default: 20)
     SEARCH_RESULTS_BATCH_SIZE: parseInt(process.env['ANCHOR_SEARCH_RESULTS_BATCH_SIZE'] || '20', 10),
     // Enable streaming results for memory efficiency (default: false)
-    ENABLE_STREAMING_RESULTS: process.env['ANCHOR_ENABLE_STREAMING_RESULTS'] === 'true'
+    ENABLE_STREAMING_RESULTS: process.env['ANCHOR_ENABLE_STREAMING_RESULTS'] === 'true',
   },
 
   // Ingestion Configuration (Agent-Controlled)
@@ -323,8 +397,8 @@ const DEFAULT_CONFIG: Config = {
     TAG_THRESHOLD: parseFloat(process.env['ANCHOR_TAG_THRESHOLD'] || '0.7'),
     DEDUP_STRENGTH: (process.env['ANCHOR_DEDUP_STRENGTH'] as 'light' | 'medium' | 'aggressive') || 'medium',
     TOKEN_BUDGET_DEFAULT: parseInt(process.env['ANCHOR_TOKEN_BUDGET_DEFAULT'] || '2000', 10),
-    INGESTION_PROFILE: (process.env['ANCHOR_INGESTION_PROFILE'] as 'code' | 'notes' | 'chat' | 'default') || 'default'
-  }
+    INGESTION_PROFILE: (process.env['ANCHOR_INGESTION_PROFILE'] as 'code' | 'notes' | 'chat' | 'default') || 'default',
+  },
 };
 
 // Configuration loader
@@ -335,7 +409,7 @@ function loadConfig(): Config {
   let loadedConfig = { ...DEFAULT_CONFIG };
 
   // 1. Try Loading sovereign.yaml (Legacy/System Config)
-  const configPath = process.env['SOVEREIGN_CONFIG_PATH'] ||
+  const configPath = process.env.SOVEREIGN_CONFIG_PATH ||
     path.join(__dirname, '..', '..', 'sovereign.yaml') ||
     path.join(__dirname, '..', 'config', 'default.yaml');
 
@@ -464,8 +538,22 @@ function loadConfig(): Config {
         if (userSettings.ingestion.ingestion_profile) loadedConfig.INGESTION.INGESTION_PROFILE = userSettings.ingestion.ingestion_profile;
       }
 
-    } catch (e) {
-      console.error(`[Config] Failed to parse user_settings.json:`, e);
+    } catch (e: any) {
+      // Check if this is a Zod validation error
+      if (e instanceof z.ZodError) {
+        console.error('[Config] Invalid configuration in user_settings.json:');
+        // ZodError.errors is available in Zod 3.x but not in 4.x
+        // In Zod 4.x, use e.flatten() or iterate over issues
+        const issues = (e as any).issues || (e as any).flatten?.().errors || [];
+        if (issues.length > 0) {
+          issues.forEach((err: any) => {
+            console.error(`  - ${err.path?.join('.') || 'unknown'}: ${err.message}`);
+          });
+        }
+        console.error('[Config] Please fix the configuration file and restart.');
+      } else {
+        console.error('[Config] Failed to parse user_settings.json:', e);
+      }
     }
   }
 

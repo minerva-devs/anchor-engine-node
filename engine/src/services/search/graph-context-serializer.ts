@@ -27,8 +27,8 @@ import type {
   DEFAULT_SEARCH_CONFIG,
 } from '../../types/context-protocol.js';
 
-import { SearchResult } from './search.js';
-import { PhysicsResult } from './physics-tag-walker.js';
+import type { SearchResult } from './search.js';
+import type { PhysicsResult } from './physics-tag-walker.js';
 
 // =============================================================================
 // INTENT DETECTION — Lightweight, no LLM needed

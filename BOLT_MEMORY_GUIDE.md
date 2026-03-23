@@ -131,7 +131,7 @@ curl -X POST http://localhost:3161/v1/memory/search \
         "api_key": "bolt-memory-secret"
     },
     "database": {
-        "wipe_on_startup": false
+        "wipe_on_startup": true  // Default: database is ephemeral, data persists in inbox/
     },
     "ingestion": {
         "concept_density": "high",
@@ -145,9 +145,11 @@ curl -X POST http://localhost:3161/v1/memory/search \
 
 ### Critical Settings
 
-- **`wipe_on_startup: false`** - MUST be false to preserve data
+- **`wipe_on_startup: true`** - Default: database is ephemeral (data persists in `inbox/`)
 - **`port: 3161`** - Different from main engine (3160)
 - **`ingestion_profile: "chat"`** - Optimized for chat logs
+
+**Note:** The database is wiped and rebuilt on every startup. Your data is safe in `local-data/inbox/` (source of truth). See [Standard 020](specs/current-standards/020-ephemeral-database.md).
 
 ---
 
@@ -210,8 +212,14 @@ console.log('✅ Ready for ingestion!');
 
 ### Database Persistence
 
-- **`wipe_on_startup: true`** = All data lost on restart ❌
-- **`wipe_on_startup: false`** = Data persists ✅
+Anchor Engine uses an **ephemeral database** architecture:
+
+| Setting | Behavior | Data Persistence |
+|---------|----------|------------------|
+| **`wipe_on_startup: true`** (default) | Database wiped on startup | ✅ Data persists in `inbox/` - rebuilt automatically |
+| **`wipe_on_startup: false`** | Database retained | ⚠️ Risks corruption - not recommended |
+
+**Key Principle:** The database is a disposable cache. The `inbox/` directory is the source of truth and is never deleted.
 
 ### Watchdog Configuration
 
@@ -292,9 +300,16 @@ pnpm start
 
 ### Data Not Persisting
 
-1. Check `user_settings.json`: `"wipe_on_startup": false`
-2. Verify files are in `local-data/inbox/`
-3. Trigger manual ingestion: `curl -X POST http://localhost:3161/v1/watchdog/ingest`
+1. **Verify files are in `local-data/inbox/`** (source of truth)
+2. **Check engine logs** for rebuild progress: `tail -f engine/logs/server.log`
+3. **Trigger manual ingestion:** `curl -X POST http://localhost:3161/v1/watchdog/ingest`
+4. **If ingestion hangs:** Force kill and restart (database will auto-wipe and rebuild):
+   ```bash
+   pkill -9 -f "anchor-engine"
+   pnpm start
+   ```
+
+**Note:** With `wipe_on_startup: true` (default), the database rebuilds from `inbox/` on every startup. This is expected behavior.
 
 ### Search Returns No Results
 

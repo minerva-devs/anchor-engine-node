@@ -25,7 +25,7 @@ export const KNOWN_AGENTS = {
       // Alternative project pattern
       join(homedir(), '.qwen', 'projects'),
     ],
-    filePattern: /\.jsonl$/
+    filePattern: /\.jsonl$/,
   },
   claude: {
     id: 'claude',
@@ -39,7 +39,7 @@ export const KNOWN_AGENTS = {
       // Windows
       join(homedir(), 'AppData', 'Roaming', 'Claude', 'chats'),
     ],
-    filePattern: /\.jsonl$/
+    filePattern: /\.jsonl$/,
   },
   cursor: {
     id: 'cursor',
@@ -51,7 +51,7 @@ export const KNOWN_AGENTS = {
       // Windows
       join(homedir(), 'AppData', 'Roaming', 'Cursor', 'chats'),
     ],
-    filePattern: /\.jsonl$/
+    filePattern: /\.jsonl$/,
   },
   continue: {
     id: 'continue',
@@ -63,8 +63,8 @@ export const KNOWN_AGENTS = {
       // Windows
       join(homedir(), 'AppData', 'Roaming', 'Continue', 'chats'),
     ],
-    filePattern: /\.jsonl$/
-  }
+    filePattern: /\.jsonl$/,
+  },
 };
 
 export interface DiscoveredAgent {
@@ -82,7 +82,7 @@ export interface DiscoveredAgent {
  */
 async function checkAgentPath(
   agentPath: string,
-  filePattern: RegExp
+  filePattern: RegExp,
 ): Promise<{ exists: boolean; sessionCount: number; lastModified?: Date }> {
   try {
     const s = await stat(agentPath);
@@ -98,7 +98,7 @@ async function checkAgentPath(
     if (chatFiles.length > 0) {
       try {
         const fileStats = await Promise.all(
-          chatFiles.slice(0, 10).map(f => stat(join(agentPath, f)))
+          chatFiles.slice(0, 10).map(f => stat(join(agentPath, f))),
         );
         const maxTime = Math.max(...fileStats.map(fs => fs.mtimeMs));
         lastModified = new Date(maxTime);
@@ -110,7 +110,7 @@ async function checkAgentPath(
     return {
       exists: true,
       sessionCount: chatFiles.length,
-      lastModified
+      lastModified,
     };
   } catch {
     return { exists: false, sessionCount: 0 };
@@ -133,7 +133,7 @@ export async function discoverAgents(watchedPaths: string[] = []): Promise<Disco
       if (result.exists && result.sessionCount > 0) {
         // Check if this path is already being watched
         const isWatched = watchedPaths.some(p =>
-          p.includes(agentPath) || agentPath.includes(p)
+          p.includes(agentPath) || agentPath.includes(p),
         );
 
         discovered.push({
@@ -143,7 +143,7 @@ export async function discoverAgents(watchedPaths: string[] = []): Promise<Disco
           path: agentPath,
           sessionCount: result.sessionCount,
           isWatched,
-          lastModified: result.lastModified
+          lastModified: result.lastModified,
         });
 
         // Found this agent, move to next

@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.9.5] - 2026-03-23 — Search Cache, MCP File Reading, Version Alignment
+
+### ✨ New Features
+
+#### Search Cache with Invalidation (Standard 016)
+- **In-memory cache** with 60s TTL and 100-entry limit
+- **Automatic invalidation** on content ingestion (watchdog, ingest, atomic)
+- **~90% performance improvement** on repeated queries (954ms → 98ms)
+- **Cache key** based on query, buckets, max_chars, tags, provenance, strategy
+
+#### MCP File Reading Fix
+- **Direct filesystem reading** instead of API endpoint
+- **Multiple path resolution** (project root, local-data/inbox, local-data/distilled, mirrored_brain)
+- **Line range support** (`start_line`, `end_line`)
+- **Character limit** (`max_chars` parameter, default 10,000)
+- **Security**: Path validation to prevent directory traversal
+
+### 🔧 Technical
+
+- **Search cache** exported from `engine/src/services/search/search.ts`
+- **Cache invalidation** added to `ingest.ts`, `ingest-atomic.ts`, `watchdog.ts`
+- **MCP handleReadFile** rewritten to read from filesystem directly
+- **MCP README** updated with search prefix documentation
+
+### 📚 Documentation
+
+- **MCP README** - Added search prefixes section with examples
+- **CHANGELOG** - This file now includes v4.9.5 changes
+
+---
+
 ## [4.9.0] - 2026-03-22 — Agent Discovery, Graph Export, Ingestion Status API
 
 ### ✨ New Features

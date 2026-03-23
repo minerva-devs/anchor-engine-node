@@ -16,7 +16,7 @@
  */
 
 import { db } from '../../core/db.js';
-import { SearchResult } from './search.js';
+import type { SearchResult } from './search.js';
 import type {
   SearchConfig,
   ConnectionType,
@@ -38,8 +38,8 @@ async function sqlWithTimeout<T>(query: string, params: any[], timeoutMs: number
   return Promise.race([
     db.run(query, params) as Promise<T>,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`[PhysicsWalker] SQL query timed out after ${timeoutMs}ms`)), timeoutMs)
-    )
+      setTimeout(() => reject(new Error(`[PhysicsWalker] SQL query timed out after ${timeoutMs}ms`)), timeoutMs),
+    ),
   ]);
 }
 
@@ -133,7 +133,7 @@ export class PhysicsTagWalker {
     radius?: number,        // Uses instance WALK_RADIUS if not provided
     maxPerHop?: number,     // Uses instance MAX_PER_HOP if not provided
     temperature?: number,   // Uses instance TEMPERATURE if not provided
-    gravityThreshold?: number // Uses instance GRAVITY_THRESHOLD if not provided
+    gravityThreshold?: number, // Uses instance GRAVITY_THRESHOLD if not provided
   ): Promise<PhysicsResult[]> {
     // Use instance defaults if not overridden
     const hopRadius = radius ?? this.WALK_RADIUS;
@@ -141,8 +141,8 @@ export class PhysicsTagWalker {
     const hopTemperature = temperature ?? this.TEMPERATURE;
     const hopGravityThreshold = gravityThreshold ?? this.GRAVITY_THRESHOLD;
     
-    let currentAnchors = anchorIds;
-    let allPhysicsResults: PhysicsResult[] = [];
+    const currentAnchors = anchorIds;
+    const allPhysicsResults: PhysicsResult[] = [];
     const seenIds = new Set<string>(anchorIds); // Prevent revisiting anchors
 
     // We only support radius=1 fully optimized in SQL for now.
@@ -156,7 +156,7 @@ export class PhysicsTagWalker {
     const connectedNodes = await this.getConnectedNodesWeighted(
       currentAnchors,
       Math.min(hopMaxPerHop, 100), // Cap at 100 total to bound WASM heap (50 standard, 100 max-recall)
-      hopGravityThreshold
+      hopGravityThreshold,
     );
 
     for (const node of connectedNodes) {
@@ -208,8 +208,8 @@ export class PhysicsTagWalker {
           first_seen: node.timestamp,
           last_seen: node.timestamp,
           occurrence_count: node.frequency || 1,
-          timestamps: [node.timestamp]
-        }
+          timestamps: [node.timestamp],
+        },
       };
 
       const physics: PhysicsMetadata = {
@@ -220,7 +220,7 @@ export class PhysicsTagWalker {
         connection_type: connectionType,
         source_anchor_id: node.bestAnchorId || '',
         link_reason: linkReason,
-        hop_distance: node.hopDistance
+        hop_distance: node.hopDistance,
       };
 
       allPhysicsResults.push({ result, physics });
@@ -250,7 +250,7 @@ export class PhysicsTagWalker {
   private async getConnectedNodesWeighted(
     anchorIds: string[],
     limit: number = 50,
-    threshold: number = 0.1
+    threshold: number = 0.1,
   ): Promise<WalkerNode[]> {
     if (anchorIds.length === 0) return [];
 
@@ -480,7 +480,7 @@ export class PhysicsTagWalker {
       safeLimit,              // $3
       this.WALK_RADIUS,       // $4
       this.DAMPING_FACTOR,    // $5
-      this.TIME_DECAY_LAMBDA  // $6
+      this.TIME_DECAY_LAMBDA,  // $6
     ];
 
     try {
@@ -501,7 +501,7 @@ export class PhysicsTagWalker {
 
       // Debug: Log why we might have 0 results
       if (!result.rows || result.rows.length === 0) {
-        console.warn(`[PhysicsWalker] Zero results - checking potential causes:`);
+        console.warn('[PhysicsWalker] Zero results - checking potential causes:');
         console.warn(`[PhysicsWalker]  - Anchor count: ${anchorIds.length}`);
         console.warn(`[PhysicsWalker]  - Threshold: ${threshold}`);
         console.warn(`[PhysicsWalker]  - Limit: ${safeLimit}`);
@@ -525,7 +525,7 @@ export class PhysicsTagWalker {
         endByte: (row.end_byte !== null && row.end_byte !== undefined) ? row.end_byte : undefined,
         gravityScore: parseFloat(row.gravity_score),
         bestAnchorId: row.best_anchor_id,
-        hopDistance: row.hop_distance !== undefined ? parseInt(row.hop_distance) : undefined
+        hopDistance: row.hop_distance !== undefined ? parseInt(row.hop_distance) : undefined,
       }));
     } catch (e) {
       console.error(`[PhysicsWalker] SQL Weighting failed after ${Date.now() - startTime} ms: `, e);
@@ -541,11 +541,11 @@ export class PhysicsTagWalker {
   async applyPhysicsWeightingFromTags(
     anchorResults: SearchResult[],
     threshold: number = 0.1,
-    config?: Partial<SearchConfig>
+    config?: Partial<SearchConfig>,
   ): Promise<PhysicsResult[]> {
     // 1. Extract Tags
     const anchorTags = Array.from(
-      new Set(anchorResults.flatMap(r => (r.tags || []).filter(Boolean)))
+      new Set(anchorResults.flatMap(r => (r.tags || []).filter(Boolean))),
     );
     if (anchorTags.length === 0) return [];
 
@@ -594,8 +594,8 @@ export class PhysicsTagWalker {
           first_seen: node.timestamp,
           last_seen: node.timestamp,
           occurrence_count: node.frequency || 1,
-          timestamps: [node.timestamp]
-        }
+          timestamps: [node.timestamp],
+        },
       },
       physics: {
         gravity_score: node.sharedTags * 0.1,
@@ -604,8 +604,8 @@ export class PhysicsTagWalker {
         frequency: 1,
         connection_type: 'tag_walk_neighbor' as ConnectionType,
         source_anchor_id: 'virtual_tag_cloud',
-        link_reason: `via ${node.sharedTags} shared tag(s)`
-      }
+        link_reason: `via ${node.sharedTags} shared tag(s)`,
+      },
     })).sort((a, b) => b.physics.gravity_score - a.physics.gravity_score).slice(0, maxPerHop);
   }
 
@@ -660,10 +660,10 @@ export class PhysicsTagWalker {
         compoundId: row.compound_id || undefined,
         startByte: row.start_byte,
         endByte: row.end_byte,
-        gravityScore: 0 // Placeholder
+        gravityScore: 0, // Placeholder
       }));
     } catch (e) {
-      console.error(`[PhysicsWalker] getConnectedNodesFromTags failed: `, e);
+      console.error('[PhysicsWalker] getConnectedNodesFromTags failed: ', e);
       return [];
     }
   }
@@ -692,13 +692,13 @@ export class PhysicsTagWalker {
     anchorResults: SearchResult[],
     threshold: number = 0.1,
     config?: Partial<SearchConfig>,
-    maxChars?: number  // NEW: Budget hint for auto-tuning
+    maxChars?: number,  // NEW: Budget hint for auto-tuning
   ): Promise<PhysicsResult[]> {
     if (anchorResults.length === 0) return [];
 
     // Auto-tune parameters based on budget for high-recall queries
     let tunedThreshold = threshold;
-    let tunedConfig = { ...config };
+    const tunedConfig = { ...config };
 
     if (maxChars && maxChars > 50000) {
       // High-budget query: lower threshold, more candidates
@@ -714,7 +714,7 @@ export class PhysicsTagWalker {
       tunedConfig.walk_radius || 1,
       tunedConfig.max_per_hop || 50,
       tunedConfig.temperature || 0.2,
-      tunedThreshold
+      tunedThreshold,
     );
   }
 
@@ -723,7 +723,7 @@ export class PhysicsTagWalker {
    */
   async applyPhysicsWeightingLegacy(
     anchorResults: SearchResult[],
-    threshold: number = 0.1
+    threshold: number = 0.1,
   ): Promise<SearchResult[]> {
     const results = await this.applyPhysicsWeighting(anchorResults, threshold);
     return results.map(r => r.result);

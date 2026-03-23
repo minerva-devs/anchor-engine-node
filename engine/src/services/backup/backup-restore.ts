@@ -67,7 +67,7 @@ export async function restoreFromBackup(filename: string): Promise<RestoreStats>
         files_restored: 0,
         inbox_restored: 0,
         external_inbox_restored: 0,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
     };
 
     // Parse backup file
@@ -97,7 +97,7 @@ export async function restoreFromBackup(filename: string): Promise<RestoreStats>
                    hash = EXCLUDED.hash,
                    total_atoms = EXCLUDED.total_atoms,
                    last_ingest = EXCLUDED.last_ingest`,
-                params
+                params,
             );
         }
     }
@@ -118,7 +118,7 @@ export async function restoreFromBackup(filename: string): Promise<RestoreStats>
                 atom.id, atom.timestamp, atom.content, atom.source_path,
                 atom.source_id, atom.sequence, atom.type, atom.hash,
                 atom.buckets, atom.tags, atom.epochs, atom.provenance,
-                atom.simhash, atom.embedding
+                atom.simhash, atom.embedding,
             );
             stats.memory_count++;
         }
@@ -141,7 +141,7 @@ export async function restoreFromBackup(filename: string): Promise<RestoreStats>
                    provenance = EXCLUDED.provenance,
                    simhash = EXCLUDED.simhash,
                    embedding = EXCLUDED.embedding`,
-                params
+                params,
             );
         }
     }
@@ -168,16 +168,16 @@ export async function restoreFromBackup(filename: string): Promise<RestoreStats>
                  VALUES ${placeholders.join(', ')}
                  ON CONFLICT (key) DO UPDATE SET
                    value = EXCLUDED.value`,
-                params
+                params,
             );
         }
     }
 
     // Rebuild inbox/external-inbox from sources
-    console.log(`[Phoenix] ≡ƒôü Rebuilding inbox/external-inbox folder structure...`);
+    console.log('[Phoenix] ≡ƒôü Rebuilding inbox/external-inbox folder structure...');
     await rebuildInboxFromSources(backupData.sources, backupData.atoms, stats);
 
-    console.log(`[Phoenix] Γ£à Restore complete!`, stats);
+    console.log('[Phoenix] Γ£à Restore complete!', stats);
     return stats;
 }
 
@@ -188,10 +188,10 @@ export async function restoreFromBackup(filename: string): Promise<RestoreStats>
 async function rebuildInboxFromSources(
     sources: BackupSource[],
     atoms: BackupAtom[],
-    stats: RestoreStats
+    stats: RestoreStats,
 ): Promise<void> {
-    const INBOX_DIR = PATHS.INBOX_DIR;
-    const EXTERNAL_INBOX_DIR = PATHS.EXTERNAL_INBOX_DIR;
+    const { INBOX_DIR } = PATHS;
+    const { EXTERNAL_INBOX_DIR } = PATHS;
 
     // Ensure directories exist
     if (!fs.existsSync(INBOX_DIR)) {
@@ -372,16 +372,12 @@ async function parseBackupFile(filePath: string): Promise<{
                             }
                             currentObject = '';
                         }
-                    } else {
-                        if (braceCount > 0) {
+                    } else if (braceCount > 0) {
                             currentObject += char;
                         }
-                    }
-                } else {
-                    if (braceCount > 0) {
+                } else if (braceCount > 0) {
                         currentObject += char;
                     }
-                }
 
                 i++;
             }
@@ -451,7 +447,7 @@ export async function validateBackup(filename: string): Promise<{
                 valid: true,
                 size: fileSize,
                 sizeFormatted: formatFileSize(fileSize),
-                note: 'Large file - full validation skipped for performance'
+                note: 'Large file - full validation skipped for performance',
             };
         }
         
@@ -479,7 +475,7 @@ export async function validateBackup(filename: string): Promise<{
         return { 
             valid: true,
             size: fileSize,
-            sizeFormatted: formatFileSize(fileSize)
+            sizeFormatted: formatFileSize(fileSize),
         };
     } catch (error: any) {
         return { valid: false, error: `Validation error: ${error.message}` };

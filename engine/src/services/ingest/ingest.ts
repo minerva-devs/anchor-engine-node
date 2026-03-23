@@ -3,6 +3,10 @@
  *
  * Implements the Data Provenance feature by adding a 'provenance' column
  * to distinguish between "Sovereign" (User-Created) and "Ancillary" (External) data.
+ * 
+ * Standard 016: Search Cache Invalidation
+ * - Invalidates search cache on content ingestion
+ * - Ensures fresh results after new content is added
  */
 
 import { db } from '../../core/db.js';
@@ -11,6 +15,7 @@ import * as path from 'path';
 import { config } from '../../config/index.js';
 import { PATHS } from '../../config/paths.js';
 import { cleanContent, getCleaningStats } from './content-cleaner.js';
+import { searchCache } from '../search/search.js';
 
 interface IngestOptions {
   atomize?: boolean;
@@ -57,7 +62,7 @@ export async function ingestContent(
   type: string = 'text',
   buckets: string[] = ['core'],
   tags: string[] = [],
-  options: IngestOptions = {}
+  options: IngestOptions = {},
 ): Promise<{ status: string; id?: string; message?: string }> {
 
   if (!content) {
@@ -80,7 +85,7 @@ export async function ingestContent(
       normalizeWhitespace: true,
       removeBoilerplate: type === 'web_page',
       normalizeLineEndings: true,
-      collapseBlankLines: true
+      collapseBlankLines: true,
     };
 
     processedContent = cleanContent(content, cleanOptions);
@@ -98,14 +103,14 @@ export async function ingestContent(
   const hash = crypto.createHash('md5').update(processedContent).digest('hex');
 
   // Check if content with same hash already exists
-  const existingQuery = `SELECT id FROM atoms WHERE simhash = $1`;
+  const existingQuery = 'SELECT id FROM atoms WHERE simhash = $1';
   const existingResult = await db.run(existingQuery, [BigInt(hash)]);
 
   if (existingResult.rows && existingResult.rows.length > 0) {
     return {
       status: 'skipped',
       id: existingResult.rows[0][0],
-      message: 'Content with same hash already exists'
+      message: 'Content with same hash already exists',
     };
   }
 
@@ -127,7 +132,7 @@ export async function ingestContent(
     processedContent,
     source,
     atomizerProvenance,
-    timestamp
+    timestamp,
   );
 
   // Skip ingestion if transient data was detected
@@ -135,7 +140,7 @@ export async function ingestContent(
     console.log(`[Ingest] ⚠️ SKIP: ${source} - Transient data detected, skipping ingestion`);
     return {
       status: 'skipped',
-      message: 'Content skipped (transient data)'
+      message: 'Content skipped (transient data)',
     };
   }
 
@@ -144,11 +149,16 @@ export async function ingestContent(
   // Ingest result using AtomicIngestService
   await atomicIngest.ingestResult(compound, molecules, atoms, buckets);
 
+  // Standard 016: Invalidate search cache on successful ingestion
+  // This ensures fresh search results after new content is added
+  searchCache.clear();
+  console.log('[Ingest] ✅ Search cache invalidated after ingestion');
+
   // Return success (ID is compound ID)
   return {
     status: 'success',
     id: compound.id,
-    message: 'Content ingested successfully with provenance tracking'
+    message: 'Content ingested successfully with provenance tracking',
   };
 }
 
@@ -178,7 +188,7 @@ export async function ingestAtoms(
   source: string,
   buckets: string[] = ['core'],
   tags: string[] = [], // Batch-level tags (e.g., "inbox")
-  fileTimestamp?: number
+  fileTimestamp?: number,
 ): Promise<number> {
 
   if (atoms.length === 0) return 0;
@@ -225,7 +235,7 @@ export async function ingestAtoms(
         simhashBigInt || 0n,
         embeddingArray,
         atom.provenance,
-        payloadJson
+        payloadJson,
       );
       paramIndex += 8;
     }
@@ -306,7 +316,7 @@ export async function importYamlContent(yamlContent: any[]): Promise<{ imported:
         record.source || 'yaml_import',
         record.type || 'text',
         record.buckets || ['imported'],
-        record.tags || []
+        record.tags || [],
       );
 
       if (result.status === 'success') {

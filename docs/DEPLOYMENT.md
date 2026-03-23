@@ -68,11 +68,13 @@ docker-compose down
 ```
 
 **Volumes:**
-- `./inbox` → Auto-ingested files
-- `./external-inbox` → External sources
-- `./mirrored_brain` → Source of truth
+- `./inbox` → **Source of Truth** - Permanent storage for ingested files
+- `./external-inbox` → **Source of Truth** - External data imports
+- `./mirrored_brain` → Rebuildable cache (regenerated on startup)
 - `./backups` → Phoenix Protocol backups
-- `anchor-data` → PGlite database (persistent)
+- `anchor-data` → PGlite database (ephemeral, wiped on startup)
+
+**Important:** The database is ephemeral and wiped on every startup. Only `inbox/` and `external-inbox/` need persistent volumes. See [Standard 020](../specs/current-standards/020-ephemeral-database.md).
 
 **Environment Variables:**
 ```yaml
@@ -198,6 +200,69 @@ spec:
 
 ---
 
+## Ephemeral Database Architecture
+
+Anchor Engine uses an **ephemeral database** pattern. The PGlite database is automatically wiped and rebuilt on every startup. This is an intentional design decision that prevents corruption and ensures a clean state.
+
+### Source of Truth
+
+| Directory | Role | Persistence |
+|-----------|------|-------------|
+| `inbox/` | **Source of Truth** | ✅ Permanent - never deleted |
+| `external-inbox/` | **Source of Truth** | ✅ Permanent - never deleted |
+| `mirrored_brain/` | Rebuildable Cache | 🔄 Wiped on startup |
+| PGlite Database | Ephemeral Index | 🔄 Wiped on startup |
+
+### Why Wipe on Startup?
+
+1. **Prevents Corruption**: PGlite (WASM PostgreSQL) can become corrupted from unclean shutdowns
+2. **Eliminates "Hanging Ingestion"**: Corrupted databases cause ingestion to hang silently
+3. **Deterministic State**: Every startup begins from a known good state
+4. **No Data Loss**: Data is preserved in `inbox/` and rebuilt automatically
+
+### Startup Sequence
+
+```
+1. Wipe PGlite database directory
+2. Wipe mirrored_brain/ directory
+3. Initialize fresh PGlite instance
+4. Mirror Protocol: Copy inbox/ → mirrored_brain/
+5. Ingest mirrored_brain/ into database
+6. Start accepting queries
+```
+
+### Configuration
+
+**Default (Recommended):**
+```json
+{
+  "database": {
+    "wipe_on_startup": true
+  }
+}
+```
+
+⚠️ **Never set `wipe_on_startup: false`** for performance reasons. This causes corruption accumulation and leads to the "hanging ingestion" bug.
+
+### Recovery from Corruption
+
+If the engine hangs during ingestion:
+
+```bash
+# 1. Force kill
+pkill -9 -f "anchor-engine"
+
+# 2. Restart (automatic wipe and rebuild)
+pnpm start
+
+# 3. Monitor progress
+tail -f engine/logs/server.log
+```
+
+See [Standard 020: Ephemeral Database](../specs/current-standards/020-ephemeral-database.md) for complete details.
+
+---
+
 ## Configuration
 
 ### user_settings.json
@@ -213,7 +278,7 @@ spec:
     "api_key": "your-secret-key"
   },
   "database": {
-    "wipe_on_startup": false
+    "wipe_on_startup": true  // Default: wipe and rebuild on every startup
   },
   "watcher": {
     "debounce_ms": 2000,

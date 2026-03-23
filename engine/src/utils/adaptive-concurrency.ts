@@ -112,7 +112,7 @@ export function getSystemMemoryInfo(config?: ConcurrencyConfig): SystemMemoryInf
     usedMB,
     usagePercent,
     isLowMemory: freeMB < thresholds.sequentialThresholdMB,
-    isHighMemory: freeMB > thresholds.parallelThresholdMB
+    isHighMemory: freeMB > thresholds.parallelThresholdMB,
   };
 }
 
@@ -163,7 +163,7 @@ function getThresholds(config?: ConcurrencyConfig) {
                         (userSettings.high_memory_batch_size ?? 20),
     forceSequential,
     forceParallel,
-    environmentMode
+    environmentMode,
   };
 }
 
@@ -233,7 +233,7 @@ export function getOptimalConcurrency(config?: ConcurrencyConfig): number {
 export async function processWithAdaptiveConcurrency<T, R>(
   items: T[],
   processor: (item: T, index: number) => Promise<R>,
-  config?: ConcurrencyConfig
+  config?: ConcurrencyConfig,
 ): Promise<R[]> {
   const results: R[] = [];
   const concurrency = getOptimalConcurrency(config);
@@ -260,7 +260,7 @@ export async function processWithAdaptiveConcurrency<T, R>(
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
       const batchPromises = batch.map((item, batchIndex) => 
-        processor(item, i + batchIndex)
+        processor(item, i + batchIndex),
       );
       
       const batchResults = await Promise.all(batchPromises);
@@ -283,7 +283,7 @@ export async function processWithAdaptiveConcurrency<T, R>(
 export async function processInBatches<T, R>(
   items: T[],
   processor: (item: T, index: number) => Promise<R>,
-  batchSize: number = getOptimalBatchSize()
+  batchSize: number = getOptimalBatchSize(),
 ): Promise<R[]> {
   const results: R[] = [];
   
@@ -337,7 +337,7 @@ export const AdaptiveConcurrency = {
   processWithAdaptiveConcurrency,
   processInBatches,
   getConcurrencySummary,
-  getCurrentEnvironmentMode
+  getCurrentEnvironmentMode,
 };
 
 export default AdaptiveConcurrency;

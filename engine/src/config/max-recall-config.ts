@@ -30,7 +30,7 @@ export const MAX_RECALL_CONFIG = {
     temperature: 0.8,          // High serendipity (0.0 = deterministic, 1.0 = maximum random)
     gravity_threshold: 0.0,    // No minimum gravity score - include weak connections
     max_per_hop: 200,          // Expand aggressively: 200 nodes per hop
-    walk_radius: 3             // Full 3-hop radial inflation
+    walk_radius: 3,             // Full 3-hop radial inflation
   },
   
   // Query Expansion
@@ -39,7 +39,7 @@ export const MAX_RECALL_CONFIG = {
     max_synonyms_per_term: 10,             // Get up to 10 synonyms per term
     use_semantic_expansion: true,          // Use @rbalchii/dse semantic expansion
     use_query_splitting: true,             // Split complex queries into molecules
-    use_enhanced_tag_walker: true          // Always use enhanced tag-walker
+    use_enhanced_tag_walker: true,          // Always use enhanced tag-walker
   },
   
   // Context Assembly
@@ -49,8 +49,8 @@ export const MAX_RECALL_CONFIG = {
     include_simhash_distance: true,        // Show content similarity scores
     include_association_path: true,        // Show which tags connected to query
     deduplicate_by_simhash: true,          // Remove near-duplicates (hamming < 5)
-    sort_by: 'gravity' as const            // Sort by gravity score (comprehensive weighting)
-  }
+    sort_by: 'gravity' as const,            // Sort by gravity score (comprehensive weighting)
+  },
 };
 
 /**
@@ -59,7 +59,7 @@ export const MAX_RECALL_CONFIG = {
 export const DEFAULT_COMPARISON = {
   parameter: ['temporal_decay', 'damping', 'max_hops', 'min_relevance', 'temperature', 'max_per_hop'],
   default:   [0.00001,     0.85,     1,        0.3,            0.2,         50],
-  maxRecall: [0.0,        1.0,      3,        0.0,            0.8,         200]
+  maxRecall: [0.0,        1.0,      3,        0.0,            0.8,         200],
 };
 
 /**
@@ -85,8 +85,8 @@ export function getRecallConfig(mode: 'maximum' | 'balanced' | 'focused') {
         temperature: 0.1,
         gravity_threshold: 0.5,
         max_per_hop: 20,
-        walk_radius: 1
-      }
+        walk_radius: 1,
+      },
     };
   }
   
@@ -103,7 +103,7 @@ export function getRecallConfig(mode: 'maximum' | 'balanced' | 'focused') {
       temperature: 0.2,
       gravity_threshold: 0.01,
       max_per_hop: 50,
-      walk_radius: 1
-    }
+      walk_radius: 1,
+    },
   };
 }

@@ -1,4 +1,4 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { validate, schemas } from '../../middleware/validate.js';
@@ -57,7 +57,7 @@ export function setupResearchRoutes(app: Application) {
   // Web Search Endpoint
   app.get('/v1/research/web-search', async (req: Request, res: Response) => {
     try {
-      const q = req.query['q'] as string;
+      const q = req.query.q as string;
       if (!q) {
         res.status(400).json({ error: 'Query required' });
         return;
@@ -85,7 +85,7 @@ export function setupResearchRoutes(app: Application) {
 
   app.post('/v1/research/github', async (req: Request, res: Response) => {
     try {
-      const body = req.body as any;
+      const { body } = req;
       // UI sends 'repo', but we also support 'url' for compatibility
       const repoUrl = body.repo || body.url as string;
       const bucket = body.bucket as string || 'code';

@@ -1,4 +1,4 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import { validate, schemas } from '../../middleware/validate.js';
 
 export function setupGitRoutes(app: Application) {
@@ -6,10 +6,11 @@ export function setupGitRoutes(app: Application) {
   // POST /v1/github/repos - Register new repo and trigger initial ingestion
   app.post('/v1/github/repos', validate(schemas.githubRepos), async (req: Request, res: Response) => {
     try {
-      const body = req.body as any;
+      const { body } = req;
       const url = body.url as string;
       const bucket = body.bucket as string;
       const includeHistory = body.include_history === true;
+      const runAnalysis = body.run_analysis === true;
 
       const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();
@@ -20,7 +21,7 @@ export function setupGitRoutes(app: Application) {
       // Start async ingestion (don't wait for completion)
       (async () => {
         try {
-          await service.syncRepo(repo.id);
+          await service.syncRepo(repo.id, { runAnalysis });
           if (includeHistory) {
             const token = process.env.GITHUB_TOKEN;
             await service.ingestGitHistory(repo.owner, repo.repo, repo.branch, bucket, token);
@@ -31,11 +32,16 @@ export function setupGitRoutes(app: Application) {
         }
       })();
 
+      const features: string[] = [];
+      if (includeHistory) features.push('commit history');
+      if (runAnalysis) features.push('code analysis');
+
       res.status(202).json({
         id: repo.id,
         status: 'ingesting',
         include_history: includeHistory,
-        message: `Started ingestion for ${repo.owner}/${repo.repo}${includeHistory ? ' (with full commit history)' : ''}`,
+        run_analysis: runAnalysis,
+        message: `Started ingestion for ${repo.owner}/${repo.repo}${features.length ? ` (with ${features.join(' and ')})` : ''}`,
       });
     } catch (error: any) {
       console.error('[API] GitHub repo registration error:', error);
@@ -60,19 +66,21 @@ export function setupGitRoutes(app: Application) {
   app.post('/v1/github/repos/:id/sync', async (req: Request, res: Response) => {
     try {
       const id = req.params.id as string;
+      const runAnalysis = req.body?.run_analysis === true;
 
       const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();
 
       // Start async sync
-      service.syncRepo(id).catch((error: any) => {
+      service.syncRepo(id, { runAnalysis }).catch((error: any) => {
         console.error(`[API] Background sync failed for ${id}:`, error);
       });
 
       res.status(202).json({
         id,
         status: 'syncing',
-        message: 'Sync started',
+        run_analysis: runAnalysis,
+        message: `Sync started${runAnalysis ? ' (with code analysis)' : ''}`,
       });
     } catch (error: any) {
       console.error('[API] GitHub sync trigger error:', error);
@@ -153,7 +161,7 @@ export function setupGitRoutes(app: Application) {
         try {
           // Try to get credential helper status
           const { stdout } = await execPromise('git config --global credential.helper', {
-            timeout: 5000
+            timeout: 5000,
           });
           if (stdout.trim()) {
             source = `git credential.helper: ${stdout.trim()}`;
@@ -178,7 +186,7 @@ export function setupGitRoutes(app: Application) {
               'Authorization': `token ${token}`,
               'Accept': 'application/vnd.github.v3+json',
               'User-Agent': 'anchor-engine-node',
-            }
+            },
           });
 
           if (response.ok) {
@@ -235,7 +243,7 @@ export function setupGitRoutes(app: Application) {
       basePath,
       path.join(basePath, '..'),
       path.join(basePath, '..', '..'),
-      PROJECT_ROOT
+      PROJECT_ROOT,
     ];
 
     for (const dir of checkDirs) {
@@ -302,7 +310,7 @@ export function setupGitRoutes(app: Application) {
         'diff': ['diff'],
         'diff --cached': ['diff', '--cached'],
         'branch -a': ['branch', '-a'],
-        'remote -v': ['remote', '-v']
+        'remote -v': ['remote', '-v'],
       };
 
       if (!(command in allowedCommands)) {
@@ -317,13 +325,13 @@ export function setupGitRoutes(app: Application) {
         const { stdout, stderr } = await execFilePromise('git', args, {
           cwd: absoluteRequestedDir,
           encoding: 'utf8',
-          timeout: 30000 // 30 second timeout
+          timeout: 30000, // 30 second timeout
         });
 
         res.status(200).json({
           command,
           output: stdout || stderr,
-          success: true
+          success: true,
         });
       } catch (execError: any) {
         // Git command failed - return error output
@@ -331,7 +339,7 @@ export function setupGitRoutes(app: Application) {
           command,
           output: execError.stdout || '',
           error: execError.stderr || execError.message,
-          success: false
+          success: false,
         });
       }
     } catch (error: any) {

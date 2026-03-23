@@ -4,7 +4,7 @@
  * Implements comprehensive request tracing for debugging and monitoring
  */
 
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { logWithContext } from '../utils/structured-logger.js';
 import { performanceMonitor } from '../utils/performance-monitor.js';
@@ -53,8 +53,8 @@ export const requestTracingMiddleware = () => {
       metadata: {
         headers: getTraceableHeaders(req),
         query: req.query,
-        params: req.params
-      }
+        params: req.params,
+      },
     };
 
     // Store trace info in request
@@ -66,7 +66,7 @@ export const requestTracingMiddleware = () => {
       method: req.method,
       url: req.url,
       ip: traceInfo.ip,
-      userAgent: traceInfo.userAgent
+      userAgent: traceInfo.userAgent,
     });
 
     // Start performance tracking for this request
@@ -90,7 +90,7 @@ export const requestTracingMiddleware = () => {
         url: req.url,
         statusCode: res.statusCode,
         duration,
-        ip: traceInfo.ip
+        ip: traceInfo.ip,
       });
 
       // If there was an error status, log it specifically
@@ -101,7 +101,7 @@ export const requestTracingMiddleware = () => {
           url: req.url,
           statusCode: res.statusCode,
           duration,
-          ip: traceInfo.ip
+          ip: traceInfo.ip,
         });
       }
 
@@ -116,13 +116,13 @@ export const requestTracingMiddleware = () => {
         traceId,
         method: req.method,
         url: req.url,
-        ip: traceInfo.ip
+        ip: traceInfo.ip,
       });
     });
 
     next();
   };
-}
+};
 
 // Function to extract traceable headers (avoid logging sensitive data)
 function getTraceableHeaders(req: Request): Record<string, string> {
@@ -136,7 +136,7 @@ function getTraceableHeaders(req: Request): Record<string, string> {
     'x-correlation-id',
     'authorization', // Only the prefix will be logged
     'x-forwarded-for',
-    'x-real-ip'
+    'x-real-ip',
   ];
 
   for (const [key, value] of Object.entries(req.headers)) {

@@ -108,8 +108,8 @@ function generateMarkdownReport(report: any): string {
   md += `- **Tag clusters:** ${report.tagClusters.length}\n\n`;
   
   md += '## Statistics\n\n';
-  md += `| Metric | Value |\n`;
-  md += `|--------|-------|\n`;
+  md += '| Metric | Value |\n';
+  md += '|--------|-------|\n';
   md += `| Average tags per atom | ${report.statistics.avgTagsPerAtom.toFixed(2)} |\n`;
   md += `| Median tags per atom | ${report.statistics.medianTagsPerAtom} |\n`;
   md += `| Max tags in atom | ${report.statistics.maxTagsInAtom} |\n`;
@@ -157,7 +157,7 @@ function generateMarkdownReport(report: any): string {
 async function interactiveReview(report: any) {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
   
   const question = (prompt: string): Promise<string> => 

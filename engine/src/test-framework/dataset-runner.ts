@@ -4,7 +4,7 @@
  * Implements configurable test setups for different data sizes and types
  */
 
-import { TestFramework, TestConfig, TestSuiteConfig } from './core.js';
+import type { TestFramework, TestConfig, TestSuiteConfig } from './core.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -83,7 +83,7 @@ export class DatasetTestRunner {
 
           console.log(`✅ Dataset ${dataset.name} is accessible at ${dataset.path}`);
         },
-        timeout: dataset.timeout || 10000
+        timeout: dataset.timeout || 10000,
       },
       {
         name: 'Ingestion Performance Test',
@@ -110,7 +110,7 @@ export class DatasetTestRunner {
             console.warn(`⚠️  Ingestion rate below expected threshold: ${ingestionRate.toFixed(2)} atoms/sec`);
           }
         },
-        timeout: (dataset.timeout || 30000) * this.getTimeoutMultiplierForSize(dataset.size)
+        timeout: (dataset.timeout || 30000) * this.getTimeoutMultiplierForSize(dataset.size),
       },
       {
         name: 'Search Functionality Test',
@@ -139,8 +139,8 @@ export class DatasetTestRunner {
 
           console.log(`✅ Search functionality verified with ${dataset.name} dataset`);
         },
-        timeout: (dataset.timeout || 20000) * this.getTimeoutMultiplierForSize(dataset.size)
-      }
+        timeout: (dataset.timeout || 20000) * this.getTimeoutMultiplierForSize(dataset.size),
+      },
     ];
 
     // Combine default tests with custom tests
@@ -152,7 +152,7 @@ export class DatasetTestRunner {
       tests: allTests,
       timeout: dataset.timeout,
       environment: 'integration',
-      tags: ['dataset', dataset.name, dataset.size, ...dataset.tags]
+      tags: ['dataset', dataset.name, dataset.size, ...dataset.tags],
     } as TestSuiteConfig;
   }
 
@@ -219,7 +219,7 @@ export class DatasetTestRunner {
     const baseQueries = [
       'test query',
       'performance check',
-      'search functionality'
+      'search functionality',
     ];
 
     // Add more queries for larger datasets
@@ -227,7 +227,7 @@ export class DatasetTestRunner {
       baseQueries.push(
         'complex search query',
         'multi-term search',
-        'relationship discovery'
+        'relationship discovery',
       );
     }
 
@@ -235,7 +235,7 @@ export class DatasetTestRunner {
       baseQueries.push(
         'deep semantic search',
         'cross-reference query',
-        'multi-dimensional search'
+        'multi-dimensional search',
       );
     }
 
@@ -260,7 +260,7 @@ export const PREDEFINED_DATASETS: DatasetConfig[] = [
     size: 'small',
     path: './test-data/minimal',
     tags: ['smoke', 'quick', 'ci'],
-    timeout: 15000
+    timeout: 15000,
   },
   {
     name: 'standard',
@@ -268,7 +268,7 @@ export const PREDEFINED_DATASETS: DatasetConfig[] = [
     size: 'medium',
     path: './test-data/standard',
     tags: ['regression', 'feature'],
-    timeout: 45000
+    timeout: 45000,
   },
   {
     name: 'stress',
@@ -276,7 +276,7 @@ export const PREDEFINED_DATASETS: DatasetConfig[] = [
     size: 'large',
     path: './test-data/stress',
     tags: ['performance', 'stress', 'load'],
-    timeout: 120000
+    timeout: 120000,
   },
   {
     name: 'benchmark',
@@ -284,8 +284,8 @@ export const PREDEFINED_DATASETS: DatasetConfig[] = [
     size: 'xl',
     path: './test-data/benchmark',
     tags: ['benchmark', 'capacity', 'endurance'],
-    timeout: 300000  // 5 minutes for XL dataset
-  }
+    timeout: 300000,  // 5 minutes for XL dataset
+  },
 ];
 
 // Initialize with predefined datasets

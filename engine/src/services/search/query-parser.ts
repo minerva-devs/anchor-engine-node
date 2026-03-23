@@ -218,7 +218,7 @@ export function extractKeyTermsFromConversation(conversation: string): string[] 
     const doc = nlp.readDoc(conversation);
 
     // Extract named entities (people, places, organizations)
-    const entities: string[] = doc.entities().out((nlp as any).its.normal) as string[];
+    const entities: string[] = doc.entities().out((nlp as any).its.normal);
 
     // Extract important tokens (nouns, proper nouns, adjectives, verbs)
     const importantTokens: string[] = doc.tokens().filter((t: any) => {
@@ -230,7 +230,7 @@ export function extractKeyTermsFromConversation(conversation: string): string[] 
 
         // Include important POS tags
         return tag === 'NOUN' || tag === 'PROPN' || tag === 'ADJ' || tag === 'VERB';
-    }).out((nlp as any).its.normal) as string[];
+    }).out((nlp as any).its.normal);
 
     // Combine and deduplicate
     const allTerms: string[] = [...new Set([...entities, ...importantTokens])];
@@ -242,7 +242,7 @@ export function extractKeyTermsFromConversation(conversation: string): string[] 
         'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could',
         'should', 'may', 'might', 'must', 'can', 'shall', 'this', 'that', 'these', 'those',
         'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
-        'what', 'which', 'who', 'when', 'where', 'why', 'how', 'whose', 'whom'
+        'what', 'which', 'who', 'when', 'where', 'why', 'how', 'whose', 'whom',
     ]);
 
     return allTerms.filter(term => !stopWords.has(term.toLowerCase()) && term.length > 2);
@@ -315,14 +315,14 @@ export function expandConversationalQuery(query: string): string[] {
 
     // Common conversational patterns
     const patterns = [
-        { pattern: /what is the (latest|current|recent) (.+)/i, replacement: "$2" },
-        { pattern: /tell me about (.+)/i, replacement: "$1" },
-        { pattern: /how is (.+) doing/i, replacement: "$1" },
-        { pattern: /what's happening with (.+)/i, replacement: "$1" },
-        { pattern: /what do you know about (.+)/i, replacement: "$1" },
-        { pattern: /explain (.+)/i, replacement: "$1" },
-        { pattern: /describe (.+)/i, replacement: "$1" },
-        { pattern: /summarize (.+)/i, replacement: "$1" }
+        { pattern: /what is the (latest|current|recent) (.+)/i, replacement: '$2' },
+        { pattern: /tell me about (.+)/i, replacement: '$1' },
+        { pattern: /how is (.+) doing/i, replacement: '$1' },
+        { pattern: /what's happening with (.+)/i, replacement: '$1' },
+        { pattern: /what do you know about (.+)/i, replacement: '$1' },
+        { pattern: /explain (.+)/i, replacement: '$1' },
+        { pattern: /describe (.+)/i, replacement: '$1' },
+        { pattern: /summarize (.+)/i, replacement: '$1' },
     ];
 
     for (const p of patterns) {

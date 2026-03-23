@@ -5,7 +5,7 @@
  * following Standard 058: UniversalRAG API
  */
 
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import { executeSearch, getGlobalTags } from '../services/search/search.js';
 import { db } from '../core/db.js';
 
@@ -42,7 +42,7 @@ export function setupEnhancedRoutes(app: Application) {
         [], // explicitTags
         undefined, // filters
         false, // useMaxRecall
-        user_context
+        user_context,
       );
 
       // Optionally include Bright Node graph data
@@ -56,13 +56,13 @@ export function setupEnhancedRoutes(app: Application) {
         results: searchResults.results,
         context: searchResults.context,
         graph: graphData,
-        metadata: searchResults.metadata
+        metadata: searchResults.metadata,
       });
     } catch (error: any) {
       console.error('Enhanced search failed:', error);
       res.status(500).json({
         error: error.message,
-        query: req.body?.query || ''
+        query: req.body?.query || '',
       });
     }
   });
@@ -82,13 +82,13 @@ export function setupEnhancedRoutes(app: Application) {
         query: searchQuery,
         nodes: brightNodes,
         count: brightNodes.length,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
       console.error('Bright Nodes request failed:', error);
       res.status(500).json({
         error: error.message,
-        query: req.body?.query || ''
+        query: req.body?.query || '',
       });
     }
   });
@@ -108,7 +108,7 @@ export function setupEnhancedRoutes(app: Application) {
       console.error('Graph structure request failed:', error);
       res.status(500).json({
         error: error.message,
-        query: req.body?.query || ''
+        query: req.body?.query || '',
       });
     }
   });
@@ -121,12 +121,12 @@ export function setupEnhancedRoutes(app: Application) {
       res.status(200).json({
         tags,
         count: tags.length,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error: any) {
       console.error('Global tags request failed:', error);
       res.status(500).json({
-        error: error.message
+        error: error.message,
       });
     }
   });
@@ -146,15 +146,15 @@ export function setupEnhancedRoutes(app: Application) {
         memoryUsage: process.memoryUsage(),
         env: {
           NODE_ENV: process.env.NODE_ENV,
-          ECE_ENV: process.env.ECE_ENV
-        }
+          ECE_ENV: process.env.ECE_ENV,
+        },
       };
 
       res.status(200).json(systemInfo);
     } catch (error: any) {
       console.error('System info request failed:', error);
       res.status(500).json({
-        error: error.message
+        error: error.message,
       });
     }
   });

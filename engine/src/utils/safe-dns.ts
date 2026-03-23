@@ -82,7 +82,7 @@ export function isPrivateIP(ip: string): boolean {
 export function safeLookup(
     hostname: string,
     options: dns.LookupOptions,
-    callback: (err: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family?: number) => void
+    callback: (err: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family?: number) => void,
 ): void {
     dns.lookup(hostname, options, (err, address, family) => {
         if (err) {

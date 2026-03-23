@@ -164,7 +164,7 @@ export class AutoSynonymGenerator {
               term1,
               term2,
               score: jaccard,
-              strategy: 'tag_neighborhood'
+              strategy: 'tag_neighborhood',
             });
 
             if (!pairs.has(term2)) {
@@ -175,7 +175,7 @@ export class AutoSynonymGenerator {
               term1: term2,
               term2: term1,
               score: jaccard,
-              strategy: 'tag_neighborhood'
+              strategy: 'tag_neighborhood',
             });
           }
         }
@@ -244,7 +244,7 @@ export class AutoSynonymGenerator {
         return {
           ...atom,
           terms: extractTerms(atom.content),
-          hashBigInt
+          hashBigInt,
         };
       });
 
@@ -300,7 +300,7 @@ export class AutoSynonymGenerator {
             term1,
             term2,
             score: frequency, // Use frequency as score (higher = more reliable)
-            strategy: 'simhash_proximity'
+            strategy: 'simhash_proximity',
           });
         }
       }
@@ -324,7 +324,7 @@ export class AutoSynonymGenerator {
     const [cooccurrence, neighborhood, simhash] = await Promise.all([
       this.mineCooccurrenceSynonyms(),
       this.mineTagNeighborhoodSynonyms(),
-      this.mineSimHashSynonyms()
+      this.mineSimHashSynonyms(),
     ]);
 
     // Build synonym rings directly from each strategy
@@ -394,7 +394,7 @@ export class AutoSynonymGenerator {
 
     try {
       // Save directly to database
-      console.log(`[SynonymGenerator] Upserting synonyms to database table...`);
+      console.log('[SynonymGenerator] Upserting synonyms to database table...');
       const terms: string[] = [];
       const synLists: string[] = [];
 

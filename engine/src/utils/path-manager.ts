@@ -1,17 +1,17 @@
 /**
  * Path Manager - Centralized Path Resolution for Anchor Engine
- * 
+ *
  * Implements Standard 051: Service Module Path Resolution
  * Ensures consistent path handling across all platforms
  */
 
-import * as path from 'path'; // @ts-ignore - used in path resolution
-import { fileURLToPath } from 'url'; // @ts-ignore - used in path resolution
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
 
-const __filename = fileURLToPath(import.meta.url); // @ts-ignore - used in path resolution
+const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename); // Not used, commented out to avoid TS error
-const require = createRequire(import.meta.url); // @ts-ignore - used in path resolution
+const require = createRequire(import.meta.url);
 
 export class PathManager {
   private static instance: PathManager;

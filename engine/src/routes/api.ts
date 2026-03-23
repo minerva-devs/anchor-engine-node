@@ -5,7 +5,7 @@
  * Each module registers its own routes on the Express app.
  */
 
-import { Application } from 'express';
+import type { Application } from 'express';
 import { setupSearchRoutes } from './v1/search.js';
 import { setupIngestRoutes } from './v1/ingest.js';
 import { setupBackupRoutes } from './v1/backup.js';
@@ -18,6 +18,7 @@ import { setupSystemRoutes } from './v1/system.js';
 import { setupSettingsRoutes } from './v1/settings.js';
 import { setupEnhancedRoutes } from './enhanced-api.js';
 import { setupMemoryRoutes } from './v1/memory.js';
+import { setupDistillRoutes } from './v1/distills.js';
 
 export function setupRoutes(app: Application) {
   // Core data routes
@@ -39,4 +40,5 @@ export function setupRoutes(app: Application) {
   // Enhanced/experimental routes
   setupEnhancedRoutes(app);
   setupMemoryRoutes(app);
+  setupDistillRoutes(app);
 }

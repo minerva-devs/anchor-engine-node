@@ -6,7 +6,7 @@
  * Configure in user_settings.json: { "server": { "api_key": "your-secret-key" } }
  */
 
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import { config } from '../config/index.js';
 
 /**
@@ -21,12 +21,12 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
     return next();
   }
 
-  const authHeader = req.headers['authorization'];
+  const authHeader = req.headers.authorization;
 
   if (!authHeader) {
     res.status(401).json({
       error: 'Authentication required',
-      message: 'Provide an API key via Authorization: Bearer <key>'
+      message: 'Provide an API key via Authorization: Bearer <key>',
     });
     return;
   }
@@ -39,7 +39,7 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
   if (token !== apiKey) {
     res.status(403).json({
       error: 'Invalid API key',
-      message: 'The provided API key is not valid'
+      message: 'The provided API key is not valid',
     });
     return;
   }

@@ -58,7 +58,7 @@ export class TagAuditor {
     
     // Fetch all existing distinct tags once for performance
     // Bolt: Optimized array unnesting using implicit lateral join
-    const allTagsQuery = `SELECT DISTINCT tag FROM atoms, unnest(tags) as tag WHERE tags IS NOT NULL`;
+    const allTagsQuery = 'SELECT DISTINCT tag FROM atoms, unnest(tags) as tag WHERE tags IS NOT NULL';
     const allTagsResult = await db.run(allTagsQuery);
     const allTags = allTagsResult.rows
       ? (allTagsResult.rows as any[])
@@ -86,7 +86,7 @@ export class TagAuditor {
       const suggestedTags = await this.suggestTagsForAtom(row.id, 5, {
         content: row.content || '',
         existingTags: row.tags || [],
-        allTags
+        allTags,
       });
       
       underTagged.push({
@@ -94,7 +94,7 @@ export class TagAuditor {
         source: row.source_path,
         contentLength: row.content_length,
         tagCount: row.tag_count || 0,
-        suggestedTags
+        suggestedTags,
       });
     }
     
@@ -205,7 +205,7 @@ export class TagAuditor {
   async suggestTagsForAtom(
     atomId: string,
     limit: number = 5,
-    context?: { content: string; existingTags: string[]; allTags: string[] }
+    context?: { content: string; existingTags: string[]; allTags: string[] },
   ): Promise<string[]> {
     try {
       let atomContent = '';
@@ -218,20 +218,20 @@ export class TagAuditor {
         allTags = context.allTags;
       } else {
         // Get atom content
-        const atomQuery = `SELECT content, tags FROM atoms WHERE id = $1`;
+        const atomQuery = 'SELECT content, tags FROM atoms WHERE id = $1';
         const atomResult = await db.run(atomQuery, [atomId]);
 
         if (!atomResult.rows || atomResult.rows.length === 0) {
           return [];
         }
 
-        const atom = atomResult.rows[0] as any;
+        const atom = atomResult.rows[0];
         atomContent = atom.content || '';
         existingTags = new Set(atom.tags || []);
 
         // Get all existing tags
         // Bolt: Optimized array unnesting using implicit lateral join
-        const allTagsQuery = `SELECT DISTINCT tag FROM atoms, unnest(tags) as tag WHERE tags IS NOT NULL`;
+        const allTagsQuery = 'SELECT DISTINCT tag FROM atoms, unnest(tags) as tag WHERE tags IS NOT NULL';
         const allTagsResult = await db.run(allTagsQuery);
 
         if (!allTagsResult.rows) return [];
@@ -257,7 +257,7 @@ export class TagAuditor {
         const termLower = term.toLowerCase();
         return allTags.some(tag => 
           tag.toLowerCase() === termLower || 
-          tag.toLowerCase().includes(termLower)
+          tag.toLowerCase().includes(termLower),
         ) && !existingTags.has(term);
       }).slice(0, limit);
       
@@ -289,11 +289,11 @@ export class TagAuditor {
         medianTagsPerAtom: 0,
         maxTagsInAtom: 0,
         uniqueTags: 0,
-        tagsUsedOnce: 0
+        tagsUsedOnce: 0,
       };
     }
     
-    const row = result.rows[0] as any;
+    const row = result.rows[0];
     
     // Get tags used once
     // Bolt: Optimized array unnesting using implicit lateral join
@@ -316,7 +316,7 @@ export class TagAuditor {
       medianTagsPerAtom: Math.round(parseFloat(row.avg_tags) || 0), // Approximation
       maxTagsInAtom: row.max_tags || 0,
       uniqueTags: row.unique_tags || 0,
-      tagsUsedOnce
+      tagsUsedOnce,
     };
   }
 
@@ -332,20 +332,20 @@ export class TagAuditor {
       underTagged,
       orphanTags,
       tagClusters,
-      statistics
+      statistics,
     ] = await Promise.all([
       this.getTotalAtoms(),
       this.getTotalTags(),
       this.findUnderTaggedAtoms(),
       this.findOrphanTags(),
       this.findTagClusters(5),
-      this.getTagStatistics()
+      this.getTagStatistics(),
     ]);
     
     const suggestions: TagSuggestion[] = underTagged.map(atom => ({
       atomId: atom.id,
       suggestedTags: atom.suggestedTags,
-      confidence: atom.suggestedTags.length > 0 ? 0.8 : 0.3
+      confidence: atom.suggestedTags.length > 0 ? 0.8 : 0.3,
     }));
     
     return {
@@ -355,7 +355,7 @@ export class TagAuditor {
       orphanTags,
       tagClusters,
       suggestions,
-      statistics
+      statistics,
     };
   }
 

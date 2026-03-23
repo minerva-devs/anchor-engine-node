@@ -1,4 +1,4 @@
-import { Application, Request, Response } from 'express';
+import type { Application, Request, Response } from 'express';
 import { db } from '../../core/db.js';
 
 export function setupTagsRoutes(app: Application) {
@@ -38,21 +38,21 @@ export function setupTagsRoutes(app: Application) {
       const validLocations = ['inbox', 'external-inbox'];
       if (location && !validLocations.includes(location)) {
         return res.status(400).json({
-          error: `Invalid location. Must be one of: ${validLocations.join(', ')}`
+          error: `Invalid location. Must be one of: ${validLocations.join(', ')}`,
         });
       }
 
       // Check if bucket already exists
       const existingResult = await db.run(
         'SELECT DISTINCT bucket FROM tags WHERE bucket = $1',
-        [bucketName]
+        [bucketName],
       );
 
       if (existingResult.rows && existingResult.rows.length > 0) {
         return res.status(409).json({
           error: 'Bucket already exists',
           exists: true,
-          bucket: bucketName
+          bucket: bucketName,
         });
       }
 
@@ -62,7 +62,7 @@ export function setupTagsRoutes(app: Application) {
       await db.run(
         `INSERT INTO tags (atom_id, tag, bucket) VALUES ($1, $2, $3)
          ON CONFLICT (atom_id, tag, bucket) DO NOTHING`,
-        ['__system__', placeholderTag, bucketName]
+        ['__system__', placeholderTag, bucketName],
       );
 
       // Store bucket metadata in engrams
@@ -70,13 +70,13 @@ export function setupTagsRoutes(app: Application) {
         name: bucketName,
         location: location || 'inbox',
         created_at: new Date().toISOString(),
-        source: 'manual'
+        source: 'manual',
       };
 
       await db.run(
         `INSERT INTO engrams (key, value) VALUES ($1, $2)
          ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-        [`bucket_meta_${bucketName}`, JSON.stringify(bucketMetadata)]
+        [`bucket_meta_${bucketName}`, JSON.stringify(bucketMetadata)],
       );
 
       console.log(`[API] Created bucket: ${bucketName} at location: ${location || 'inbox'}`);
@@ -84,7 +84,7 @@ export function setupTagsRoutes(app: Application) {
       res.status(201).json({
         success: true,
         bucket: bucketName,
-        location: location || 'inbox'
+        location: location || 'inbox',
       });
     } catch (error: any) {
       console.error('[API] Bucket creation error:', error);
@@ -95,7 +95,7 @@ export function setupTagsRoutes(app: Application) {
   // Get all tags (Faceted by Bucket)
   app.get('/v1/tags', async (req: Request, res: Response) => {
     try {
-      const bucketsParam = req.query['buckets'] as string;
+      const bucketsParam = req.query.buckets as string;
       const buckets = bucketsParam ? bucketsParam.split(',') : [];
 
       // Optimized for PGlite: Use tags table directly
@@ -103,7 +103,7 @@ export function setupTagsRoutes(app: Application) {
       const params: any[] = [];
 
       if (buckets.length > 0) {
-        query += ` AND bucket = ANY($1)`;
+        query += ' AND bucket = ANY($1)';
         params.push(buckets);
       }
 

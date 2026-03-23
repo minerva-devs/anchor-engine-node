@@ -71,19 +71,16 @@ That's it! You now have a sovereign memory system for your LLM.
 
 All user data is stored in the `local-data/` directory:
 
-- **`local-data/inbox/`** - Your sovereign content (internal provenance, 3.0x boost)
-  - Files you create or write directly
-  - Higher priority in search results
-  
-- **`local-data/external-inbox/`** - External content (external provenance, 1.0x boost)
-  - Web scrapes, news articles, RSS feeds
-  - Content from external sources
-  
-- **`local-data/mirrored_brain/`** - Auto-generated mirror of ingested content
-  - Cleaned, processed versions of your files
-  - Stripped of noise, timestamps, and PII
+| Directory | Role | Persistence |
+|-----------|------|-------------|
+| **`local-data/inbox/`** | **Source of Truth** ✅ | Permanent - your sovereign content (3.0x boost) |
+| **`local-data/external-inbox/`** | **Source of Truth** ✅ | Permanent - external content (1.0x boost) |
+| **`local-data/mirrored_brain/`** | Rebuildable Cache 🔄 | Wiped on startup - cleaned content mirror |
+| **`local-data/context_data/`** | Ephemeral Index 🔄 | Wiped on startup - PGlite database |
 
-**Note:** The `local-data/` directory is gitignored by default to protect your data and privacy.
+**Key Principle:** The database is ephemeral and rebuilt from `inbox/` on every startup. Your data is safe in the source of truth directories.
+
+**Note:** The `local-data/` directory is gitignored by default to protect your data and privacy. See [Standard 020](specs/current-standards/020-ephemeral-database.md) for details.
 
 **Full installation guide:** [docs/guides/INSTALL_NPM.md](docs/guides/INSTALL_NPM.md)
 
@@ -493,8 +490,7 @@ AGPL-3.0 – see [LICENSE](LICENSE).
 
 ## 🙏 Acknowledgments
 
-Built with ❤️ by Robert Balch II and contributors.  
-Inspired by the r/LocalLLaMA and r/aiagents communities.
+Built with ❤️ by Robert Balch II and contributors.
 
 **Citation:**
 ```bibtex

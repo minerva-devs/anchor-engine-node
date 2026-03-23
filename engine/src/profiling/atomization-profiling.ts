@@ -4,7 +4,8 @@
  * Profiles the performance of the atomization process in native modules
  */
 
-import { nativeModuleProfiler, ProfilingConfig } from '../utils/native-module-profiler.js';
+import type { ProfilingConfig } from '../utils/native-module-profiler.js';
+import { nativeModuleProfiler } from '../utils/native-module-profiler.js';
 import { logWithContext } from '../utils/structured-logger.js';
 
 // Generate test data for atomization profiling
@@ -14,10 +15,10 @@ function generateAtomizationTestData(): any[] {
   // Different types of content to test atomization performance
   const samples = [
     // Short prose
-    "This is a short sentence for testing.",
+    'This is a short sentence for testing.',
     
     // Longer prose
-    "The Sovereign Context Engine is a sophisticated system designed to manage personal and professional knowledge. It uses advanced techniques to organize, retrieve, and connect information across different contexts and time periods. The system is built with privacy and local processing as core principles.",
+    'The Sovereign Context Engine is a sophisticated system designed to manage personal and professional knowledge. It uses advanced techniques to organize, retrieve, and connect information across different contexts and time periods. The system is built with privacy and local processing as core principles.',
     
     // Code snippet
     `function exampleFunction() {
@@ -26,25 +27,25 @@ function generateAtomizationTestData(): any[] {
 }`,
     
     // Mixed content with special characters
-    "JSON data: {\"key\": \"value\", \"nested\": {\"array\": [1, 2, 3]}} and some text with symbols: @#$%^&*()",
+    'JSON data: {"key": "value", "nested": {"array": [1, 2, 3]}} and some text with symbols: @#$%^&*()',
     
     // Log-like content
-    "2023-10-15T10:30:00Z INFO: User login successful for user@example.com - Session ID: abc123xyz",
+    '2023-10-15T10:30:00Z INFO: User login successful for user@example.com - Session ID: abc123xyz',
     
     // Technical documentation
-    "The CozoDB database uses a graph-relational-vector-fts engine to provide unified access to different data models. This allows for complex queries that span across traditional relational, graph, and full-text search paradigms.",
+    'The CozoDB database uses a graph-relational-vector-fts engine to provide unified access to different data models. This allows for complex queries that span across traditional relational, graph, and full-text search paradigms.',
     
     // Markdown content
-    "# Header\n\nThis is a paragraph with [a link](http://example.com) and `inline code`.\n\n- List item 1\n- List item 2",
+    '# Header\n\nThis is a paragraph with [a link](http://example.com) and `inline code`.\n\n- List item 1\n- List item 2',
     
     // Configuration content
-    "server {\n  listen 80;\n  server_name example.com;\n  location / {\n    proxy_pass http://backend;\n  }\n}",
+    'server {\n  listen 80;\n  server_name example.com;\n  location / {\n    proxy_pass http://backend;\n  }\n}',
     
     // Data table content (CSV-like)
-    "Name,Age,City\nJohn Doe,30,New York\nJane Smith,25,Los Angeles\nBob Johnson,35,Chicago",
+    'Name,Age,City\nJohn Doe,30,New York\nJane Smith,25,Los Angeles\nBob Johnson,35,Chicago',
     
     // Long text with multiple sentences
-    "The quick brown fox jumps over the lazy dog. This sentence contains all letters of the alphabet. Performance testing requires diverse inputs. Different content types stress different parts of the parsing algorithm. Complex nested structures test the recursion limits. Special characters test the sanitization routines. Unicode characters test the encoding handling. Very long inputs test the memory management. Short inputs test the overhead. Medium inputs test the typical usage patterns."
+    'The quick brown fox jumps over the lazy dog. This sentence contains all letters of the alphabet. Performance testing requires diverse inputs. Different content types stress different parts of the parsing algorithm. Complex nested structures test the recursion limits. Special characters test the sanitization routines. Unicode characters test the encoding handling. Very long inputs test the memory management. Short inputs test the overhead. Medium inputs test the typical usage patterns.',
   ];
 
   for (let i = 0; i < 50; i++) { // Create 50 variations
@@ -71,15 +72,15 @@ async function runAtomizationProfiling() {
       iterations: 100,
       testData: testData,
       parameters: {
-        strategy: 'mixed' // Test with mixed content strategy
-      }
+        strategy: 'mixed', // Test with mixed content strategy
+      },
     };
     
     // Run the profiling
     logWithContext.info('Executing atomization profiling...', {
       operation: config.operation,
       iterations: config.iterations,
-      testDataSize: testData.length
+      testDataSize: testData.length,
     });
     
     const result = await nativeModuleProfiler.profileOperation(config);
@@ -92,7 +93,7 @@ async function runAtomizationProfiling() {
       minDuration: `${result.minDuration.toFixed(4)}ms`,
       maxDuration: `${result.maxDuration.toFixed(4)}ms`,
       memoryDelta: `${result.memoryDelta.toFixed(2)}MB`,
-      iterations: result.iterations
+      iterations: result.iterations,
     });
     
     // Generate and save report
@@ -122,7 +123,7 @@ if (require.main === module) {
       logWithContext.info('Atomization profiling script completed successfully');
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(error => {
       logWithContext.error('Atomization profiling script failed', error);
       process.exit(1);
     });

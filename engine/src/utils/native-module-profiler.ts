@@ -44,7 +44,7 @@ export class NativeModuleProfiler {
     logWithContext.info(`Starting profiling for operation: ${config.operation}`, {
       operation: config.operation,
       iterations: config.iterations,
-      testDataSize: config.testData.length
+      testDataSize: config.testData.length,
     });
 
     const durations: number[] = [];
@@ -87,7 +87,7 @@ export class NativeModuleProfiler {
         minDuration,
         maxDuration,
         lastDuration: durations[durations.length - 1],
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
 
       this.profileResults.push(result);
@@ -98,7 +98,7 @@ export class NativeModuleProfiler {
         avgDuration: result.avgDuration,
         minDuration: result.minDuration,
         maxDuration: result.maxDuration,
-        memoryDelta: result.memoryDelta
+        memoryDelta: result.memoryDelta,
       });
 
       return result;

@@ -24,6 +24,7 @@ Quick reference for all active standards. Full specifications are in `specs/curr
 | [016](../specs/current-standards/016-mcp-integration-testing.md) | MCP Integration Testing | Integration tests, graceful degradation |
 | [017](../specs/current-standards/017-dependency-validation.md) | Dependency Validation | deps vs devDeps, pre-publish checks |
 | [018](../specs/current-standards/018-configuration-validation.md) | Configuration Validation | Fail fast, startup checks |
+| [020](../specs/current-standards/020-ephemeral-database.md) | Ephemeral Database | Always wipe DB on startup, rebuild from inbox |
 
 ---
 
@@ -94,6 +95,15 @@ Quick reference for all active standards. Full specifications are in `specs/curr
 | Port in use | Check before bind | `isPortAvailable(port)` |
 | Path not writable | Test write access | `fs.writeFileSync(testFile)` |
 | Insecure defaults | Warn on startup | Show warnings in banner |
+
+### Ephemeral Database (Standard 020)
+
+| Pain Point | Fix | Code Pattern |
+|------------|-----|--------------|
+| Database corruption | Wipe on every startup | `wipe_on_startup: true` (default) |
+| Hanging ingestion | Force kill + restart | `pkill -9 -f "anchor-engine" && pnpm start` |
+| Corrupted mirrored_brain | Clear on startup | `fs.rmSync(mirroredBrainPath, {recursive: true})` |
+| Data loss fear | inbox/ is source of truth | Never delete inbox/ files |
 
 ---
 

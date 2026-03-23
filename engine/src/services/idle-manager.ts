@@ -33,7 +33,7 @@ export class IdleManager {
       enabled: process.env.IDLE_MANAGER_ENABLED !== 'false',
       enableModelUnload: process.env.IDLE_UNLOAD_MODELS !== 'false',
       enableMetricsPrune: process.env.IDLE_PRUNE_METRICS !== 'false',
-      enableGC: process.env.IDLE_ENABLE_GC !== 'false'
+      enableGC: process.env.IDLE_ENABLE_GC !== 'false',
     };
 
     if (this.config.enabled) {
@@ -109,7 +109,7 @@ export class IdleManager {
       idleTimeoutMinutes: this.config.idleTimeoutMinutes,
       minutesUntilIdle,
       activityCount: this.activityCounter,
-      lastActivityAgo
+      lastActivityAgo,
     };
   }
 

@@ -2,11 +2,11 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { Atom, Molecule, Compound } from '../../types/atomic.js';
+import type { Atom, Molecule, Compound } from '../../types/atomic.js';
 import { 
   shouldUseStrictAtomSelection, 
   modulateTags,
-  isEntityTag as isEntityByModulation
+  isEntityTag as isEntityByModulation,
 } from '../../utils/tag-modulation.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -93,6 +93,33 @@ export class AtomizerService {
     ]);
 
     /**
+     * Additional tag patterns for numeric/ID garbage
+     * Filters out phone numbers, IDs, and other noise
+     */
+    private static TAG_GARBAGE_PATTERNS = [
+        // Phone numbers or numeric IDs (e.g., #19864Residen, #7338659969514278912)
+        /^#\d{5,}/,                    // Starts with 5+ digits
+        /^#\d+[A-Za-z]+\d*/,           // Digits followed by letters (ID patterns)
+        
+        // UUIDs and hash-like tags
+        /^#[a-f0-9]{8,}$/i,           // Hex strings (UUIDs, hashes)
+        /^#[A-Za-z]+_\d+$/,           // Prefix_number patterns
+        
+        // Location/address noise
+        /^#\d+[A-Za-z]*Loc/i,         // Location IDs
+        /^#ABQ/i,                      // Area code patterns
+        
+        // Session/conversation IDs
+        /^#session/i,
+        /^#chat/i,
+        /^#conv/i,
+        
+        // Timestamp-like tags
+        /^#\d{4}-\d{2}/,              // Date patterns
+        /^#T\d+/,                      // Time patterns
+    ];
+
+    /**
      * Check if a tag should be filtered out
      */
     private isBlacklistedTag(tag: string): boolean {
@@ -110,6 +137,24 @@ export class AtomizerService {
             }
         }
 
+        // Check garbage patterns (numeric IDs, phone numbers, etc.)
+        for (const pattern of AtomizerService.TAG_GARBAGE_PATTERNS) {
+            if (pattern.test(normalizedTag)) {
+                return true;
+            }
+        }
+
+        // Filter tags that are too long (>30 chars) - likely noise
+        if (normalizedTag.length > 30) {
+            return true;
+        }
+
+        // Filter tags that are mostly numbers (>70% digits)
+        const digitCount = (normalizedTag.match(/\d/g) || []).length;
+        if (normalizedTag.length > 5 && digitCount / normalizedTag.length > 0.7) {
+            return true;
+        }
+
         return false;
     }
 
@@ -122,7 +167,7 @@ export class AtomizerService {
         
         // Convert atom labels to tag format
         const rawTags = atomLabels.map(label => 
-            label.startsWith('#') ? label : `#${label}`
+            label.startsWith('#') ? label : `#${label}`,
         );
         
         // Apply modulation filtering
@@ -189,6 +234,93 @@ export class AtomizerService {
     }
 
     /**
+     * Check if content is a chat JSONL file (Qwen Code session history)
+     * These files contain structured conversation data that needs special parsing
+     */
+    private isChatJsonl(content: string, sourcePath: string): boolean {
+        // Check file extension
+        if (!sourcePath.endsWith('.jsonl')) return false;
+        
+        // Check if content looks like chat JSONL
+        const firstLine = content.split('\n')[0];
+        if (!firstLine) return false;
+        
+        try {
+            const parsed = JSON.parse(firstLine);
+            // Qwen Code chat JSONL has specific fields
+            return !!(parsed.uuid && parsed.timestamp && (parsed.role || parsed.type));
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Parse chat JSONL and extract meaningful text content
+     * Returns clean, readable text from the conversation
+     */
+    private parseChatJsonl(content: string): string {
+        const lines = content.split('\n').filter(line => line.trim());
+        const extractedParts: string[] = [];
+
+        for (const line of lines) {
+            try {
+                const msg = JSON.parse(line);
+
+                // Skip system/telemetry messages
+                if (msg.subtype === 'subui_telemetry') continue;
+                if (msg.type === 'system' && !msg.message?.parts?.[0]?.text) continue;
+
+                // Determine role from either msg.type or msg.message.role
+                const role = msg.type || msg.message?.role;
+                const parts = msg.parts || msg.message?.parts;
+
+                // Extract user messages
+                if (role === 'user' && parts) {
+                    for (const part of parts) {
+                        if (typeof part === 'string') {
+                            extractedParts.push(`[User]: ${part}`);
+                        } else if (part.text) {
+                            extractedParts.push(`[User]: ${part.text}`);
+                        }
+                    }
+                }
+
+                // Extract assistant messages (the actual content)
+                if ((role === 'assistant' || role === 'model') && parts) {
+                    for (const part of parts) {
+                        // Skip thought blocks
+                        if (part.thought) continue;
+
+                        // Extract text content
+                        if (typeof part === 'string') {
+                            extractedParts.push(`[Assistant]: ${part}`);
+                        } else if (part.text) {
+                            extractedParts.push(`[Assistant]: ${part.text}`);
+                        }
+
+                        // Extract function calls (tool usage) - simplified
+                        if (part.functionCall) {
+                            const fnName = part.functionCall.name || 'unknown';
+                            extractedParts.push(`[Tool]: ${fnName}`);
+                        }
+                    }
+                }
+
+                // Extract tool results
+                if (role === 'tool_result' && msg.toolCallResult) {
+                    const result = msg.toolCallResult;
+                    extractedParts.push(`[Tool Result]: ${result.status}`);
+                }
+            } catch {
+                // Skip malformed lines
+            }
+        }
+
+        // Join with newlines and return
+        return extractedParts.join('\n\n');
+    }
+
+    /**
      * Deconstructs raw content into Atomic Topology.
      * Returns the Compound (Main Body) and its Constituent Particles (Atoms/Molecules).
      */
@@ -196,14 +328,34 @@ export class AtomizerService {
         content: string,
         sourcePath: string,
         provenance: 'internal' | 'external',
-        fileTimestamp?: number
+        fileTimestamp?: number,
     ): Promise<{ compound: Compound, molecules: Molecule[], atoms: Atom[] } | null> {
         const filename = sourcePath.split(/[/\\]/).pop() || sourcePath;
         const contentSizeMB = (content.length / (1024 * 1024)).toFixed(2);
         const startTime = Date.now();
 
-        // Check for transient data before processing
-        if (this.isTransientData(content)) {
+        // Check for chat JSONL FIRST and parse it to extract meaningful content
+        // This is important because chat JSONL files may contain embedded error logs
+        // that would otherwise be detected as transient data
+        let processedContent = content;
+        let isChatJsonlFile = false;
+        if (this.isChatJsonl(content, sourcePath)) {
+            console.log(`[Atomizer] 📝 Parsing chat JSONL: ${filename}`);
+            processedContent = this.parseChatJsonl(content);
+            isChatJsonlFile = true;
+
+            // If parsing yielded nothing useful, skip ingestion
+            if (!processedContent || processedContent.length < 100) {
+                console.log(`[Atomizer] ⚠️ SKIP: ${filename} - Chat JSONL yielded no meaningful content`);
+                return null;
+            }
+
+            console.log(`[Atomizer] ✅ Extracted ${processedContent.length} chars from chat JSONL`);
+        }
+
+        // Check for transient data on processed content (after chat JSONL parsing if applicable)
+        // Skip transient detection for chat JSONL files since they've been parsed
+        if (!isChatJsonlFile && this.isTransientData(processedContent)) {
             console.log(`[Atomizer] ⚠️ SKIP: ${filename} - Transient data detected (error logs, install output, etc.)`);
             return null; // Skip ingestion entirely
         }
@@ -222,10 +374,10 @@ export class AtomizerService {
             const CHUNK_SIZE = 1024 * 1024; // 1MB chunks
             let cleanContent = '';
 
-            if (content.length > CHUNK_SIZE * 2) {
+            if (processedContent.length > CHUNK_SIZE * 2) {
                 // Generator approach for memory efficiency
                 let chunkCount = 0;
-                for (const chunk of this.chunkedSanitize(content, sourcePath, CHUNK_SIZE)) {
+                for (const chunk of this.chunkedSanitize(processedContent, sourcePath, CHUNK_SIZE)) {
                     cleanContent += chunk;
                     chunkCount++;
                     if (chunkCount % 10 === 0) {
@@ -235,7 +387,7 @@ export class AtomizerService {
                     await new Promise(resolve => setImmediate(resolve));
                 }
             } else {
-                cleanContent = this.sanitize(content, sourcePath);
+                cleanContent = this.sanitize(processedContent, sourcePath);
             }
             console.log(`[Atomizer] ⏱️ Sanitize complete: ${((Date.now() - sanitizeStart) / 1000).toFixed(2)}s`);
 
@@ -354,8 +506,8 @@ export class AtomizerService {
                     entities: {
                         people: moleculeAtoms.filter(a => ['#coda', '#rob', '#oliver'].includes(a.label.toLowerCase())).map(a => a.label),
                         concepts: moleculeAtoms.filter(a => a.type === 'concept').map(a => a.label),
-                        projects: moleculeAtoms.filter(a => ['#project', '#engine', '#agent'].some(kw => a.label.toLowerCase().includes(kw))).map(a => a.label)
-                    }
+                        projects: moleculeAtoms.filter(a => ['#project', '#engine', '#agent'].some(kw => a.label.toLowerCase().includes(kw))).map(a => a.label),
+                    },
                 });
             }
             console.log(`[Atomizer] ⏱️ Enrichment complete: ${((Date.now() - enrichStart) / 1000).toFixed(2)}s`);
@@ -370,7 +522,7 @@ export class AtomizerService {
                 path: sourcePath,
                 timestamp: fileTimestamp || timestamp, // Compound keeps file timestamp if provided
                 provenance: provenance,
-                molecular_signature: this.generateSimHash(cleanContent)
+                molecular_signature: this.generateSimHash(cleanContent),
             };
 
             const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -379,7 +531,7 @@ export class AtomizerService {
             return {
                 compound,
                 molecules,
-                atoms: allAtoms
+                atoms: allAtoms,
             };
         } catch (error: any) {
             console.error(`[Atomizer] FATAL ERROR processing ${sourcePath}:`, error.message);
@@ -529,7 +681,7 @@ export class AtomizerService {
         // 2. Code Block Protection
         const codeBlocks: string[] = [];
         const PLACEHOLDER = '___CODE_BLOCK_PLACEHOLDER___';
-        clean = clean.replace(/```[\s\S]*?```/g, (match) => {
+        clean = clean.replace(/```[\s\S]*?```/g, match => {
             codeBlocks.push(match);
             return `${PLACEHOLDER}${codeBlocks.length - 1}___`;
         });
@@ -659,7 +811,7 @@ export class AtomizerService {
             'what', 'which', 'who', 'whom', 'whose', 'when', 'where', 'why', 'how',
             'all', 'each', 'every', 'both', 'few', 'more', 'most', 'other', 'some', 'such',
             'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very',
-            'can', 'just', 'now', 'then', 'here', 'there', 'if', 'as', 'but', 'or'
+            'can', 'just', 'now', 'then', 'here', 'there', 'if', 'as', 'but', 'or',
         ]);
         return commonWords.has(word.toLowerCase());
     }
@@ -701,7 +853,7 @@ export class AtomizerService {
                 // engine/src/services/ingest -> ../../../../engine/context
                 path.join(__dirname, '../../../../engine/context/internal_tags.json'),
                 // Fallback to old location
-                path.join(process.cwd(), 'context', 'internal_tags.json')
+                path.join(process.cwd(), 'context', 'internal_tags.json'),
             ];
 
             for (const p of possiblePaths) {
@@ -727,7 +879,7 @@ export class AtomizerService {
             id: `atom_${crypto.createHash('sha256').update(label).digest('hex').substring(0, 12)}`,
             label,
             type,
-            weight
+            weight,
         };
     }
 
@@ -754,7 +906,7 @@ export class AtomizerService {
         const extractTimestamp = (chunk: string): number | undefined => {
             // Match ISO timestamps: 2026-01-25T03:43:54.405Z or 2026-01-25 03:43:54
             const isoRegex = /\b(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z?)\b/g;
-            let match = isoRegex.exec(chunk);
+            const match = isoRegex.exec(chunk);
             if (match) {
                 const ts = Date.parse(match[1]);
                 if (!isNaN(ts)) return ts;
@@ -762,7 +914,7 @@ export class AtomizerService {
 
             // Match YYYY-MM-DD format (without time)
             const dateRegex = /\b(20[2-9]\d-\d{2}-\d{2})\b/;
-            let match2 = chunk.match(dateRegex);
+            const match2 = chunk.match(dateRegex);
             if (match2) {
                 const ts = Date.parse(match2[1]);
                 if (!isNaN(ts)) return ts;
@@ -770,7 +922,7 @@ export class AtomizerService {
 
             // Match MM/DD/YYYY or DD/MM/YYYY format
             const usDateRegex = /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/;
-            let match3 = chunk.match(usDateRegex);
+            const match3 = chunk.match(usDateRegex);
             if (match3) {
                 const ts = Date.parse(match3[1]);
                 if (!isNaN(ts)) return ts;
@@ -778,7 +930,7 @@ export class AtomizerService {
 
             // Match Month DD, YYYY format
             const monthDayYearRegex = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2}),\s+(\d{4})\b/;
-            let match4 = chunk.match(monthDayYearRegex);
+            const match4 = chunk.match(monthDayYearRegex);
             if (match4) {
                 const [, month, day, year] = match4;
                 const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -790,7 +942,7 @@ export class AtomizerService {
 
             // Match DD Month YYYY format
             const dayMonthYearRegex = /\b(\d{1,2})\s+(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b/;
-            let match5 = chunk.match(dayMonthYearRegex);
+            const match5 = chunk.match(dayMonthYearRegex);
             if (match5) {
                 const [, day, month, year] = match5;
                 const monthIndex = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -877,7 +1029,7 @@ export class AtomizerService {
                     match: fenceMatch[0],
                     stringIndex: fenceMatch.index,
                     startByte: startByte,
-                    endByte: endByte
+                    endByte: endByte,
                 });
             }
 
@@ -966,7 +1118,7 @@ export class AtomizerService {
                 while (remaining.length > 0) {
                     // Find a safe split point that doesn't exceed maxSize bytes
                     let splitPoint = remaining.length;
-                    let chunkByteLen = getByteLength(remaining);
+                    const chunkByteLen = getByteLength(remaining);
 
                     // Binary search for the right split point if we're over the limit
                     if (chunkByteLen > maxSize) {
@@ -983,7 +1135,7 @@ export class AtomizerService {
                             }
                         }
                         // Walk back to nearest newline to avoid splitting mid-line
-                        let newlinePos = remaining.lastIndexOf('\n', low);
+                        const newlinePos = remaining.lastIndexOf('\n', low);
                         splitPoint = newlinePos > 0 ? newlinePos + 1 : low;
                     }
 
@@ -995,7 +1147,7 @@ export class AtomizerService {
                         content: chunk,
                         start: currentStart,
                         end: currentStart + chunkBytes,
-                        timestamp: item.timestamp
+                        timestamp: item.timestamp,
                     });
 
                     remaining = remaining.substring(splitPoint);
@@ -1098,11 +1250,11 @@ export class AtomizerService {
 
         // JS Fallback: Simple Jenkins Hash
         let hash = 0;
-        if (text.length === 0) return "0";
+        if (text.length === 0) return '0';
         for (let i = 0; i < text.length; i++) {
             const char = text.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
+            hash &= hash; // Convert to 32bit integer
         }
         return Math.abs(hash).toString(16);
     }

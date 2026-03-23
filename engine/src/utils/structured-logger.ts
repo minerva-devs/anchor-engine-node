@@ -24,7 +24,7 @@ const logLevels = {
   info: 2,
   verbose: 3,
   debug: 4,
-  silly: 5
+  silly: 5,
 };
 
 // Create logs directory at project root
@@ -79,7 +79,7 @@ const structuredFormat = winston.format.combine(
   winston.format.timestamp(),
   winston.format.errors({ stack: true }),
   winston.format.splat(),
-  winston.format.json()
+  winston.format.json(),
 );
 
 // Create logger instance
@@ -102,8 +102,8 @@ const logger = winston.createLogger({
         format.printf(({ timestamp, level, message, ...metadata }) => {
           const metaStr = Object.keys(metadata).length > 0 ? ` ${JSON.stringify(metadata)}` : '';
           return `[${timestamp}] [${level.toUpperCase()}] ${message}${metaStr}`;
-        })
-      )
+        }),
+      ),
     }),
     // Separate error file
     new DailyRotateFile({
@@ -117,8 +117,8 @@ const logger = winston.createLogger({
         format.timestamp(),
         format.errors({ stack: true }),
         format.splat(),
-        format.json()
-      )
+        format.json(),
+      ),
     }),
     // Console transport for development
     new winston.transports.Console({
@@ -130,10 +130,10 @@ const logger = winston.createLogger({
             msg += ` ${JSON.stringify(metadata)}`;
           }
           return msg;
-        })
-      )
-    })
-  ]
+        }),
+      ),
+    }),
+  ],
 });
 
 // Performance metrics tracker
@@ -185,7 +185,7 @@ class MetricsTracker {
         min: data.min === Infinity ? 0 : data.min,
         max: data.max === -Infinity ? 0 : data.max,
         last: data.last,
-        uptime: now - this.startTime
+        uptime: now - this.startTime,
       };
     }
 
@@ -242,14 +242,14 @@ export const logWithContext = {
   info: (message: string, context?: Record<string, any>) => {
     if (context && context.metrics) {
       for (const [name, value] of Object.entries(context.metrics)) {
-        metricsTracker.recordMetric(name as string, value as number);
+        metricsTracker.recordMetric(name, value as number);
       }
     }
 
     logger.info(message, {
       context,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
   },
 
@@ -260,7 +260,7 @@ export const logWithContext = {
     logger.warn(message, {
       context,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
   },
 
@@ -272,7 +272,7 @@ export const logWithContext = {
       error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
       context,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
   },
 
@@ -283,7 +283,7 @@ export const logWithContext = {
     logger.debug(message, {
       context,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
   },
 
@@ -294,7 +294,7 @@ export const logWithContext = {
     logger.silly(message, {
       context,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
   },
 
@@ -310,7 +310,7 @@ export const logWithContext = {
       average: metricsTracker.getMetrics(operation)?.total! / metricsTracker.getMetrics(operation)?.count!,
       context,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
   },
 
@@ -344,7 +344,7 @@ export const logWithContext = {
       status,
       details,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
   },
 
@@ -363,7 +363,7 @@ export const logWithContext = {
       duration_ms: duration,
       context,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
   },
 
@@ -376,9 +376,9 @@ export const logWithContext = {
       status,
       details,
       pid: process.pid,
-      module: 'structured-logger'
+      module: 'structured-logger',
     });
-  }
+  },
 };
 
 // Export the base logger as well

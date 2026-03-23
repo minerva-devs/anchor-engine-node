@@ -5,12 +5,12 @@
  * database operations for the context engine.
  */
 
-console.log("[DB] Loading Config...");
-import { config } from "../config/index.js";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
-import { PGlite } from "@electric-sql/pglite";
+console.log('[DB] Loading Config...');
+import { config } from '../config/index.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { PGlite } from '@electric-sql/pglite';
 
 const __filename = fileURLToPath(import.meta.url);
 
@@ -103,17 +103,17 @@ export class Database {
             console.log(`[DB] Removing existing database directory (preventing corruption): ${dbPath}`);
             try {
               fs.rmSync(dbPath, { recursive: true, force: true });
-              console.log(`[DB] Old database directory removed successfully`);
+              console.log('[DB] Old database directory removed successfully');
             } catch (rmError: any) {
               console.warn(`[DB] Warning: Could not remove old database directory: ${rmError.message}`);
-              console.warn(`[DB] Will attempt to overwrite on init`);
+              console.warn('[DB] Will attempt to overwrite on init');
             }
           }
 
           // Also wipe mirrored_brain to prevent corrupted files from accumulating
           const mirroredBrainPath = path.join(path.dirname(dbPath), 'mirrored_brain');
           if (fs.existsSync(mirroredBrainPath)) {
-            console.log(`[DB] Clearing mirrored_brain directory (regenerated from inbox on start)`);
+            console.log('[DB] Clearing mirrored_brain directory (regenerated from inbox on start)');
             try {
               const entries = fs.readdirSync(mirroredBrainPath);
               for (const entry of entries) {
@@ -126,12 +126,12 @@ export class Database {
             }
           }
         } else {
-          console.log(`[DB] Retaining existing database (wipe_on_startup=false). Index may be stale.`);
+          console.log('[DB] Retaining existing database (wipe_on_startup=false). Index may be stale.');
         }
 
         console.log(`[DB] Database directory ready: ${dbPath}`);
       } catch (cleanupError: any) {
-        console.error(`[DB] Error during database directory preparation:`, cleanupError);
+        console.error('[DB] Error during database directory preparation:', cleanupError);
         // Don't crash if wipe fails, just try to continue
       }
 
@@ -164,11 +164,11 @@ export class Database {
             'random_page_cost': 1.1,
             // Sequential scan cost estimate
             'seq_page_cost': 1.0,
-          }
+          },
         });
         
         console.log(`[DB] PGlite initialized successfully: ${dbPath}`);
-        console.log(`[DB] Memory settings: shared_buffers=256MB, effective_cache_size=512MB, work_mem=16MB`);
+        console.log('[DB] Memory settings: shared_buffers=256MB, effective_cache_size=512MB, work_mem=16MB');
         
         // Additional runtime memory bounds (applied after init)
         // These complement the constructor settings above
@@ -192,7 +192,7 @@ export class Database {
       `);
       console.log("[DB] 'synonyms' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating synonyms table:", e);
+      console.error('[DB] Error creating synonyms table:', e);
       throw e;
     }
 
@@ -235,7 +235,7 @@ export class Database {
         { name: 'source_id', type: 'TEXT' },
         { name: 'tags', type: 'JSONB' },
         { name: 'entities', type: 'JSONB' },
-        { name: 'payload', type: 'JSONB' } // Crystal Atom Structure (Hybrid Architecture)
+        { name: 'payload', type: 'JSONB' }, // Crystal Atom Structure (Hybrid Architecture)
       ];
 
       for (const col of columnsToAdd) {
@@ -251,10 +251,10 @@ export class Database {
       try {
         await this.run('CREATE INDEX IF NOT EXISTS idx_atoms_compound_id ON atoms(compound_id);');
       } catch (idxErr: any) {
-        console.warn("[DB] Could not create compound_id index:", idxErr.message);
+        console.warn('[DB] Could not create compound_id index:', idxErr.message);
       }
     } catch (e: any) {
-      console.error("[DB] Error initializing atoms table:", e);
+      console.error('[DB] Error initializing atoms table:', e);
       throw e;
     }
 
@@ -273,23 +273,23 @@ export class Database {
       try {
         await this.run('CREATE INDEX IF NOT EXISTS idx_tags_tag ON tags(tag);');
       } catch (indexErr: any) {
-        console.warn("[DB] Could not create tag index:", indexErr.message);
+        console.warn('[DB] Could not create tag index:', indexErr.message);
       }
       try {
         await this.run('CREATE INDEX IF NOT EXISTS idx_tags_bucket ON tags(bucket);');
       } catch (indexErr: any) {
-        console.warn("[DB] Could not create bucket index:", indexErr.message);
+        console.warn('[DB] Could not create bucket index:', indexErr.message);
       }
       // NEW INDEX (2026-02-23): For fast atom_id lookups in PhysicsWalker
       try {
         await this.run('CREATE INDEX IF NOT EXISTS idx_tags_atom_id ON tags(atom_id);');
       } catch (indexErr: any) {
-        console.warn("[DB] Could not create atom_id index:", indexErr.message);
+        console.warn('[DB] Could not create atom_id index:', indexErr.message);
       }
 
       console.log("[DB] 'tags' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating tags table:", e);
+      console.error('[DB] Error creating tags table:', e);
       throw e;
     }
 
@@ -307,7 +307,7 @@ export class Database {
 
       console.log("[DB] 'edges' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating edges table:", e);
+      console.error('[DB] Error creating edges table:', e);
       throw e;
     }
 
@@ -324,7 +324,7 @@ export class Database {
 
       console.log("[DB] 'sources' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating sources table:", e);
+      console.error('[DB] Error creating sources table:', e);
       throw e;
     }
 
@@ -353,13 +353,13 @@ export class Database {
       try {
         await this.run('CREATE INDEX IF NOT EXISTS idx_molecules_compound ON molecules(compound_id);');
       } catch (idxErr: any) {
-        console.warn("[DB] Could not create molecule compound index:", idxErr.message);
+        console.warn('[DB] Could not create molecule compound index:', idxErr.message);
       }
 
       // Ensure new columns exist for existing databases
       const molColumnsToAdd = [
         { name: 'tags', type: 'JSONB' },
-        { name: 'entities', type: 'JSONB' }
+        { name: 'entities', type: 'JSONB' },
       ];
 
       for (const col of molColumnsToAdd) {
@@ -372,7 +372,7 @@ export class Database {
 
       console.log("[DB] 'molecules' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating molecules table:", e);
+      console.error('[DB] Error creating molecules table:', e);
       throw e;
     }
 
@@ -394,7 +394,7 @@ export class Database {
 
       console.log("[DB] 'compounds' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating compounds table:", e);
+      console.error('[DB] Error creating compounds table:', e);
       throw e;
     }
 
@@ -409,7 +409,7 @@ export class Database {
 
       console.log("[DB] 'engrams' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating engrams table:", e);
+      console.error('[DB] Error creating engrams table:', e);
       throw e;
     }
 
@@ -431,7 +431,7 @@ export class Database {
 
       console.log("[DB] 'atom_positions' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating atom_positions table:", e);
+      console.error('[DB] Error creating atom_positions table:', e);
       throw e;
     }
 
@@ -449,7 +449,7 @@ export class Database {
       `);
       console.log("[DB] 'summary_nodes' table initialized.");
     } catch (e: any) {
-      console.error("[DB] Error creating summary_nodes table:", e);
+      console.error('[DB] Error creating summary_nodes table:', e);
       throw e;
     }
 
@@ -477,11 +477,49 @@ export class Database {
 
       // Create index for owner/repo lookup
       await this.run(`
-        CREATE INDEX IF NOT EXISTS idx_github_repos_owner_repo 
+        CREATE INDEX IF NOT EXISTS idx_github_repos_owner_repo
         ON github_repos(owner, repo);
       `);
     } catch (e: any) {
-      console.error("[DB] Error creating github_repos table:", e);
+      console.error('[DB] Error creating github_repos table:', e);
+      throw e;
+    }
+
+    // Create Distills Table (Standard 016: Distill Versioning)
+    // Stores metadata pointers to distill files on disk
+    try {
+      await this.run(`
+        CREATE TABLE IF NOT EXISTS distills (
+          id TEXT PRIMARY KEY,
+          timestamp TEXT NOT NULL,
+          filename TEXT NOT NULL,
+          file_path TEXT NOT NULL,
+          line_count INTEGER NOT NULL,
+          lines_unique INTEGER NOT NULL,
+          compression_ratio REAL,
+          source_sessions TEXT[],
+          source_files TEXT[],
+          parameters JSONB,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log("[DB] 'distills' table initialized.");
+
+      // Create indexes for common queries
+      await this.run(`
+        CREATE INDEX IF NOT EXISTS idx_distills_timestamp
+        ON distills(timestamp DESC);
+      `);
+      await this.run(`
+        CREATE INDEX IF NOT EXISTS idx_distills_filename
+        ON distills(filename);
+      `);
+      await this.run(`
+        CREATE INDEX IF NOT EXISTS idx_distills_source_sessions
+        ON distills USING GIN(source_sessions);
+      `);
+    } catch (e: any) {
+      console.error('[DB] Error creating distills table:', e);
       throw e;
     }
 
@@ -492,18 +530,18 @@ export class Database {
         ON atoms
         USING GIN(to_tsvector('simple', content));
       `);
-      console.log("[DB] FTS index created for content search.");
+      console.log('[DB] FTS index created for content search.');
     } catch (e: any) {
-      console.warn("[DB] Could not create FTS index:", e.message);
+      console.warn('[DB] Could not create FTS index:', e.message);
       // Try creating a simpler index if GIN fails
       try {
         await this.run(`
           CREATE INDEX IF NOT EXISTS idx_atoms_content_text
           ON atoms (content);
         `);
-        console.log("[DB] Text index created as fallback.");
+        console.log('[DB] Text index created as fallback.');
       } catch (fallbackErr: any) {
-        console.warn("[DB] Could not create fallback text index:", fallbackErr.message);
+        console.warn('[DB] Could not create fallback text index:', fallbackErr.message);
       }
     }
 
@@ -514,18 +552,18 @@ export class Database {
         ON molecules
         USING GIN(to_tsvector('simple', content));
       `);
-      console.log("[DB] FTS index created for molecules content search.");
+      console.log('[DB] FTS index created for molecules content search.');
     } catch (e: any) {
-      console.warn("[DB] Could not create molecules FTS index:", e.message);
+      console.warn('[DB] Could not create molecules FTS index:', e.message);
       // Try creating a simpler index if GIN fails
       try {
         await this.run(`
           CREATE INDEX IF NOT EXISTS idx_molecules_content_text
           ON molecules (content);
         `);
-        console.log("[DB] Molecules text index created as fallback.");
+        console.log('[DB] Molecules text index created as fallback.');
       } catch (fallbackErr: any) {
-        console.warn("[DB] Could not create molecules fallback text index:", fallbackErr.message);
+        console.warn('[DB] Could not create molecules fallback text index:', fallbackErr.message);
       }
     }
 
@@ -536,14 +574,14 @@ export class Database {
         ON atoms
         USING GIN (payload);
       `);
-      console.log("[DB] GIN index created for payload (Crystal Atom).");
+      console.log('[DB] GIN index created for payload (Crystal Atom).');
     } catch (e: any) {
-      console.warn("[DB] Could not create payload GIN index:", e.message);
+      console.warn('[DB] Could not create payload GIN index:', e.message);
     }
 
     // Mark as initialized after all setup is complete
     this._isInitialized = true;
-    console.log("Database initialized successfully");
+    console.log('Database initialized successfully');
   }
 
   /**
@@ -560,15 +598,15 @@ export class Database {
    * Run a query against the database
    */
   async run(query: string, params?: any[]) {
-    const { config } = await import("../config/index.js");
-    if (config.LOG_LEVEL === "DEBUG") {
+    const { config } = await import('../config/index.js');
+    if (config.LOG_LEVEL === 'DEBUG') {
       console.log(`[DB] Executing Query: ${query.substring(0, 80)}...`);
-      if (params && params.length > 0) console.log(`[DB] Params:`, params);
+      if (params && params.length > 0) console.log('[DB] Params:', params);
     }
 
     try {
       if (this.dbInstance === null) {
-        throw new Error("Database not initialized");
+        throw new Error('Database not initialized');
       }
 
       // PGlite returns objects by default which works with our named fields
@@ -589,13 +627,13 @@ export class Database {
    */
   async search(query: string) {
     if (this.dbInstance === null) {
-      throw new Error("Database not initialized");
+      throw new Error('Database not initialized');
     }
 
     // For now, use a simple LIKE query since full-text search may not be available
     const result = await this.dbInstance.query(
-      `SELECT * FROM atoms WHERE content LIKE ?`,
-      [`%${query}%`]
+      'SELECT * FROM atoms WHERE content LIKE ?',
+      [`%${query}%`],
     );
     return result;
   }

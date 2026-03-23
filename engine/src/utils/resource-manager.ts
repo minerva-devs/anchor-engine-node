@@ -94,7 +94,7 @@ export class ResourceManager {
       maxHeapSize: totalMemory * 0.6, // Use up to 60% of total memory
       memoryThreshold: 0.7, // Optimize when 70% of heap is used
       maxAtomsInMemory: config.MAX_ATOMS_IN_MEMORY, // Configurable max atoms to keep in memory at once
-      gcThreshold: 0.75 // Force GC when 75% of heap is used
+      gcThreshold: 0.75, // Force GC when 75% of heap is used
     };
   }
 
@@ -109,7 +109,7 @@ export class ResourceManager {
    * Reset the singleton instance (for testing only)
    */
   public static resetInstance(): void {
-    // @ts-ignore
+    // @ts-expect-error
     ResourceManager.instance = undefined;
   }
 
@@ -136,7 +136,7 @@ export class ResourceManager {
       external: usage.external,
       arrayBuffers: usage.arrayBuffers,
       percentageUsed: (usage.heapUsed / heapStats.heap_size_limit) * 100, // Correct metric relative to V8 limit
-      heapSpaces
+      heapSpaces,
     };
   }
 
@@ -151,7 +151,7 @@ export class ResourceManager {
         size: space.space_size,
         used: space.space_used_size,
         available: space.space_available_size,
-        physical: space.physical_space_size
+        physical: space.physical_space_size,
       }));
     } catch (error) {
       // If heap space stats are not available, return empty array
@@ -279,7 +279,7 @@ export class ResourceManager {
       }
 
       // Log memory stats periodically if in debug mode
-      if ((process.env as any)['NODE_ENV'] === 'development' || (process.env as any)['DEBUG_MEMORY']) {
+      if ((process.env as any).NODE_ENV === 'development' || (process.env as any).DEBUG_MEMORY) {
         console.log(`[ResourceManager] RSS: ${(stats.rss / 1024 / 1024).toFixed(2)}MB, Heap: ${stats.percentageUsed.toFixed(2)}%`);
       }
     }, intervalMs);
@@ -292,7 +292,7 @@ export class ResourceManager {
     if (this.monitoringInterval !== null) {
       clearInterval(this.monitoringInterval);
       this.monitoringInterval = null;
-      console.log(`[ResourceManager] Stopped memory monitoring`);
+      console.log('[ResourceManager] Stopped memory monitoring');
     }
   }
 }
@@ -301,6 +301,6 @@ export class ResourceManager {
 export const resourceManager = ResourceManager.getInstance();
 
 // Initialize monitoring if enabled
-if ((process.env as any)['ECE_MEMORY_MONITORING'] !== 'false') {
+if ((process.env as any).ECE_MEMORY_MONITORING !== 'false') {
   resourceManager.startMonitoring();
 }

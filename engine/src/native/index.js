@@ -68,7 +68,7 @@ const ffi = {
   transient_filter_apply: lib.func('transient_filter_apply', 'string', ['void *', 'string']),
 
   // SimHash
-  simhash_compute: lib.func('simhash_compute', 'uint64', ['string'])
+  simhash_compute: lib.func('simhash_compute', 'uint64', ['string']),
 };
 
 console.log('[anchor-core] Native library loaded successfully');
@@ -168,7 +168,7 @@ export class AnchorCore {
       BigInt(charStart),
       BigInt(charEnd),
       timestamp,
-      BigInt(simhash)
+      BigInt(simhash),
     );
   }
 
@@ -187,7 +187,7 @@ export class AnchorCore {
       BigInt(from),
       BigInt(to),
       weight,
-      type
+      type,
     );
   }
 
@@ -205,7 +205,7 @@ export class AnchorCore {
       this.#db,
       JSON.stringify(anchorIds),
       limit,
-      threshold
+      threshold,
     );
     return JSON.parse(json);
   }
@@ -222,7 +222,7 @@ export class AnchorCore {
       this.#inflator,
       this.#db,
       JSON.stringify(atomIds),
-      maxChars
+      maxChars,
     );
     return JSON.parse(json);
   }

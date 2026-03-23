@@ -4,7 +4,8 @@
  * Profiles the performance of SimHash computation in native modules
  */
 
-import { nativeModuleProfiler, ProfilingConfig } from '../utils/native-module-profiler.js';
+import type { ProfilingConfig } from '../utils/native-module-profiler.js';
+import { nativeModuleProfiler } from '../utils/native-module-profiler.js';
 import { logWithContext } from '../utils/structured-logger.js';
 
 // Generate test data for SimHash profiling
@@ -14,34 +15,34 @@ function generateSimHashTestData(): any[] {
   // Different types of content to test SimHash performance
   const samples = [
     // Short strings
-    "test",
-    "hello world",
-    "simhash computation",
+    'test',
+    'hello world',
+    'simhash computation',
     
     // Medium strings
-    "The quick brown fox jumps over the lazy dog. This is a medium length string for testing.",
-    "SimHash is a technique for quickly finding duplicates in large datasets. It creates a fingerprint of the content.",
+    'The quick brown fox jumps over the lazy dog. This is a medium length string for testing.',
+    'SimHash is a technique for quickly finding duplicates in large datasets. It creates a fingerprint of the content.',
     
     // Longer strings
-    "The Sovereign Context Engine uses SimHash for detecting near-duplicate content. This helps in reducing noise and improving retrieval quality. The algorithm creates a compact fingerprint of the content that can be compared efficiently.",
+    'The Sovereign Context Engine uses SimHash for detecting near-duplicate content. This helps in reducing noise and improving retrieval quality. The algorithm creates a compact fingerprint of the content that can be compared efficiently.',
     
     // Technical content
-    "function calculateSimHash(content) { const tokens = tokenize(content); const shingles = createShingles(tokens); return computeFingerprint(shingles); }",
+    'function calculateSimHash(content) { const tokens = tokenize(content); const shingles = createShingles(tokens); return computeFingerprint(shingles); }',
     
     // Mixed content with special characters
-    "JSON data: {\"key\": \"value\", \"nested\": {\"array\": [1, 2, 3]}} and some text with symbols: @#$%^&*()",
+    'JSON data: {"key": "value", "nested": {"array": [1, 2, 3]}} and some text with symbols: @#$%^&*()',
     
     // Repetitive content (should have similar SimHashes)
-    "This is repetitive content. This is repetitive content. This is repetitive content.",
-    "This is also repetitive. This is also repetitive. This is also repetitive.",
+    'This is repetitive content. This is repetitive content. This is repetitive content.',
+    'This is also repetitive. This is also repetitive. This is also repetitive.',
     
     // Unique content
-    "Unique content that should have a different SimHash fingerprint from other entries in this test suite.",
-    "Another unique string with completely different content to test the diversity of the SimHash algorithm.",
+    'Unique content that should have a different SimHash fingerprint from other entries in this test suite.',
+    'Another unique string with completely different content to test the diversity of the SimHash algorithm.',
     
     // Very long content
-    "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. " +
-    "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem."
+    'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. ' +
+    'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.',
   ];
 
   // Create variations of the samples
@@ -68,7 +69,7 @@ async function generateDistanceTestData(): Promise<any[]> {
 
       testData.push({
         a: nativeModule.fingerprint ? nativeModule.fingerprint(text1) : `fp_${i}_a`,
-        b: nativeModule.fingerprint ? nativeModule.fingerprint(text2) : `fp_${i}_b`
+        b: nativeModule.fingerprint ? nativeModule.fingerprint(text2) : `fp_${i}_b`,
       });
     }
   } else {
@@ -76,7 +77,7 @@ async function generateDistanceTestData(): Promise<any[]> {
     for (let i = 0; i < 50; i++) {
       testData.push({
         a: `fingerprint_a_${i}`,
-        b: `fingerprint_b_${i}`
+        b: `fingerprint_b_${i}`,
       });
     }
   }
@@ -98,14 +99,14 @@ async function runSimHashProfiling() {
       operation: 'fingerprint',
       iterations: 100,
       testData: fingerprintTestData,
-      parameters: {}
+      parameters: {},
     };
     
     // Run the fingerprinting profiling
     logWithContext.info('Executing SimHash fingerprinting profiling...', {
       operation: fingerprintConfig.operation,
       iterations: fingerprintConfig.iterations,
-      testDataSize: fingerprintTestData.length
+      testDataSize: fingerprintTestData.length,
     });
     
     const fingerprintResult = await nativeModuleProfiler.profileOperation(fingerprintConfig);
@@ -118,7 +119,7 @@ async function runSimHashProfiling() {
       minDuration: `${fingerprintResult.minDuration.toFixed(4)}ms`,
       maxDuration: `${fingerprintResult.maxDuration.toFixed(4)}ms`,
       memoryDelta: `${fingerprintResult.memoryDelta.toFixed(2)}MB`,
-      iterations: fingerprintResult.iterations
+      iterations: fingerprintResult.iterations,
     });
     
     // Generate test data for distance calculation
@@ -130,14 +131,14 @@ async function runSimHashProfiling() {
       operation: 'distance',
       iterations: 50,
       testData: distanceTestData,
-      parameters: {}
+      parameters: {},
     };
 
     // Run the distance calculation profiling
     logWithContext.info('Executing SimHash distance calculation profiling...', {
       operation: distanceConfig.operation,
       iterations: distanceConfig.iterations,
-      testDataSize: distanceTestData.length
+      testDataSize: distanceTestData.length,
     });
     
     const distanceResult = await nativeModuleProfiler.profileOperation(distanceConfig);
@@ -150,7 +151,7 @@ async function runSimHashProfiling() {
       minDuration: `${distanceResult.minDuration.toFixed(4)}ms`,
       maxDuration: `${distanceResult.maxDuration.toFixed(4)}ms`,
       memoryDelta: `${distanceResult.memoryDelta.toFixed(2)}MB`,
-      iterations: distanceResult.iterations
+      iterations: distanceResult.iterations,
     });
     
     // Generate and save report
@@ -189,7 +190,7 @@ if (require.main === module) {
       logWithContext.info('SimHash profiling script completed successfully');
       process.exit(0);
     })
-    .catch((error) => {
+    .catch(error => {
       logWithContext.error('SimHash profiling script failed', error);
       process.exit(1);
     });

@@ -26,7 +26,7 @@ const server = new Server(
     capabilities: {
       tools: {},
     },
-  }
+  },
 );
 
 // Helper function to make HTTP requests to Anchor Engine
@@ -46,6 +46,46 @@ async function callAnchorAPI(endpoint: string, options?: RequestInit): Promise<a
   }
 
   return response.json();
+}
+
+/**
+ * Get current ingestion progress for MCP response banners
+ * Returns a formatted status line showing 0-100% progress
+ */
+async function getIngestionProgressBanner(): Promise<string> {
+  try {
+    const response = await callAnchorAPI('/v1/system/ingest-status');
+    
+    // API returns { status: 'success', state: 'idle'|'processing'|..., currentJob: {...} }
+    if (response.state === 'idle' || !response.currentJob) {
+      return '';
+    }
+    
+    const job = response.currentJob;
+    const percent = job.filesTotal > 0 
+      ? Math.round((job.filesProcessed / job.filesTotal) * 100) 
+      : 0;
+    
+    // Create visual progress bar
+    const barLength = 10;
+    const filled = Math.round((percent / 100) * barLength);
+    const bar = '█'.repeat(filled) + '░'.repeat(barLength - filled);
+    
+    return `\n⏳ INGESTION IN PROGRESS [${bar}] ${percent}% (${job.filesProcessed}/${job.filesTotal} files) - ${job.source}\n`;
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Wrap MCP response with ingestion status banner if ingestion is active
+ */
+async function wrapResponseWithStatus(resultText: string): Promise<string> {
+  const banner = await getIngestionProgressBanner();
+  if (banner) {
+    return `${banner}\n${resultText}`;
+  }
+  return resultText;
 }
 
 // Define all MCP tools
@@ -287,6 +327,28 @@ const TOOLS = [
       required: ['path'],
     },
   },
+  {
+    name: 'anchor_delete_path',
+    description: 'Remove a path from being watched for file changes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Absolute path to stop watching',
+        },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'anchor_list_paths',
+    description: 'List all currently watched paths.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 ];
 
 // Handle tool list request
@@ -295,18 +357,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 // Handle tool execution
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
+server.setRequestHandler(CallToolRequestSchema, async request => {
   const { name, arguments: args } = request.params;
 
   try {
+    let resultText: string;
+
     switch (name) {
       case 'anchor_start': {
         const result = await callAnchorAPI('/v1/system/start', {
           method: 'POST',
         });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_stop': {
@@ -314,28 +377,25 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           method: 'POST',
           body: JSON.stringify(args),
         });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_status': {
         const result = await callAnchorAPI('/v1/system/status');
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_health': {
         const result = await callAnchorAPI('/health');
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_ingest': {
         const { wait, ...ingestArgs } = args || {};
-        
+
         // Start ingestion
         const result = await callAnchorAPI('/v1/ingest', {
           method: 'POST',
@@ -350,16 +410,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           });
         }
 
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_ingest_status': {
         const result = await callAnchorAPI('/v1/system/ingest-status');
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_wait_for_ingest': {
@@ -367,9 +425,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           method: 'POST',
           body: JSON.stringify(args),
         });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_set_ingestion_config': {
@@ -377,16 +434,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           method: 'POST',
           body: JSON.stringify(args),
         });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_get_ingestion_config': {
         const result = await callAnchorAPI('/v1/config/ingestion');
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_search': {
@@ -394,9 +449,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           method: 'POST',
           body: JSON.stringify(args),
         });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_distill': {
@@ -404,9 +458,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           method: 'POST',
           body: JSON.stringify(args),
         });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_illuminate': {
@@ -414,9 +467,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           method: 'POST',
           body: JSON.stringify(args),
         });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       case 'anchor_set_path': {
@@ -424,22 +476,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           method: 'POST',
           body: JSON.stringify(args),
         });
-        return {
-          content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
-        };
+        resultText = JSON.stringify(result, null, 2);
+        break;
+      }
+
+      case 'anchor_delete_path': {
+        const result = await callAnchorAPI('/v1/system/paths', {
+          method: 'DELETE',
+          body: JSON.stringify(args),
+        });
+        resultText = JSON.stringify(result, null, 2);
+        break;
+      }
+
+      case 'anchor_list_paths': {
+        const result = await callAnchorAPI('/v1/system/paths');
+        resultText = JSON.stringify(result, null, 2);
+        break;
       }
 
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
-  } catch (error: any) {
+
+    // Wrap response with ingestion progress banner if active
+    const wrappedText = await wrapResponseWithStatus(resultText);
     return {
-      content: [
-        {
-          type: 'text',
-          text: `Error executing ${name}: ${error.message}`,
-        },
-      ],
+      content: [{ type: 'text', text: wrappedText }],
+    };
+  } catch (error: any) {
+    // Also wrap error responses with ingestion status
+    const errorText = `Error executing ${name}: ${error.message}`;
+    const wrappedError = await wrapResponseWithStatus(errorText);
+    return {
+      content: [{ type: 'text', text: wrappedError }],
       isError: true,
     };
   }
@@ -452,7 +522,7 @@ async function main() {
   console.error('Anchor Engine MCP server running on stdio');
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error('Fatal error running MCP server:', error);
   process.exit(1);
 });

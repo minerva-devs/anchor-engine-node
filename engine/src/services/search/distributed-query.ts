@@ -59,7 +59,7 @@ async function getRelatedTerms(term: string, count: number = 5): Promise<string[
  */
 export async function distributeQueryBudget(
     query: string,
-    totalBudget: number
+    totalBudget: number,
 ): Promise<QueryBudget> {
     const terms = parseQueryTerms(query);
     if (terms.length === 0) {
@@ -82,7 +82,7 @@ export async function distributeQueryBudget(
         directTerms.push({
             term,
             budget: directPerTerm / totalBudget,
-            isRelated: false
+            isRelated: false,
         });
     }
 
@@ -96,7 +96,7 @@ export async function distributeQueryBudget(
             relatedTerms.push({
                 term: relatedTerm,
                 budget: relatedPerSecondaryTerm / totalBudget,
-                isRelated: true
+                isRelated: true,
             });
         }
     }
@@ -106,7 +106,7 @@ export async function distributeQueryBudget(
     return {
         directTerms,
         relatedTerms,
-        totalBudget
+        totalBudget,
     };
 }
 

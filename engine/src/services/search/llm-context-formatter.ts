@@ -11,7 +11,7 @@
  * 5. Entity-rich - Pre-extract people, systems, concepts
  */
 
-import { SearchResult } from './search-utils.js';
+import type { SearchResult } from './search-utils.js';
 
 // ============ Type Definitions ============
 
@@ -106,7 +106,7 @@ export class LLMContextFormatter {
         summary: this.generateThemeSummary(atoms, query, entities),
         entities,
         themes,
-        timeline
+        timeline,
       },
       atoms: rankedAtoms,
       gaps,
@@ -117,8 +117,8 @@ export class LLMContextFormatter {
         dedup_removed: 0, // Will be set by caller
         backend: 'pglite', // Will be set by caller
         format_version: this.FORMAT_VERSION,
-        ...metadata
-      }
+        ...metadata,
+      },
     };
   }
   
@@ -131,17 +131,17 @@ export class LLMContextFormatter {
     // Common entity patterns
     const personPatterns = [
       /\b(Rob|Robert|Coda|Dory|Jade)\b/gi,
-      /\b(author|user|partner|collaborator)\b/gi
+      /\b(author|user|partner|collaborator)\b/gi,
     ];
     
     const systemPatterns = [
       /\b(Anchor Engine|ECE|External Context Engine|STAR|PGlite|SQLite)\b/gi,
-      /\b(C\+\+|Node\.js|TypeScript|React)\b/gi
+      /\b(C\+\+|Node\.js|TypeScript|React)\b/gi,
     ];
     
     const conceptPatterns = [
       /\b(POML|sovereign memory|context inflation|physics walker)\b/gi,
-      /\b(imposter syndrome|career|growth|change)\b/gi
+      /\b(imposter syndrome|career|growth|change)\b/gi,
     ];
     
     for (const atom of atoms) {
@@ -160,7 +160,7 @@ export class LLMContextFormatter {
               role: this.inferPersonRole(name, atoms),
               mentions: 0,
               related_topics: [],
-              atom_ids: []
+              atom_ids: [],
             });
           }
           const entity = entityMap.get(name)!;
@@ -183,7 +183,7 @@ export class LLMContextFormatter {
               role: 'technology',
               mentions: 0,
               related_topics: [],
-              atom_ids: []
+              atom_ids: [],
             });
           }
           const entity = entityMap.get(name)!;
@@ -266,7 +266,7 @@ export class LLMContextFormatter {
   private buildThemeCluster(
     seedTag: string,
     cooccurrence: Map<string, Map<string, number>>,
-    atoms: SearchResult[]
+    atoms: SearchResult[],
   ): Theme {
     const relatedTags = new Set<string>([seedTag]);
     const atomIds = new Set<string>();
@@ -297,7 +297,7 @@ export class LLMContextFormatter {
       confidence: Math.min(1.0, atomIds.size / atoms.length),
       atom_ids: Array.from(atomIds),
       summary: `Theme: ${themeName} (${atomIds.size} atoms)`,
-      keywords: Array.from(relatedTags).slice(0, 5)
+      keywords: Array.from(relatedTags).slice(0, 5),
     };
   }
   
@@ -318,8 +318,8 @@ export class LLMContextFormatter {
         relationships: {
           responds_to: (atom.epochs as any)?.responds_to || [],
           referenced_by: (atom.epochs as any)?.referenced_by || [],
-          related_to: this.findRelatedAtoms(atom, atoms)
-        }
+          related_to: this.findRelatedAtoms(atom, atoms),
+        },
       }))
       .sort((a, b) => b.relevance_score - a.relevance_score);
   }
@@ -357,7 +357,7 @@ export class LLMContextFormatter {
   private buildTimeline(atoms: SearchResult[]): Timeline {
     const timestamps = atoms
       .filter(a => a.timestamp)
-      .map(a => new Date(a.timestamp!).getTime())
+      .map(a => new Date(a.timestamp).getTime())
       .sort((a, b) => a - b);
     
     if (timestamps.length === 0) {
@@ -365,7 +365,7 @@ export class LLMContextFormatter {
         earliest: new Date().toISOString(),
         latest: new Date().toISOString(),
         span_days: 0,
-        key_moments: []
+        key_moments: [],
       };
     }
     
@@ -378,9 +378,9 @@ export class LLMContextFormatter {
       .filter(a => a.timestamp && this.calculateRelevance(a) > 0.7)
       .slice(0, 5)
       .map(atom => ({
-        timestamp: atom.timestamp!,
+        timestamp: atom.timestamp,
         event: atom.content.substring(0, 100) + '...',
-        atom_id: atom.id
+        atom_id: atom.id,
       }));
     
     return {
@@ -390,8 +390,8 @@ export class LLMContextFormatter {
       key_moments: keyMoments.map(km => ({
         timestamp: String(km.timestamp),
         event: km.event,
-        atom_id: km.atom_id
-      }))
+        atom_id: km.atom_id,
+      })),
     };
   }
   
@@ -408,14 +408,14 @@ export class LLMContextFormatter {
         gaps.push({
           topic: `${entity.name}'s perspective`,
           confidence: 0.6,
-          suggestion: `Limited information about ${entity.name} in the results`
+          suggestion: `Limited information about ${entity.name} in the results`,
         });
       }
     }
     
     // Check for missing time periods
     if (atoms.length > 0) {
-      const timestamps = atoms.filter(a => a.timestamp).map(a => new Date(a.timestamp!).getFullYear());
+      const timestamps = atoms.filter(a => a.timestamp).map(a => new Date(a.timestamp).getFullYear());
       const yearRange = new Set(timestamps);
       const currentYear = new Date().getFullYear();
       
@@ -424,7 +424,7 @@ export class LLMContextFormatter {
           gaps.push({
             topic: `Information from ${year}`,
             confidence: 0.4,
-            suggestion: `No atoms found from ${year}`
+            suggestion: `No atoms found from ${year}`,
           });
         }
       }

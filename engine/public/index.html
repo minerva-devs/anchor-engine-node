@@ -149,18 +149,23 @@
             const navigate = (path) => {
                 window.history.pushState({}, '', path);
                 setRoute(path);
-                setTimeout(() => lucide.createIcons(), 50);
+                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 50);
             };
             return { route, navigate };
         };
 
         // API
+        const API_KEY = localStorage.getItem('anchor_api_key') || 'bolt-memory-secret';
+        
         const api = {
             searchStream: async function*(params, onBatch) {
                 // Streaming search with Server-Sent Events (Standard 136)
                 const res = await fetch('/v1/memory/search', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
                     body: JSON.stringify(params)
                 });
 
@@ -199,7 +204,10 @@
             explore: async (params) => {
                 const res = await fetch('/v1/memory/explore', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
                     body: JSON.stringify(params)
                 });
                 return res.json();
@@ -207,29 +215,48 @@
             distill: async (params) => {
                 const res = await fetch('/v1/memory/distill', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
                     body: JSON.stringify(params)
                 });
                 return res.json();
             },
-            getBuckets: () => fetch('/v1/buckets').then(r => r.json()),
+            getBuckets: () => fetch('/v1/buckets', {
+                headers: { 'Authorization': `Bearer ${API_KEY}` }
+            }).then(r => r.json()),
             getTags: (buckets) => {
                 const query = buckets && buckets.length > 0 ? `?buckets=${buckets.join(',')}` : '';
-                return fetch(`/v1/tags${query}`).then(r => r.json());
+                return fetch(`/v1/tags${query}`, {
+                    headers: { 'Authorization': `Bearer ${API_KEY}` }
+                }).then(r => r.json());
             },
-            getPaths: () => fetch('/v1/system/paths').then(r => r.json()),
+            getPaths: () => fetch('/v1/system/paths', {
+                headers: { 'Authorization': `Bearer ${API_KEY}` }
+            }).then(r => r.json()),
             addPath: (path) => fetch('/v1/system/paths', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
                 body: JSON.stringify({ path })
             }).then(r => r.json()),
             removePath: (path) => fetch(`/v1/system/paths`, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
                 body: JSON.stringify({ path })
             }).then(r => r.json()),
-            health: () => fetch('/health').then(r => r.json()),
-            getStats: () => fetch('/v1/stats').then(r => r.json()).catch(() => ({ atoms: 0, molecules: 0 }))
+            health: () => fetch('/health', {
+                headers: { 'Authorization': `Bearer ${API_KEY}` }
+            }).then(r => r.json()),
+            getStats: () => fetch('/v1/stats', {
+                headers: { 'Authorization': `Bearer ${API_KEY}` }
+            }).then(r => r.json()).catch(() => ({ atoms: 0, molecules: 0 }))
         };
 
         // Header Component (Desktop)
@@ -246,7 +273,7 @@
                         <h1 className="text-lg font-semibold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                             Anchor Engine
                         </h1>
-                        <p className="text-xs text-gray-500 font-mono">v4.7</p>
+                        <p className="text-xs text-gray-500 font-mono">v4.9.5</p>
                     </div>
                     {isDbEmpty && (
                         <div className="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30">
@@ -351,7 +378,7 @@
                         <h1 className="text-base font-semibold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                             Anchor Engine
                         </h1>
-                        <p className="text-xs text-gray-500 font-mono">v4.7</p>
+                        <p className="text-xs text-gray-500 font-mono">v4.9.5</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -459,7 +486,7 @@
 
             useEffect(() => {
                 api.getBuckets().then(setBuckets).catch(() => setBuckets([]));
-                setTimeout(() => lucide.createIcons(), 100);
+                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 100);
             }, []);
 
             // Search prefixes: route query to the right algorithm
@@ -943,29 +970,41 @@
 
             const loadPaths = async () => {
                 try {
+                    if (!api?.getPaths) {
+                        console.error('API not available');
+                        setMessage('❌ API not available');
+                        return;
+                    }
                     const data = await api.getPaths();
-                    setPaths(data.paths || data || []);
+                    // Handle both { paths: [...] } and direct array responses
+                    const pathsArray = Array.isArray(data) ? data : (data?.paths || []);
+                    setPaths(pathsArray);
                 } catch (error) {
                     console.error('Failed to load paths:', error);
+                    setMessage('❌ Failed to load paths: ' + (error.message || 'Unknown error'));
                 }
             };
 
             useEffect(() => {
                 loadPaths();
-                setTimeout(() => lucide.createIcons(), 100);
+                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 100);
             }, []);
 
             const handleAddPath = async () => {
                 if (!newPath.trim()) return;
+                if (!api?.addPath) {
+                    setMessage('❌ API not available');
+                    return;
+                }
                 setLoading(true);
                 setMessage('');
                 try {
-                    await api.addPath(newPath.trim());
+                    const result = await api.addPath(newPath.trim());
                     setNewPath('');
-                    setMessage('✅ Path added successfully');
+                    setMessage(result?.message || '✅ Path added successfully');
                     loadPaths();
                 } catch (error) {
-                    setMessage('❌ Failed to add path: ' + error.message);
+                    setMessage('❌ Failed to add path: ' + (error.message || 'Unknown error'));
                 } finally {
                     setLoading(false);
                     setTimeout(() => setMessage(''), 3000);
@@ -973,13 +1012,17 @@
             };
 
             const handleRemovePath = async (pathToRemove) => {
+                if (!api?.removePath) {
+                    setMessage('❌ API not available');
+                    return;
+                }
                 setLoading(true);
                 try {
-                    await api.removePath(pathToRemove);
-                    setMessage('✅ Path removed');
+                    const result = await api.removePath(pathToRemove);
+                    setMessage(result?.message || '✅ Path removed');
                     loadPaths();
                 } catch (error) {
-                    setMessage('❌ Failed to remove: ' + error.message);
+                    setMessage('❌ Failed to remove: ' + (error.message || 'Unknown error'));
                 } finally {
                     setLoading(false);
                     setTimeout(() => setMessage(''), 3000);
@@ -1151,6 +1194,7 @@
             const [branch, setBranch] = useState('main');
             const [buckets, setBuckets] = useState('');
             const [includeHistory, setIncludeHistory] = useState(true);
+            const [runAnalysis, setRunAnalysis] = useState(false);
             const [loading, setLoading] = useState(false);
             const [message, setMessage] = useState('');
 
@@ -1167,6 +1211,7 @@
                             branch: branch.trim() || 'main',
                             bucket: buckets.trim() || 'code',
                             include_history: includeHistory,
+                            run_analysis: runAnalysis,
                         })
                     });
                     const data = await res.json();
@@ -1238,6 +1283,18 @@
                                     <span className="text-gray-500 ml-1">(search code changes over time)</span>
                                 </span>
                             </label>
+                            <label className="flex items-center gap-3 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={runAnalysis}
+                                    onChange={(e) => setRunAnalysis(e.target.checked)}
+                                    className="w-4 h-4 accent-green-400"
+                                />
+                                <span className="text-sm text-gray-300">
+                                    Run code analysis
+                                    <span className="text-gray-500 ml-1">(ESLint, unused exports, duplicates)</span>
+                                </span>
+                            </label>
                             {message && (
                                 <p className={`text-sm ${message.includes('✅') ? 'text-green-400' : 'text-red-400'}`}>
                                     {message}
@@ -1273,7 +1330,7 @@
 
             useEffect(() => {
                 loadQuarantine();
-                setTimeout(() => lucide.createIcons(), 100);
+                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 100);
             }, []);
 
             const handleRestore = async (id) => {
@@ -1387,7 +1444,7 @@
             useEffect(() => {
                 loadSettings();
                 loadWatchdogStatus();
-                setTimeout(() => lucide.createIcons(), 100);
+                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 100);
             }, []);
 
             const loadSettings = async () => {
@@ -1403,7 +1460,9 @@
 
             const loadWatchdogStatus = async () => {
                 try {
-                    const data = await fetch('/v1/watchdog/status').then(r => r.json());
+                    const data = await fetch('/v1/watchdog/status', {
+                        headers: { 'Authorization': `Bearer ${API_KEY}` }
+                    }).then(r => r.json());
                     setWatchdogStatus({ isRunning: data.isRunning, watchedPaths: data.watchedPaths || [] });
                 } catch (error) {
                     console.error('Failed to load watchdog status:', error);
@@ -1429,10 +1488,17 @@
                 try {
                     await fetch('/v1/settings', {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${API_KEY}`
+                        },
                         body: JSON.stringify(settings)
                     });
                     setMessage('✅ Settings saved successfully!');
+                    // Update API key in localStorage if changed
+                    if (settings?.server?.api_key) {
+                        localStorage.setItem('anchor_api_key', settings.server.api_key);
+                    }
                     setTimeout(() => setMessage(''), 3000);
                 } catch (error) {
                     setMessage('❌ Failed to save settings');
@@ -1445,7 +1511,10 @@
                 setMessage('');
                 try {
                     const endpoint = watchdogStatus.isRunning ? '/v1/watchdog/stop' : '/v1/watchdog/start';
-                    await fetch(endpoint, { method: 'POST' });
+                    await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${API_KEY}` }
+                    });
                     await loadWatchdogStatus();
                     setMessage(watchdogStatus.isRunning ? '✅ Watchdog stopped' : '✅ Watchdog started');
                 } catch (error) {
@@ -1457,7 +1526,10 @@
             const triggerManualIngest = async () => {
                 setMessage('');
                 try {
-                    const result = await fetch('/v1/watchdog/ingest', { method: 'POST' }).then(r => r.json());
+                    const result = await fetch('/v1/watchdog/ingest', {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${API_KEY}` }
+                    }).then(r => r.json());
                     setMessage(`✅ ${result.message || 'Ingest triggered'}`);
                 } catch (error) {
                     setMessage('❌ Failed to trigger ingest');
@@ -1547,7 +1619,9 @@
                                                             setMessage('✅ Path removed');
                                                             setTimeout(() => setMessage(''), 3000);
                                                             // Reload watchdog status
-                                                            const statusRes = await fetch('/v1/watchdog/status');
+                                                            const statusRes = await fetch('/v1/watchdog/status', {
+                                                                headers: { 'Authorization': `Bearer ${API_KEY}` }
+                                                            });
                                                             const status = await statusRes.json();
                                                             setWatchdogStatus(status);
                                                         } catch (error) {
@@ -1830,7 +1904,10 @@
                                 <input
                                     type="password"
                                     value={settings?.server?.api_key ?? ''}
-                                    onChange={(e) => updateSetting('server', 'api_key', e.target.value)}
+                                    onChange={(e) => {
+                                        updateSetting('server', 'api_key', e.target.value);
+                                        localStorage.setItem('anchor_api_key', e.target.value);
+                                    }}
                                     placeholder="Leave empty to disable authentication"
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-yellow-500/50 outline-none font-mono text-sm"
                                 />
@@ -1838,6 +1915,37 @@
                                     When set, all /v1 API requests must include <code>Authorization: Bearer &lt;key&gt;</code>
                                 </p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Stats Bar Component
+        const StatsBar = ({ stats }) => {
+            if (!stats) return null;
+            return (
+                <div className="bg-black/40 border-b border-white/10 px-6 py-2">
+                    <div className="flex items-center gap-6 text-xs">
+                        <div className="flex items-center gap-2">
+                            <i data-lucide="database" className="text-cyan-400" width="14" height="14"></i>
+                            <span className="text-gray-400">Atoms:</span>
+                            <span className="text-cyan-400 font-mono font-semibold">{stats.atoms?.toLocaleString() || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <i data-lucide="molecule" className="text-purple-400" width="14" height="14"></i>
+                            <span className="text-gray-400">Molecules:</span>
+                            <span className="text-purple-400 font-mono font-semibold">{stats.molecules?.toLocaleString() || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <i data-lucide="tag" className="text-amber-400" width="14" height="14"></i>
+                            <span className="text-gray-400">Tags:</span>
+                            <span className="text-amber-400 font-mono font-semibold">{stats.tags?.toLocaleString() || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <i data-lucide="file-text" className="text-green-400" width="14" height="14"></i>
+                            <span className="text-gray-400">Sources:</span>
+                            <span className="text-green-400 font-mono font-semibold">{stats.sources?.toLocaleString() || 0}</span>
                         </div>
                     </div>
                 </div>
@@ -1852,6 +1960,7 @@
             const [showGithub, setShowGithub] = useState(false);
             const [systemStatus, setSystemStatus] = useState({ isBusy: false, state: 'idle' });
             const [isDbEmpty, setIsDbEmpty] = useState(true);
+            const [stats, setStats] = useState({ atoms: 0, molecules: 0, tags: 0, sources: 0 });
             const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
             // Adaptive polling: 3s when ingesting, 30s when idle
@@ -1860,7 +1969,9 @@
 
                 const fetchAll = async () => {
                     try {
-                        const statusRes = await fetch('/v1/system/status');
+                        const statusRes = await fetch('/v1/system/status', {
+                            headers: { 'Authorization': `Bearer ${API_KEY}` }
+                        });
                         if (statusRes.ok) {
                             const statusData = await statusRes.json();
                             setSystemStatus(prev => {
@@ -1874,10 +1985,13 @@
                         }
 
                         // Stats only need to refresh occasionally
-                        const statsRes = await fetch('/v1/stats');
+                        const statsRes = await fetch('/v1/stats', {
+                            headers: { 'Authorization': `Bearer ${API_KEY}` }
+                        });
                         if (statsRes.ok) {
-                            const stats = await statsRes.json();
-                            setIsDbEmpty(!stats.atoms && !stats.molecules);
+                            const statsData = await statsRes.json();
+                            setStats(statsData);
+                            setIsDbEmpty(!statsData.atoms && !statsData.molecules);
                         }
                     } catch (error) {
                         // Silently fail - will retry on next interval
@@ -1907,7 +2021,7 @@
             }, []);
 
             useEffect(() => {
-                setTimeout(() => lucide.createIcons(), 100);
+                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 100);
             }, [route, showResearch, showGithub, isDrawerOpen]);
 
             if (isLoading) {
@@ -1941,6 +2055,7 @@
                         isDbEmpty={isDbEmpty}
                         onMenuClick={() => setIsDrawerOpen(true)}
                     />
+                    <StatsBar stats={stats} />
                     <MobileDrawer
                         isOpen={isDrawerOpen}
                         onClose={() => setIsDrawerOpen(false)}
