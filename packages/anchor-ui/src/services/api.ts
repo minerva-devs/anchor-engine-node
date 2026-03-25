@@ -46,124 +46,90 @@ const getHeaders = (contentType = 'application/json') => ({
 export const api = {
     // Generic HTTP methods
     get: (endpoint: string) => fetch(`${getBaseUrl()}${endpoint}`, {
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+        headers: getHeaders(),
     }).then(r => r.json()),
 
     post: (endpoint: string, data?: any) =>
         fetch(`${getBaseUrl()}${endpoint}`, {
             method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+            headers: getHeaders(),
             body: data ? JSON.stringify(data) : undefined
         }).then(r => r.json()),
 
     // Specific API methods
     getBuckets: () => fetch(`${getBaseUrl()}/v1/buckets`, {
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+        headers: getHeaders(),
     }).then(r => r.json()),
 
     createBucket: (name: string, location?: 'inbox' | 'external-inbox') =>
         fetch(`${getBaseUrl()}/v1/buckets`, {
             method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+            headers: getHeaders(),
             body: JSON.stringify({ name, location })
         }).then(r => r.json()),
 
     getTags: (buckets?: string[]) => {
         const query = buckets && buckets.length > 0 ? `?buckets=${buckets.join(',')}` : '';
         return fetch(`${getBaseUrl()}/v1/tags${query}`, {
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+            headers: getHeaders(),
         }).then(r => r.json());
     },
 
     search: (params: SearchParams): Promise<SearchResponse> =>
         fetch(`${getBaseUrl()}/v1/memory/search`, {
             method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+            headers: getHeaders(),
             body: JSON.stringify(params)
         }).then(r => r.json()),
 
     quarantineAtom: (atomId: string) =>
         fetch(`${getBaseUrl()}/v1/atoms/${atomId}/quarantine`, {
             method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+            headers: getHeaders(),
         }),
 
     backup: () => fetch(`${getBaseUrl()}/v1/backup`, {
         method: 'POST',
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+        headers: getHeaders(),
     }).then(r => r.json()),
 
     getQuarantined: () => fetch(`${getBaseUrl()}/v1/atoms/quarantined`, {
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+        headers: getHeaders(),
     }).then(r => r.json()),
 
     cureAtom: (atomId: string) => fetch(`${getBaseUrl()}/v1/atoms/${atomId}/restore`, {
         method: 'POST',
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+        headers: getHeaders(),
     }).then(r => r.json()),
 
-    dream: () => fetch(`${getBaseUrl()}/v1/dream`, {
-        method: 'POST',
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-    }).then(r => r.json()),
-
-    research: (query: string) =>
-        fetch(`${getBaseUrl()}/v1/research/web-search?q=${encodeURIComponent(query)}`, {
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-        }).then(r => r.json()),
-
-    scrape: (url: string, category: string = 'article') =>
-        fetch(`${getBaseUrl()}/v1/research/scrape`, {
-            method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-            body: JSON.stringify({ url, category })
-        }).then(r => r.json()),
-
-    uploadRaw: (content: string, filename: string) =>
-        fetch(`${getBaseUrl()}/v1/research/upload-raw`, {
-            method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-            body: JSON.stringify({ content, filename })
-        }).then(r => r.json()),
-
-    getModels: () => fetch(`${getBaseUrl()}/v1/models`, {
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-    }).then(r => r.json()),
-
-    loadModel: (model: string, options?: any) =>
-        fetch(`${getBaseUrl()}/v1/inference/load`, {
-            method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-            body: JSON.stringify({ model, options })
-        }).then(r => r.json()),
-
-    getModelStatus: () => fetch(`${getBaseUrl()}/v1/model/status`, {
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-    }).then(r => r.json()),
-
-    getGraphData: (query: string, limit: number = 20) =>
-        fetch(`${getBaseUrl()}/v1/graph/data`, {
-            method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-            body: JSON.stringify({ query, limit })
-        }).then(r => r.json()),
-
-    getPaths: () => fetch(`${getBaseUrl()}/v1/system/paths`, {
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-    }).then(r => r.json()),
-
-    addPath: (path: string) => fetch(`${getBaseUrl()}/v1/system/paths`, {
-        method: 'POST',
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-        body: JSON.stringify({ path })
-    }).then(r => r.json()),
-
-    removePath: (path: string) => fetch(`${getBaseUrl()}/v1/system/paths`, {
+    deleteAtom: (atomId: string) => fetch(`${getBaseUrl()}/v1/atoms/${atomId}`, {
         method: 'DELETE',
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-        body: JSON.stringify({ path })
+        headers: getHeaders(),
     }).then(r => r.json()),
 
+    getSettings: () => fetch(`${getBaseUrl()}/v1/settings`, {
+        headers: getHeaders(),
+    }).then(r => r.json()),
+
+    updateSettings: (settings: any) => fetch(`${getBaseUrl()}/v1/settings`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(settings)
+    }).then(r => r.json()),
+
+    getStats: () => fetch(`${getBaseUrl()}/v1/stats`, {
+        headers: getHeaders(),
+    }).then(r => r.json()),
+
+    getSystemStatus: () => fetch(`${getBaseUrl()}/v1/system/status`, {
+        headers: getHeaders(),
+    }).then(r => r.json()),
+
+    getWatchdogStatus: () => fetch(`${getBaseUrl()}/v1/watchdog/status`, {
+        headers: getHeaders(),
+    }).then(r => r.json()),
+
+    // GitHub repo ingestion - includes optional PAT token
     ingestGithubRepo: (url: string, bucket: string, token?: string) => fetch(`${getBaseUrl()}/v1/github/repos`, {
         method: 'POST',
         headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
@@ -173,36 +139,100 @@ export const api = {
     getGithubCredentials: () => fetch(`${getBaseUrl()}/v1/github/credentials`, {
         headers: getHeaders(),
     }).then(r => r.json()),
+
     getGitRepos: () => fetch(`${getBaseUrl()}/v1/git/repos`, {
-        headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
+        headers: getHeaders(),
     }).then(r => r.json()),
 
-    runGitCommand: (command: string, workingDir: string) =>
-        fetch(`${getBaseUrl()}/v1/git/run`, {
+    syncGitRepo: (id: string) => fetch(`${getBaseUrl()}/v1/github/repos/${id}/sync`, {
+        method: 'POST',
+        headers: getHeaders(),
+    }).then(r => r.json()),
+
+    deleteGitRepo: (id: string) => fetch(`${getBaseUrl()}/v1/github/repos/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+    }).then(r => r.json()),
+
+    // Research/scraping endpoints
+    scrapeUrl: (url: string) => fetch(`${getBaseUrl()}/v1/research/scrape`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ url })
+    }).then(r => r.json()),
+
+    // Distillation endpoints
+    distillMemory: (seed?: string, radius?: number, outputPath?: string) =>
+        fetch(`${getBaseUrl()}/v1/memory/distill`, {
             method: 'POST',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-            body: JSON.stringify({ command, working_dir: workingDir })
+            headers: getHeaders(),
+            body: JSON.stringify({ seed, radius, output_path: outputPath })
         }).then(r => r.json()),
 
-    // Update search settings and notify UI components
-    updateSearchSettings: async (settings: { max_chars_default?: number }) => {
-        const result = await fetch(`${getBaseUrl()}/v1/settings/search`, {
-            method: 'PUT',
-            headers: { ...getHeaders(), ...(token && { "x-github-token": token }) },
-            body: JSON.stringify(settings)
-        }).then(r => r.json());
-        
-        // Dispatch event to notify UI components of settings change
-        if (settings.max_chars_default) {
-            const tokenBudget = Math.floor(settings.max_chars_default / 4);
-            window.dispatchEvent(new CustomEvent('settings-changed', {
-                detail: { tokenBudget }
-            }));
-        }
-        
-        return result;
-    }
-} as const;
+    // Synonym management
+    getSynonyms: () => fetch(`${getBaseUrl()}/v1/synonyms`, {
+        headers: getHeaders(),
+    }).then(r => r.json()),
 
-// Define the type for the api object
-export type ApiType = typeof api;
+    addSynonym: (term: string, synonyms: string[]) =>
+        fetch(`${getBaseUrl()}/v1/synonyms`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ term, synonyms })
+        }).then(r => r.json()),
+
+    deleteSynonym: (term: string) =>
+        fetch(`${getBaseUrl()}/v1/synonyms/${term}`, {
+            method: 'DELETE',
+            headers: getHeaders(),
+        }).then(r => r.json()),
+
+    // Taxonomy endpoints
+    getTaxonomy: () => fetch(`${getBaseUrl()}/v1/taxonomy`, {
+        headers: getHeaders(),
+    }).then(r => r.json()),
+
+    // Chat/completion endpoints
+    chat: (messages: any[], model?: string) =>
+        fetch(`${getBaseUrl()}/v1/chat/completions`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ messages, model })
+        }).then(r => r.json()),
+
+    // Model management
+    getModels: () => fetch(`${getBaseUrl()}/v1/models`, {
+        headers: getHeaders(),
+    }).then(r => r.json()),
+
+    loadModel: (model: string) =>
+        fetch(`${getBaseUrl()}/v1/model/load`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ model })
+        }).then(r => r.json()),
+
+    // Terminal command execution
+    execCommand: (command: string, cwd?: string, timeout?: number) =>
+        fetch(`${getBaseUrl()}/v1/terminal/exec`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ command, cwd, timeout })
+        }).then(r => r.json()),
+
+    // Ingestion configuration
+    updateIngestionConfig: (config: any) =>
+        fetch(`${getBaseUrl()}/v1/config/ingestion`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(config)
+        }).then(r => r.json()),
+
+    // Engine switching
+    switchEngine: (engine: string) =>
+        fetch(`${getBaseUrl()}/v1/engine/switch`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ engine })
+        }).then(r => r.json()),
+};
