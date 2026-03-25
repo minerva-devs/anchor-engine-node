@@ -14,6 +14,7 @@ import { db } from '../../core/db.js';
 import { AtomizerService } from './atomizer-service.js';
 import { AtomicIngestService } from './ingest-atomic.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
+import { config } from '../../config/index.js';
 import { CodeAnalyzer, getAnalysisSummary, type ToolOutput } from '../analysis/code-analyzer.js';
 
 interface GitHubRepoRecord {
@@ -396,7 +397,7 @@ export class GitHubIngestService {
    * @param repoId Repository ID to sync
    * @param options Optional settings including runAnalysis flag
    */
-  async syncRepo(repoId: string, options?: { runAnalysis?: boolean }): Promise<SyncResult> {
+  async syncRepo(repoId: string, options?: { runAnalysis?: boolean; token?: string }): Promise<SyncResult> {
     const startTime = Date.now();
     
     // Get repo record
@@ -420,7 +421,7 @@ export class GitHubIngestService {
 
     try {
       // Get GitHub token from env (optional)
-      const token = process.env.GITHUB_TOKEN;
+      const token = options?.token || process.env.GITHUB_TOKEN || config.GITHUB_TOKEN;
 
       // Download tarball
       const tarballPath = await this.downloadTarball(repo.owner, repo.repo, repo.branch, token);
@@ -765,7 +766,7 @@ export class GitHubIngestService {
     reset_at: string;
     authenticated: boolean;
   }> {
-    const token = process.env.GITHUB_TOKEN;
+    const token = process.env.GITHUB_TOKEN || config.GITHUB_TOKEN;
     const url = token
       ? 'https://api.github.com/rate_limit'
       : 'https://api.github.com/rate_limit';

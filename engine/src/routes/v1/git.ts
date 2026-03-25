@@ -26,7 +26,7 @@ export function setupGitRoutes(app: Application) {
       // Start async ingestion (don't wait for completion)
       (async () => {
         try {
-          await service.syncRepo(repo.id, { runAnalysis });
+          await service.syncRepo(repo.id, { runAnalysis, token: tempToken });
           if (includeHistory) {
             // Use temp token if provided, otherwise fall back to env var
             const token = tempToken || process.env.GITHUB_TOKEN;
