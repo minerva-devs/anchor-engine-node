@@ -34,7 +34,7 @@ const getBaseUrl = () => {
 
 // Get API key from localStorage or use default
 const getApiKey = () => {
-    return localStorage.getItem('anchor_api_key') || 'bolt-memory-secret';
+    return localStorage.getItem('anchor_api_key') || 'anchor-engine-default-key';
 };
 
 // Common headers for all API requests

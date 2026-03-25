@@ -2,7 +2,7 @@
   "server": {
     "host": "0.0.0.0",
     "port": 3160,
-    "api_key": "change-me-to-at-least-16-characters"
+    "api_key": "anchor-engine-default-key"
   },
   "encryption": {
     "enabled": false,
