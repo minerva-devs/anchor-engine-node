@@ -20,7 +20,7 @@ const ANCHOR_BASE_URL = `http://localhost:${config.PORT}`;
 const server = new Server(
   {
     name: 'anchor-engine',
-    version: '4.8.2',
+    version: config.VERSION,
   },
   {
     capabilities: {

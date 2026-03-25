@@ -148,7 +148,7 @@ export function setupSystemRoutes(app: Application) {
           uptime_seconds: serverStartTime ? Math.floor((Date.now() - serverStartTime.getTime()) / 1000) : 0,
           port: config.PORT,
           host: config.HOST,
-          version: '4.8.2',
+          version: config.VERSION,
         },
       });
     } catch (error: any) {

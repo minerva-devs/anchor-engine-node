@@ -94,6 +94,7 @@ interface Config {
   PORT: number;
   HOST: string;
   API_KEY: string;
+  VERSION: string;
   GITHUB_TOKEN: string;
   LOG_LEVEL: string;
   OVERLAY_PORT: number;
@@ -242,6 +243,7 @@ const DEFAULT_CONFIG: Config = {
   PORT: 3160,
   HOST: '0.0.0.0',
   API_KEY: '', // REQUIRED
+  VERSION: '4.8.2', // Engine version - can be overridden in user_settings.json
   GITHUB_TOKEN: '', // Optional: GitHub PAT for repo ingestion: Must be set in user_settings.json -> server.api_key
   LOG_LEVEL: 'INFO',
   OVERLAY_PORT: 3002,
@@ -477,6 +479,7 @@ function loadConfig(): Config {
         if (userSettings.server.host) loadedConfig.HOST = userSettings.server.host;
         if (userSettings.server.port) loadedConfig.PORT = userSettings.server.port;
         if (userSettings.server.api_key !== undefined) loadedConfig.API_KEY = userSettings.server.api_key;
+        if (userSettings.server.version !== undefined) loadedConfig.VERSION = userSettings.server.version;
         if (userSettings.github?.token !== undefined) loadedConfig.GITHUB_TOKEN = userSettings.github.token;
       }
 

@@ -23,7 +23,7 @@ import { db } from '../core/db.js';
 import { config } from '../config/index.js';
 import { getWatcherStatus } from '../services/ingest/watchdog.js';
 
-const VERSION = '4.8.2';
+// Version is now loaded from config (user_settings.json -> server.version)
 
 interface DatabaseStats {
   atoms: number;
@@ -137,7 +137,7 @@ export async function displayStartupBanner(options: BannerOptions): Promise<void
     const lines: string[] = [];
     
     // Header
-    lines.push(`⚓ Anchor Engine v${VERSION}`);
+    lines.push(`⚓ Anchor Engine v${config.VERSION}`);
     lines.push('━'.repeat(48));
     
     // Database stats
@@ -181,7 +181,7 @@ export async function displayStartupBanner(options: BannerOptions): Promise<void
   } catch (error: any) {
     // If banner fails, print minimal status
     console.error('[StartupBanner] Error displaying banner:', error.message);
-    console.log(`⚓ Anchor Engine v${VERSION} started in ${formatStartupTime(startupTimeMs)}`);
+    console.log(`⚓ Anchor Engine v${config.VERSION} started in ${formatStartupTime(startupTimeMs)}`);
   }
 }
 
@@ -189,6 +189,6 @@ export async function displayStartupBanner(options: BannerOptions): Promise<void
  * Display a simplified startup message (for error cases or minimal mode)
  */
 export function displayMinimalStartupMessage(startupTimeMs: number): void {
-  console.log(`⚓ Anchor Engine v${VERSION} ready in ${formatStartupTime(startupTimeMs)}`);
+  console.log(`⚓ Anchor Engine v${config.VERSION} ready in ${formatStartupTime(startupTimeMs)}`);
   console.log(`Health: http://${config.HOST}:${config.PORT}/health`);
 }
