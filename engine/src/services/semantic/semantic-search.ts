@@ -7,7 +7,6 @@
  */
 
 import { db } from '../../core/db.js';
-import { vector } from '../../core/vector.js';
 import { NlpService } from '../nlp/nlp-service.js';
 import { SemanticCategory } from '../../types/taxonomy.js';
 import { parseNaturalLanguage, expandQuery } from '../nlp/query-parser.js';
@@ -79,40 +78,9 @@ export async function executeSemanticSearch(
     }
   }
 
-  // 0. Perform Vector Search (Hybrid Retrieval)
-  // ---------------------------------------------------------------------------
-  let vectorIds: number[] = [];
-  const vectorScores = new Map<number, number>(); // vector_id -> similarity (0..1)
-
-  try {
-    // Lazy init vector if needed
-    if (!vector.isInitialized) await vector.init();
-
-    // Generate embedding for query
-    const nlpService = new NlpService();
-    // Use the parsed query to avoid noise, or original query? Original is usually better for embeddings.
-    const embedding = await nlpService.getEmbedding(query);
-
-    // Search Index
-    const vectorResults = vector.search(embedding, 50); // Get top 50 vector matches
-    vectorIds = vectorResults.ids;
-
-    // Store scores for merging
-    vectorResults.ids.forEach((id, index) => {
-      const distance = vectorResults.distances[index];
-      // Convert distance to similarity score (Approximate, assuming cosine distance 0..2)
-      // 0 distance = 1.0 score. 1.0 distance = 0.0 score.
-      // Usually Cosine Similarity = 1 - Cosine Distance
-      const similarity = Math.max(0, 1.0 - distance);
-      vectorScores.set(id, similarity);
-    });
-
-    if (vectorIds.length > 0) {
-      console.log(`[SemanticSearch] Vector Index returned ${vectorIds.length} hits.`);
-    }
-  } catch (e) {
-    console.warn('[SemanticSearch] Vector search failed, falling back to pure FTS.', e);
-  }
+  // Vector search disabled - using pure FTS
+  const vectorIds: number[] = [];
+  const vectorScores = new Map<number, number>();
 
 
   // Build the search query to find semantic molecules using proper SQL FTS syntax

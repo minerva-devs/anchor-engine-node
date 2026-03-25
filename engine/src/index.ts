@@ -275,9 +275,6 @@ async function startServer() {
     const { cleanupBlacklistedTags } = await import('./utils/tag-cleanup.js');
     await cleanupBlacklistedTags();
 
-    // Initialize Vector Service
-    const { vector } = await import('./core/vector.js');
-    await vector.init();
 
 
     console.log('Setting up full routes after database initialization...');
@@ -302,9 +299,6 @@ async function startServer() {
     // Start other services after database is ready
     console.log('[Services] Starting child services via ProcessManager...');
 
-    // Note: Nanobot is now started by the unified launcher (start.bat/start.sh)
-    // to prevent duplicate instances. ProcessManager is disabled for nanobot.
-    console.log('[Services] Nanobot skipped (started by launcher)');
 
     // P0 Critical Fix: Watchdog Auto-Enable (FRICTIONLESS_SPEC.md section 1.2)
     // Auto-start watchdog ONLY if AUTO_START_WATCHDOG env var is set to 'true'

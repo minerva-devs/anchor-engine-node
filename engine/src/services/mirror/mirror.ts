@@ -22,6 +22,8 @@ export const MIRRORED_BRAIN_PATH = PATHS.MIRRORED_BRAIN_DIR;
  * Mirror Protocol: Full rebuild of mirrored_brain/ from DB compounds.
  * Writes cleaned compound_body for each source. Falls back to raw file
  * copy only when compound_body is missing (migration / edge case).
+ * 
+ * NOTE: Uses batching to prevent stack overflow with large datasets.
  */
 export async function createMirror() {
     console.log('🪞 Mirror Protocol: Rebuilding from cleaned compound content...');
@@ -31,24 +33,36 @@ export async function createMirror() {
         fs.mkdirSync(MIRRORED_BRAIN_PATH, { recursive: true });
     }
 
-    // Join sources with compounds to get cleaned content
-    const sourcesQuery = `
-        SELECT s.path, c.compound_body, c.provenance
-        FROM sources s
-        LEFT JOIN compounds c ON c.path = s.path
-    `;
-    const result = await db.run(sourcesQuery);
-
-    if (!result.rows || result.rows.length === 0) {
-        console.log('🪞 Mirror Protocol: No files to mirror.');
-        return;
-    }
-
+    // Process in batches to prevent stack overflow
+    const BATCH_SIZE = 1000;
+    let offset = 0;
+    let totalRows = 0;
     let fileCount = 0;
     let fallbackCount = 0;
     let rehydratedCount = 0;
+    let hasMore = true;
 
-    for (const row of result.rows) {
+    while (hasMore) {
+        // Join sources with compounds to get cleaned content - batched
+        const sourcesQuery = `
+            SELECT s.path, c.compound_body, c.provenance
+            FROM sources s
+            LEFT JOIN compounds c ON c.path = s.path
+            ORDER BY s.path
+            LIMIT ${BATCH_SIZE} OFFSET ${offset}
+        `;
+        
+        const result = await db.run(sourcesQuery);
+        const rows = result.rows || [];
+        
+        if (rows.length === 0) {
+            hasMore = false;
+            break;
+        }
+
+        totalRows += rows.length;
+        
+        for (const row of rows) {
         const dbPath: string = Array.isArray(row) ? row[0] : row.path;
         const compoundBody: string | null = Array.isArray(row) ? row[1] : row.compound_body;
         const provenance: string = (Array.isArray(row) ? row[2] : row.provenance) || 'internal';
@@ -93,9 +107,18 @@ export async function createMirror() {
         const mirrorPath = path.join(MIRRORED_BRAIN_PATH, provenanceDir, relativePath);
         await copyFile(sourcePath, mirrorPath);
         fallbackCount++;
+        }
+
+        // Move to next batch
+        offset += BATCH_SIZE;
+        
+        // Log progress every 10 batches
+        if (offset % (BATCH_SIZE * 10) === 0) {
+            console.log(`🪞 Mirror Protocol: Processed ${totalRows} sources...`);
+        }
     }
 
-    console.log(`🪞 Mirror Protocol: Complete. ${fileCount} cleaned, ${fallbackCount} fallback copies, ${rehydratedCount} rehydrated.`);
+    console.log(`🪞 Mirror Protocol: Complete. ${totalRows} total sources, ${fileCount} cleaned, ${fallbackCount} fallback copies, ${rehydratedCount} rehydrated.`);
 }
 
 /**
