@@ -16,6 +16,12 @@ export function setupGitRoutes(app: Application) {
       // Get temporary GitHub token from header (if provided by user)
       // Token is NOT stored, used only for this operation
       const tempToken = req.headers['x-github-token'] as string | undefined || config.GITHUB_TOKEN;
+      
+      if (tempToken) {
+        console.log(`[API] GitHub token received (length: ${tempToken.length}, source: ${req.headers['x-github-token'] ? 'header' : 'config'})`);
+      } else {
+        console.log('[API] No GitHub token provided - will use unauthenticated requests');
+      }
 
       const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();
