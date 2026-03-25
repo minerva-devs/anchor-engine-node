@@ -1,4 +1,5 @@
 import type { Application, Request, Response } from 'express';
+import { config } from '../../config/index.js';
 import { validate, schemas } from '../../middleware/validate.js';
 
 export function setupGitRoutes(app: Application) {
@@ -14,7 +15,7 @@ export function setupGitRoutes(app: Application) {
       
       // Get temporary GitHub token from header (if provided by user)
       // Token is NOT stored, used only for this operation
-      const tempToken = req.headers['x-github-token'] as string | undefined;
+      const tempToken = req.headers['x-github-token'] as string | undefined || config.GITHUB_TOKEN;
 
       const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
       const service = new GitHubIngestService();
