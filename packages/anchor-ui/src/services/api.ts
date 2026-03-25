@@ -1,3 +1,5 @@
+import { getApiKey } from '../utils/api-key-helper.js';
+
 interface SearchParams {
     query: string;
     max_chars: number;
@@ -30,11 +32,6 @@ const getBaseUrl = () => {
     // In development, we proxy to the engine server
     // In production, this could be configured differently
     return import.meta.env.VITE_API_BASE_URL || '';
-};
-
-// Get API key from localStorage or use default
-const getApiKey = () => {
-    return localStorage.getItem('anchor_api_key') || 'anchor-engine-default-key';
 };
 
 // Common headers for all API requests

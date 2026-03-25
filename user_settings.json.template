@@ -1,9 +1,22 @@
 {
+  "_description": "Anchor Engine Configuration - Single Source of Truth",
+  "_version": "4.8.2",
   "server": {
     "host": "0.0.0.0",
     "port": 3160,
     "api_key": "anchor-engine-default-key",
-        "version": "4.8.2"
+    "version": "4.8.2",
+    "health_endpoint": "/health"
+  },
+  "ui": {
+    "default_api_key": "anchor-engine-default-key",
+    "api_base_url": "",
+    "dev_proxy_target": "http://localhost:3160"
+  },
+  "github": {
+    "token": "",
+    "default_branch": "main",
+    "api_base_url": "https://api.github.com"
   },
   "encryption": {
     "enabled": false,
@@ -47,7 +60,10 @@
     "date_extractor_scan_limit": 2000
   },
   "database": {
-    "wipe_on_startup": true
+    "wipe_on_startup": true,
+    "shared_buffers_mb": 256,
+    "effective_cache_size_mb": 512,
+    "work_mem_mb": 16
   },
   "memory": {
     "heap_pressure_mb": 2000,
@@ -91,5 +107,19 @@
     "distill_output_path": "./local-data/distilled/",
     "preserve_sessions": true,
     "max_session_age_days": 30
+  },
+  "paths": {
+    "notebook_dir": "./notebook",
+    "inbox_dir": "./inbox",
+    "external_inbox_dir": "./external-inbox",
+    "mirrored_brain_dir": "./local-data/mirrored_brain",
+    "context_data_dir": "./engine/context_data",
+    "distilled_output_dir": "./local-data/distilled"
+  },
+  "logging": {
+    "level": "info",
+    "structured": true,
+    "log_to_file": true,
+    "log_dir": "./logs"
   }
 }

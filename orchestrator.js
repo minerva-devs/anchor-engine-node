@@ -31,8 +31,10 @@ const CONFIG = {
   llamaGPULayers: 0, // CPU-only on Termux
   
   // Bolt Memory settings
-  boltMemoryUrl: 'http://localhost:3161',
-  apiKey: 'bolt-memory-secret',
+  // Configuration - reads from environment or uses defaults
+  // These should match user_settings.json -> server settings
+  boltMemoryUrl: process.env.ANCHOR_API_URL || 'http://localhost:3160',
+  apiKey: process.env.ANCHOR_API_KEY || 'anchor-engine-default-key',
   
   // Orchestrator settings
   tempDir: path.join(__dirname, 'orchestrator-temp'),

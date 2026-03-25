@@ -8,8 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const API_KEY = 'bolt-memory-secret';
-const API_URL = 'http://localhost:3161';
+// Configuration - reads from environment or uses defaults
+// These should match user_settings.json
+const API_KEY = process.env.ANCHOR_API_KEY || 'anchor-engine-default-key';
+const API_URL = process.env.ANCHOR_API_URL || 'http://localhost:3160';
 const CHAT_DIR = '/data/data/com.termux/files/home/.qwen/projects/-data-data-com-termux-files-home/chats';
 const OUTPUT_DIR = path.join(__dirname, 'local-data', 'inbox');
 

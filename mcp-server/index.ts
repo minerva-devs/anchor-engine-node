@@ -36,7 +36,7 @@ const projectRoot = join(__dirname, '..', '..');
 
 // Try to load settings from user_settings.json (unity of abstraction)
 let settingsApiKey = '';
-let settingsApiUrl = 'http://localhost:3161';
+let settingsApiUrl = 'http://localhost:3160'; // Default port, will be overridden by user_settings.json
 let settingsMcpConfig: Partial<MCPSecuritySettings> = {};
 
 try {
@@ -45,7 +45,7 @@ try {
   if (existsSync(settingsPath)) {
     const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
     settingsApiKey = settings.server?.api_key || '';
-    settingsApiUrl = `http://localhost:${settings.server?.port || 3161}`;
+    settingsApiUrl = `http://localhost:${settings.server?.port || 3160}`;
     
     // Load MCP-specific settings if present
     if (settings.mcp) {
