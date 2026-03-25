@@ -11,12 +11,9 @@
 
 import os from 'os';
 import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
+import { PATHS } from '../config/paths.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const USER_SETTINGS_PATH = path.join(__dirname, '..', '..', 'user_settings.json');
+const USER_SETTINGS_PATH = PATHS.USER_SETTINGS;
 
 // In-memory cache for settings
 let cachedSettings: any = null;

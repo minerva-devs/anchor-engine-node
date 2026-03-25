@@ -1,37 +1,37 @@
 {
-  "server": {
-    "host": "0.0.0.0",
-    "port": 3160,
-    "api_key": "bolt-memory-secret"
-  },
-  "encryption": {
-    "enabled": false,
-    "password_storage": "env",
-    "password_env_var": "ANCHOR_MASTER_PASSWORD",
-    "min_confidence": 0.7,
-    "auto_encrypt_on_ingest": true,
-    "auto_decrypt_on_search": true,
-    "detect_nsfw": false,
-    "dry_run": false
-  },
-  "search": {
-    "strategy": "hybrid",
-    "hide_years_in_tags": true,
-    "whitelist": [],
-    "max_chars_default": 524288,
-    "max_chars_limit": 20000
-  },
-  "watcher": {
-    "debounce_ms": 2000,
-    "stability_threshold_ms": 2000,
-    "extra_paths": []
-  },
-  "database": {
-    "wipe_on_startup": false
-  },
-  "memory": {
-    "throttle_start_mb": 1500,
-    "throttle_max_mb": 2500,
-    "emergency_stop_mb": 3500
-  }
+    "server": {
+        "host": "0.0.0.0",
+        "port": 3160,
+        "api_key": "bolt-memory-secret"
+    },
+    "encryption": {
+        "enabled": false,
+        "password_storage": "env",
+        "password_env_var": "ANCHOR_MASTER_PASSWORD",
+        "min_confidence": 0.7,
+        "auto_encrypt_on_ingest": true,
+        "auto_decrypt_on_search": true,
+        "detect_nsfw": false,
+        "dry_run": false
+    },
+    "search": {
+        "strategy": "hybrid",
+        "hide_years_in_tags": true,
+        "whitelist": [],
+        "max_chars_default": 524288,
+        "max_chars_limit": 20000
+    },
+    "watcher": {
+        "debounce_ms": 2000,
+        "stability_threshold_ms": 2000,
+        "extra_paths": []
+    },
+    "database": {
+        "wipe_on_startup": false
+    },
+    "memory": {
+        "throttle_start_mb": 1500,
+        "throttle_max_mb": 2500,
+        "emergency_stop_mb": 3500
+    }
 }

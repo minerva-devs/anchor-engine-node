@@ -31,58 +31,97 @@ If you want:
 
 ---
 
-## ⚡ Quick Start (5 Minutes)
+## ⚡ Quick Start (One-Shot Install)
 
-### Option 1: npm Install (Recommended)
+### Prerequisites
+- **Node.js 18+** ([Download](https://nodejs.org/))
+- **pnpm** (`npm install -g pnpm`)
+
+### Linux / Termux / WSL
 
 ```bash
-# Install the package
-npm install @rbalchii/anchor-engine
+# 1. Clone repository
+git clone https://github.com/RSBalchII/anchor-engine-node.git
+cd anchor-engine-node
 
-# Or globally for CLI access
-npm install -g @rbalchii/anchor-engine
+# 2. Run installer
+chmod +x install.sh
+./install.sh
 
-# Start the engine
-anchor start
-
-# Open your browser
-open http://localhost:3160
+# 3. Start the engine
+pnpm start
 ```
 
-### Option 2: From Source
+### macOS
+
+```bash
+# 1. Clone repository
+git clone https://github.com/RSBalchII/anchor-engine-node.git
+cd anchor-engine-node
+
+# 2. Run installer
+chmod +x install-macos.sh
+./install-macos.sh
+
+# 3. Start the engine
+pnpm start
+```
+
+### Windows (PowerShell)
+
+```powershell
+# 1. Clone repository
+git clone https://github.com/RSBalchII/anchor-engine-node.git
+cd anchor-engine-node
+
+# 2. Run installer (may need ExecutionPolicy bypass)
+PowerShell -ExecutionPolicy Bypass -File install.ps1
+
+# 3. Start the engine
+pnpm start
+```
+
+**That's it!** Open http://localhost:3160 in your browser.
+
+### Manual Install (If Script Fails)
 
 ```bash
 # 1. Clone & Install
 git clone https://github.com/RSBalchII/anchor-engine-node.git
 cd anchor-engine-node
 pnpm install
-pnpm build
+pnpm build:all
 
-# 2. Start the engine
+# 2. Create directories
+mkdir -p notebook/inbox notebook/external-inbox .anchor/mirrored_brain
+
+# 3. Configure (edit user_settings.json)
+cp user_settings.json.template user_settings.json
+
+# 4. Start
 pnpm start
-
-# 3. Open your browser
-open http://localhost:3160
 ```
 
 That's it! You now have a sovereign memory system for your LLM.
 
 ### Data Directory Structure
 
-All user data is stored in the `local-data/` directory:
+All user data is stored in the project root:
 
 | Directory | Role | Persistence |
 |-----------|------|-------------|
-| **`local-data/inbox/`** | **Source of Truth** ✅ | Permanent - your sovereign content (3.0x boost) |
-| **`local-data/external-inbox/`** | **Source of Truth** ✅ | Permanent - external content (1.0x boost) |
-| **`local-data/mirrored_brain/`** | Rebuildable Cache 🔄 | Wiped on startup - cleaned content mirror |
-| **`local-data/context_data/`** | Ephemeral Index 🔄 | Wiped on startup - PGlite database |
+| **`notebook/inbox/`** | **Source of Truth** ✅ | Permanent - your sovereign content (3.0x boost) |
+| **`notebook/external-inbox/`** | **Source of Truth** ✅ | Permanent - external content (1.0x boost) |
+| **`.anchor/mirrored_brain/`** | Rebuildable Cache 🔄 | Wiped on startup - cleaned content mirror |
+| **`engine/context_data/`** | Ephemeral Index 🔄 | Wiped on startup - PGlite database |
 
-**Key Principle:** The database is ephemeral and rebuilt from `inbox/` on every startup. Your data is safe in the source of truth directories.
+**Key Principle:** The database is ephemeral and rebuilt from `notebook/inbox/` on every startup. Your data is safe in the source of truth directories.
 
-**Note:** The `local-data/` directory is gitignored by default to protect your data and privacy. See [Standard 020](specs/current-standards/020-ephemeral-database.md) for details.
+**Configuration:** All settings centralized in `user_settings.json` at project root.
 
-**Full installation guide:** [docs/guides/INSTALL_NPM.md](docs/guides/INSTALL_NPM.md)
+**Watchdog:** Disabled by default. Start manually from Settings UI when ready to ingest.
+
+**Note:** `notebook/` and `.anchor/` directories are gitignored to protect your data. See [Standard 020](specs/current-standards/020-ephemeral-database.md) for details.
 
 ---
 

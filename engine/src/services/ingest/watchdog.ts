@@ -136,7 +136,7 @@ export async function addWatchPath(newPath: string): Promise<boolean> {
 
         // Persist to user_settings.json (always do this, even if watchdog isn't running)
         try {
-            const settingsPath = path.join(process.cwd(), 'user_settings.json');
+            const settingsPath = PATHS.USER_SETTINGS;
             if (fs.existsSync(settingsPath)) {
                 const settingsRequest = await fs.promises.readFile(settingsPath, 'utf8');
                 const settings = JSON.parse(settingsRequest);
@@ -173,7 +173,7 @@ export async function removeWatchPath(pathToRemove: string): Promise<boolean> {
 
         // Persist to user_settings.json
         try {
-            const settingsPath = path.join(process.cwd(), 'user_settings.json');
+            const settingsPath = PATHS.USER_SETTINGS;
             if (fs.existsSync(settingsPath)) {
                 const settingsRequest = await fs.promises.readFile(settingsPath, 'utf8');
                 const settings = JSON.parse(settingsRequest);

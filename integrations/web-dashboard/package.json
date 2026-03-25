@@ -12,8 +12,8 @@
     "test:component": "vitest run --config vitest.component.config.ts"
   },
   "dependencies": {
-    "@rbalchii/anchor-client": "^4.8.0",
-    "@rbalchii/anchor-types": "^4.8.0",
+    "@rbalchii/anchor-client": "workspace:*",
+    "@rbalchii/anchor-types": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

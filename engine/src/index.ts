@@ -120,15 +120,30 @@ app.use('/static', express.static(path.join(__dirname, '../dist'), {
 const internalFrontendDist = path.join(__dirname, '../public');
 const externalFrontendDist = path.join(__dirname, '../../../anchor-os/packages/anchor-ui/dist');
 
+// Cache-busting middleware for HTML files (JS/CSS have content hashes)
+function setUICacheHeaders(res: express.Response, filePath: string) {
+  if (filePath.endsWith('.html')) {
+    // NEVER cache HTML - always fetch fresh
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+    // JS/CSS have content hashes - cache forever
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+  }
+}
+
 if (existsSync(externalFrontendDist)) {
   StructuredLogger.info('UI_SOURCE', { source: 'external', path: externalFrontendDist });
   app.use(express.static(externalFrontendDist, {
     setHeaders: (res, path) => {
       StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'external' });
+      setUICacheHeaders(res, path);
     },
   }));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
+    setUICacheHeaders(res, 'index.html');
     res.sendFile(path.join(externalFrontendDist, 'index.html'));
   });
 } else {
@@ -136,10 +151,12 @@ if (existsSync(externalFrontendDist)) {
   app.use(express.static(internalFrontendDist, {
     setHeaders: (res, path) => {
       StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'internal' });
+      setUICacheHeaders(res, path);
     },
   }));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
+    setUICacheHeaders(res, 'index.html');
     res.sendFile(path.join(internalFrontendDist, 'index.html'));
   });
 }
@@ -290,19 +307,22 @@ async function startServer() {
     console.log('[Services] Nanobot skipped (started by launcher)');
 
     // P0 Critical Fix: Watchdog Auto-Enable (FRICTIONLESS_SPEC.md section 1.2)
-    // Auto-start watchdog if watcher.extra_paths is configured in user_settings.json
+    // Auto-start watchdog ONLY if AUTO_START_WATCHDOG env var is set to 'true'
+    // User must explicitly enable watchdog - no auto-start from config
     let watchdogEnabled = false;
     try {
         const { startWatchdog } = await import('./services/ingest/watchdog.js');
-        const { config } = await import('./config/index.js');
 
-        if (config.WATCHER_EXTRA_PATHS && config.WATCHER_EXTRA_PATHS.length > 0) {
-            console.log('[Services] Watchdog: auto-starting due to extra_paths configuration...');
+        // Check environment variable ONLY (explicit user control)
+        const envAutoStart = process.env.AUTO_START_WATCHDOG === 'true';
+
+        if (envAutoStart) {
+            console.log('[Services] Watchdog: auto-starting (AUTO_START_WATCHDOG=true)...');
             await startWatchdog();
             console.log('[Services] ✅ Watchdog auto-started successfully');
             watchdogEnabled = true;
         } else {
-            console.log('[Services] Watchdog: disabled (no extra_paths configured)');
+            console.log('[Services] Watchdog: disabled (set AUTO_START_WATCHDOG=true to enable)');
         }
     } catch (error: any) {
         console.warn('[Services] Watchdog auto-start failed:', error.message);

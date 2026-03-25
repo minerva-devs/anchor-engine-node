@@ -428,6 +428,38 @@ const TOOLS: Tool[] = [
       required: ['url'],
     },
   },
+  {
+    name: 'anchor_watchdog_start',
+    description: 'Start the automatic file watcher service. Monitors directories for new files and ingests them automatically into the knowledge graph.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'anchor_watchdog_stop',
+    description: 'Stop the automatic file watcher service.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'anchor_watchdog_status',
+    description: 'Get the current status of the watchdog service (active/inactive) and ingestion progress.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'anchor_watchdog_ingest',
+    description: 'Trigger a manual ingestion run. Processes all pending files in the watch directories immediately.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 ];
 
 // Resource definitions
@@ -918,6 +950,96 @@ ${features.length > 0 ? `Features enabled:\n${features.map(f => `  ${f}`).join('
   }
 }
 
+// Watchdog handler functions
+async function handleWatchdogStart(args: any): Promise<string> {
+  try {
+    const result = await callAnchorAPI('/v1/watchdog/start', 'POST');
+    return `✅ Watchdog service started
+
+👀 The file watcher is now monitoring directories for new files.
+📁 New files will be automatically ingested into the knowledge graph.
+⏱️  Synonym generation will run 10 seconds after ingestion completes.
+
+To check status, use: anchor_watchdog_status`;
+  } catch (error: any) {
+    return `❌ Failed to start watchdog: ${error.message}`;
+  }
+}
+
+async function handleWatchdogStop(args: any): Promise<string> {
+  try {
+    const result = await callAnchorAPI('/v1/watchdog/stop', 'POST');
+    return `⏹️  Watchdog service stopped
+
+The file watcher is no longer monitoring directories.
+Files added to watched directories will not be automatically ingested.
+
+To restart, use: anchor_watchdog_start`;
+  } catch (error: any) {
+    return `❌ Failed to stop watchdog: ${error.message}`;
+  }
+}
+
+async function handleWatchdogStatus(args: any): Promise<string> {
+  try {
+    const result = await callAnchorAPI('/v1/ingest/status', 'GET');
+
+    const statusEmoji = result.active ? '🟢' : '🔴';
+    const statusText = result.active ? 'Active' : 'Inactive';
+    const stateText = result.state || 'idle';
+
+    let progressText = '';
+    if (result.progress && result.progress.current && result.progress.total) {
+      const percent = Math.round((result.progress.current / result.progress.total) * 100);
+      progressText = `
+📊 Progress: ${result.progress.current}/${result.progress.total} files (${percent}%)`;
+    }
+
+    let lastCompletedText = '';
+    if (result.lastCompleted) {
+      lastCompletedText = `
+⏰ Last completed: ${new Date(result.lastCompleted).toLocaleString()}`;
+    }
+
+    return `${statusEmoji} Watchdog Status
+
+📌 Status: ${statusText}
+🔄 State: ${stateText}
+📁 Current file: ${result.currentFile || 'None'}${progressText}${lastCompletedText}
+📦 Queue depth: ${result.queueDepth || 0}
+✅ Atoms created: ${result.atomsCreated || 0}`;
+  } catch (error: any) {
+    return `❌ Failed to get watchdog status: ${error.message}`;
+  }
+}
+
+async function handleWatchdogIngest(args: any): Promise<string> {
+  try {
+    const result = await callAnchorAPI('/v1/watchdog/ingest', 'POST');
+
+    let resultText = `✅ Manual ingestion triggered
+
+📊 Results:
+• Files processed: ${result.files_processed || 0}
+• Atoms created: ${result.atoms_created || 0}
+• Duration: ${result.duration_ms ? (result.duration_ms / 1000).toFixed(1) + 's' : 'N/A'}`;
+
+    if (result.skipped && result.skipped > 0) {
+      resultText += `
+• Skipped (unchanged): ${result.skipped}`;
+    }
+
+    if (result.errors && result.errors.length > 0) {
+      resultText += `
+❌ Errors: ${result.errors.length}`;
+    }
+
+    return resultText;
+  } catch (error: any) {
+    return `❌ Failed to trigger ingestion: ${error.message}`;
+  }
+}
+
 // Resource handlers
 async function handleResourceStats(): Promise<string> {
   const result = await callAnchorAPI('/v1/stats', 'GET');
@@ -996,6 +1118,10 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
     'anchor_ingest_text': 'ingest_text',
     'anchor_ingest_file': 'ingest_file',
     'anchor_github_ingest': 'github_ingest',
+    'anchor_watchdog_start': 'watchdog',
+    'anchor_watchdog_stop': 'watchdog',
+    'anchor_watchdog_status': 'watchdog',
+    'anchor_watchdog_ingest': 'watchdog',
   };
   
   const operation = operationMap[name] || name;
@@ -1049,6 +1175,18 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
         break;
       case 'anchor_github_ingest':
         result = await handleGithubIngest(args);
+        break;
+      case 'anchor_watchdog_start':
+        result = await handleWatchdogStart(args);
+        break;
+      case 'anchor_watchdog_stop':
+        result = await handleWatchdogStop(args);
+        break;
+      case 'anchor_watchdog_status':
+        result = await handleWatchdogStatus(args);
+        break;
+      case 'anchor_watchdog_ingest':
+        result = await handleWatchdogIngest(args);
         break;
       default:
         throw new Error(`Unknown tool: ${name}`);

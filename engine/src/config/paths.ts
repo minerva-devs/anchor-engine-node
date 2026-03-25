@@ -21,7 +21,17 @@ export const MODELS_DIR = path.resolve(process.env.MODELS_DIR || path.join(PROJE
 export const DIST_DIR = path.resolve(process.env.DIST_DIR || path.join(PROJECT_ROOT, 'dist'));
 export const BASE_PATH = PROJECT_ROOT;
 export const LOGS_DIR = path.join(PROJECT_ROOT, 'logs');
-export const NOTEBOOK_DIR = path.resolve(process.env.NOTEBOOK_DIR || PROJECT_ROOT);
+export const NOTEBOOK_DIR = path.resolve(process.env.NOTEBOOK_DIR || path.join(PROJECT_ROOT, 'notebook'));
+
+// Ensure notebook directories exist
+import { mkdirSync } from 'fs';
+try {
+  mkdirSync(NOTEBOOK_DIR, { recursive: true });
+  mkdirSync(path.join(NOTEBOOK_DIR, 'inbox'), { recursive: true });
+  mkdirSync(path.join(NOTEBOOK_DIR, 'external-inbox'), { recursive: true });
+} catch (e) {
+  // Ignore errors - directories may already exist
+}
 
 // Define specific paths
 export const PATHS = {
@@ -34,9 +44,10 @@ export const PATHS = {
   CONFIG_FILE: path.join(PROJECT_ROOT, 'sovereign.yaml'),
   USER_SETTINGS: path.join(PROJECT_ROOT, 'user_settings.json'),
   DATABASE_FILE: path.join(CONTEXT_DIR, 'context.db'),
-  INBOX_DIR: path.join(PROJECT_ROOT, 'local-data', 'inbox'),
-  EXTERNAL_INBOX_DIR: path.join(PROJECT_ROOT, 'local-data', 'external-inbox'),
-  MIRRORED_BRAIN_DIR: path.join(PROJECT_ROOT, 'local-data', 'mirrored_brain'),
+  NOTEBOOK_DIR,
+  INBOX_DIR: path.join(NOTEBOOK_DIR, 'inbox'),
+  EXTERNAL_INBOX_DIR: path.join(NOTEBOOK_DIR, 'external-inbox'),
+  MIRRORED_BRAIN_DIR: path.join(PROJECT_ROOT, '.anchor', 'mirrored_brain'),
   LIBRARIES_DIR: path.join(CONTEXT_DIR, 'libraries'),
   MIRRORS_DIR: path.join(CONTEXT_DIR, 'mirrors'),
   SESSIONS_DIR: path.join(CONTEXT_DIR, 'sessions'),
@@ -53,11 +64,15 @@ export const PATHS = {
 // Export individual paths for convenience
 export const {
   BACKUPS_DIR,
+  INBOX_DIR,
+  EXTERNAL_INBOX_DIR,
   MIRRORED_BRAIN_DIR,
   ENGINE_CONTEXT,
   ENGINE_PLUGINS,
   DESKTOP_OVERLAY_SRC,
   DESKTOP_OVERLAY_DIST,
 } = PATHS;
+
+// NOTEBOOK_DIR is already exported above
 
 export default PATHS;

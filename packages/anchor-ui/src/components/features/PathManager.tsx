@@ -39,9 +39,14 @@ export const PathManager = () => {
         setError(null);
         try {
             const res = await api.addPath(newPath);
-            if (res.status === 'success') {
+            // Handle both success and warning statuses (warning is still a success for external paths)
+            if (res.status === 'success' || res.status === 'warning') {
                 setNewPath('');
                 fetchPaths();
+                // Show warning message if present
+                if (res.status === 'warning' && res.message) {
+                    console.warn('Path added with warning:', res.message);
+                }
             } else {
                 setError(res.message || 'Failed to add path');
             }

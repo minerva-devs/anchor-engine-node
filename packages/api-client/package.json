@@ -19,7 +19,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
-    "@rbalchii/anchor-types": "^4.8.0"
+    "@rbalchii/anchor-types": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
