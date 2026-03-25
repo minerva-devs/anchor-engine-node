@@ -27,7 +27,7 @@ export async function createMirror() {
     }
 
     // Get all sources from DB (just paths, no content)
-    const result = await db.run('SELECT path, provenance FROM sources ORDER BY path');
+    const result = await db.run('SELECT path FROM sources ORDER BY path');
     const rows = result.rows || [];
     
     if (rows.length === 0) {
@@ -40,7 +40,6 @@ export async function createMirror() {
 
     for (const row of rows) {
         const dbPath: string = Array.isArray(row) ? row[0] : row.path;
-        const provenance: string = (Array.isArray(row) ? row[1] : row.provenance) || 'internal';
 
         if (!dbPath) continue;
 
