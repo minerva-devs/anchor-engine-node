@@ -22,6 +22,7 @@ interface GithubCredentials {
 export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
     const [repoUrl, setRepoUrl] = useState('');
     const [bucket, setBucket] = useState('');
+    const [patToken, setPatToken] = useState();
     const [availableBuckets, setAvailableBuckets] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
@@ -113,7 +114,7 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
         setStatusMessage("Initiating ingestion...");
 
         try {
-            const data = await api.ingestGithubRepo(repoUrl, bucket);
+            const data = await api.ingestGithubRepo(repoUrl, bucket, patToken);
             if (data.status === 'ingesting' || data.id) {
                 setStatusMessage(`Success! Started ingestion for ${repoUrl}. You can close this window.`);
                 setRepoUrl(''); // Clear input on success
@@ -145,6 +146,17 @@ export const GithubModal: React.FC<GithubModalProps> = ({ onClose }) => {
                         placeholder="https://github.com/owner/repo"
                         value={repoUrl}
                         onChange={e => setRepoUrl(e.target.value)}
+                    />
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label htmlFor="github-pat" style={{ fontSize: '0.9rem', color: '#ccc' }}>Personal Access Token (optional)</label>
+                    <Input
+                        id="github-pat"
+                        type="password"
+                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                        value={patToken}
+                        onChange={e => setPatToken(e.target.value)}
                     />
                 </div>
 
