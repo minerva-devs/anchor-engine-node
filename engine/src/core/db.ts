@@ -381,7 +381,7 @@ export class Database {
       await this.run(`
         CREATE TABLE IF NOT EXISTS compounds (
           id TEXT PRIMARY KEY,
-          compound_body TEXT,
+          
           path TEXT,
           timestamp REAL,
           provenance TEXT,
