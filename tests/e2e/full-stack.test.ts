@@ -1,7 +1,7 @@
 /**
  * End-to-End A+B Tests
  * Full integration: Dashboard → API Client → Engine
- * 
+ *
  * These tests require a running Anchor Engine instance on localhost:3160
  * Run with: pnpm test:e2e
  */

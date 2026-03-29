@@ -1,5 +1,5 @@
 /**
- * Memory routes — explore / illuminate endpoint
+ * Memory routes — explore / illuminate / distill endpoints
  *
  * POST /v1/memory/explore
  *   BFS graph traversal from seed concepts.
@@ -7,7 +7,8 @@
  *
  * POST /v1/memory/distill
  *   Standard 133: Radial Distillation
- *   Line-level deduplication with radial inflation.
+ *   Line-level deduplication with radial inflation (4.8.2 implementation).
+ *   Supports streaming mode via ?stream=true query param.
  */
 
 import type { Application, Request, Response } from 'express';
@@ -16,7 +17,9 @@ import type { ExploreRequest } from '../../services/search/explore.js';
 import { exploreMemory } from '../../services/search/explore.js';
 import type { RadialDistillRequest } from '../../services/distillation/radial-distiller.js';
 import { radialDistill } from '../../services/distillation/radial-distiller.js';
+import { executeStreamingDistill, formatDistillSSE } from '../../services/distillation/streaming-distiller.js';
 import { validate, schemas } from '../../middleware/validate.js';
+import { db } from '../../core/db.js';
 
 export function setupMemoryRoutes(app: Application) {
   // Note: memoryExplore schema validates basic structure; complex seed validation remains inline
@@ -74,8 +77,42 @@ export function setupMemoryRoutes(app: Application) {
     });
 
     try {
-      // Standard 133: Radial Distillation (only mode supported)
+      // Check for streaming mode (default: false for backward compatibility)
+      const streamMode = req.query.stream === 'true';
       const body = req.body as RadialDistillRequest;
+
+      if (streamMode) {
+        // Streaming mode: Server-Sent Events
+        StructuredLogger.info('DISTILL_STREAMING_START', {
+          radius: body.radius,
+          output_format: body.output_format,
+        });
+
+        const stream = executeStreamingDistill({
+          ...body,
+          batchSize: 100,
+        });
+
+        // Set up SSE headers
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+
+        // Stream events to client
+        for await (const event of stream) {
+          res.write(formatDistillSSE(event));
+        }
+
+        res.end();
+
+        StructuredLogger.info('DISTILL_STREAMING_COMPLETE', {
+          duration_ms: Date.now() - startTime,
+        });
+        return;
+      }
+
+      // Standard mode: Single JSON response (4.8.2 implementation)
       const result = await radialDistill(body);
       const duration = Date.now() - startTime;
 
@@ -83,6 +120,7 @@ export function setupMemoryRoutes(app: Application) {
         compounds_processed: result.stats.compounds_processed,
         lines_total: result.stats.lines_total,
         lines_unique: result.stats.lines_unique,
+        lines_duplicate: result.stats.lines_duplicate,
         compression_ratio: result.stats.compression_ratio,
         duration_ms: duration,
       });
@@ -94,7 +132,18 @@ export function setupMemoryRoutes(app: Application) {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       StructuredLogger.error('DISTILL_ERROR', err instanceof Error ? err : new Error(msg), { error: msg });
-      res.status(500).json({ error: msg });
+      
+      if (!res.headersSent) {
+        res.status(500).json({ error: msg });
+      } else {
+        // For streaming mode, send error as SSE event
+        res.write(formatDistillSSE({
+          type: 'error',
+          message: msg,
+          details: err instanceof Error ? err.stack : undefined,
+        }));
+        res.end();
+      }
     }
   });
 }

@@ -8,6 +8,8 @@ export default defineConfig({
     include: [
       'tests/**/*.vitest.ts',
       'tests/**/*.vitest.js',
+      'tests/**/*.test.ts',
+      'tests/**/*.test.js',
     ],
     testTimeout: 60000, // PGlite init can take time
     // No jsdom — pure Node environment for engine tests

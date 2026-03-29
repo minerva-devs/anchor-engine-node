@@ -1,40 +1,112 @@
 import type { Application, Request, Response } from 'express';
 import { db } from '../../core/db.js';
 import { validate, schemas } from '../../middleware/validate.js';
+import rateLimit from 'express-rate-limit';
+
+// Rate limiter for terminal endpoint (strict limits for security)
+const terminalLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // 5 commands per minute
+  message: {
+    error: 'Too many terminal commands',
+    retryAfter: 60,
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => req.ip || req.socket.remoteAddress || 'unknown',
+});
 
 export function setupAdminRoutes(app: Application) {
+  // Apply strict rate limiting to terminal endpoint
+  app.use('/v1/terminal', terminalLimiter);
+  
   // Terminal Command Execution Endpoint
+  // SECURITY NOTE: This endpoint is for simulation only - real execution requires sandboxing
   app.post('/v1/terminal/exec', validate(schemas.terminalExec), async (req: Request, res: Response) => {
     try {
-      const { command } = req.body;
+      const { command, cwd, timeout } = req.body;
 
-      // For now, we'll simulate command execution for security
-      // In a real implementation, you'd want to use a secure sandbox
-      console.log(`[Terminal] Executing command: ${command}`);
-
-      // Validate command to prevent dangerous operations
-      const dangerousCommands = ['rm', 'del', 'format', 'mkfs', 'dd', 'shutdown', 'reboot', 'poweroff'];
-      const commandParts = command.toLowerCase().split(' ');
-      const isDangerous = dangerousCommands.some(dc => commandParts.includes(dc));
-
-      if (isDangerous) {
+      // SECURITY: Validate command length (prevent buffer/DoS attacks)
+      if (command.length > 1000) {
         return res.status(400).json({
-          error: 'Command contains potentially dangerous operations',
-          stderr: 'ERROR: Dangerous command blocked by security policy',
+          error: 'Command too long',
+          message: 'Maximum command length is 1000 characters',
+        });
+      }
+
+      // SECURITY: Validate cwd path if provided (prevent path traversal)
+      if (cwd) {
+        const path = await import('path');
+        if (!path.isAbsolute(cwd)) {
+          return res.status(400).json({
+            error: 'Invalid working directory',
+            message: 'cwd must be an absolute path',
+          });
+        }
+        // Block path traversal attempts
+        if (cwd.includes('..') || cwd.includes('~')) {
+          return res.status(400).json({
+            error: 'Invalid working directory',
+            message: 'Path traversal not allowed',
+          });
+        }
+      }
+
+      // Log command execution (without sensitive data)
+      console.log(`[Terminal] Command received: ${command.substring(0, 100)}${command.length > 100 ? '...' : ''}`);
+
+      // SECURITY: Block dangerous commands and patterns
+      const dangerousPatterns = [
+        // Destructive commands
+        '\\brm\\s', 'rm\\s+-rf', '\\bdel\\b', '\\bformat\\b', '\\bmkfs\\b', '\\bdd\\b',
+        // System control
+        '\\bshutdown\\b', '\\breboot\\b', '\\bpoweroff\\b', '\\bhalt\\b',
+        // Privilege escalation
+        '\\bsudo\\b', '\\bsu\\b', '\\bchmod\\s+777', '\\bchown\\b',
+        // Network attacks
+        '\\bnc\\s', '\\bnetcat\\b', '\\bcurl.*\\|.*sh\\b', '\\bwget.*\\|.*sh\\b',
+        // Process manipulation
+        '\\bkill\\b', '\\bpkill\\b', '\\bfuser\\b',
+        // Shell escapes
+        '\\bbash\\s+-i', '\\bsh\\s+-i', '\\bexec\\b', '\\beval\\b',
+        // File descriptor manipulation
+        '>/dev/tcp/', '\\b/dev/tcp\\b',
+      ];
+
+      const commandLower = command.toLowerCase();
+      const isDangerous = dangerousPatterns.some(pattern => {
+        try {
+          return new RegExp(pattern, 'i').test(command);
+        } catch {
+          return false;
+        }
+      });
+
+      // Additional heuristic checks
+      const blockedChars = ['|', ';', '`', '$', '>', '<', '&', '\n', '\r'];
+      const hasBlockedChars = blockedChars.some(char => command.includes(char));
+
+      if (isDangerous || hasBlockedChars) {
+        console.warn(`[Terminal] Blocked dangerous command: ${command.substring(0, 50)}...`);
+        return res.status(400).json({
+          error: 'Command blocked by security policy',
+          message: 'Command contains dangerous patterns or characters',
+          stderr: 'ERROR: Command blocked by security policy',
         });
       }
 
       // Special handling for 'clear' command
-      if (command.trim().toLowerCase() === 'clear') {
+      if (command.trim().toLowerCase() === 'clear' || command.trim().toLowerCase() === 'cls') {
         return res.status(200).json({
           command: command,
-          stdout: '', // Empty stdout for clear command
+          stdout: '',
           stderr: '',
           code: 0,
         });
       }
 
       // For now, return mock response - in a real implementation you'd execute securely
+      // with proper sandboxing (e.g., Docker, seccomp, or WebAssembly)
       const mockResponses: Record<string, { stdout?: string, stderr?: string, code?: number }> = {
         'ls': { stdout: 'file1.txt\nfile2.md\nfolder1/\nfolder2/' },
         'dir': { stdout: 'file1.txt\nfile2.md\nfolder1/\nfolder2/' },

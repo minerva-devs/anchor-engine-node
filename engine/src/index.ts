@@ -115,10 +115,10 @@ app.use('/static', express.static(path.join(__dirname, '../dist'), {
   },
 }));
 
-// Serve UI from engine/public (simplified single-file UI)
-// Fallback to external anchor-os UI if running in full system mode
+// Serve UI from packages/anchor-ui/dist (built React app)
+// Fallback to engine/public for development/single-file mode
 const internalFrontendDist = path.join(__dirname, '../public');
-const externalFrontendDist = path.join(__dirname, '../../../anchor-os/packages/anchor-ui/dist');
+const externalFrontendDist = path.join(__dirname, '../../packages/anchor-ui/dist');
 
 // Cache-busting middleware for HTML files (JS/CSS have content hashes)
 function setUICacheHeaders(res: express.Response, filePath: string) {
@@ -301,22 +301,25 @@ async function startServer() {
 
 
     // P0 Critical Fix: Watchdog Auto-Enable (FRICTIONLESS_SPEC.md section 1.2)
-    // Auto-start watchdog ONLY if AUTO_START_WATCHDOG env var is set to 'true'
-    // User must explicitly enable watchdog - no auto-start from config
+    // Watchdog auto-start controlled by user_settings.json (watcher.auto_start)
+    // Environment variable AUTO_START_WATCHDOG overrides settings file
     let watchdogEnabled = false;
     try {
         const { startWatchdog } = await import('./services/ingest/watchdog.js');
 
-        // Check environment variable ONLY (explicit user control)
+        // Check environment variable first (explicit user control)
         const envAutoStart = process.env.AUTO_START_WATCHDOG === 'true';
+        
+        // Fall back to settings file
+        const settingsAutoStart = config.WATCHER?.AUTO_START === true;
 
-        if (envAutoStart) {
-            console.log('[Services] Watchdog: auto-starting (AUTO_START_WATCHDOG=true)...');
+        if (envAutoStart || settingsAutoStart) {
+            console.log('[Services] Watchdog: auto-starting (AUTO_START_WATCHDOG=true or watcher.auto_start=true)...');
             await startWatchdog();
             console.log('[Services] ✅ Watchdog auto-started successfully');
             watchdogEnabled = true;
         } else {
-            console.log('[Services] Watchdog: disabled (set AUTO_START_WATCHDOG=true to enable)');
+            console.log('[Services] Watchdog: disabled (set AUTO_START_WATCHDOG=true or watcher.auto_start=true to enable)');
         }
     } catch (error: any) {
         console.warn('[Services] Watchdog auto-start failed:', error.message);
@@ -411,23 +414,29 @@ process.on('SIGINT', async () => {
 
     // Standard 110: Ephemeral Index Architecture
     // Clear ALL derived data on shutdown - only inbox/ is source of truth
+    // Controlled by user_settings.json (database.wipe_on_shutdown, watcher.wipe_mirrored_brain_on_shutdown)
 
-    // 1. Wipe PGlite Database (index/cache)
-    const dbPath = process.env.PGLITE_DB_PATH || pathManager.getDatabasePath();
-    if (existsSync(dbPath)) {
-      console.log('[Shutdown] Wiping PGlite database (rebuildable index)...');
-      try {
-        rmSync(dbPath, { recursive: true, force: true });
-        console.log('[Shutdown] ✓ PGlite database wiped.');
-      } catch (e: any) {
-        console.warn(`[Shutdown] ⚠ Could not wipe PGlite database: ${e.message}`);
-        console.warn('[Shutdown] Will be wiped on next startup');
+    // 1. Wipe PGlite Database (index/cache) - controlled by database.wipe_on_shutdown
+    const shouldWipeDb = config.DATABASE?.WIPE_ON_SHUTDOWN === true;
+    if (shouldWipeDb) {
+      const dbPath = process.env.PGLITE_DB_PATH || pathManager.getDatabasePath();
+      if (existsSync(dbPath)) {
+        console.log('[Shutdown] Wiping PGlite database (database.wipe_on_shutdown=true)...');
+        try {
+          rmSync(dbPath, { recursive: true, force: true });
+          console.log('[Shutdown] ✓ PGlite database wiped.');
+        } catch (e: any) {
+          console.warn(`[Shutdown] ⚠ Could not wipe PGlite database: ${e.message}`);
+          console.warn('[Shutdown] Will be wiped on next startup');
+        }
       }
+    } else {
+      console.log('[Shutdown] Skipping DB wipe (set database.wipe_on_shutdown=true to enable)');
     }
 
     // 2. Wipe SQLite3 context.db (anchor-core FFI database)
     const contextDbPath = path.join(pathManager.getDatabaseDir(), 'context.db');
-    if (existsSync(contextDbPath)) {
+    if (existsSync(contextDbPath) && shouldWipeDb) {
       console.log('[Shutdown] Wiping SQLite3 context.db (anchor-core FFI)...');
       try {
         rmSync(contextDbPath, { force: true });
@@ -439,15 +448,21 @@ process.on('SIGINT', async () => {
     }
 
     // 3. Clear mirrored_brain/ (extracted from inbox/, regenerated on start)
-    const { MIRRORED_BRAIN_PATH } = await import('./services/mirror/mirror.js');
-    if (existsSync(MIRRORED_BRAIN_PATH)) {
-      console.log('[Shutdown] Clearing mirrored_brain/ (regenerated from inbox/ on start)...');
-      try {
-        rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
-        console.log('[Shutdown] ✓ mirrored_brain/ cleared.');
-      } catch (e: any) {
-        console.warn(`[Shutdown] ⚠ Could not clear mirrored_brain/: ${e.message}`);
+    // Controlled by watcher.wipe_mirrored_brain_on_shutdown
+    const shouldWipeMirror = config.WATCHER?.WIPE_MIRRORED_BRAIN_ON_SHUTDOWN === true;
+    if (shouldWipeMirror) {
+      const { MIRRORED_BRAIN_PATH } = await import('./services/mirror/mirror.js');
+      if (existsSync(MIRRORED_BRAIN_PATH)) {
+        console.log('[Shutdown] Clearing mirrored_brain/ (watcher.wipe_mirrored_brain_on_shutdown=true)...');
+        try {
+          rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
+          console.log('[Shutdown] ✓ mirrored_brain/ cleared.');
+        } catch (e: any) {
+          console.warn(`[Shutdown] ⚠ Could not clear mirrored_brain/: ${e.message}`);
+        }
       }
+    } else {
+      console.log('[Shutdown] Skipping mirrored_brain wipe (set watcher.wipe_mirrored_brain_on_shutdown=true to enable)');
     }
 
     // 4. Clear Auto-Generated Synonym Rings (derived from data, regenerated on start)

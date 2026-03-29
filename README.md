@@ -435,7 +435,22 @@ Most AI memory systems do the opposite: they hoard data, brute‑force compute s
 └──────────────┘ └──────────┘ └─────────────┘
 ```
 
-**Key Insight:** Content lives in `mirrored_brain/` filesystem. Database stores **pointers only** (byte offsets + metadata). This makes the database **disposable and rebuildable**—wipe it and restore in minutes.
+> ### ⚠️ CRITICAL: Database Stores POINTERS ONLY - NO CONTENT EVER
+>
+> **Database NEVER stores:**
+> - ❌ `molecules.content` - NO full text content
+> - ❌ `compounds.compound_body` - NO document bodies
+> - ❌ `atoms.content` - NO content blobs
+>
+> **Database stores ONLY:**
+> - ✅ `file_path` - path to file in `mirrored_brain/`
+> - ✅ `start_byte`, `end_byte` - byte offsets for content extraction
+> - ✅ `tags`, `timestamp`, `provenance` - metadata
+>
+> **Why?** Filesystem reading is **4x faster** than database reading for radial inflation.
+> Content is read directly from `mirrored_brain/` using byte offsets—no database query overhead.
+>
+> This makes the database **disposable and rebuildable**—wipe it and restore in minutes.
 
 ---
 

@@ -1,10 +1,15 @@
 /**
  * Atomic Architecture Taxonomy
- * 
+ *
  * Hierarchy of Meaning:
  * 1. Atom (formerly Tag/Entity): The fundamental unit of semantic meaning (e.g., "#python", "UserAuthentication").
  * 2. Molecule (formerly Sentence/Thought): A coherent chain of atoms expressing a specific intent or fact.
  * 3. Compound (formerly Chunk/Memory): A stable aggregate of molecules (e.g., a file, a function, a document).
+ *
+ * POINTER-ONLY ARCHITECTURE (Standard 051):
+ * - Database stores ONLY pointers (byte offsets, file paths)
+ * - Content lives in mirrored_brain/ filesystem
+ * - compound_body removed - read from filesystem via path + byte offsets
  */
 
 export interface Atom {
@@ -17,7 +22,7 @@ export interface Atom {
 
 export interface Molecule {
     id: string;
-    content: string;     // The actual text (e.g. "Python is great.")
+    content: string;     // The actual text (used in-memory during processing, NOT stored in DB)
     atoms: string[];     // Pointers to Atom IDs present in this molecule
     sequence: number;    // Order within the Compound
     compoundId: string;  // Parent Compound
@@ -46,7 +51,6 @@ export interface Molecule {
 
 export interface Compound {
     id: string;          // memory_id
-    compound_body: string;     // Full text content (formerly content)
     molecules: string[]; // Pointers to Molecule IDs
     atoms: string[];     // Aggregate set of Atom IDs (formerly tags)
 
@@ -55,4 +59,5 @@ export interface Compound {
     timestamp: number;
     provenance: 'internal' | 'external' | 'quarantine';
     molecular_signature: string; // 64-bit Hamming SimHash
+    // NOTE: compound_body removed - content read from filesystem via path + byte offsets
 }

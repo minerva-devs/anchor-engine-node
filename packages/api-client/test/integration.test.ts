@@ -1,6 +1,6 @@
 /**
  * A+B Integration Tests for @rbalchii/anchor-client
- * 
+ *
  * These tests emulate real-world usage scenarios for:
  * - Frontend dashboard integration
  * - Browser extension capabilities

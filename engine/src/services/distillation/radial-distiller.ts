@@ -338,7 +338,8 @@ async function reassembleCompounds(
   } else if (request.output_format === 'compound') {
     outputPath = path.join(PATHS.MIRRORED_BRAIN_DIR, 'distilled', `distilled_${timestamp}.md`);
   } else {
-    outputPath = path.join(PATHS.INBOX_DIR, 'distilled', `distilled_${timestamp}.${request.output_format || 'yaml'}`);
+    // Output to notebook/distills (NOT inbox - prevents re-ingestion)
+    outputPath = path.join(PATHS.DISTILLS_DIR, `distilled_${timestamp}.${request.output_format || 'json'}`);
   }
 
   // Ensure directory exists
@@ -406,7 +407,13 @@ async function reassembleCompounds(
     }
 
     // Write chunks as separate files or single file
-    if (chunks.length === 1) {
+    // Handle empty case - write empty file
+    if (chunks.length === 0) {
+      // No data - write empty file with metadata
+      const emptyContent = `<!-- Distilled: ${new Date().toISOString()} -->\n<!-- No content found for radius: ${request.radius} -->\n`;
+      fs.writeFileSync(outputPath, emptyContent, 'utf-8');
+      compoundsCreated = 1;
+    } else if (chunks.length === 1) {
       fs.writeFileSync(outputPath, chunks[0], 'utf-8');
       compoundsCreated = 1;
     } else {

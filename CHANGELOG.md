@@ -6,6 +6,74 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.9.7] - 2026-03-26 — Documentation Hygiene, Path Configuration, Distill Fix
+
+### 📚 Documentation Hygiene (Standard 022)
+
+**Problem:** 220+ markdown files scattered across project, duplicate guides, configuration drift fixed multiple times
+
+**Solution:**
+- **Standard 022: Documentation Hygiene** - New active standard
+- **Allowed directories**: `docs/`, `specs/`, `[package]/README.md` ONLY
+- **Cross-reference check**: `grep -ri` before creating any docs
+- **Pain point log**: Appendix in Standard 022 tracks recurring issues
+- **Archive policy**: Auto-archive standards inactive >6 months
+- **Updated `.ai-instructions.md`** - References Standard 022
+
+**Pain Points Logged:**
+1. Configuration drift (fixed 3+ times in 40 commits)
+2. GitHub PAT authentication (4 commits to implement)
+3. Path manager bug (`../..` vs `..`)
+4. Distill file read error (wrong directory)
+
+### 🔧 Path Configuration Centralization
+
+**Problem:** Hardcoded paths in multiple files, pathManager returning wrong notebook path
+
+**Solution:**
+- **`user_settings.json` paths section** - All paths configurable in one place:
+  ```json
+  {
+    "paths": {
+      "notebook": "notebook",
+      "inbox": "notebook/inbox",
+      "external_inbox": "notebook/external-inbox",
+      "distills": "notebook/distills",
+      "mirrored_brain": ".anchor/mirrored_brain",
+      "context": "engine/context",
+      "logs": "logs"
+    }
+  }
+  ```
+- **`paths.ts` updated** - Reads from `user_settings.json` with env var overrides
+- **Priority**: Environment variables > user_settings.json > defaults
+- **New export**: `PATHS.DISTILLS_DIR` for distillation output
+
+### 🐛 Distill File Read Fix
+
+**Problem:** `/v1/files/read` looked in `inbox/distilled/` but radial-distiller-v2 wrote to `notebook/distills/`
+
+**Solution:**
+- **Updated `system.ts`** - Uses `PATHS.DISTILLS_DIR` instead of hardcoded path
+- **Updated `memory.ts`** - Import from `radial-distiller-v2.js` (not old `radial-distiller.js`)
+- **Auto-create distills directory** if it doesn't exist
+- **Support both .yaml and .json** file extensions
+
+### 📦 GitHub Ingestion Improvements
+
+- **Auto-generated buckets** - `github:{owner}/{repo}` from URL (no manual input)
+- **Notebook mirroring** - Files copied to `external-inbox/github/{owner}/{repo}/`
+- **PAT session caching** - localStorage for current browser session
+- **UI text update** - "cached locally for this session" (clearer than "not stored")
+
+### 📊 Stats
+
+- **Active standards**: 22 (limit: 30)
+- **Documentation files**: ~220 (target: consolidate to ~100)
+- **Pain points logged**: 4 (with prevention measures)
+
+---
+
 ## [4.9.5] - 2026-03-23 — Search Cache, MCP File Reading, Version Alignment
 
 ### ✨ New Features

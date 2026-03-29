@@ -18,6 +18,16 @@
     "default_branch": "main",
     "api_base_url": "https://api.github.com"
   },
+  "paths": {
+    "_description": "Directory paths - override these for custom installations",
+    "notebook": "notebook",
+    "inbox": "notebook/inbox",
+    "external_inbox": "notebook/external-inbox",
+    "distills": "notebook/distills",
+    "mirrored_brain": ".anchor/mirrored_brain",
+    "context": "engine/context",
+    "logs": "logs"
+  },
   "encryption": {
     "enabled": false,
     "password_storage": "env",

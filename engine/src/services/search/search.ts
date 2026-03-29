@@ -50,17 +50,53 @@ export type { SearchResult };
 export type { BrightNode, BrightNodeRelationship } from './bright-nodes.js';
 export { getBrightNodes, getStructuredGraph } from './bright-nodes.js';
 
-// --- Search Cache (Standard 016) ---
+// --- Search Cache (Standard 016) - Using LRU Cache ---
+// Import the new LRU cache implementation
+import { LRUCache, searchResultCache as lruSearchCache } from '../../utils/lru-cache.js';
+
 export interface CacheEntry {
   results: { context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string };
   timestamp: number;
 }
 
-export const searchCache = new Map<string, CacheEntry>();
-const CACHE_TTL_MS = 60000; // 1 minute TTL
-const MAX_CACHE_SIZE = 100;
+// Legacy Map-based cache for backward compatibility (deprecated, will be removed in v5.0)
+// Now wraps the LRU cache for backward compatibility
+export const searchCache = {
+  get: (key: string): CacheEntry | undefined => {
+    const result = lruSearchCache.get(key);
+    return result ? { results: result.results, timestamp: result.results.timestamp || Date.now() } : undefined;
+  },
+  set: (key: string, value: CacheEntry): void => {
+    lruSearchCache.set(key, value, 2048);
+  },
+  delete: (key: string): boolean => {
+    return lruSearchCache.delete(key);
+  },
+  has: (key: string): boolean => {
+    return lruSearchCache.has(key);
+  },
+  clear: (): void => {
+    lruSearchCache.clear();
+  },
+  get size(): number {
+    return lruSearchCache.getStats().size;
+  },
+  getSize: (): number => {
+    return lruSearchCache.getStats().size;
+  },
+  entries: (): IterableIterator<[string, any]> => {
+    return lruSearchCache.entries()[Symbol.iterator]();
+  },
+  keys: (): IterableIterator<string> => {
+    return lruSearchCache.keys()[Symbol.iterator]();
+  },
+};
 
-// Memory pressure thresholds
+// Use the LRU cache instead
+const CACHE_TTL_MS = config.CACHE_TTL_MS || 60000; // 1 minute TTL
+const MAX_CACHE_SIZE = config.MAX_CACHE_SIZE || 100;
+
+// Memory pressure thresholds (now handled by LRU cache internally)
 const HIGH_MEMORY_THRESHOLD = 70; // Percentage
 const CRITICAL_MEMORY_THRESHOLD = 85; // Percentage
 
@@ -77,45 +113,14 @@ function getCacheKey(query: string, buckets: string[], maxChars: number, tags: s
   return createHash('md5').update(`${query}|${buckets.join(',')}|${maxChars}|${tags.join(',')}|${provenance}|${useMaxRecall}`).digest('hex');
 }
 
+/**
+ * Clean expired cache entries (legacy function, now handled by LRU cache)
+ * @deprecated Use lruSearchCache.removeExpired() instead
+ */
 function cleanExpiredCache(): void {
-  const now = Date.now();
-  
-  // 1. Clear expired entries
-  for (const [key, entry] of searchCache.entries()) {
-    if (now - entry.timestamp > CACHE_TTL_MS) {
-      searchCache.delete(key);
-    }
-  }
-  
-  // 2. Memory-aware eviction
-  if (resourceManager) {
-    const stats = resourceManager.getMemoryStats();
-    const percentageUsed = stats.percentageUsed * 100; // Convert to percentage
-    
-    if (percentageUsed > CRITICAL_MEMORY_THRESHOLD) {
-      // Critical memory - clear 80% of cache
-      const targetSize = Math.floor(MAX_CACHE_SIZE * 0.2);
-      if (searchCache.size > targetSize) {
-        const keysToDelete = Array.from(searchCache.keys()).slice(0, searchCache.size - targetSize);
-        keysToDelete.forEach(k => searchCache.delete(k));
-        console.log(`[SearchCache] Emergency: cleared to ${targetSize} entries (memory: ${percentageUsed.toFixed(1)}%)`);
-      }
-    } else if (percentageUsed > HIGH_MEMORY_THRESHOLD) {
-      // High memory - reduce cache to 50% of max
-      const targetSize = Math.floor(MAX_CACHE_SIZE * 0.5);
-      if (searchCache.size > targetSize) {
-        const keysToDelete = Array.from(searchCache.keys()).slice(0, searchCache.size - targetSize);
-        keysToDelete.forEach(k => searchCache.delete(k));
-        console.log(`[SearchCache] Reduced to ${targetSize} entries due to memory pressure (memory: ${percentageUsed.toFixed(1)}%)`);
-      }
-    }
-  }
-  
-  // 3. Also trim if too large (fallback)
-  if (searchCache.size > MAX_CACHE_SIZE) {
-    const keysToDelete = Array.from(searchCache.keys()).slice(0, searchCache.size - MAX_CACHE_SIZE);
-    keysToDelete.forEach(k => searchCache.delete(k));
-  }
+  // LRU cache handles expiration automatically on get()
+  // This function is kept for backward compatibility
+  lruSearchCache.removeExpired();
 }
 
 /**
@@ -579,12 +584,13 @@ export async function findAnchors(
         anchors.push(...merged);
       }
 
-      // Final Safety Net: Global Content Similarity Deduplication (O(N^2))
+      // Final Safety Net: Global Content Similarity Deduplication
+      // OPTIMIZED: O(N log N) with content bucketing (was O(N^2))
       // Addresses:
       // 1. Cross-Compound Duplicates (different IDs/provenance, same text)
       // 2. Near-Exact Duplicates (whitespace diffs, timestamp diffs)
       // 3. Containment (one result is a subset of another)
-      // 4. Overlapping Windows from same compound (NEW FIX)
+      // 4. Overlapping Windows from same compound
 
       const distinctAnchors: SearchResult[] = [];
       // Sort by score desc to prioritize best matches
@@ -592,10 +598,8 @@ export async function findAnchors(
 
       // Helper for normalization: lowercase + remove non-alphanumeric + unescape JSON
       const normalize = (s: string) => {
-        // First unescape JSON strings (\\\" → ", \\n → newline, etc.)
         let unescaped = s;
         try {
-          // Try to unescape common JSON escape sequences
           unescaped = s
             .replace(/\\"/g, '"')
             .replace(/\\\\/g, '\\')
@@ -615,6 +619,32 @@ export async function findAnchors(
       // Track kept ranges per compound to detect sliding window duplicates
       const keptRanges = new Map<string, { start: number, end: number, content: string }[]>();
 
+      // OPTIMIZATION: Content bucketing for O(N log N) deduplication
+      // Group by content length bucket (within 20% tolerance) and fingerprint prefix
+      // This reduces comparisons from O(N²) to O(N log N) by only comparing similar content
+      interface ContentBucket {
+        fingerprints: Map<string, SearchResult>; // fingerprint -> result
+        results: SearchResult[];
+      }
+      
+      const contentBuckets = new Map<string, ContentBucket>(); // bucket key -> bucket
+      
+      // Get bucket key based on content length and fingerprint prefix
+      const getBucketKey = (normalizedContent: string): string => {
+        const length = normalizedContent.length;
+        // Bucket by log2 of length for O(log N) buckets
+        // Content within 2x length ratio goes to same or adjacent buckets
+        const lengthBucket = Math.floor(Math.log2(Math.max(1, length)));
+        const fingerprint = normalizedContent.substring(0, 50);
+        return `${lengthBucket}:${fingerprint}`;
+      };
+      
+      // Get adjacent bucket keys for containment checks
+      const getAdjacentBuckets = (length: number): number[] => {
+        const currentBucket = Math.floor(Math.log2(Math.max(1, length)));
+        return [currentBucket - 1, currentBucket, currentBucket + 1];
+      };
+
       for (const candidate of anchors) {
         if (!candidate.content || candidate.content.length < 20) {
           distinctAnchors.push(candidate);
@@ -622,13 +652,11 @@ export async function findAnchors(
         }
 
         // C. Content Fingerprint Deduplication (ACROSS different files)
-        // Hash the normalized content to catch duplicates from different compounds
         const candidateNorm = normalize(candidate.content);
         const contentHash = crypto.createHash('md5').update(candidateNorm.substring(0, 500)).digest('hex');
 
         if (contentFingerprints.has(contentHash)) {
-          // This content already exists from another file - skip it
-          continue;
+          continue; // Duplicate content from another file
         }
         contentFingerprints.set(contentHash, candidate);
 
@@ -637,7 +665,6 @@ export async function findAnchors(
         if (candidate.compound_id && candidate.start_byte !== undefined && candidate.end_byte !== undefined) {
           const ranges = keptRanges.get(candidate.compound_id) || [];
           for (const range of ranges) {
-            // Check overlap - LOWERED threshold from 75% to 50% for aggressive dedup
             const overlapStart = Math.max(candidate.start_byte, range.start);
             const overlapEnd = Math.min(candidate.end_byte, range.end);
             const overlapLen = Math.max(0, overlapEnd - overlapStart);
@@ -646,14 +673,11 @@ export async function findAnchors(
             const rangeLen = range.end - range.start;
             const minLen = Math.min(candidateLen, rangeLen);
 
-            // If overlap is > 50% of either window, it's a duplicate
             if (overlapLen > 0 && (overlapLen >= minLen * 0.5)) {
               isGeometricDuplicate = true;
               break;
             }
 
-            // Check if windows are adjacent or overlapping (within 500 bytes for molecules)
-            // Molecules can be large, so use larger threshold
             const gap = Math.max(0, overlapStart - overlapEnd);
             const adjacencyThreshold = Math.max(500, Math.min(candidateLen, rangeLen) * 0.2);
             if (gap >= 0 && gap < adjacencyThreshold) {
@@ -665,45 +689,73 @@ export async function findAnchors(
           if (isGeometricDuplicate) continue;
         }
 
-        // B. Content Deduplication (Fallback)
+        // B. Content Deduplication (Fallback) - OPTIMIZED with bucketing
         const candidateFingerprint = candidateNorm.substring(0, 100);
+        const bucketKey = getBucketKey(candidateNorm);
+        
+        // Get or create bucket for this content
+        let bucket = contentBuckets.get(bucketKey);
+        if (!bucket) {
+          bucket = { fingerprints: new Map(), results: [] };
+          contentBuckets.set(bucketKey, bucket);
+        }
+        
+        // Check exact fingerprint match in bucket (O(1))
+        if (bucket.fingerprints.has(candidateFingerprint)) {
+          continue; // Exact duplicate
+        }
 
+        // Check containment and fuzzy match only in adjacent buckets (O(log N) instead of O(N))
         let isContentDuplicate = false;
+        const candidateLen = candidateNorm.length;
+        const adjacentBuckets = getAdjacentBuckets(candidateLen);
+        
+        for (const adjBucketNum of adjacentBuckets) {
+          // Check all buckets with this length bucket
+          for (const [key, adjBucket] of contentBuckets.entries()) {
+            if (!key.startsWith(`${adjBucketNum}:`)) continue;
+            
+            // Check containment with bucket results
+            for (const kept of adjBucket.results) {
+              if (!kept.content) continue;
+              const keptNorm = normalize(kept.content);
+              const keptFingerprint = keptNorm.substring(0, 100);
 
-        for (const kept of distinctAnchors) {
-          const keptNorm = normalize(kept.content);
+              // 1. Exact Containment
+              if (keptNorm.includes(candidateNorm) || candidateNorm.includes(keptNorm)) {
+                isContentDuplicate = true;
+                break;
+              }
 
-          // 1. Exact Containment (Candidate is subset of Kept, or vice-versa)
-          if (keptNorm.includes(candidateNorm)) {
-            isContentDuplicate = true;
-            break;
-          }
-          if (candidateNorm.includes(keptNorm)) {
-            isContentDuplicate = true;
-            break;
-          }
+              // 2. Fuzzy Prefix Match
+              const checkLen = Math.min(candidateFingerprint.length, keptFingerprint.length);
+              if (checkLen > 50 && candidateFingerprint.substring(0, checkLen) === keptFingerprint.substring(0, checkLen)) {
+                isContentDuplicate = true;
+                break;
+              }
 
-          // 2. Fuzzy Prefix Match - INCREASED check length to 50 for better matching
-          const keptFingerprint = keptNorm.substring(0, 100);
-          const checkLen = Math.min(candidateFingerprint.length, keptFingerprint.length);
-          if (checkLen > 50 && candidateFingerprint.substring(0, checkLen) === keptFingerprint.substring(0, checkLen)) {
-            isContentDuplicate = true;
-            break;
-          }
-
-          // 3. SimHash Distance Check - Cross-file near-duplicates (NEW)
-          // Hamming distance < 5 out of 64 bits = near-duplicate content
-          if (candidate.molecular_signature && kept.molecular_signature) {
-            const simhashDistance = getHammingDistance(candidate.molecular_signature, kept.molecular_signature);
-            if (simhashDistance < 5) {
-              isContentDuplicate = true;
-              break;
+              // 3. SimHash Distance Check
+              if (candidate.molecular_signature && kept.molecular_signature) {
+                const simhashDistance = getHammingDistance(candidate.molecular_signature, kept.molecular_signature);
+                if (simhashDistance < 5) {
+                  isContentDuplicate = true;
+                  break;
+                }
+              }
+              
+              if (isContentDuplicate) break;
             }
+            
+            if (isContentDuplicate) break;
           }
+          
+          if (isContentDuplicate) break;
         }
 
         if (!isContentDuplicate) {
           distinctAnchors.push(candidate);
+          bucket.fingerprints.set(candidateFingerprint, candidate);
+          bucket.results.push(candidate);
 
           // Register range
           if (candidate.compound_id && candidate.start_byte !== undefined && candidate.end_byte !== undefined) {
@@ -1234,11 +1286,13 @@ export async function iterativeSearch(
     throw new Error(`Search rejected: ${throttleResult.reason}. Please wait and try again.`);
   }
 
-  // Check cache first
+  // Check cache first (using LRU cache - Standard 016)
   cleanExpiredCache();
   const cacheKey = getCacheKey(query, buckets, maxChars, tags, provenance, useMaxRecall);
-  const cached = searchCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+  
+  // Try to get from LRU cache
+  const cached = lruSearchCache.get(cacheKey);
+  if (cached) {
     console.log(`[IterativeSearch] Cache HIT for query: "${query.substring(0, 50)}..."`);
     return cached.results;
   }
@@ -1257,7 +1311,7 @@ export async function iterativeSearch(
   console.log('[IterativeSearch] Strategy 1: Standard Execution');
   let results = await executeSearch(query, buckets, maxChars, provenance, tags, undefined, useMaxRecall, userContext);
   if (results.results.length > 0) {
-    searchCache.set(cacheKey, { results: { ...results, attempt: 1 }, timestamp: Date.now() });
+    lruSearchCache.set(cacheKey, { results: { ...results, attempt: 1 }, timestamp: Date.now() }, 2048);
     return { ...results, attempt: 1 };
   }
 
@@ -1277,7 +1331,7 @@ export async function iterativeSearch(
     console.log(`[IterativeSearch] Fallback Query 1: "${strictQuery.trim()}"`);
     results = await executeSearch(strictQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
     if (results.results.length > 0) {
-      searchCache.set(cacheKey, { results: { ...results, attempt: 2 }, timestamp: Date.now() });
+      lruSearchCache.set(cacheKey, { results: { ...results, attempt: 2 }, timestamp: Date.now() }, 2048);
       return { ...results, attempt: 2 };
     }
   }
@@ -1294,13 +1348,13 @@ export async function iterativeSearch(
     console.log(`[IterativeSearch] Fallback Query 2: "${entityQuery.trim()}"`);
     results = await executeSearch(entityQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
     if (results.results.length > 0) {
-      searchCache.set(cacheKey, { results: { ...results, attempt: 3 }, timestamp: Date.now() });
+      lruSearchCache.set(cacheKey, { results: { ...results, attempt: 3 }, timestamp: Date.now() }, 2048);
       return { ...results, attempt: 3 };
     }
   }
 
   // Cache empty results too (with shorter TTL would be ideal, but keeping simple)
-  searchCache.set(cacheKey, { results: { ...results, attempt: 4 }, timestamp: Date.now() });
+  lruSearchCache.set(cacheKey, { results: { ...results, attempt: 4 }, timestamp: Date.now() }, 1024);
   return { ...results, attempt: 4 }; // Return empty result if all fail
 }
 

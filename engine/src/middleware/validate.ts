@@ -133,15 +133,15 @@ export const schemas: Record<string, Record<string, FieldSchema>> = {
   /** POST /v1/github/repos */
   githubRepos: {
     url: { type: 'string', required: true, minLength: 1 },
-    bucket: { type: 'string', required: true, minLength: 1 },
+    bucket: { type: 'string', required: false },  // Auto-generated from URL if not provided
     include_history: { type: 'boolean', required: false },
   },
 
   /** POST /v1/terminal/exec */
   terminalExec: {
-    command: { type: 'string', required: true, minLength: 1 },
+    command: { type: 'string', required: true, minLength: 1, maxLength: 1000 },
     cwd: { type: 'string', required: false },
-    timeout: { type: 'number', required: false, min: 1000, max: 300000 },
+    timeout: { type: 'number', required: false, min: 1000, max: 30000 },
   },
 
   /** POST /v1/config/ingestion */

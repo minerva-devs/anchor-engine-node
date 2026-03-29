@@ -3,7 +3,7 @@
  *
  * Three-phase pipeline for semantic corpus compression:
  * 1. COLLECT: Extract semantic blocks (headings, sections)
- * 2. DEDUPLICATE: Block-level deduplication with SimHash
+ * 2. DEDUPLICATE: Block-level deduplication with SimHash (using @rbalchii/native-fingerprint)
  * 3. REASSEMBLE: Build Decision Record JSON output
  *
  * Prevents self-contamination by filtering distilled_* files
@@ -12,9 +12,10 @@
 import { db } from '../../core/db.js';
 import { ContextInflator } from '../search/context-inflator.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
-import { getMirrorPath } from '../mirror/mirror.js';
 import { pathManager } from '../../utils/path-manager.js';
+import { getMirrorPath } from '../mirror/mirror.js';
 import { recordDistill } from './distill-manager.js';
+import { wasmModuleLoader } from '../../utils/wasm-module-loader.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -133,6 +134,7 @@ export interface RadialDistillRequest {
     query?: string;
     compound_ids?: string[];
     buckets?: string[];
+    tags?: string[];  // New: tag-based distillation mode
   };
   radius?: number;
   max_radius?: number;
@@ -140,6 +142,7 @@ export interface RadialDistillRequest {
   output_path?: string;
   export_to_inbox?: boolean;
   auto_save?: boolean;
+  mode?: 'standard' | 'tag-based';  // New: distillation mode
 }
 
 export interface RadialDistillResult {
@@ -163,10 +166,14 @@ export interface RadialDistillResult {
     distilled_at: string;
     parameters: RadialDistillRequest;
   };
+  // Decision records (the actual distilled content)
+  records?: DecisionRecord[];
   // New: Digital object metadata for all processed compounds
   digital_objects?: DigitalObjectMetadata[];
   // New: Session index (subset of digital_objects for chat sessions)
   session_index?: SessionIndexEntry[];
+  // New: Inflated content for tag-based mode (full atom content)
+  inflated_content?: { content: string; source: string; tags: string[]; timestamp: number; }[];
 }
 
 /**
@@ -255,10 +262,21 @@ function extractSemanticBlocks(content: string, sourcePath: string, mtime: numbe
 }
 
 /**
- * Compute SimHash for a block (placeholder - use existing simhash service)
+ * Compute SimHash for a block using WASM module (Rust-compiled)
  */
 function computeSimHash(text: string): string {
-  // Simplified simhash - in production use @rbalchii/anchor-fingerprint-wasm
+  // Use WASM fingerprint module (Rust-compiled, works on all platforms)
+  try {
+    const hash = wasmModuleLoader.fingerprint(text);
+    // Convert bigint to hex string (16 chars = 64 bits)
+    if (hash && typeof hash === 'bigint') {
+      return hash.toString(16).padStart(16, '0').substring(0, 16);
+    }
+  } catch (e: any) {
+    // Silent fallback - WASM not available on all platforms
+  }
+  
+  // Fallback: deterministic hash using crypto
   const hash = crypto.createHash('sha256').update(text.toLowerCase().replace(/\s+/g, ' ')).digest('hex');
   return hash.substring(0, 16);
 }
@@ -309,42 +327,68 @@ function deduplicateBlocks(blocks: SemanticBlock[]): SemanticBlock[] {
 
 /**
  * Assemble Decision Records from blocks
+ * Groups by SIMHASH (content similarity) not by file - enables cross-file dedup
  */
 function assembleDecisionRecords(blocks: SemanticBlock[]): DecisionRecord[] {
   const records: DecisionRecord[] = [];
-  const blocksBySource = new Map<string, SemanticBlock[]>();
   
-  // Group blocks by primary source
+  // Group blocks by SIMHASH + TYPE (same concept across files)
+  const blocksByConcept = new Map<string, SemanticBlock[]>();
+  
   for (const block of blocks) {
-    const primarySource = block.provenance[0];
-    if (!blocksBySource.has(primarySource)) {
-      blocksBySource.set(primarySource, []);
+    // Key by simhash + type to group identical concepts across files
+    const conceptKey = `${block.type}:${block.simhash}`;
+    
+    if (!blocksByConcept.has(conceptKey)) {
+      blocksByConcept.set(conceptKey, []);
     }
-    blocksBySource.get(primarySource)!.push(block);
+    blocksByConcept.get(conceptKey)!.push(block);
   }
   
-  // Create decision record for each source
-  for (const [source, sourceBlocks] of blocksBySource.entries()) {
-    const fileName = path.basename(source, path.extname(source));
+  // Create ONE decision record per unique concept (not per file!)
+  for (const [conceptKey, conceptBlocks] of blocksByConcept.entries()) {
+    // Merge ALL provenance from all files that share this concept
+    const allProvenance = Array.from(
+      new Set(conceptBlocks.flatMap(b => b.provenance))
+    );
     
-    // Find title (first heading1 or heading2)
-    const titleBlock = sourceBlocks.find(b => b.type === 'heading1' || b.type === 'heading2');
-    const title = titleBlock?.heading || fileName;
+    // Merge ALL tags
+    const allTags = Array.from(
+      new Set(conceptBlocks.flatMap(b => b.tags || []))
+    );
     
-    // Extract problem
-    const problemBlock = sourceBlocks.find(b => b.type === 'problem');
-    const problem = problemBlock?.content;
+    // Use earliest mtime
+    const earliestMtime = Math.min(...conceptBlocks.map(b => b.mtime));
     
-    // Extract solutions (numbered list or solution blocks)
-    const solutionBlocks = sourceBlocks.filter(b => b.type === 'solution');
-    const solution = solutionBlocks.map(b => b.content.split('\n').filter(l => /^\d+\./.test(l.trim())).join('\n')).flat();
+    // Find best title (prefer heading1/2, fallback to first block's heading)
+    const titleBlock = conceptBlocks.find(b => b.type === 'heading1' || b.type === 'heading2');
+    const title = titleBlock?.heading || conceptBlocks[0]?.heading || 'Untitled Concept';
     
-    // Extract rationale
-    const rationaleBlock = sourceBlocks.find(b => b.type === 'rationale');
-    const rationale = rationaleBlock?.content;
+    // Extract problem (merge from all blocks that have it)
+    const problemBlocks = conceptBlocks.filter(b => b.type === 'problem');
+    const problem = problemBlocks.length > 0 
+      ? problemBlocks.map(b => b.content).join('\n\n')
+      : undefined;
+    
+    // Extract solutions (merge from all blocks)
+    const solutionBlocks = conceptBlocks.filter(b => b.type === 'solution');
+    const solution = solutionBlocks.length > 0
+      ? solutionBlocks.flatMap(b => {
+          // Try to extract numbered lists, fallback to full content
+          const lines = b.content.split('\n');
+          const numbered = lines.filter(l => /^\d+\./.test(l.trim()));
+          return numbered.length > 0 ? numbered : [b.content];
+        })
+      : undefined;
+    
+    // Extract rationale (merge from all blocks)
+    const rationaleBlocks = conceptBlocks.filter(b => b.type === 'rationale');
+    const rationale = rationaleBlocks.length > 0
+      ? rationaleBlocks.map(b => b.content).join('\n\n')
+      : undefined;
     
     // Extract status
-    const statusBlock = sourceBlocks.find(b => b.type === 'status');
+    const statusBlock = conceptBlocks.find(b => b.type === 'status');
     let status: DecisionRecord['status'] = 'active';
     if (statusBlock) {
       const statusText = statusBlock.content.toLowerCase();
@@ -355,30 +399,26 @@ function assembleDecisionRecords(blocks: SemanticBlock[]): DecisionRecord[] {
       }
     }
     
-    // Extract supersedes
-    const supersedes: string[] = [];
-    const supersedesMatch = title.match(/supersedes.*?(\d+)/i);
-    if (supersedesMatch) {
-      supersedes.push(`std-${supersedesMatch[1].padStart(3, '0')}`);
-    }
+    // Build unified content from all blocks
+    const content = conceptBlocks
+      .map(b => b.content)
+      .filter(Boolean)
+      .join('\n\n');
     
-    // Collect all tags
-    const allTags = Array.from(new Set(sourceBlocks.flatMap(b => b.tags || [])));
-    
-    // Use earliest mtime as timestamp
-    const earliestMtime = Math.min(...sourceBlocks.map(b => b.mtime));
-    const timestamp = new Date(earliestMtime).toISOString();
+    // Generate ID from simhash (same concept = same ID)
+    const simhash = conceptBlocks[0]?.simhash || '';
+    const id = `concept-${simhash.substring(0, 16)}`;
     
     records.push({
-      id: fileName.match(/\d+/)?.[0] ? `std-${fileName.match(/\d+/)![0].padStart(3, '0')}` : fileName,
+      id,
       title,
       problem,
-      solution: solution.length > 0 ? solution : undefined,
+      solution: solution && solution.length > 0 ? solution : undefined,
       rationale,
-      supersedes: supersedes.length > 0 ? supersedes : undefined,
+      supersedes: undefined,
       status,
-      timestamp,
-      provenance: sourceBlocks.flatMap(b => b.provenance),
+      timestamp: new Date(earliestMtime).toISOString(),
+      provenance: allProvenance,  // ALL files that share this concept
       tags: allTags,
     });
   }
@@ -521,6 +561,388 @@ function buildSessionIndex(chatSessions: ChatSessionMetadata[]): SessionIndexEnt
 }
 
 /**
+ * Fetch all unique tags from the database
+ * A/B Tests: tags junction table vs atoms.tags[] array
+ */
+export async function fetchAllTags(): Promise<string[]> {
+  try {
+    // Source A: tags junction table
+    const tagsTableResult = await db.run('SELECT DISTINCT tag FROM tags WHERE tag IS NOT NULL ORDER BY tag');
+    const tagsTableCount = tagsTableResult.rows?.length || 0;
+
+    // Source B: atoms.tags[] array (TEXT[])
+    const atomsTagsResult = await db.run('SELECT DISTINCT UNNEST(tags) as tag FROM atoms WHERE tags IS NOT NULL AND tags != \'{}\' ORDER BY tag');
+    const atomsTagsCount = atomsTagsResult.rows?.length || 0;
+
+    // A/B Test logging
+    console.log(`[A/B Test][fetchAllTags] Source A (tags table): ${tagsTableCount} | Source B (atoms.tags[]): ${atomsTagsCount}`);
+
+    // Use whichever source has data (prefer atoms.tags[] as primary)
+    if (atomsTagsCount > 0) {
+      const allTags = new Set<string>();
+      if (atomsTagsResult.rows) {
+        for (const row of atomsTagsResult.rows) {
+          if (row.tag) allTags.add(row.tag as string);
+        }
+      }
+      return [...allTags].sort();
+    }
+
+    // Fallback to tags table
+    if (tagsTableCount > 0) {
+      const allTags = new Set<string>();
+      if (tagsTableResult.rows) {
+        for (const row of tagsTableResult.rows) {
+          if (row.tag) allTags.add(row.tag as string);
+        }
+      }
+      return [...allTags].sort();
+    }
+
+    return [];
+  } catch (error) {
+    console.error('[fetchAllTags] Error:', error);
+    return [];
+  }
+}
+
+/**
+ * Fetch all atoms for a specific tag with full content
+ * A/B Tests: tags junction table vs atoms.tags[] array containment
+ */
+export async function fetchAtomsByTag(tag: string): Promise<any[]> {
+  try {
+    // Source A: tags junction table
+    const tagsTableResult = await db.run(
+      'SELECT atom_id FROM tags WHERE tag = $1',
+      [tag]
+    );
+    const tagsTableCount = tagsTableResult.rows?.length || 0;
+
+    // Source B: atoms.tags[] array containment
+    const atomsTagsResult = await db.run(
+      'SELECT id FROM atoms WHERE $1 = ANY(tags)',
+      [tag]
+    );
+    const atomsTagsCount = atomsTagsResult.rows?.length || 0;
+
+    // A/B Test logging (sample every 10th call to reduce noise)
+    if (Math.random() < 0.1) {
+      console.log(`[A/B Test][fetchAtomsByTag][${tag}] Source A (tags table): ${tagsTableCount} | Source B (atoms.tags[]): ${atomsTagsCount}`);
+    }
+
+    // Collect atom IDs from both sources
+    const atomIds = new Set<string>();
+
+    if (tagsTableResult.rows) {
+      for (const row of tagsTableResult.rows) {
+        if (row.atom_id) atomIds.add(row.atom_id);
+      }
+    }
+
+    if (atomsTagsResult.rows) {
+      for (const row of atomsTagsResult.rows) {
+        if (row.id) atomIds.add(row.id);
+      }
+    }
+
+    if (atomIds.size === 0) {
+      return [];
+    }
+
+    // Fetch atoms with their content - use 'buckets' (plural) not 'bucket'
+    const atomsResult = await db.run(
+      'SELECT id, content, source_path, tags, buckets FROM atoms WHERE id = ANY($1)',
+      [Array.from(atomIds)]
+    );
+
+    return atomsResult.rows || [];
+  } catch (error) {
+    console.error(`[fetchAtomsByTag] Error for tag ${tag}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Tag-based distillation mode
+ * Iterates through all tags, fetches all content for each tag, and deduplicates
+ * Uses ContextInflator.inflate() to get full atom content (like v4.8.2)
+ */
+async function tagBasedDistill(request: RadialDistillRequest): Promise<{
+  blocks: SemanticBlock[];
+  digitalObjects: DigitalObjectMetadata[];
+  compoundsProcessed: number;
+  inflatedContent: { content: string; source: string; tags: string[]; timestamp: number; }[];
+}> {
+  const allBlocks: SemanticBlock[] = [];
+  const digitalObjects: DigitalObjectMetadata[] = [];
+  const inflatedContent: { content: string; source: string; tags: string[]; timestamp: number; }[] = [];
+  let compoundsProcessed = 0;
+  const ingestedAt = new Date().toISOString();
+
+  // Get tags to process (all tags or specified subset)
+  let tagsToProcess = request.seed?.tags;
+
+  if (!tagsToProcess || tagsToProcess.length === 0) {
+    // Fetch all tags if not specified
+    tagsToProcess = await fetchAllTags();
+    StructuredLogger.info('[TagBasedDistill] Processing all tags', { count: tagsToProcess.length });
+  } else {
+    StructuredLogger.info('[TagBasedDistill] Processing specified tags', { count: tagsToProcess.length });
+  }
+
+  // Track processed atoms to avoid duplicates across tags
+  const processedAtomIds = new Set<string>();
+
+  // Process each tag
+  for (const tag of tagsToProcess) {
+    const atoms = await fetchAtomsByTag(tag);
+
+    for (const atom of atoms) {
+      // Skip if already processed (dedup across tags)
+      if (processedAtomIds.has(atom.id)) {
+        continue;
+      }
+      processedAtomIds.add(atom.id);
+
+      // Skip distillation outputs
+      if (isDistillationOutput(atom.source_path)) {
+        continue;
+      }
+
+      compoundsProcessed++;
+
+      // Get content from mirrored_brain filesystem (Standard 051 - Pointer Only)
+      // This is the v4.8.2 approach that works reliably
+      let content = '';
+      
+      // Normalize provenance for getMirrorPath
+      let prov = atom.provenance || 'external';
+      if (prov.includes('external')) prov = 'external';
+      else if (prov.includes('quarantine')) prov = 'quarantine';
+      else prov = 'internal';
+      
+      const mirrorPath = getMirrorPath(atom.source_path || '', prov);
+      
+      // Try mirrored_brain first
+      if (mirrorPath && fs.existsSync(mirrorPath)) {
+        content = fs.readFileSync(mirrorPath, 'utf-8');
+      } else {
+        // Fallback: try notebook directory
+        const notebookDir = pathManager.getNotebookDir();
+        const localPath = path.join(notebookDir, atom.source_path || '');
+        if (fs.existsSync(localPath)) {
+          content = fs.readFileSync(localPath, 'utf-8');
+        }
+      }
+
+      // Skip if no content found
+      if (!content) {
+        console.warn(`[TagBasedDistill] No content found for atom ${atom.id} at ${atom.source_path}`);
+        continue;
+      }
+
+      // Add to inflated content
+      inflatedContent.push({
+        content,
+        source: atom.source_path || `atom:${atom.id}`,
+        tags: atom.tags || [],
+        timestamp: atom.timestamp || Date.now()
+      });
+
+      // Extract semantic blocks
+      const mtime = atom.timestamp || Date.now();
+      const blocks = extractSemanticBlocks(content, atom.source_path || `atom:${atom.id}`, mtime);
+
+      for (const block of blocks) {
+        if (!block.tags) block.tags = [];
+        if (!block.tags.includes(tag)) {
+          block.tags.push(tag);
+        }
+      }
+
+      allBlocks.push(...blocks);
+
+      // Extract digital object metadata
+      const baseMetadata = extractDigitalObjectMetadata(
+        { id: atom.id, path: atom.source_path, provenance: atom.bucket },
+        content,
+        mtime,
+        ingestedAt
+      );
+      digitalObjects.push(baseMetadata);
+    }
+  }
+
+  return {
+    blocks: allBlocks,
+    digitalObjects,
+    compoundsProcessed,
+    inflatedContent,
+  };
+}
+
+/**
+ * Finalize distillation - common pipeline for both standard and tag-based modes
+ */
+async function finalizeDistillation(
+  request: RadialDistillRequest,
+  allBlocks: SemanticBlock[],
+  digitalObjects: DigitalObjectMetadata[],
+  chatSessions: ChatSessionMetadata[],
+  compoundsProcessed: number,
+  startTime: number,
+  ingestedAt: string,
+  inflatedContent?: { content: string; source: string; tags: string[]; timestamp: number; }[],
+): Promise<RadialDistillResult> {
+  // Build session index from chat sessions
+  const sessionIndex = buildSessionIndex(chatSessions);
+
+  // Phase 2: DEDUPLICATE - Block-level deduplication
+  const uniqueBlocks = deduplicateBlocks(allBlocks);
+
+  // Phase 3: REASSEMBLE - Build Decision Records
+  const decisionRecords = assembleDecisionRecords(uniqueBlocks);
+
+  // Generate output
+  const outputFormat = request.output_format || 'decision-records';
+  let outputPath: string | undefined;
+  let outputSize = 0;
+
+  // Determine if we should save to file
+  const shouldSaveToFile = request.output_path || request.auto_save;
+
+  if (outputFormat === 'json' || outputFormat === 'decision-records') {
+    // Include digital objects and session index in JSON output
+    const fullOutput = {
+      metadata: {
+        source: 'Anchor Engine Radial Distiller v2.0',
+        distilled_at: new Date().toISOString(),
+        decision_records: decisionRecords.length,
+        digital_objects_count: digitalObjects.length,
+        session_index_count: sessionIndex.length,
+      },
+      records: decisionRecords,
+      digital_objects: digitalObjects,
+      session_index: sessionIndex,
+    };
+    const jsonOutput = JSON.stringify(fullOutput, null, 2);
+    outputSize = jsonOutput.length;
+
+    if (shouldSaveToFile) {
+      const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
+      if (!fs.existsSync(distillsDir)) {
+        fs.mkdirSync(distillsDir, { recursive: true });
+      }
+      outputPath = request.output_path || path.join(
+        distillsDir,
+        `distilled_standards_${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
+      );
+      fs.writeFileSync(outputPath, jsonOutput);
+    }
+  } else if (outputFormat === 'yaml') {
+    // Backward compatibility - legacy YAML format
+    const yamlOutput = yaml.dump({
+      metadata: {
+        source: 'Anchor Engine Radial Distiller v2.0',
+        distilled_at: new Date().toISOString(),
+        decision_records: decisionRecords.length,
+        digital_objects_count: digitalObjects.length,
+        session_index_count: sessionIndex.length,
+      },
+      records: decisionRecords,
+      digital_objects: digitalObjects,
+      session_index: sessionIndex,
+    });
+
+    outputSize = yamlOutput.length;
+
+    if (shouldSaveToFile) {
+      const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
+      if (!fs.existsSync(distillsDir)) {
+        fs.mkdirSync(distillsDir, { recursive: true });
+      }
+      outputPath = request.output_path || path.join(
+        distillsDir,
+        `distilled_${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`,
+      );
+      fs.writeFileSync(outputPath, yamlOutput);
+    }
+  }
+
+  const duration = Date.now() - startTime;
+
+  const result: RadialDistillResult = {
+    stats: {
+      compounds_processed: compoundsProcessed,
+      blocks_total: allBlocks.length,
+      blocks_unique: uniqueBlocks.length,
+      decision_records: decisionRecords.length,
+      compression_ratio: `${(allBlocks.length / Math.max(1, uniqueBlocks.length)).toFixed(1)}:1`,
+      duration_ms: duration,
+      memory_peak_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    },
+    output: {
+      format: outputFormat,
+      path: outputPath,
+      size_bytes: outputSize,
+      records_created: decisionRecords.length,
+    },
+    provenance: {
+      source_compounds: digitalObjects.map(d => d.source_path),
+      distilled_at: new Date().toISOString(),
+      parameters: request,
+    },
+    // Return the actual decision records
+    records: decisionRecords,
+    // Digital object metadata for all processed compounds
+    digital_objects: digitalObjects,
+    // Session index for chat sessions
+    session_index: sessionIndex,
+    // Inflated content for tag-based mode (full atom content)
+    inflated_content: inflatedContent || [],
+  };
+
+  StructuredLogger.info('RADIAL_DISTILL_V2_COMPLETE', {
+    records: result.stats.decision_records,
+    compression: result.stats.compression_ratio,
+    duration_ms: duration,
+  });
+
+  // Standard 016: Record distill in database with pointers to file
+  try {
+    if (outputPath) {
+      const sourceSessions = sessionIndex.map((s: any) => s.session_id || s.id).filter(Boolean);
+      const sourceFiles = digitalObjects.map(d => d.source_path);
+
+      await recordDistill({
+        timestamp: new Date().toISOString(),
+        filename: path.basename(outputPath),
+        file_path: outputPath,
+        line_count: allBlocks.length,
+        lines_unique: uniqueBlocks.length,
+        compression_ratio: parseFloat(result.stats.compression_ratio.replace(':1', '')),
+        source_sessions: sourceSessions,
+        source_files: sourceFiles,
+        parameters: {
+          radius: request.radius,
+          output_format: outputFormat,
+          decision_records: decisionRecords.length,
+          digital_objects: digitalObjects.length,
+          session_index: sessionIndex.length,
+        },
+      });
+      console.log('[Distill] ✅ Distill recorded in database');
+    }
+  } catch (dbError: any) {
+    console.warn('[Distill] Could not record distill in database:', dbError.message);
+    // Don't fail the distill if DB recording fails
+  }
+
+  return result;
+}
+
+/**
  * Main distillation function
  */
 export async function radialDistill(request: RadialDistillRequest): Promise<RadialDistillResult> {
@@ -530,10 +952,19 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
   StructuredLogger.info('RADIAL_DISTILL_V2', {
     endpoint: '/v1/memory/distill',
     format: request.output_format || 'decision-records',
+    mode: request.mode || 'standard',
   });
 
   try {
-    // Phase 1: COLLECT - Extract semantic blocks and metadata
+    // Route to tag-based mode if requested
+    if (request.mode === 'tag-based' || (request.seed?.tags && request.seed.tags.length > 0)) {
+      const tagResult = await tagBasedDistill(request);
+
+      // Continue with standard pipeline using tag-based results
+      return finalizeDistillation(request, tagResult.blocks, tagResult.digitalObjects, [], tagResult.compoundsProcessed, startTime, ingestedAt, tagResult.inflatedContent);
+    }
+
+    // Phase 1: COLLECT - Extract semantic blocks and metadata (standard mode)
     const allBlocks: SemanticBlock[] = [];
     const digitalObjects: DigitalObjectMetadata[] = [];
     const chatSessions: ChatSessionMetadata[] = [];
@@ -551,7 +982,7 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       params.push(...request.seed.buckets);
     }
 
-    const compounds = (await db.run(compoundQuery, params)).results || [];
+    const compounds = (await db.run(compoundQuery, params)).rows || [];
 
     for (const compound of compounds) {
       // Skip distillation outputs (prevent self-contamination)
@@ -561,17 +992,18 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
 
       compoundsProcessed++;
 
-      // Get content from mirrored_brain or compound body
+      // Get content from filesystem using compound.path (Standard 051 - Pointer Only)
+      // compound.path is relative to NOTEBOOK_DIR (e.g., "external-inbox/github/owner/repo/file.md")
       let content = '';
-      const mirrorPath = getMirrorPath(path.join(process.cwd(), 'mirrored_brain'));
-      const localPath = path.join(mirrorPath, compound.path);
+      const notebookDir = pathManager.getNotebookDir();
+      const localPath = path.join(notebookDir, compound.path);
 
       if (fs.existsSync(localPath)) {
         content = fs.readFileSync(localPath, 'utf-8');
       } else {
-        // Fallback to database
-        const result = await db.run('SELECT compound_body FROM compounds WHERE id = ?', [compound.id]);
-        content = result.results?.[0]?.compound_body || '';
+        // File not found - skip this compound
+        console.warn(`[RadialDistiller] Skipping compound ${compound.id}: file not found at ${localPath}`);
+        continue;
       }
 
       // Get file mtime
@@ -596,147 +1028,7 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       }
     }
 
-    // Build session index from chat sessions (NEW)
-    const sessionIndex = buildSessionIndex(chatSessions);
-    
-    // Phase 2: DEDUPLICATE - Block-level deduplication
-    const uniqueBlocks = deduplicateBlocks(allBlocks);
-    
-    // Phase 3: REASSEMBLE - Build Decision Records
-    const decisionRecords = assembleDecisionRecords(uniqueBlocks);
-    
-    // Generate output
-    const outputFormat = request.output_format || 'decision-records';
-    let outputPath: string | undefined;
-    let outputSize = 0;
-
-    // Determine if we should save to file
-    const shouldSaveToFile = request.output_path || request.auto_save;
-
-    if (outputFormat === 'json' || outputFormat === 'decision-records') {
-      // Include digital objects and session index in JSON output
-      const fullOutput = {
-        metadata: {
-          source: 'Anchor Engine Radial Distiller v2.0',
-          distilled_at: new Date().toISOString(),
-          decision_records: decisionRecords.length,
-          digital_objects_count: digitalObjects.length,
-          session_index_count: sessionIndex.length,
-        },
-        records: decisionRecords,
-        digital_objects: digitalObjects,
-        session_index: sessionIndex,
-      };
-      const jsonOutput = JSON.stringify(fullOutput, null, 2);
-      outputSize = jsonOutput.length;
-
-      if (shouldSaveToFile) {
-        const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
-        if (!fs.existsSync(distillsDir)) {
-          fs.mkdirSync(distillsDir, { recursive: true });
-        }
-        outputPath = request.output_path || path.join(
-          distillsDir,
-          `distilled_standards_${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
-        );
-        fs.writeFileSync(outputPath, jsonOutput);
-      }
-    } else if (outputFormat === 'yaml') {
-      // Backward compatibility - legacy YAML format
-      const yamlOutput = yaml.dump({
-        metadata: {
-          source: 'Anchor Engine Radial Distiller v2.0',
-          distilled_at: new Date().toISOString(),
-          decision_records: decisionRecords.length,
-          digital_objects_count: digitalObjects.length,
-          session_index_count: sessionIndex.length,
-        },
-        records: decisionRecords,
-        digital_objects: digitalObjects,
-        session_index: sessionIndex,
-      });
-
-      outputSize = yamlOutput.length;
-      
-      if (shouldSaveToFile) {
-        const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
-        if (!fs.existsSync(distillsDir)) {
-          fs.mkdirSync(distillsDir, { recursive: true });
-        }
-        outputPath = request.output_path || path.join(
-          distillsDir,
-          `distilled_${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`,
-        );
-        fs.writeFileSync(outputPath, yamlOutput);
-      }
-    }
-    
-    const duration = Date.now() - startTime;
-
-    const result: RadialDistillResult = {
-      stats: {
-        compounds_processed: compoundsProcessed,
-        blocks_total: allBlocks.length,
-        blocks_unique: uniqueBlocks.length,
-        decision_records: decisionRecords.length,
-        compression_ratio: `${(allBlocks.length / Math.max(1, uniqueBlocks.length)).toFixed(1)}:1`,
-        duration_ms: duration,
-        memory_peak_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-      },
-      output: {
-        format: outputFormat,
-        path: outputPath,
-        size_bytes: outputSize,
-        records_created: decisionRecords.length,
-      },
-      provenance: {
-        source_compounds: compounds.map((c: any) => c.path),
-        distilled_at: new Date().toISOString(),
-        parameters: request,
-      },
-      // New: Digital object metadata for all processed compounds
-      digital_objects: digitalObjects,
-      // New: Session index for chat sessions (empty array if no chat sessions)
-      session_index: sessionIndex,
-    };
-
-    StructuredLogger.info('RADIAL_DISTILL_V2_COMPLETE', {
-      records: result.stats.decision_records,
-      compression: result.stats.compression_ratio,
-      duration_ms: duration,
-    });
-
-    // Standard 016: Record distill in database with pointers to file
-    try {
-      if (outputPath) {
-        const sourceSessions = sessionIndex.map((s: any) => s.session_id || s.id).filter(Boolean);
-        const sourceFiles = compounds.map((c: any) => c.path);
-
-        await recordDistill({
-          timestamp: new Date().toISOString(),
-          filename: path.basename(outputPath),
-          file_path: outputPath,
-          line_count: allBlocks.length,
-          lines_unique: uniqueBlocks.length,
-          compression_ratio: parseFloat(result.stats.compression_ratio.replace(':1', '')),
-          source_sessions: sourceSessions,
-          source_files: sourceFiles,
-          parameters: {
-            radius: request.radius,
-            output_format: outputFormat,
-            decision_records: decisionRecords.length,
-            digital_objects: digitalObjects.length,
-            session_index: sessionIndex.length,
-          },
-        });
-        console.log('[Distill] ✅ Distill recorded in database');
-      }
-    } catch (dbError: any) {
-      console.warn('[Distill] Could not record distill in database:', dbError.message);
-      // Don't fail the distill if DB recording fails
-    }
-
-    return result;
+    return finalizeDistillation(request, allBlocks, digitalObjects, chatSessions, compoundsProcessed, startTime, ingestedAt);
 
   } catch (error: any) {
     StructuredLogger.error('RADIAL_DISTILL_V2_ERROR', error);

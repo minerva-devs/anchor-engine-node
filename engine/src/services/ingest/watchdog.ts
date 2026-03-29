@@ -18,6 +18,11 @@ import { systemStatus } from '../system-status.js';
 
 let watcher: chokidar.FSWatcher | null = null;
 const IGNORE_PATTERNS = /(^|[\/\\])\../; // Ignore dotfiles
+const IGNORE_PATHS = [
+    'distilled',           // Ignore distillation outputs (prevent self-contamination)
+    'distills',            // Ignore distills directory
+    'synonym-ring',        // Ignore auto-generated synonym files
+];
 
 // Post-ingestion synonym generation
 let ingestionTimeout: NodeJS.Timeout | null = null;
@@ -448,9 +453,18 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
 
         const { compound, molecules, atoms } = atomizeResult;
 
-        // 5. INGEST (Atomic)
-        // Use the specialized AtomicIngestService for efficiency
-        await atomicIngest.ingestResult(compound, molecules, atoms, [bucket]);
+        // 5. INGEST (Atomic) with progress tracking
+        const filename = relativePath.split(/[/\\]/).pop() || relativePath;
+        
+        await atomicIngest.ingestResult(
+            compound,
+            molecules,
+            atoms,
+            [bucket],
+            (step: number, total: number, description: string) => {
+                systemStatus.setProgress(step, total, `${filename}: ${description}`);
+            }
+        );
 
         // 6. Update Source Table
         await db.run(
@@ -479,18 +493,27 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
             console.warn('[Watchdog] Could not invalidate search cache:', e);
         }
 
-        // Trigger Mirror: write cleaned content directly (O(1) vs full rebuild)
-        console.log('[Watchdog] Preparing mirror write...');
+        // Trigger Mirror: write cleaned content from original file (Standard 051 - Pointer Only)
+        // Since compound_body is removed, we read from the original file and sanitize
+        console.log('[Watchdog] Preparing mirror write from original file...');
         console.log(`[Watchdog] compound exists: ${!!compound}`);
-        console.log(`[Watchdog] compound.compound_body exists: ${!!compound?.compound_body}`);
-        console.log(`[Watchdog] compound.compound_body length: ${compound?.compound_body?.length || 0}`);
         console.log(`[Watchdog] provenance: ${provenance}`);
 
         try {
-            console.log('[Watchdog] Importing mirror module...');
+            console.log('[Watchdog] Importing mirror and atomizer modules...');
             const { writeMirroredFile } = await import('../mirror/mirror.js');
-            console.log('[Watchdog] Mirror module imported, calling writeMirroredFile...');
-            await writeMirroredFile(relativePath, compound.compound_body, provenance);
+            const fs = await import('fs');
+            
+            // Read original file content
+            const originalContent = fs.readFileSync(filePath, 'utf-8');
+            
+            // Sanitize content (same logic as atomizer)
+            const { AtomizerService } = await import('./atomizer-service.js');
+            const atomizer = new AtomizerService();
+            const cleanContent = atomizer.sanitize(originalContent, filePath);
+            
+            console.log('[Watchdog] Writing sanitized content to mirror...');
+            await writeMirroredFile(relativePath, cleanContent, provenance);
             console.log('[Watchdog] ✓ Mirror write completed successfully');
         } catch (e: any) {
             console.error('[Watchdog] ✗ Mirror write failed:', e.message);

@@ -24,6 +24,7 @@
 - **[tests/README.md](../tests/README.md)** - Testing guide
 - **[benchmarks/README.md](../benchmarks/README.md)** - Benchmarking framework
 - **[mcp-server/README.md](../mcp-server/README.md)** - MCP server integration
+- **[specs/current-standards/022-documentation-hygiene.md](../specs/current-standards/022-documentation-hygiene.md)** - Documentation rules & hygiene
 
 ---
 

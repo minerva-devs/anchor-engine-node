@@ -116,10 +116,10 @@ export class PathManager {
    * Get notebook directory path
    */
   public getNotebookDir(): string {
-    // Current: basePath = .../anchor-engine/engine
-    // Desired: .../Anchor Engine/../notebook -> .../Projects/notebook
-    // So we need to go up from anchor-engine (which is engine/..)
-    return path.resolve(this.basePath, '../..', 'notebook');
+    // Current: basePath = .../AEN/engine
+    // Desired: .../AEN/notebook
+    // So we need to go up ONE level from engine to AEN, then to notebook
+    return path.resolve(this.basePath, '..', 'notebook');
   }
 
   /**

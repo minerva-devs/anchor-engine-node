@@ -10,70 +10,17 @@ export class AtomicIngestService {
         molecules: Molecule[],
         atoms: Atom[],
         buckets: string[] = ['core'],
+        onProgress?: (step: number, totalSteps: number, description: string) => void,
     ) {
         const startTime = Date.now();
         const filename = compound.path.split(/[/\\]/).pop() || compound.path;
 
-        // Validate content lengths to prevent oversized atoms/molecules
-        const MAX_CONTENT_LENGTH = 500 * 1024; // 500KB limit
-
-        for (const mol of molecules) {
-            if (mol.content.length > MAX_CONTENT_LENGTH) {
-                console.warn(`[AtomicIngest] Warning: Molecule content exceeds maximum length (${mol.content.length} chars), truncating...`);
-                mol.content = mol.content.substring(0, MAX_CONTENT_LENGTH) + '... [TRUNCATED]';
-            }
-        }
-
-        for (const atom of atoms) {
-            if (atom.label.length > MAX_CONTENT_LENGTH) {
-                console.warn(`[AtomicIngest] Warning: Atom content exceeds maximum length (${atom.label.length} chars), truncating...`);
-                atom.label = atom.label.substring(0, MAX_CONTENT_LENGTH) + '... [TRUNCATED]';
-            }
-        }
-
         console.log(`[AtomicIngest] ⏱️ START Persisting: ${filename} (${molecules.length} molecules, ${atoms.length} atoms)`);
-
-        // BUGFIX 2026-03-03: For large ingests (>100K molecules), temporarily drop FTS index
-        // to prevent PGlite corruption from concurrent index updates
-        const isLargeIngestion = molecules.length > 100000;
-        if (isLargeIngestion) {
-            console.log(`[AtomicIngest] ⏱️ Large ingestion detected (${molecules.length} molecules), dropping FTS index...`);
-            try {
-                await db.run('DROP INDEX IF EXISTS idx_molecules_content_gin');
-                await db.run('DROP INDEX IF EXISTS idx_atoms_content_gin');
-            } catch (e: any) {
-                console.warn(`[AtomicIngest] Could not drop FTS indexes: ${e.message}`);
-            }
-        }
 
         // Wrap entire ingestion in a transaction for atomicity and performance
         await db.transaction(async () => {
-            await this._ingestResultInTransaction(compound, molecules, atoms, buckets);
+            await this._ingestResultInTransaction(compound, molecules, atoms, buckets, onProgress);
         });
-
-        // Recreate FTS indexes after bulk insert
-        if (isLargeIngestion) {
-            console.log('[AtomicIngest] ⏱️ Recreating FTS indexes...');
-            try {
-                await db.run(`
-                    CREATE INDEX IF NOT EXISTS idx_molecules_content_gin
-                    ON molecules
-                    USING GIN(to_tsvector('simple', content));
-                `);
-                await db.run(`
-                    CREATE INDEX IF NOT EXISTS idx_atoms_content_gin
-                    ON atoms
-                    USING GIN(to_tsvector('simple', content));
-                `);
-                // BUGFIX 2026-03-03: VACUUM ANALYZE after index rebuild to clear PGlite's cache
-                // This prevents "nfig"]D errors from stale query plans
-                await db.run('VACUUM ANALYZE atoms');
-                await db.run('VACUUM ANALYZE molecules');
-                console.log('[AtomicIngest] ✅ FTS indexes recreated and optimized');
-            } catch (e: any) {
-                console.warn(`[AtomicIngest] Could not recreate FTS indexes: ${e.message}`);
-            }
-        }
 
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
         console.log(`[AtomicIngest] ✅ COMPLETE: ${filename} in ${totalTime}s`);
@@ -84,7 +31,11 @@ export class AtomicIngestService {
         molecules: Molecule[],
         atoms: Atom[],
         buckets: string[],
+        onProgress?: (step: number, totalSteps: number, description: string) => void,
     ) {
+        const totalSteps = 6; // Total persistence steps
+        let currentStep = 0;
+
         // 1. Persist Atoms (Tags)
         const atomsStart = Date.now();
         const uniqueAtomsMap = new Map<string, Atom>();
@@ -99,6 +50,7 @@ export class AtomicIngestService {
             await this.batchWriteAtoms(uniqueAtoms);
         }
         console.log(`[AtomicIngest] ⏱️ Atoms persisted: ${Date.now() - atomsStart}ms`);
+        onProgress?.(++currentStep, totalSteps, `Persisted ${uniqueAtoms.length} atoms`);
 
         // 1.5. Persist Tags Table (The Nervous System)
         const tagsStart = Date.now();
@@ -113,6 +65,7 @@ export class AtomicIngestService {
             await this.batchWriteMolecules(molecules);
         }
         console.log(`[AtomicIngest] ⏱️ Molecules persisted: ${((Date.now() - moleculesStart) / 1000).toFixed(2)}s`);
+        onProgress?.(++currentStep, totalSteps, `Persisted ${molecules.length} molecules`);
 
         // 3. Persist Atom Edges (Graph)
         const edgesStart = Date.now();
@@ -125,11 +78,13 @@ export class AtomicIngestService {
         const compoundStart = Date.now();
         await this.batchWriteCompounds([compound]);
         console.log(`[AtomicIngest] ⏱️ Compound persisted: ${((Date.now() - compoundStart) / 1000).toFixed(2)}s`);
+        onProgress?.(++currentStep, totalSteps, `Persisted compound`);
 
         // 5. LEGACY BRIDGE: Populate 'atoms' table (was 'memory')
         const memoryStart = Date.now();
         await this.batchWriteMemory(compound, molecules, atoms, buckets);
         console.log(`[AtomicIngest] ⏱️ Memory/Atoms persisted: ${((Date.now() - memoryStart) / 1000).toFixed(2)}s`);
+        onProgress?.(++currentStep, totalSteps, `Updated memory table`);
 
         // Standard 016: Invalidate search cache after successful atomic ingestion
         // This ensures fresh search results after new content is added
@@ -148,6 +103,7 @@ export class AtomicIngestService {
 
         await this.batchWriteAtomPositions(molecules, atomLabelMap);
         console.log(`[AtomicIngest] ⏱️ Atom positions persisted: ${Date.now() - positionsStart}ms`);
+        onProgress?.(++currentStep, totalSteps, `Finalized positions`);
     }
 
     private async batchWriteAtoms(atoms: Atom[]) {
@@ -160,10 +116,9 @@ export class AtomicIngestService {
 
             for (const atom of chunk) {
                 await db.run(
-                    `INSERT INTO atoms (id, content, source_path, timestamp, simhash, embedding, provenance, buckets, tags)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    `INSERT INTO atoms (id, source_path, timestamp, simhash, embedding, provenance, buckets, tags)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                      ON CONFLICT (id) DO UPDATE SET
-                       content = EXCLUDED.content,
                        source_path = EXCLUDED.source_path,
                        timestamp = EXCLUDED.timestamp,
                        simhash = EXCLUDED.simhash,
@@ -173,7 +128,6 @@ export class AtomicIngestService {
                        tags = EXCLUDED.tags`,
                     [
                         atom.id,
-                        atom.label, // label becomes content
                         'atom_source', // source_path
                         Date.now(), // timestamp
                         '0', // simhash
@@ -240,7 +194,7 @@ export class AtomicIngestService {
             let batchBytes = 0;
             while (i < molecules.length && batch.length < MAX_BATCH_ROWS) {
                 const m = molecules[i];
-                const rowBytes = (m.content?.length ?? 0) + (m.id?.length ?? 0) + 200; // 200 = overhead estimate
+                const rowBytes = (m.id?.length ?? 0) + 200; // 200 = overhead estimate (no content - pointers only)
                 if (batch.length > 0 && batchBytes + rowBytes > MAX_BATCH_BYTES) break;
                 batch.push(m);
                 batchBytes += rowBytes;
@@ -268,7 +222,7 @@ export class AtomicIngestService {
                 placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
                 values.push(
                     m.id,
-                    m.content,
+                    m.content || '',
                     m.compoundId,
                     m.sequence,
                     m.start_byte || 0,
@@ -334,7 +288,6 @@ export class AtomicIngestService {
     private async batchWriteCompounds(compounds: Compound[]) {
         const chunkSize = 50;
         // Limits to prevent WASM memory OOB - molecules are linked via compound_id anyway
-        const MAX_BODY_SIZE = 500 * 1024; // 500KB max for compound body
         const MAX_MOLECULE_IDS = 10000;   // Don't store more than 10K IDs
         const MAX_ATOM_IDS = 1000;        // Don't store more than 1K atom IDs
 
@@ -342,12 +295,6 @@ export class AtomicIngestService {
             const chunk = compounds.slice(i, i + chunkSize);
 
             for (const compound of chunk) {
-                // Truncate compound body if too large (full content in molecules)
-                let compoundBody = compound.compound_body || '';
-                if (compoundBody.length > MAX_BODY_SIZE) {
-                    compoundBody = compoundBody.substring(0, MAX_BODY_SIZE) + '\n... [TRUNCATED - see molecules for full content]';
-                }
-
                 // Limit array sizes (molecules have compound_id for lookups)
                 let atoms = compound.atoms || [];
                 let molecules = compound.molecules || [];
@@ -360,10 +307,9 @@ export class AtomicIngestService {
                 }
 
                 await db.run(
-                    `INSERT INTO compounds (id, compound_body, path, timestamp, provenance, molecular_signature, atoms, molecules, embedding)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    `INSERT INTO compounds (id, path, timestamp, provenance, molecular_signature, atoms, molecules, embedding)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
                      ON CONFLICT (id) DO UPDATE SET
-                       compound_body = EXCLUDED.compound_body,
                        path = EXCLUDED.path,
                        timestamp = EXCLUDED.timestamp,
                        provenance = EXCLUDED.provenance,
@@ -373,7 +319,6 @@ export class AtomicIngestService {
                        embedding = EXCLUDED.embedding`,
                     [
                         compound.id,
-                        compoundBody,
                         compound.path,
                         compound.timestamp,
                         compound.provenance,
@@ -388,24 +333,18 @@ export class AtomicIngestService {
     }
 
     // O(n/b) bulk INSERT for atoms
+    // LEGACY BRIDGE: Populates 'atoms' table for backward compatibility (pointer-only, no content)
     private async batchWriteMemory(
         compound: Compound,
         molecules: Molecule[],
         atoms: Atom[],
         buckets: string[],
     ) {
-        // 1. Write Compound Row
-        const MAX_ATOM_CONTENT_SIZE = 500 * 1024;
-        let atomContent = compound.compound_body;
-        if (atomContent.length > MAX_ATOM_CONTENT_SIZE) {
-            atomContent = atomContent.substring(0, MAX_ATOM_CONTENT_SIZE) + '... [TRUNCATED]';
-        }
-
+        // 1. Write Compound Row (pointer-only, no content)
         await db.run(
-            `INSERT INTO atoms (id, content, source_path, timestamp, simhash, embedding, provenance, buckets, tags, compound_id, start_byte, end_byte)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            `INSERT INTO atoms (id, source_path, timestamp, simhash, embedding, provenance, buckets, tags, compound_id, start_byte, end_byte)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
              ON CONFLICT (id) DO UPDATE SET
-               content = EXCLUDED.content,
                source_path = EXCLUDED.source_path,
                timestamp = EXCLUDED.timestamp,
                simhash = EXCLUDED.simhash,
@@ -418,7 +357,6 @@ export class AtomicIngestService {
                end_byte = EXCLUDED.end_byte`,
             [
                 compound.id,
-                atomContent,
                 compound.path,
                 compound.timestamp,
                 compound.molecular_signature || '0',
@@ -428,11 +366,11 @@ export class AtomicIngestService {
                 atoms.map(a => a.label),
                 compound.id,
                 0,
-                compound.compound_body.length,
+                0, // end_byte - not applicable for compound-level atom entry
             ],
         );
 
-        // 2. Write Molecule Rows in Batches
+        // 2. Write Molecule Rows in Batches (pointer-only, no content)
         const atomLabelMap = new Map<string, string>();
         atoms.forEach(a => atomLabelMap.set(a.id, a.label));
 
@@ -458,14 +396,13 @@ export class AtomicIngestService {
                 const rawTags = (m.atoms || []).map(id => atomLabelMap.get(id)).filter(l => l !== undefined);
                 const specificTags = filterTags(rawTags);
 
-                placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
+                placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
 
                 values.push(
                     m.id,
-                    m.content,
                     compound.path,
                     m.timestamp || compound.timestamp,
-                    m.molecular_signature || this.generateHash(m.content),
+                    m.molecular_signature || this.generateHash(m.id),
                     JSON.stringify(this.zeroVector()),
                     compound.provenance,
                     buckets,
@@ -477,10 +414,9 @@ export class AtomicIngestService {
             }
 
             await db.run(
-                `INSERT INTO atoms (id, content, source_path, timestamp, simhash, embedding, provenance, buckets, tags, compound_id, start_byte, end_byte)
+                `INSERT INTO atoms (id, source_path, timestamp, simhash, embedding, provenance, buckets, tags, compound_id, start_byte, end_byte)
                  VALUES ${placeholders.join(', ')}
                  ON CONFLICT (id) DO UPDATE SET
-                   content = EXCLUDED.content,
                    source_path = EXCLUDED.source_path,
                    timestamp = EXCLUDED.timestamp,
                    simhash = EXCLUDED.simhash,

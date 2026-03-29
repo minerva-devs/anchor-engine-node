@@ -516,7 +516,6 @@ export class AtomizerService {
 
             const compound: Compound = {
                 id: fullCompoundId,
-                compound_body: cleanContent,
                 molecules: molecules.map(m => m.id),
                 atoms: allAtoms.map(a => a.id),
                 path: sourcePath,
@@ -564,7 +563,7 @@ export class AtomizerService {
      * Enhanced Content Sanitization (The Key Assassin)
      * Surgically removes JSON wrappers, log spam, and PII.
      */
-    private sanitize(text: string, filePath: string = ''): string {
+    public sanitize(text: string, filePath: string = ''): string {
         let clean = text;
 
         // 1. Fundamental Normalization

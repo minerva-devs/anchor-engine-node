@@ -28,6 +28,9 @@ archive/
 cpp/
 models/
 *.gguf
+
+# UI Build Artifacts (single-file UI in engine/public is used instead)
+packages/anchor-ui/dist/
 *.bin
 *.pth
 

@@ -15,6 +15,7 @@ import { AtomizerService } from './atomizer-service.js';
 import { AtomicIngestService } from './ingest-atomic.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { config } from '../../config/index.js';
+import { PATHS } from '../../config/paths.js';
 import { CodeAnalyzer, getAnalysisSummary, type ToolOutput } from '../analysis/code-analyzer.js';
 
 interface GitHubRepoRecord {
@@ -358,6 +359,66 @@ export class GitHubIngestService {
   }
 
   /**
+   * Mirror extracted files to notebook/external-inbox/github/{owner}/{repo}/
+   * This provides a local backup and visible source files for the user
+   */
+  async mirrorToNotebook(
+    extractDir: string,
+    owner: string,
+    repo: string,
+  ): Promise<string> {
+    const mirrorDir = path.join(PATHS.EXTERNAL_INBOX_DIR, 'github', owner, repo);
+
+    try {
+      // Remove old mirror if exists (clean slate)
+      if (fs.existsSync(mirrorDir)) {
+        fs.rmSync(mirrorDir, { recursive: true, force: true });
+      }
+
+      // Create mirror directory
+      fs.mkdirSync(mirrorDir, { recursive: true });
+
+      // Copy all files from extractDir to mirrorDir
+      const copiedFiles = await this.copyDirectory(extractDir, mirrorDir);
+
+      console.log(`[GitHub] ✅ Mirrored ${copiedFiles} files to ${mirrorDir}`);
+      return mirrorDir;
+    } catch (error: any) {
+      console.warn(`[GitHub] Failed to mirror to notebook: ${error.message}`);
+      return '';
+    }
+  }
+
+  /**
+   * Recursively copy directory
+   */
+  async copyDirectory(src: string, dest: string): Promise<number> {
+    let copiedCount = 0;
+
+    const entries = await fs.promises.readdir(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+
+      if (this.shouldExclude(srcPath)) {
+        continue;
+      }
+
+      if (entry.isDirectory()) {
+        fs.mkdirSync(destPath, { recursive: true });
+        const subCopied = await this.copyDirectory(srcPath, destPath);
+        copiedCount += subCopied;
+      } else if (entry.isFile()) {
+        await fs.promises.copyFile(srcPath, destPath);
+        copiedCount++;
+      }
+    }
+
+    return copiedCount;
+  }
+
+  /**
    * Register a new GitHub repository in the database
    */
   async registerRepo(url: string, bucket: string): Promise<GitHubRepoRecord> {
@@ -428,6 +489,9 @@ export class GitHubIngestService {
 
       // Extract tarball
       const extractDir = await this.extractTarball(tarballPath);
+
+      // Mirror to notebook/external-inbox/github/{owner}/{repo}/
+      const mirrorDir = await this.mirrorToNotebook(extractDir, repo.owner, repo.repo);
 
       // Walk directory and get files
       const files = await this.walkDirectory(extractDir);

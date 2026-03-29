@@ -5,6 +5,7 @@ import type { SearchResult } from './search.js';
 import { getMirrorPath, MIRRORED_BRAIN_PATH } from '../mirror/mirror.js';
 import { NOTEBOOK_DIR } from '../../config/paths.js';
 import { processWithAdaptiveConcurrency, getOptimalBatchSize } from '../../utils/adaptive-concurrency.js';
+import { batchFetchCompounds } from '../../utils/db-batch.js';
 
 interface ContextWindow {
     compoundId: string;
@@ -20,20 +21,37 @@ export class ContextInflator {
      * Inflate search results into expanded Context Windows.
      *
      * Architecture: Atoms are POINTERS — the DB stores entity labels + byte coordinates.
-     * Content lives in the original files on disk (mirrored). This method:
+     * Content lives ONLY in the original files on disk (mirrored). This method:
      *   1. Skips results already inflated by inflateFromAtomPositions (read from disk)
      *   2. For results with compound coordinates: resolves file path → reads from disk with radial expansion
-     *   3. Falls back to compound_body in DB only if the disk file doesn't exist
+     *   3. Returns null if file doesn't exist (NO database fallback)
      *
      * Progressive Inflation: Top results get larger radius for better budget allocation.
      *
-     * The DB is a lightweight routing layer. Actual content comes from the filesystem.
+     * The DB is a lightweight routing layer. Actual content comes from the filesystem ONLY.
      */
     static async inflate(results: SearchResult[], totalBudget?: number, radius: number = 0): Promise<SearchResult[]> {
         if (results.length === 0) return [];
 
         // 0. Pre-sort results by score to ensure top items get priority
         results.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+        // OPTIMIZATION: Pre-fetch all compounds in a single batch query
+        // Instead of N individual queries, use 1 batch query (O(N) → O(1))
+        const compoundIds = Array.from(new Set(results.map(r => r.compound_id).filter(Boolean) as string[]));
+        const compoundCache = new Map<string, { path: string; provenance: string }>();
+
+        if (compoundIds.length > 0) {
+            try {
+                const fetched = await batchFetchCompounds(compoundIds);
+                // Merge into cache
+                for (const [id, data] of fetched.entries()) {
+                    compoundCache.set(id, data);
+                }
+            } catch (e) {
+                console.warn('[ContextInflator] Batch compound fetch failed, falling back to individual queries:', e);
+            }
+        }
 
         // Dynamic radius: if caller didn't specify, scale based on budget and result count
         // Target: fill the budget evenly across results
@@ -53,7 +71,6 @@ export class ContextInflator {
 
         const processedResults: SearchResult[] = [];
         let inflatedFromDisk = 0;
-        let inflatedFromDb = 0;
         let skippedAlready = 0;
         let skippedNoCoords = 0;
 
@@ -83,7 +100,7 @@ export class ContextInflator {
 
                 // 1. Skip results already inflated from disk (e.g., by inflateFromAtomPositions)
                 if (res.is_inflated) {
-                    skippedAlready++; // Not atomic but JS is single threaded event loop so OK
+                    skippedAlready++;
                     return res;
                 }
 
@@ -94,8 +111,8 @@ export class ContextInflator {
                 }
 
                 try {
-                    // 3. Try to inflate from DISK (mirrored file)
-                    const diskContent = await this.inflateFromDisk(res, effectiveRadius, compoundPathCache);
+                    // 3. Inflate from DISK (mirrored file) - NO DB fallback
+                    const diskContent = await this.inflateFromDisk(res, effectiveRadius, compoundPathCache, compoundCache);
 
                     if (diskContent !== null) {
                         inflatedFromDisk++;
@@ -106,19 +123,8 @@ export class ContextInflator {
                         };
                     }
 
-                    // 4. Fallback: inflate from compound_body in DB (file may not exist yet)
-                    const dbContent = await this.inflateFromCompoundBody(res, effectiveRadius);
-
-                    if (dbContent !== null) {
-                        inflatedFromDb++;
-                        return {
-                            ...res,
-                            content: `...${dbContent}...`,
-                            is_inflated: true,
-                        };
-                    }
-
-                    // 5. Nothing worked — use raw result as-is
+                    // 4. File not found — use raw result as-is (file may not exist yet)
+                    console.warn(`[ContextInflator] File not found for compound ${res.compound_id}, returning uninflated result`);
                     return res;
                 } catch (e) {
                     console.error(`[ContextInflator] Failed to inflate result for ${res.source}`, e);
@@ -129,7 +135,23 @@ export class ContextInflator {
             processedResults.push(...batchResults);
         }
 
-        console.log(`[ContextInflator] inflate(): ${inflatedFromDisk} from disk, ${inflatedFromDb} from DB fallback, ${skippedAlready} already inflated, ${skippedNoCoords} no coordinates. Base Radius: ${baseRadius}`);
+        // Rate-limit this log to once per minute to reduce noise
+        const now = Date.now();
+        const lastLog = (global as any).__contextInflatorLastLog || 0;
+        if (now - lastLog > 60000) {
+            console.log(`[ContextInflator] inflate(): ${inflatedFromDisk} from disk, ${skippedAlready} already inflated, ${skippedNoCoords} no coordinates. Base Radius: ${baseRadius}`);
+            (global as any).__contextInflatorLastLog = now;
+        }
+        
+        // Debug: Log why content might be missing
+        const noContentCount = processedResults.filter(r => !r.content || r.content.length === 0).length;
+        if (noContentCount > 0) {
+            console.log(`[ContextInflator] WARN: ${noContentCount}/${processedResults.length} results have NO content after inflation`);
+            // Log first few examples
+            processedResults.filter(r => !r.content || r.content.length === 0).slice(0, 3).forEach(r => {
+                console.log(`[ContextInflator] Empty content example: id=${r.id}, source=${r.source}, compound_id=${r.compound_id}`);
+            });
+        }
 
         // The processedResults array might not be in original sort order because promises resolve out of order within batch
         // But since we sort results at start, we should re-sort or just assume score is king.
@@ -199,10 +221,18 @@ export class ContextInflator {
         res: SearchResult,
         radius: number,
         pathCache: Map<string, Promise<{ filePath: string, provenance: string } | null>>,
+        compoundCache?: Map<string, { path: string; provenance: string }>,
     ): Promise<string | null> {
         if (!res.compound_id) return null;
 
-        // Look up the compound's file path (cached via promise to dedup)
+        // OPTIMIZATION: Use pre-fetched compound cache if available
+        if (compoundCache && compoundCache.has(res.compound_id)) {
+            const compound = compoundCache.get(res.compound_id)!;
+            const pathInfo = { filePath: compound.path, provenance: compound.provenance };
+            return this.inflateFromPath(res, radius, pathInfo);
+        }
+
+        // Fallback to individual query (with promise caching)
         let pathPromise = pathCache.get(res.compound_id);
         if (!pathPromise) {
             pathPromise = (async () => {
@@ -222,6 +252,17 @@ export class ContextInflator {
         const pathInfo = await pathPromise;
         if (!pathInfo) return null;
 
+        return this.inflateFromPath(res, radius, pathInfo);
+    }
+
+    /**
+     * Common inflation logic from a resolved path
+     */
+    private static async inflateFromPath(
+        res: SearchResult,
+        radius: number,
+        pathInfo: { filePath: string; provenance: string },
+    ): Promise<string | null> {
         // Resolve to absolute path: try mirrored file first, then original
         const mirrorPath = getMirrorPath(pathInfo.filePath, pathInfo.provenance);
         let absolutePath = mirrorPath;
@@ -294,46 +335,6 @@ export class ContextInflator {
             return null;
         } finally {
             if (fd) await fd.close();
-        }
-    }
-
-    /**
-     * Fallback: inflate from compound_body stored in the DB.
-     * Used when the disk file doesn't exist (e.g., during initial ingest before mirror).
-     */
-    private static async inflateFromCompoundBody(res: SearchResult, radius: number): Promise<string | null> {
-        if (!res.compound_id) return null;
-
-        try {
-            const result = await db.run('SELECT compound_body FROM compounds WHERE id = $1', [res.compound_id]);
-            if (!result.rows || result.rows.length === 0) return null;
-
-            const compoundBody = result.rows[0].compound_body as string;
-            if (!compoundBody) return null;
-
-            // Similar logic to inflateFromDisk but with string
-            const lookahead = 1000;
-            const bodyLen = compoundBody.length; // Approximate byte check? JS strings are UTF16-ish. 
-            // Assuming 1 char = 1 byte index for simplicity roughly, or we blindly trust indices.
-
-            // Over-read logic
-            const rawStart = Math.max(0, (res.start_byte ?? 0) - radius - lookahead);
-            const rawEnd = Math.min(bodyLen, (res.end_byte ?? bodyLen) + radius + lookahead);
-
-            const rawChunk = compoundBody.substring(rawStart, rawEnd);
-
-            // Relative offsets
-            const hitStartRel = Math.max(0, (res.start_byte ?? 0) - rawStart);
-            const hitEndRel = Math.min(rawChunk.length, (res.end_byte ?? bodyLen) - rawStart);
-
-            const targetStartRel = Math.max(0, hitStartRel - radius);
-            const targetEndRel = Math.min(rawChunk.length, hitEndRel + radius);
-
-            const snapped = this.snapToSentenceBoundary(rawChunk, targetStartRel, targetEndRel);
-
-            return snapped.text.length > 0 ? snapped.text : null;
-        } catch {
-            return null;
         }
     }
 

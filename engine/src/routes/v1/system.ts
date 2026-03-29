@@ -613,14 +613,15 @@ export function setupSystemRoutes(app: Application) {
       const path = await import('path');
 
       // Security: Canonicalize paths to prevent symlink traversal attacks
-      // Get realpath of base directory (inbox/distilled)
-      const baseDir = path.resolve(PATHS.INBOX_DIR, 'distilled');
+      // Get realpath of base directory (notebook/distills - where radial distiller writes)
+      const baseDir = PATHS.DISTILLS_DIR;
       let realBaseDir: string;
       try {
         realBaseDir = await fs.promises.realpath(baseDir);
       } catch {
-        res.status(500).json({ error: 'Base directory not accessible' });
-        return;
+        // Directory doesn't exist yet - create it
+        await fs.promises.mkdir(baseDir, { recursive: true });
+        realBaseDir = baseDir;
       }
 
       // Resolve and canonicalize requested path
@@ -640,9 +641,9 @@ export function setupSystemRoutes(app: Application) {
         return;
       }
 
-      // Additional checks: must end with .yaml and be a file
-      if (!realFilePath.endsWith('.yaml')) {
-        res.status(403).json({ error: 'Access denied: only .yaml files allowed' });
+      // Additional checks: must end with .yaml or .json and be a file
+      if (!realFilePath.endsWith('.yaml') && !realFilePath.endsWith('.json')) {
+        res.status(403).json({ error: 'Access denied: only .yaml and .json files allowed' });
         return;
       }
 

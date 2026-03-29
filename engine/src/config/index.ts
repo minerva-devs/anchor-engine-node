@@ -29,6 +29,8 @@ const ResourceManagementSchema = z.object({
   gc_cooldown_ms: z.number().int().positive().optional(),
   max_atoms_in_memory: z.number().int().positive().optional(),
   monitoring_interval_ms: z.number().int().positive().optional(),
+  cache_ttl_ms: z.number().int().positive().optional(),
+  max_cache_size: z.number().int().positive().optional(),
 });
 
 // Watcher Settings Schema
@@ -36,6 +38,8 @@ const WatcherSettingsSchema = z.object({
   debounce_ms: z.number().int().positive().optional(),
   stability_threshold_ms: z.number().int().positive().optional(),
   extra_paths: z.array(z.string()).optional(),
+  auto_start: z.boolean().optional(),
+  wipe_mirrored_brain_on_shutdown: z.boolean().optional(),
 });
 
 // Search Settings Schema
@@ -52,6 +56,7 @@ const SearchSettingsSchema = z.object({
 // Database Settings Schema
 const DatabaseSettingsSchema = z.object({
   wipe_on_startup: z.boolean().optional(),
+  wipe_on_shutdown: z.boolean().optional(),
 });
 
 // Memory Settings Schema
@@ -116,11 +121,15 @@ interface Config {
   GC_COOLDOWN_MS: number;
   MAX_ATOMS_IN_MEMORY: number;
   MONITORING_INTERVAL_MS: number;
+  CACHE_TTL_MS: number;
+  MAX_CACHE_SIZE: number;
 
   // Watcher Settings
   WATCHER_DEBOUNCE_MS: number;
   WATCHER_STABILITY_THRESHOLD_MS: number;
   WATCHER_EXTRA_PATHS: string[];
+  WATCHER_AUTO_START: boolean;
+  WATCHER_WIPE_MIRRORED_BRAIN_ON_SHUTDOWN: boolean;
 
   // Context Relevance
   CONTEXT_RELEVANCE_WEIGHT: number;
@@ -201,9 +210,16 @@ interface Config {
     DATE_EXTRACTOR_SCAN_LIMIT: number;
   };
 
+  // Watcher Settings
+  WATCHER: {
+    AUTO_START: boolean;
+    WIPE_MIRRORED_BRAIN_ON_SHUTDOWN: boolean;
+  };
+
   // Database Settings
   DATABASE: {
     WIPE_ON_STARTUP: boolean; // Standard 051: Ephemeral Index (true = wipe & rebuild on each start)
+    WIPE_ON_SHUTDOWN: boolean;
   };
 
   // Adaptive Concurrency (Standard 132)
@@ -265,11 +281,21 @@ const DEFAULT_CONFIG: Config = {
   GC_COOLDOWN_MS: 30000, // 30 seconds
   MAX_ATOMS_IN_MEMORY: 2000,
   MONITORING_INTERVAL_MS: 30000, // 30 seconds
+  CACHE_TTL_MS: 60000, // 60 seconds (1 minute)
+  MAX_CACHE_SIZE: 100,
 
   // Watcher Settings
   WATCHER_DEBOUNCE_MS: 2000,
   WATCHER_STABILITY_THRESHOLD_MS: 2000,
   WATCHER_EXTRA_PATHS: [],
+  WATCHER_AUTO_START: false,
+  WATCHER_WIPE_MIRRORED_BRAIN_ON_SHUTDOWN: true,
+
+  // Watcher Settings (nested object for index.ts access)
+  WATCHER: {
+    AUTO_START: false,
+    WIPE_MIRRORED_BRAIN_ON_SHUTDOWN: true,
+  },
 
   // Context Relevance
   CONTEXT_RELEVANCE_WEIGHT: 0.7,
@@ -352,10 +378,8 @@ const DEFAULT_CONFIG: Config = {
 
   // Database Settings
   DATABASE: {
-    // Standard 051: Ephemeral Index
-    // Default true: wipe PGlite index on each startup so it rebuilds from mirrored_brain/.
-    // Set false to retain the index across restarts (faster startup, but risks stale/corrupt data).
     WIPE_ON_STARTUP: true,
+    WIPE_ON_SHUTDOWN: true,
   },
 
   // Adaptive Concurrency (Standard 132)
@@ -488,6 +512,8 @@ function loadConfig(): Config {
         if (userSettings.resource_management.gc_cooldown_ms !== undefined) loadedConfig.GC_COOLDOWN_MS = userSettings.resource_management.gc_cooldown_ms;
         if (userSettings.resource_management.max_atoms_in_memory !== undefined) loadedConfig.MAX_ATOMS_IN_MEMORY = userSettings.resource_management.max_atoms_in_memory;
         if (userSettings.resource_management.monitoring_interval_ms !== undefined) loadedConfig.MONITORING_INTERVAL_MS = userSettings.resource_management.monitoring_interval_ms;
+        if (userSettings.resource_management.cache_ttl_ms !== undefined) loadedConfig.CACHE_TTL_MS = userSettings.resource_management.cache_ttl_ms;
+        if (userSettings.resource_management.max_cache_size !== undefined) loadedConfig.MAX_CACHE_SIZE = userSettings.resource_management.max_cache_size;
       }
 
       // Load Watcher Settings
@@ -495,6 +521,8 @@ function loadConfig(): Config {
         if (userSettings.watcher.debounce_ms !== undefined) loadedConfig.WATCHER_DEBOUNCE_MS = userSettings.watcher.debounce_ms;
         if (userSettings.watcher.stability_threshold_ms !== undefined) loadedConfig.WATCHER_STABILITY_THRESHOLD_MS = userSettings.watcher.stability_threshold_ms;
         if (userSettings.watcher.extra_paths) loadedConfig.WATCHER_EXTRA_PATHS = userSettings.watcher.extra_paths;
+        if (userSettings.watcher.auto_start !== undefined) loadedConfig.WATCHER_AUTO_START = userSettings.watcher.auto_start;
+        if (userSettings.watcher.wipe_mirrored_brain_on_shutdown !== undefined) loadedConfig.WATCHER_WIPE_MIRRORED_BRAIN_ON_SHUTDOWN = userSettings.watcher.wipe_mirrored_brain_on_shutdown;
       }
 
       // Load Context Relevance Settings
@@ -514,6 +542,7 @@ function loadConfig(): Config {
       // Load Database Settings
       if (userSettings.database) {
         if (userSettings.database.wipe_on_startup !== undefined) loadedConfig.DATABASE.WIPE_ON_STARTUP = userSettings.database.wipe_on_startup;
+        if (userSettings.database.wipe_on_shutdown !== undefined) loadedConfig.DATABASE.WIPE_ON_SHUTDOWN = userSettings.database.wipe_on_shutdown;
       }
 
       // Load Limits and Thresholds

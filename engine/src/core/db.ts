@@ -204,7 +204,6 @@ export class Database {
       await this.run(`
         CREATE TABLE IF NOT EXISTS atoms (
           id TEXT PRIMARY KEY,
-          content TEXT,
           source_path TEXT,
           timestamp REAL,
           simhash TEXT,
@@ -236,6 +235,7 @@ export class Database {
         { name: 'tags', type: 'JSONB' },
         { name: 'entities', type: 'JSONB' },
         { name: 'payload', type: 'JSONB' }, // Crystal Atom Structure (Hybrid Architecture)
+        { name: 'content', type: 'TEXT' }, // Atom content (Standard 051)
       ];
 
       for (const col of columnsToAdd) {
@@ -358,6 +358,7 @@ export class Database {
 
       // Ensure new columns exist for existing databases
       const molColumnsToAdd = [
+        { name: 'content', type: 'TEXT' },
         { name: 'tags', type: 'JSONB' },
         { name: 'entities', type: 'JSONB' },
       ];
@@ -441,7 +442,6 @@ export class Database {
         CREATE TABLE IF NOT EXISTS summary_nodes (
           id TEXT PRIMARY KEY,
           type TEXT,
-          content TEXT,
           span_start REAL,
           span_end REAL,
           embedding TEXT
@@ -521,50 +521,6 @@ export class Database {
     } catch (e: any) {
       console.error('[DB] Error creating distills table:', e);
       throw e;
-    }
-
-    // Create FTS index for content search
-    try {
-      await this.run(`
-        CREATE INDEX IF NOT EXISTS idx_atoms_content_gin
-        ON atoms
-        USING GIN(to_tsvector('simple', content));
-      `);
-      console.log('[DB] FTS index created for content search.');
-    } catch (e: any) {
-      console.warn('[DB] Could not create FTS index:', e.message);
-      // Try creating a simpler index if GIN fails
-      try {
-        await this.run(`
-          CREATE INDEX IF NOT EXISTS idx_atoms_content_text
-          ON atoms (content);
-        `);
-        console.log('[DB] Text index created as fallback.');
-      } catch (fallbackErr: any) {
-        console.warn('[DB] Could not create fallback text index:', fallbackErr.message);
-      }
-    }
-
-    // Create FTS index for molecules content search (Tag-Walker anchor stage)
-    try {
-      await this.run(`
-        CREATE INDEX IF NOT EXISTS idx_molecules_content_gin
-        ON molecules
-        USING GIN(to_tsvector('simple', content));
-      `);
-      console.log('[DB] FTS index created for molecules content search.');
-    } catch (e: any) {
-      console.warn('[DB] Could not create molecules FTS index:', e.message);
-      // Try creating a simpler index if GIN fails
-      try {
-        await this.run(`
-          CREATE INDEX IF NOT EXISTS idx_molecules_content_text
-          ON molecules (content);
-        `);
-        console.log('[DB] Molecules text index created as fallback.');
-      } catch (fallbackErr: any) {
-        console.warn('[DB] Could not create molecules fallback text index:', fallbackErr.message);
-      }
     }
 
     // Create JSONB GIN Index (Crystal Atom Optimization)

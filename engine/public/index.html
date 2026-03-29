@@ -12,6 +12,7 @@
     <script src="https://unpkg.com/@babel/standalone@7.26.0/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
     <style>
         :root {
             --bg-primary: #000000;
@@ -155,7 +156,7 @@
         };
 
         // API
-        const API_KEY = localStorage.getItem('anchor_api_key') || 'bolt-memory-secret';
+        const API_KEY = localStorage.getItem('anchor_api_key') || 'anchor-engine-default-key';
         
         const api = {
             searchStream: async function*(params, onBatch) {
@@ -263,6 +264,8 @@
         const Header = ({ route, navigate, onOpenGithub, onOpenResearch, systemStatus, isDbEmpty }) => {
             const isIngesting = systemStatus?.isBusy;
             const statusMessage = systemStatus?.activeTask || '';
+            const progress = systemStatus?.progress;
+            const progressPercent = progress?.total ? Math.round((progress.current / progress.total) * 100) : 0;
             return (
             <header className="desktop-header flex items-center justify-between px-6 py-3 border-b border-white/10 bg-black/20">
                 <div className="flex items-center gap-3">
@@ -282,9 +285,14 @@
                         </div>
                     )}
                     {isIngesting && (
-                        <div className="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30">
-                            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></div>
-                            <span className="text-xs text-amber-400 font-medium">⏳ {statusMessage || 'Processing files...'}</span>
+                        <div className="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/40">
+                            <div className="w-2 h-2 rounded-full bg-amber-300 animate-pulse"></div>
+                            <div className="flex flex-col">
+                                <span className="text-xs text-amber-200 font-bold whitespace-nowrap">⏳ {progressPercent}%</span>
+                                {progress?.description && (
+                                    <span className="text-[10px] text-amber-100/90 max-w-[200px] truncate">{progress.description}</span>
+                                )}
+                            </div>
                         </div>
                     )}
                     {!isDbEmpty && !isIngesting && (
@@ -361,6 +369,8 @@
         const MobileHeader = ({ route, navigate, onOpenGithub, onOpenResearch, systemStatus, isDbEmpty, onMenuClick }) => {
             const isIngesting = systemStatus?.isBusy;
             const statusMessage = systemStatus?.activeTask || '';
+            const progress = systemStatus?.progress;
+            const progressPercent = progress?.total ? Math.round((progress.current / progress.total) * 100) : 0;
             return (
             <header className="mobile-header flex items-center justify-between px-4 py-3 border-b border-white/10 bg-black/20">
                 <div className="flex items-center gap-3">
@@ -386,7 +396,10 @@
                         <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" title="Database Empty"></div>
                     )}
                     {isIngesting && (
-                        <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" title={statusMessage}></div>
+                        <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-amber-300 animate-pulse" title={`${statusMessage} - ${progressPercent}%`}></div>
+                            <span className="text-[10px] text-amber-200 font-bold">{progressPercent}%</span>
+                        </div>
                     )}
                     {!isDbEmpty && !isIngesting && (
                         <div className="w-2 h-2 rounded-full bg-green-400" title="Ready"></div>
@@ -476,6 +489,10 @@
             const [copyFeedback, setCopyFeedback] = useState('');
             const [cachedDistillSummary, setCachedDistillSummary] = useState(null);
             const [streamingProgress, setStreamingProgress] = useState({ batchNumber: 0, totalBatches: 0, resultsCount: 0 });
+            
+            // Pagination state for lazy-loaded carousel view
+            const [currentPage, setCurrentPage] = useState(1);
+            const [itemsPerPage, setItemsPerPage] = useState(10); // Show 10 results at a time on mobile
 
             // Token budget presets with finer granularity at lower values
             const tokenPresets = [
@@ -516,90 +533,170 @@
                 try {
                     let data;
                     if (algo === 'distill') {
+                        // Use tag-based mode for full inflated content
                         data = await api.distill({
+                            mode: 'tag-based',
                             seed: { query: q },
-                            max_nodes: 500,
-                            batch_size: 50
+                            radius: 2000,
+                            output_format: 'json'
                         });
-                        // Fetch the actual distilled content from the output file
+                        
+                        // Handle distillation results
                         let lines = [];
-                        let content = ''; // Declare content here for wider scope
-                        try {
-                            const outputPath = data.output?.path;
-                            if (outputPath) {
-                                // Read the distilled file content via API
-                                const fileRes = await fetch(`/v1/files/read?path=${encodeURIComponent(outputPath)}`);
+
+                        // NEW: inflated_content from tag-based mode (FULL atom content!)
+                        if (data.inflated_content && data.inflated_content.length > 0) {
+                            lines = data.inflated_content.map((item, idx) => ({
+                                id: `distill-inflated-${idx}-${item.source?.split('/').pop()?.substring(0,8) || idx}`,
+                                content: item.content,  // Full atom content!
+                                source: item.source || 'Distilled',
+                                tags: item.tags || ['distilled'],
+                                score: 1.0,
+                                _algo: '🧪 distill',
+                                timestamp: item.timestamp
+                            }));
+                        }
+                        // decision records returned directly (actual distilled content!)
+                        else if (data.records && data.records.length > 0) {
+                            lines = data.records.map((rec, idx) => {
+                                // Build content from structured fields OR raw content
+                                let content = '';
+                                if (rec.problem || rec.solution?.length || rec.rationale) {
+                                    // Structured format
+                                    content = `${rec.title || 'Untitled'}\n\n${rec.problem ? 'Problem: ' + rec.problem + '\n\n' : ''}${rec.solution?.length ? 'Solution:\n' + rec.solution.join('\n') + '\n\n' : ''}${rec.rationale ? 'Why: ' + rec.rationale : ''}`.trim();
+                                } else {
+                                    // Fallback: just show title (content is in provenance files)
+                                    content = rec.title || 'Concept';
+                                }
+                                
+                                return {
+                                    id: `distill-rec-${idx}-${rec.id?.substring(0,8) || idx}`,
+                                    content: content,
+                                    source: rec.provenance?.[0] || 'Distilled',
+                                    tags: rec.tags || ['distilled', 'decision-record'],
+                                    topics: [rec.status || 'active'],
+                                    score: 1.0,
+                                    _algo: '🧪 distill',
+                                    // Store full provenance for tree view
+                                    _provenance: rec.provenance || [],
+                                    _supersedes: rec.supersedes || [],
+                                    _title: rec.title
+                                };
+                            });
+                        }
+                        // Alternative: digital_objects (metadata about compounds)
+                        else if (data.digital_objects && data.digital_objects.length > 0) {
+                            // Convert digital_objects to search result format
+                            lines = data.digital_objects.map((obj, idx) => ({
+                                id: `distill-obj-${idx}-${obj.id?.substring(0,8) || idx}`,
+                                content: obj.content || obj.summary || '',
+                                source: obj.source_path || 'Distilled',
+                                tags: obj.tags || ['distilled'],
+                                topics: obj.topics || [],
+                                score: 1.0,
+                                _algo: '🧪 distill'
+                            }));
+                        } 
+                        // Alternative: records array
+                        else if (data.records && data.records.length > 0) {
+                            lines = data.records.map((rec, idx) => ({
+                                id: `distill-rec-${idx}-${rec.id?.substring(0,8) || idx}`,
+                                content: rec.content || '',
+                                source: rec.source_path || 'Distilled',
+                                tags: rec.tags || ['distilled'],
+                                topics: rec.topics || [],
+                                score: 1.0,
+                                _algo: '🧪 distill'
+                            }));
+                        }
+                        // 4.8.2 format: JSON with lines array
+                        else if (data.output?.path) {
+                            try {
+                                // Add cache-busting timestamp to prevent stale results
+                                const cacheBuster = `&_cb=${Date.now()}`;
+                                const fileRes = await fetch(`/v1/files/read?path=${encodeURIComponent(data.output.path)}${cacheBuster}`, {
+                                    headers: {
+                                        'Authorization': `Bearer ${API_KEY}`,
+                                        'Cache-Control': 'no-cache'
+                                    }
+                                });
                                 if (fileRes.ok) {
                                     const fileData = await fileRes.json();
-                                    content = fileData.content || '';
                                     
-                                    // Parse COMPOUND format (markdown with <!-- Source: --> comments)
-                                    // Split by source markers and extract content
-                                    const sourceBlocks = content.split(/<!-- Source: (.+?) -->\n?/);
-                                    
-                                    if (sourceBlocks.length > 1) {
-                                        // sourceBlocks[0] is preamble (if any), then [source, content, source, content, ...]
-                                        for (let i = 1; i < sourceBlocks.length; i += 2) {
-                                            const source = sourceBlocks[i].trim();
-                                            const blockContent = sourceBlocks[i + 1] || '';
-                                            
-                                            // Split block into lines and filter out timestamps
-                                            const blockLines = blockContent.split('\n').filter(line => {
-                                                const trimmed = line.trim();
-                                                // Skip empty lines and timestamp lines
-                                                return trimmed && !trimmed.match(/^['"]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z['"],?$/);
-                                            });
-                                            
-                                            // Add each line as a result
-                                            blockLines.forEach((line, lineIdx) => {
-                                                lines.push({
-                                                    id: `distill-line-${i}-${lineIdx}`,
-                                                    content: line.trim(),
-                                                    source: source,
-                                                    tags: ['distilled'],
-                                                    score: 1.0,
-                                                    _algo: '🧪 distill'
-                                                });
-                                            });
-                                        }
-                                    }
-                                    
-                                    // Fallback: show raw content preview
-                                    if (lines.length === 0) {
-                                        lines = [{
-                                            id: 'distill-raw',
-                                            content: content.substring(0, 8000) + (content.length > 8000 ? '\n\n[Content truncated...]' : ''),
-                                            source: outputPath,
+                                    // Parse the content string as JSON
+                                    const parsedContent = typeof fileData.content === 'string' 
+                                        ? JSON.parse(fileData.content) 
+                                        : fileData.content;
+
+                                    // Check for JSON format (4.8.2)
+                                    if (parsedContent.lines && Array.isArray(parsedContent.lines)) {
+                                        console.log('[Distill] ✅ Loaded JSON format:', parsedContent.lines.length, 'lines');
+                                        lines = parsedContent.lines.map((line, idx) => ({
+                                            id: `distill-line-${idx}`,
+                                            content: line.content || '',
+                                            source: Array.isArray(line.provenance) ? line.provenance[0] : (line.source || 'Distilled'),
                                             tags: ['distilled'],
                                             score: 1.0,
                                             _algo: '🧪 distill',
-                                            _rawContent: content  // Store full content for copy
-                                        }];
+                                            _firstSeen: line.first_seen,
+                                            _provenance: line.provenance
+                                        }));
+                                    }
+                                    // Fallback to COMPOUND format (markdown with <!-- Source: --> comments)
+                                    else {
+                                        const content = fileData.content || '';
+                                        const sourceBlocks = content.split(/<!-- Source: (.+?) -->\n?/);
+
+                                        if (sourceBlocks.length > 1) {
+                                            for (let i = 1; i < sourceBlocks.length; i += 2) {
+                                                const source = sourceBlocks[i].trim();
+                                                const blockContent = sourceBlocks[i + 1] || '';
+
+                                                const blockLines = blockContent.split('\n').filter(line => {
+                                                    const trimmed = line.trim();
+                                                    return trimmed && !trimmed.match(/^['"]\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z['"],?$/);
+                                                });
+
+                                                blockLines.forEach((line, lineIdx) => {
+                                                    lines.push({
+                                                        id: `distill-line-${i}-${lineIdx}`,
+                                                        content: line.trim(),
+                                                        source: source,
+                                                        tags: ['distilled'],
+                                                        score: 1.0,
+                                                        _algo: '🧪 distill'
+                                                    });
+                                                });
+                                            }
+                                        }
                                     }
                                 }
+                            } catch (e) {
+                                console.error('Failed to fetch distilled content:', e);
                             }
-                        } catch (e) {
-                            console.error('Failed to fetch distilled content:', e);
                         }
+                        
                         // Add summary as first result
-                        const summaryText = `📊 Distillation Complete | Compression: ${data.stats?.compression_ratio || 'N/A'} | Lines: ${data.stats?.lines_unique || 0}/${data.stats?.lines_total || 0} | Duration: ${((data.stats?.duration_ms || 0) / 1000).toFixed(1)}s`;
+                        const summaryText = `📊 Distillation Complete | Compression: ${data.stats?.compression_ratio || 'N/A'} | Lines: ${data.stats?.lines_unique || data.lines?.length || 0} | Duration: ${((data.stats?.duration_ms || 0) / 1000).toFixed(1)}s`;
                         const summaryResult = {
                             id: 'distill-summary',
                             content: summaryText,
-                            source: data.output?.path || 'Radial Distiller',
+                            source: 'Radial Distiller',
                             tags: ['distilled', 'summary'],
                             score: 1.0,
                             _algo: '🧪 distill'
                         };
-                        // Cache the summary for Overview button
+                        
+                        // Cache for Overview button
                         setCachedDistillSummary({
                             result: summaryResult,
                             lines: lines,
                             timestamp: Date.now(),
                             stats: data.stats,
-                            output: data.output,
-                            rawYaml: content  // Store full YAML for copy/download
+                            output: data.output
                         });
+
+                        console.log('[Distill] Total lines to display:', lines.length);
                         data = { results: [summaryResult, ...lines] };
                         setResults(data.results);
                     } else if (algo === 'illuminate') {
@@ -682,13 +779,65 @@
             const copyResultsAsYaml = async (resultsToCopy) => {
                 if (!resultsToCopy || resultsToCopy.length === 0) return;
 
-                // Check for distill results - use full YAML from cache if available
-                const isDistill = resultsToCopy.some(r => r._algo?.includes('distill'));
-                if (isDistill && cachedDistillSummary?.rawYaml) {
+                // Helper function with fallback for non-HTTPS contexts
+                const copyToClipboard = async (text) => {
+                    // Try modern clipboard API first (requires HTTPS)
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        try {
+                            await navigator.clipboard.writeText(text);
+                            return true;
+                        } catch (e) {
+                            // Fallback if clipboard API fails (e.g., NotAllowedError)
+                            console.warn('Clipboard API failed, using fallback:', e.name);
+                        }
+                    }
+                    
+                    // Fallback: execCommand method (works without HTTPS)
                     try {
-                        await navigator.clipboard.writeText(cachedDistillSummary.rawYaml);
-                        setCopyFeedback(`✅ Copied full YAML! (~${Math.round(cachedDistillSummary.rawYaml.length/1024)}KB)`);
-                        setTimeout(() => setCopyFeedback(''), 3000);
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        textarea.style.position = 'fixed';
+                        textarea.style.left = '-9999px';
+                        textarea.style.top = '0';
+                        textarea.setAttribute('readonly', '');
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        const success = document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        return success;
+                    } catch (e) {
+                        console.error('Fallback copy failed:', e);
+                        return false;
+                    }
+                };
+
+                // Check for distill results - build YAML from records
+                const isDistill = resultsToCopy.some(r => r._algo?.includes('distill'));
+                if (isDistill) {
+                    try {
+                        // Build YAML from distill records
+                        const yamlContent = resultsToCopy.map(r => {
+                            const provenanceYaml = r._provenance && r._provenance.length > 0
+                                ? '\nprovenance:\n' + r._provenance.map(p => `  - ${p}`).join('\n')
+                                : '';
+                            return `- id: "${r.id}"
+  source: "${(r.source || '').replace(/"/g, '\\"')}"
+  score: ${(r.score || 1).toFixed(4)}
+  content: |
+    ${r._title || r.content.split('\n')[0] || 'Untitled'}${provenanceYaml}
+  tags:
+    - "distilled"
+    - "decision-record"`;
+                        }).join('\n\n');
+
+                        const success = await copyToClipboard(yamlContent);
+                        if (success) {
+                            setCopyFeedback(`✅ Copied ${resultsToCopy.length} distilled concepts!`);
+                            setTimeout(() => setCopyFeedback(''), 3000);
+                        } else {
+                            setCopyFeedback('❌ Copy failed - select and copy manually');
+                            setTimeout(() => setCopyFeedback(''), 3000);
+                        }
                         return;
                     } catch (error) {
                         setCopyFeedback('❌ Copy failed');
@@ -760,15 +909,140 @@
                             ? `\n# (showing ${capped.length} of ${resultsToCopy.length} results; ~${avgChars} chars/result, ${tokenBudget * 4} total budget)`
                             : `\n# (${capped.length} results; ~${avgChars} chars/result, ${tokenBudget * 4} total budget)`;
 
-                    await navigator.clipboard.writeText(yamlContent + truncNote);
-                    setCopyFeedback(`✅ Copied! (~${Math.round(totalChar/1024)}KB)`);
-                    setTimeout(() => setCopyFeedback(''), 3000);
+                    const success = await copyToClipboard(yamlContent + truncNote);
+                    if (success) {
+                        setCopyFeedback(`✅ Copied! (~${Math.round(totalChar/1024)}KB)`);
+                        setTimeout(() => setCopyFeedback(''), 3000);
+                    } else {
+                        setCopyFeedback('❌ Copy failed - select and copy manually');
+                        setTimeout(() => setCopyFeedback(''), 3000);
+                    }
                 } catch (error) {
                     setCopyFeedback('❌ Copy failed');
                     setTimeout(() => setCopyFeedback(''), 2000);
                     console.error('Failed to copy:', error);
                 }
             };
+
+            // Download results as YAML file
+            const downloadResultsAsYaml = () => {
+                if (!results || results.length === 0) {
+                    setCopyFeedback('❌ No results to download');
+                    setTimeout(() => setCopyFeedback(''), 3000);
+                    return;
+                }
+
+                try {
+                    const isDistill = results.some(r => r._algo?.includes('distill'));
+                    const isIlluminate = results.some(r => r._algo?.includes('illuminate'));
+                    
+                    let yamlContent;
+                    
+                    if (isDistill) {
+                        // Build YAML from distill records
+                        yamlContent = results.map(r => {
+                            const provenanceYaml = r._provenance && r._provenance.length > 0
+                                ? '\nprovenance:\n' + r._provenance.map(p => `  - ${p}`).join('\n')
+                                : '';
+                            return `- id: "${r.id}"
+  source: "${(r.source || '').replace(/"/g, '\\"')}"
+  score: ${(r.score || 1).toFixed(4)}
+  content: |
+    ${r._title || r.content.split('\n')[0] || 'Untitled'}${provenanceYaml}
+  tags:
+    - "distilled"
+    - "decision-record"`;
+                        }).join('\n\n');
+                    } else {
+                        // Regular search/illuminate results - use all results, not just visible page
+                        const TOTAL_CHAR_BUDGET = tokenBudget * 4;
+                        const perResultBudget = isIlluminate ? Infinity : Math.floor(TOTAL_CHAR_BUDGET / results.length);
+                        
+                        yamlContent = results.map((result, index) => {
+                            const rawContent = result._rawContent || result.content || '';
+                            const preview = (perResultBudget !== Infinity && rawContent.length > perResultBudget)
+                                ? rawContent.slice(0, perResultBudget) + '…'
+                                : rawContent;
+
+                            const lines = [
+                                `- id: "${result.id || index}"`,
+                                `  source: "${(result.source || '').replace(/\\/g, '/').replace(/"/g, '\\"')}"`,
+                                `  score: ${result.score?.toFixed(4) || 0}`,
+                                ...(result.timestamp ? [`  date: "${new Date(result.timestamp).toISOString().slice(0, 10)}"`] : []),
+                                `  content: |`
+                            ];
+
+                            preview.split('\n').forEach(line => {
+                                lines.push(`    ${line}`);
+                            });
+
+                            if (result.tags && result.tags.length > 0) {
+                                lines.push(`  tags:`);
+                                result.tags.forEach(tag => {
+                                    lines.push(`    - "${tag}"`);
+                                });
+                            }
+
+                            if (result.buckets && result.buckets.length > 0) {
+                                lines.push(`  buckets:`);
+                                result.buckets.forEach(bucket => {
+                                    lines.push(`    - "${bucket}"`);
+                                });
+                            }
+
+                            return lines.join('\n');
+                        }).join('\n\n');
+                        
+                        const avgChars = Math.round(yamlContent.length / results.length);
+                        yamlContent += `\n\n# ${results.length} results; ~${avgChars} chars/result, ${tokenBudget * 4} total budget`;
+                    }
+
+                    // Generate filename with timestamp
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+                    const prefix = isDistill ? 'distilled' : isIlluminate ? 'illuminated' : 'search';
+                    const filename = `${prefix}_${timestamp}.yaml`;
+
+                    // Download file
+                    const blob = new Blob([yamlContent], { type: 'text/yaml' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+
+                    setCopyFeedback(`✅ Downloaded ${filename} (~${Math.round(yamlContent.length/1024)}KB)`);
+                    setTimeout(() => setCopyFeedback(''), 5000);
+                } catch (error) {
+                    setCopyFeedback('❌ Download failed');
+                    setTimeout(() => setCopyFeedback(''), 3000);
+                    console.error('Failed to download:', error);
+                }
+            };
+
+            // Pagination helpers
+            const totalPages = Math.ceil(results.length / itemsPerPage);
+            const paginatedResults = results.slice(
+                (currentPage - 1) * itemsPerPage,
+                currentPage * itemsPerPage
+            );
+
+            const goToPage = (page) => {
+                const newPage = Math.max(1, Math.min(page, totalPages));
+                setCurrentPage(newPage);
+                // Scroll to top of results
+                const resultsContainer = document.querySelector('.results-container');
+                if (resultsContainer) {
+                    resultsContainer.scrollTop = 0;
+                }
+                // Refresh lucide icons
+                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 50);
+            };
+
+            const nextPage = () => goToPage(currentPage + 1);
+            const prevPage = () => goToPage(currentPage - 1);
 
             return (
                 <div className="flex-1 flex flex-col overflow-hidden">
@@ -859,16 +1133,25 @@
                         <span className="text-sm text-gray-400">
                             {results.length} result{results.length !== 1 ? 's' : ''}
                         </span>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                             {copyFeedback && (
                                 <span className="text-xs text-green-400">{copyFeedback}</span>
                             )}
                             <button
                                 onClick={() => copyResultsAsYaml(results)}
                                 className="text-xs px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 transition-colors flex items-center gap-2"
+                                title="Copy all results to clipboard"
                             >
                                 <i data-lucide="copy" width="14"></i>
-                                Copy as YAML
+                                <span className="hidden sm:inline">Copy</span>
+                            </button>
+                            <button
+                                onClick={downloadResultsAsYaml}
+                                className="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 transition-colors flex items-center gap-2"
+                                title="Download all results as YAML file"
+                            >
+                                <i data-lucide="download" width="14"></i>
+                                <span className="hidden sm:inline">Download</span>
                             </button>
                             {cachedDistillSummary && (
                                 <button
@@ -881,14 +1164,47 @@
                                     title="Copy distill summary to clipboard"
                                 >
                                     <i data-lucide="clipboard" width="14"></i>
-                                    Copy Overview
+                                    <span className="hidden sm:inline">Overview</span>
+                                </button>
+                            )}
+                            {cachedDistillSummary && (
+                                <button
+                                    onClick={() => {
+                                        const yamlOutput = jsyaml.dump({
+                                            metadata: {
+                                                source: 'Anchor Engine Radial Distiller',
+                                                distilled_at: new Date().toISOString(),
+                                                line_count: cachedDistillSummary.lines.length,
+                                                stats: cachedDistillSummary.stats,
+                                            },
+                                            lines: cachedDistillSummary.lines.map(l => ({
+                                                content: l.content,
+                                                provenance: l.provenance,
+                                                first_seen: l.first_seen,
+                                            })),
+                                        });
+                                        const blob = new Blob([yamlOutput], { type: 'text/yaml' });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url;
+                                        a.download = `distilled-${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`;
+                                        document.body.appendChild(a);
+                                        a.click();
+                                        document.body.removeChild(a);
+                                        URL.revokeObjectURL(url);
+                                    }}
+                                    className="text-xs px-3 py-1.5 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 transition-colors flex items-center gap-2"
+                                    title="Download all distilled lines as YAML"
+                                >
+                                    <i data-lucide="download" width="14"></i>
+                                    <span className="hidden sm:inline">YAML</span>
                                 </button>
                             )}
                         </div>
                     </div>
 
                     {/* Results */}
-                    <div className="flex-1 overflow-y-auto p-4">
+                    <div className="flex-1 overflow-y-auto p-4 results-container">
                         {!loading && results.length === 0 && (
                             <div className="text-center text-gray-500 mt-20">
                                 <i data-lucide="search" className="mx-auto mb-4 opacity-30" width="48"></i>
@@ -902,10 +1218,10 @@
                             </div>
                         )}
                         {results.length > 0 && (
-                            <div className="space-y-3 fade-in">
+                            <>
                                 {/* Distill Summary Card - shown above all results */}
                                 {cachedDistillSummary && (
-                                    <div className="glass-panel p-4 bg-cyan-500/5 border-cyan-500/20 border">
+                                    <div className="glass-panel p-4 bg-cyan-500/5 border-cyan-500/20 border mb-4">
                                         <div className="flex items-start justify-between gap-4 mb-2">
                                             <div className="flex items-center gap-2 text-xs text-cyan-400">
                                                 <i data-lucide="flask-conical" width="12"></i>
@@ -926,12 +1242,43 @@
                                         </div>
                                     </div>
                                 )}
-                                {results.map((result, i) => (
-                                    <div key={result.id || i} className="glass-panel p-4 hover:bg-white/5 transition-colors">
+                                
+                                {/* Pagination info */}
+                                {results.length > itemsPerPage && (
+                                    <div className="flex items-center justify-between mb-3 px-1">
+                                        <span className="text-xs text-gray-400">
+                                            Showing {(currentPage - 1) * itemsPerPage + 1}-{Math.min(currentPage * itemsPerPage, results.length)} of {results.length}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-500">Per page:</span>
+                                            <select
+                                                value={itemsPerPage}
+                                                onChange={(e) => {
+                                                    setItemsPerPage(Number(e.target.value));
+                                                    setCurrentPage(1);
+                                                }}
+                                                className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-gray-300 outline-none focus:border-cyan-500/50"
+                                            >
+                                                <option value="10">10</option>
+                                                <option value="20">20</option>
+                                                <option value="50">50</option>
+                                                <option value="100">100</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* Paginated results carousel */}
+                                {paginatedResults.map((result, i) => {
+                                    const globalIndex = (currentPage - 1) * itemsPerPage + i;
+                                    return (
+                                    <div key={result.id || globalIndex} className="glass-panel p-4 hover:bg-white/5 transition-colors mb-3">
                                         <div className="flex items-start justify-between gap-4 mb-2">
                                             <div className="flex items-center gap-2 text-xs text-gray-500">
                                                 <i data-lucide="file-text" width="12"></i>
-                                                <span className="font-mono truncate max-w-md">{result.source || 'Unknown'}</span>
+                                                <span className="font-mono truncate max-w-[200px] sm:max-w-md" title={result.source || 'Unknown'}>
+                                                    {(result.source || 'Unknown').split('/').slice(-3).join('/')}
+                                                </span>
                                             </div>
                                             <span className="text-xs text-cyan-400 font-mono" title="FTS relevance score (higher = better match)">
                                                 {(result.score * 100).toFixed(0)}%
@@ -940,21 +1287,61 @@
                                         <p className="text-sm text-gray-300 whitespace-pre-wrap leading-relaxed">
                                             {result.content}
                                         </p>
-                                        {result.tags && result.tags.length > 0 && (
-                                            <div className="flex items-center gap-2 mt-3 flex-wrap">
-                                                {result.tags.slice(0, 5).map((tag, j) => (
-                                                    <span key={j} className="text-xs px-2 py-0.5 rounded bg-white/5 text-gray-400">
-                                                        #{tag}
-                                                    </span>
-                                                ))}
-                                                {result.tags.length > 5 && (
-                                                    <span className="text-xs text-gray-600">+{result.tags.length - 5} more</span>
-                                                )}
-                                            </div>
+
+                                        {/* Provenance Tree View for Distilled Results */}
+                                        {result._algo?.includes('distill') && result._provenance && result._provenance.length > 1 && (
+                                            <details className="mt-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                                                <summary className="text-xs text-cyan-400 cursor-pointer font-medium flex items-center gap-2">
+                                                    <i data-lucide="git-merge" width="12"></i>
+                                                    <span>This concept deduplicated from {result._provenance.length} files</span>
+                                                </summary>
+                                                <div className="mt-2 ml-4 space-y-1">
+                                                    {result._provenance.map((prov, idx) => {
+                                                        const fileName = prov.split('/').pop() || prov;
+                                                        const pathParts = prov.split('/');
+                                                        return (
+                                                            <div key={idx} className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                                <i data-lucide="corner-down-right" width="10"></i>
+                                                                <span className="truncate" title={prov}>
+                                                                    {pathParts.length > 3 ? '…/' + pathParts.slice(-3).join('/') : prov}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </details>
                                         )}
                                     </div>
-                                ))}
-                            </div>
+                                    );
+                                })}
+                                
+                                {/* Pagination controls */}
+                                {results.length > itemsPerPage && (
+                                    <div className="flex items-center justify-center gap-2 mt-4 mb-2">
+                                        <button
+                                            onClick={prevPage}
+                                            disabled={currentPage === 1}
+                                            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition-colors flex items-center gap-2"
+                                        >
+                                            <i data-lucide="chevron-left" width="16"></i>
+                                            <span className="hidden sm:inline">Previous</span>
+                                        </button>
+                                        
+                                        <span className="text-sm text-gray-400 font-mono px-4">
+                                            Page {currentPage} / {totalPages}
+                                        </span>
+                                        
+                                        <button
+                                            onClick={nextPage}
+                                            disabled={currentPage === totalPages}
+                                            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10 transition-colors flex items-center gap-2"
+                                        >
+                                            <span className="hidden sm:inline">Next</span>
+                                            <i data-lucide="chevron-right" width="16"></i>
+                                        </button>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -1192,7 +1579,6 @@
         const GithubModal = ({ onClose }) => {
             const [repoUrl, setRepoUrl] = useState('');
             const [branch, setBranch] = useState('main');
-            const [buckets, setBuckets] = useState('');
             const [includeHistory, setIncludeHistory] = useState(true);
             const [runAnalysis, setRunAnalysis] = useState(false);
             const [loading, setLoading] = useState(false);
@@ -1202,25 +1588,26 @@
                 if (!repoUrl.trim()) return;
                 setLoading(true);
                 setMessage('');
-                
-                // Get PAT from settings page input (if user entered one)
-                const patInput = document.getElementById('github-pat-input');
-                const githubToken = patInput?.value?.trim() || '';
-                
+
+                // Get PAT from localStorage (cached from Settings page)
+                const githubToken = localStorage.getItem('github_pat') || '';
+
                 try {
-                    const headers = { 'Content-Type': 'application/json' };
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    };
                     // Only include token if provided (temporary, not stored)
                     if (githubToken) {
                         headers['X-GitHub-Token'] = githubToken;
                     }
-                    
+
                     const res = await fetch('/v1/github/repos', {
                         method: 'POST',
                         headers,
                         body: JSON.stringify({
                             url: repoUrl.trim(),
                             branch: branch.trim() || 'main',
-                            bucket: buckets.trim() || 'code',
                             include_history: includeHistory,
                             run_analysis: runAnalysis,
                         })
@@ -1229,8 +1616,6 @@
                     
                     if (res.ok) {
                         setMessage('✅ ' + (data.message || 'Repository ingestion started'));
-                        // Clear PAT input after successful use (security)
-                        if (patInput) patInput.value = '';
                         // Clear message box on settings page too
                         const msgBox = document.getElementById('github-auth-message');
                         if (msgBox) {
@@ -1261,8 +1646,6 @@
                     }
                 } finally {
                     setLoading(false);
-                    // Clear PAT from memory (input already cleared above on success)
-                    if (patInput && patInput.value) patInput.value = '';
                     setTimeout(() => setMessage(''), 8000);
                 }
             };
@@ -1292,27 +1675,15 @@
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none font-mono text-sm"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-2">Branch</label>
-                                    <input
-                                        type="text"
-                                        value={branch}
-                                        onChange={(e) => setBranch(e.target.value)}
-                                        placeholder="main"
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none text-sm"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-gray-400 mb-2">Bucket</label>
-                                    <input
-                                        type="text"
-                                        value={buckets}
-                                        onChange={(e) => setBuckets(e.target.value)}
-                                        placeholder="code"
-                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none text-sm"
-                                    />
-                                </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Branch</label>
+                                <input
+                                    type="text"
+                                    value={branch}
+                                    onChange={(e) => setBranch(e.target.value)}
+                                    placeholder="main"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none text-sm"
+                                />
                             </div>
                             <label className="flex items-center gap-3 cursor-pointer select-none">
                                 <input
@@ -1969,7 +2340,7 @@
                             </h3>
                             <p className="text-xs text-gray-400 mb-4">
                                 Enter a Personal Access Token (PAT) to ingest private repositories. 
-                                The token is used only for the current operation and is not stored.
+                                The token is cached locally for this session and cleared when you close the browser.
                             </p>
                             
                             <div className="mb-4">
@@ -1978,6 +2349,20 @@
                                     type="password"
                                     id="github-pat-input"
                                     placeholder="ghp_... (optional, uses git credentials if empty)"
+                                    defaultValue={(() => {
+                                        // Load cached PAT from localStorage (session persistence)
+                                        const cached = localStorage.getItem('github_pat');
+                                        return cached ? cached.substring(0, 3) + '...' : '';
+                                    })()}
+                                    onChange={(e) => {
+                                        // Cache PAT in localStorage for session persistence
+                                        const value = e.target.value.trim();
+                                        if (value) {
+                                            localStorage.setItem('github_pat', value);
+                                        } else {
+                                            localStorage.removeItem('github_pat');
+                                        }
+                                    }}
                                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 focus:border-green-500/50 outline-none font-mono text-sm"
                                 />
                                 <p className="text-xs text-gray-500 mt-2">
@@ -1990,6 +2375,46 @@
                             </div>
 
                             <div id="github-auth-message" className="hidden p-3 rounded-lg text-sm"></div>
+                        </div>
+
+                        {/* GitHub Repository Management */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-green-400">
+                                <i data-lucide="github"></i>
+                                GitHub Repositories
+                            </h3>
+                            <p className="text-xs text-gray-400 mb-4">
+                                Manage ingested GitHub repositories. Clearing will quarantine all atoms and remove mirrored files.
+                            </p>
+
+                            <div className="space-y-3">
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('Clear ALL GitHub repos? This will quarantine all atoms and remove mirrored files. This action cannot be undone.')) return;
+
+                                        try {
+                                            const res = await fetch('/v1/github/repos', {
+                                                method: 'DELETE',
+                                                headers: { 'Authorization': `Bearer ${API_KEY}` }
+                                            });
+                                            const data = await res.json();
+
+                                            if (res.ok) {
+                                                alert(`✅ Cleared ${data.repos_removed} repos, quarantined ${data.quarantined_atoms} atoms`);
+                                                window.location.reload();
+                                            } else {
+                                                alert('❌ Error: ' + data.error);
+                                            }
+                                        } catch (error) {
+                                            alert('❌ Failed to clear repos: ' + error.message);
+                                        }
+                                    }}
+                                    className="w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/50 text-red-300 rounded-lg px-4 py-2.5 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <i data-lucide="trash-2" width="18"></i>
+                                    Clear All GitHub Repos
+                                </button>
+                            </div>
                         </div>
 
                         {/* Content Encryption Section */}
@@ -2140,28 +2565,152 @@
         const StatsBar = ({ stats }) => {
             if (!stats) return null;
             return (
-                <div className="bg-black/40 border-b border-white/10 px-6 py-2">
-                    <div className="flex items-center gap-6 text-xs">
+                <div className="bg-black/40 border-b border-white/10 px-4 sm:px-6 py-2">
+                    <div className="flex flex-wrap gap-3 sm:gap-6 items-center justify-center text-xs">
                         <div className="flex items-center gap-2">
-                            <i data-lucide="database" className="text-cyan-400" width="14" height="14"></i>
-                            <span className="text-gray-400">Atoms:</span>
+                            <i data-lucide="database" className="text-cyan-400 flex-shrink-0" width="14" height="14"></i>
+                            <span className="text-gray-400 whitespace-nowrap">Atoms:</span>
                             <span className="text-cyan-400 font-mono font-semibold">{stats.atoms?.toLocaleString() || 0}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <i data-lucide="molecule" className="text-purple-400" width="14" height="14"></i>
-                            <span className="text-gray-400">Molecules:</span>
+                            <i data-lucide="molecule" className="text-purple-400 flex-shrink-0" width="14" height="14"></i>
+                            <span className="text-gray-400 whitespace-nowrap">Molecules:</span>
                             <span className="text-purple-400 font-mono font-semibold">{stats.molecules?.toLocaleString() || 0}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <i data-lucide="tag" className="text-amber-400" width="14" height="14"></i>
-                            <span className="text-gray-400">Tags:</span>
+                            <i data-lucide="tag" className="text-amber-400 flex-shrink-0" width="14" height="14"></i>
+                            <span className="text-gray-400 whitespace-nowrap">Tags:</span>
                             <span className="text-amber-400 font-mono font-semibold">{stats.tags?.toLocaleString() || 0}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <i data-lucide="file-text" className="text-green-400" width="14" height="14"></i>
-                            <span className="text-gray-400">Sources:</span>
+                            <i data-lucide="file-text" className="text-green-400 flex-shrink-0" width="14" height="14"></i>
+                            <span className="text-gray-400 whitespace-nowrap">Sources:</span>
                             <span className="text-green-400 font-mono font-semibold">{stats.sources?.toLocaleString() || 0}</span>
                         </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Distill Test Page - A/B Testing Diagnostic
+        const DistillTestPage = () => {
+            const [testResult, setTestResult] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [tag, setTag] = useState('#STAR');
+            const [error, setError] = useState('');
+
+            const runTest = async () => {
+                setLoading(true);
+                setError('');
+                try {
+                    const API_KEY = localStorage.getItem('anchor_api_key') || 'anchor-engine-default-key';
+                    const res = await fetch(`/v1/distill/test?tag=${encodeURIComponent(tag)}`, {
+                        headers: { 'Authorization': `Bearer ${API_KEY}` }
+                    });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data.error || 'Test failed');
+                    setTestResult(data);
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="space-y-6">
+                    <div className="glass-panel p-6">
+                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-cyan-400">
+                            <i data-lucide="flask-conical"></i>
+                            Distill A/B Test
+                        </h2>
+                        <p className="text-gray-400 mb-6">
+                            Diagnostic tool to verify which data source contains tag data: tags table vs atoms.tags[] array
+                        </p>
+
+                        <div className="flex gap-4 mb-6">
+                            <input
+                                type="text"
+                                value={tag}
+                                onChange={(e) => setTag(e.target.value)}
+                                placeholder="Tag to test (e.g., #STAR)"
+                                className="flex-1 bg-white/10 border border-white/20 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500"
+                            />
+                            <button
+                                onClick={runTest}
+                                disabled={loading}
+                                className="btn-primary whitespace-nowrap"
+                            >
+                                {loading ? 'Testing...' : 'Run Test'}
+                            </button>
+                        </div>
+
+                        {error && (
+                            <div className="bg-red-500/20 border border-red-500/50 rounded-lg p-4 text-red-400">
+                                ❌ {error}
+                            </div>
+                        )}
+
+                        {testResult && (
+                            <div className="space-y-4">
+                                {/* Database Stats */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white/5 rounded-lg p-4">
+                                        <p className="text-gray-400 text-sm">Total Atoms</p>
+                                        <p className="text-2xl font-bold text-cyan-400">{testResult.database.total_atoms.toLocaleString()}</p>
+                                    </div>
+                                    <div className="bg-white/5 rounded-lg p-4">
+                                        <p className="text-gray-400 text-sm">Unique Tags</p>
+                                        <p className="text-2xl font-bold text-purple-400">{testResult.database.unique_tags.toLocaleString()}</p>
+                                    </div>
+                                </div>
+
+                                {/* A/B Test Results */}
+                                <div className="bg-white/5 rounded-lg p-4">
+                                    <h3 className="font-bold mb-3 text-yellow-400">A/B Test Results for "{tag}"</h3>
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                        <div className="bg-purple-500/10 rounded-lg p-3 border border-purple-500/30">
+                                            <p className="text-purple-400 text-sm">Source A: tags table</p>
+                                            <p className="text-xl font-bold">{testResult.ab_test.source_a_tags_table}</p>
+                                        </div>
+                                        <div className={`rounded-lg p-3 border ${testResult.ab_test.winner === 'atoms.tags[]' ? 'bg-green-500/10 border-green-500/30' : 'bg-white/5 border-white/20'}`}>
+                                            <p className={`${testResult.ab_test.winner === 'atoms.tags[]' ? 'text-green-400' : 'text-gray-400'} text-sm`}>Source B: atoms.tags[]</p>
+                                            <p className="text-xl font-bold">{testResult.ab_test.source_b_atoms_tags_array}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`rounded-lg p-3 ${testResult.ab_test.winner === 'neither' ? 'bg-red-500/20' : 'bg-green-500/20'}`}>
+                                        <p className={`font-medium ${testResult.ab_test.winner === 'neither' ? 'text-red-400' : 'text-green-400'}`}>
+                                            🏆 Winner: {testResult.ab_test.winner}
+                                        </p>
+                                        <p className="text-sm text-gray-400 mt-1">{testResult.recommendation}</p>
+                                    </div>
+                                </div>
+
+                                {/* Sample Atoms */}
+                                {testResult.sample_atoms && testResult.sample_atoms.length > 0 && (
+                                    <div className="bg-white/5 rounded-lg p-4">
+                                        <h3 className="font-bold mb-3 text-cyan-400">Sample Atoms (with content)</h3>
+                                        <div className="space-y-3">
+                                            {testResult.sample_atoms.map((atom, i) => (
+                                                <div key={i} className="bg-black/30 rounded-lg p-3 text-sm">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-cyan-400 font-mono text-xs">{atom.id.substring(0, 12)}...</span>
+                                                        <span className={`text-xs px-2 py-0.5 rounded ${atom.has_content ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                                            {atom.has_content ? '✅ Has content' : '❌ No content'} ({atom.content_length} chars)
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-gray-500 text-xs truncate">{atom.source}</p>
+                                                    <p className="text-purple-400 text-xs mt-1">{atom.tags?.slice(0, 5).join(' ')}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Duration */}
+                                <p className="text-xs text-gray-500 text-center">Test completed in {testResult.duration_ms}ms</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             );
@@ -2193,7 +2742,7 @@
                                 // Re-schedule when busy state changes
                                 if ((prev.isBusy) !== (statusData.isBusy)) {
                                     clearInterval(intervalId);
-                                    intervalId = setInterval(fetchAll, statusData.isBusy ? 3000 : 30000);
+                                    intervalId = setInterval(fetchAll, statusData.isBusy ? 1000 : 30000);
                                 }
                                 return statusData;
                             });
@@ -2284,6 +2833,7 @@
                         {route === '/paths' && <PathsPage />}
                         {route === '/quarantine' && <QuarantinePage navigate={navigate} />}
                         {route === '/settings' && <SettingsPage navigate={navigate} />}
+                        {route === '/distill-test' && <DistillTestPage />}
                         {route === '/' && <SearchPage />}
                     </main>
 

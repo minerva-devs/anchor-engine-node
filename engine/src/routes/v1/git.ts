@@ -1,6 +1,22 @@
 import type { Application, Request, Response } from 'express';
 import { config } from '../../config/index.js';
 import { validate, schemas } from '../../middleware/validate.js';
+import { PATHS } from '../../config/paths.js';
+
+/**
+ * Parse GitHub URL to extract owner, repo, and branch
+ */
+function parseGitHubUrl(url: string): { owner: string; repo: string; branch: string } {
+  const match = url.match(/github\.com[:/]([^/]+)\/([^/]+)(?:\.git)?(?:\/tree\/([^/]+))?/i);
+  if (!match) {
+    throw new Error('Invalid GitHub URL');
+  }
+  return {
+    owner: match[1],
+    repo: match[2],
+    branch: match[3] || 'main',
+  };
+}
 
 export function setupGitRoutes(app: Application) {
   // GitHub Repository Ingestion Endpoints (Standard 115)
@@ -9,14 +25,17 @@ export function setupGitRoutes(app: Application) {
     try {
       const { body } = req;
       const url = body.url as string;
-      const bucket = body.bucket as string;
       const includeHistory = body.include_history === true;
       const runAnalysis = body.run_analysis === true;
-      
+
+      // Auto-generate bucket from repo URL (e.g., "github:user/repo")
+      const { owner, repo } = parseGitHubUrl(url);
+      const bucket = `github:${owner}/${repo}`;
+
       // Get temporary GitHub token from header (if provided by user)
       // Token is NOT stored, used only for this operation
       const tempToken = req.headers['x-github-token'] as string | undefined || config.GITHUB_TOKEN;
-      
+
       if (tempToken) {
         console.log(`[API] GitHub token received (length: ${tempToken.length}, source: ${req.headers['x-github-token'] ? 'header' : 'config'})`);
       } else {
@@ -27,24 +46,24 @@ export function setupGitRoutes(app: Application) {
       const service = new GitHubIngestService();
 
       // Register repo
-      const repo = await service.registerRepo(url, bucket);
+      const repoRecord = await service.registerRepo(url, bucket);
 
       // Start async ingestion (don't wait for completion)
       (async () => {
         try {
-          await service.syncRepo(repo.id, { runAnalysis, token: tempToken });
+          await service.syncRepo(repoRecord.id, { runAnalysis, token: tempToken });
           if (includeHistory) {
             // Use temp token if provided, otherwise fall back to env var
             const token = tempToken || process.env.GITHUB_TOKEN;
-            await service.ingestGitHistory(repo.owner, repo.repo, repo.branch, bucket, token);
-            console.log(`[API] Git history ingested for ${repo.owner}/${repo.repo}`);
+            await service.ingestGitHistory(repoRecord.owner, repoRecord.repo, repoRecord.branch, bucket, token);
+            console.log(`[API] Git history ingested for ${repoRecord.owner}/${repoRecord.repo}`);
           }
           // Clear temp token from memory after use (security)
           if (tempToken) {
             console.log(`[API] Temporary GitHub token cleared after use`);
           }
         } catch (error: any) {
-          console.error(`[API] Background sync/history failed for ${repo.id}:`, error);
+          console.error(`[API] Background sync/history failed for ${repoRecord.id}:`, error);
           // Clear temp token on error too
           if (tempToken) {
             console.log(`[API] Temporary GitHub token cleared after error`);
@@ -57,11 +76,11 @@ export function setupGitRoutes(app: Application) {
       if (runAnalysis) features.push('code analysis');
 
       res.status(202).json({
-        id: repo.id,
+        id: repoRecord.id,
         status: 'ingesting',
         include_history: includeHistory,
         run_analysis: runAnalysis,
-        message: `Started ingestion for ${repo.owner}/${repo.repo}${features.length ? ` (with ${features.join(' and ')})` : ''}`,
+        message: `Started ingestion for ${repoRecord.owner}/${repoRecord.repo}${features.length ? ` (with ${features.join(' and ')})` : ''}`,
       });
     } catch (error: any) {
       console.error('[API] GitHub repo registration error:', error);
@@ -124,6 +143,42 @@ export function setupGitRoutes(app: Application) {
       });
     } catch (error: any) {
       console.error('[API] GitHub repo removal error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /v1/github/repos - Clear ALL repos
+  app.delete('/v1/github/repos', async (req: Request, res: Response) => {
+    try {
+      const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
+      const service = new GitHubIngestService();
+
+      // Get all repo IDs
+      const allRepos = await service.listRepos();
+      const repoIds = allRepos.map((r: any) => r.id);
+
+      let totalQuarantined = 0;
+      for (const id of repoIds) {
+        const quarantinedCount = await service.removeRepo(id);
+        totalQuarantined += quarantinedCount;
+      }
+
+      // Also clear the mirror directory
+      const mirrorDir = PATHS.EXTERNAL_INBOX_DIR.replace(/\\/g, '/') + '/github';
+      const fs = await import('fs');
+      if (fs.existsSync(mirrorDir)) {
+        fs.rmSync(mirrorDir, { recursive: true, force: true });
+        console.log(`[API] Cleared GitHub mirror directory: ${mirrorDir}`);
+      }
+
+      res.status(200).json({
+        status: 'cleared',
+        repos_removed: repoIds.length,
+        quarantined_atoms: totalQuarantined,
+        mirror_cleared: true,
+      });
+    } catch (error: any) {
+      console.error('[API] GitHub clear all error:', error);
       res.status(500).json({ error: error.message });
     }
   });
