@@ -16,15 +16,9 @@ const __dirname = path.dirname(__filename);
 let nativeFingerprint: ((text: string) => string) | null = null;
 let nativeCleanse: ((text: string) => string) | null = null;
 
-try {
-    const fp = await import('@rbalchii/native-fingerprint');
-    nativeFingerprint = fp.fingerprint;
-} catch { /* use JS fallback */ }
-
-try {
-    const ka = await import('@rbalchii/native-keyassassin');
-    nativeCleanse = ka.cleanse;
-} catch { /* use JS fallback */ }
+// Native modules removed - using WASM implementations only
+// const fp = await import('@rbalchii/native-fingerprint');
+// const ka = await import('@rbalchii/native-keyassassin');
 
 export class AtomizerService {
 
