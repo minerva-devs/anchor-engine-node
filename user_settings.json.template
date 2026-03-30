@@ -1,17 +1,19 @@
 {
   "_description": "Anchor Engine Configuration - Single Source of Truth",
-  "_version": "4.8.2",
+  "_version": "5.0.0",
+  "VERSION": "5.0.0",
   "server": {
     "host": "0.0.0.0",
     "port": 3160,
     "api_key": "anchor-engine-default-key",
-    "version": "4.8.2",
+    "version": "5.0.0",
     "health_endpoint": "/health"
   },
   "ui": {
     "default_api_key": "anchor-engine-default-key",
     "api_base_url": "",
-    "dev_proxy_target": "http://localhost:3160"
+    "dev_proxy_target": "http://localhost:3160",
+    "version": "5.0.0"
   },
   "github": {
     "token": "",

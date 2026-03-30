@@ -6,6 +6,44 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [5.0.0] - 2026-03-29 — Stable Release with Full-Featured UI
+
+### 🎉 Major Version Release
+
+**Problem:** UI consolidation attempt (e57947b) broke the working distillation UI
+
+**Solution:**
+- ✅ Restored full-featured single-file React UI (`engine/public/index.html`)
+- ✅ Black theme with purple/cyan gradients
+- ✅ Responsive navigation (desktop + mobile)
+- ✅ Copy buttons with feedback toasts
+- ✅ Streaming search with SSE (Server-Sent Events)
+- ✅ Query prefixes: `distill:`, `illuminate:`, `explore:`, `deep:`, `exact:`, `fast:`
+- ✅ Token budget slider (512 - 1M tokens)
+- ✅ Ingestion progress indicator in header
+- ✅ Pagination for search results
+- ✅ Bucket selection for targeted searches
+- ✅ Mobile drawer navigation with hamburger menu
+
+### 🐛 Fixed:
+- Duplicate navbars on desktop (CSS `!important` fix)
+- Reverted failed UI consolidation from e57947b
+- Restored working distillation UI with YAML download
+
+### 🔧 Technical:
+- `engine/public/` serves as primary UI
+- `integrations/web-dashboard/` remains as fallback
+- No build step required for UI (React + Babel standalone)
+- Tailwind CSS via CDN for utility classes
+
+### 📦 Version Updates:
+- `package.json`: 5.0.0
+- `engine/package.json`: 5.0.0
+- `user_settings.json.template`: VERSION = "5.0.0"
+- UI display: v5.0.0
+
+---
+
 ## [4.9.7] - 2026-03-26 — Documentation Hygiene, Path Configuration, Distill Fix
 
 ### 📚 Documentation Hygiene (Standard 022)

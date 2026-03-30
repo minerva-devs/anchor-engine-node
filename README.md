@@ -473,7 +473,7 @@ Most AI memory systems do the opposite: they hoard data, brute‑force compute s
 
 ---
 
-## 🛠️ What's New in v4.8.0
+## 🛠️ What's New in v5.0.0
 
 ### MCP Write Operations
 - **`anchor_ingest_text`** - Ingest raw text directly
@@ -487,7 +487,7 @@ Most AI memory systems do the opposite: they hoard data, brute‑force compute s
 
 ### Web UI Improvements
 - **Paste & Ingest** tab - Quick text ingestion
-- Version badge (v4.8.0)
+- Version badge (v5.0.0)
 - Bucket selector (inbox vs external-inbox)
 
 ### Documentation Overhaul
@@ -551,7 +551,7 @@ Built with ❤️ by Robert Balch II and contributors.
 @software{anchor_engine,
   title = {STAR: Semantic Temporal Associative Retrieval},
   author = {Balch II, R.S.},
-  version = {4.8.0},
+  version = {5.0.0},
   date = {2026-03-18},
   url = {https://github.com/RSBalchII/anchor-engine-node},
   doi = {10.5281/zenodo.18841399}
