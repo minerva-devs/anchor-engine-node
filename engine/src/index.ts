@@ -115,10 +115,10 @@ app.use('/static', express.static(path.join(__dirname, '../dist'), {
   },
 }));
 
-// Serve UI from packages/anchor-ui/dist (built React app)
-// Fallback to engine/public for development/single-file mode
+// Serve UI from engine/public (single-file React app with full features)
+// Fallback to integrations/web-dashboard/dist for development
 const internalFrontendDist = path.join(__dirname, '../public');
-const externalFrontendDist = path.join(__dirname, '../../packages/anchor-ui/dist');
+const externalFrontendDist = path.join(__dirname, '../../integrations/web-dashboard/dist');
 
 // Cache-busting middleware for HTML files (JS/CSS have content hashes)
 function setUICacheHeaders(res: express.Response, filePath: string) {
@@ -133,20 +133,7 @@ function setUICacheHeaders(res: express.Response, filePath: string) {
   }
 }
 
-if (existsSync(externalFrontendDist)) {
-  StructuredLogger.info('UI_SOURCE', { source: 'external', path: externalFrontendDist });
-  app.use(express.static(externalFrontendDist, {
-    setHeaders: (res, path) => {
-      StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'external' });
-      setUICacheHeaders(res, path);
-    },
-  }));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
-    setUICacheHeaders(res, 'index.html');
-    res.sendFile(path.join(externalFrontendDist, 'index.html'));
-  });
-} else {
+if (existsSync(internalFrontendDist)) {
   StructuredLogger.info('UI_SOURCE', { source: 'internal', path: internalFrontendDist });
   app.use(express.static(internalFrontendDist, {
     setHeaders: (res, path) => {
@@ -158,6 +145,19 @@ if (existsSync(externalFrontendDist)) {
     if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
     setUICacheHeaders(res, 'index.html');
     res.sendFile(path.join(internalFrontendDist, 'index.html'));
+  });
+} else {
+  StructuredLogger.info('UI_SOURCE', { source: 'external', path: externalFrontendDist });
+  app.use(express.static(externalFrontendDist, {
+    setHeaders: (res, path) => {
+      StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'external' });
+      setUICacheHeaders(res, path);
+    },
+  }));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
+    setUICacheHeaders(res, 'index.html');
+    res.sendFile(path.join(externalFrontendDist, 'index.html'));
   });
 }
 
