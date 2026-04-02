@@ -55,8 +55,8 @@
   "watcher": {
     "debounce_ms": 2000,
     "stability_threshold_ms": 2000,
-    "extra_paths": [],
-    "auto_start": false,
+    "extra_paths": ["notebook/inbox/chats"],
+    "auto_start": true,
     "wipe_mirrored_brain_on_shutdown": true
   },
   "context": {

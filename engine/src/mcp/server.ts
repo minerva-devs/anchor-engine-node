@@ -445,7 +445,8 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       }
 
       case 'anchor_search': {
-        const result = await callAnchorAPI('/v1/search', {
+        // Fixed: Use /v1/memory/search with stream=false to match UI search behavior
+        const result = await callAnchorAPI('/v1/memory/search?stream=false', {
           method: 'POST',
           body: JSON.stringify(args),
         });
@@ -454,7 +455,8 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       }
 
       case 'anchor_distill': {
-        const result = await callAnchorAPI('/v1/distill', {
+        // Fixed: Use /v1/memory/distill to match UI distill endpoint
+        const result = await callAnchorAPI('/v1/memory/distill?stream=false', {
           method: 'POST',
           body: JSON.stringify(args),
         });
@@ -463,7 +465,8 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       }
 
       case 'anchor_illuminate': {
-        const result = await callAnchorAPI('/v1/illuminate', {
+        // Fixed: Use /v1/memory/explore for BFS graph traversal
+        const result = await callAnchorAPI('/v1/memory/explore', {
           method: 'POST',
           body: JSON.stringify(args),
         });
