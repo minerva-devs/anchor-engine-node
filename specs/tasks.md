@@ -46,6 +46,26 @@
 - [ ] Live context visualizer (RAG IDE)
 - [ ] Provenance bias controls (Sovereign vs External)
 
+### Phase: Memory & Performance Optimizations (Based on Rust Implementation Insights)
+- [ ] Pointer-Only Storage Pattern Implementation
+  - [ ] Modify database schema to store only pointers (source_path, start_byte, end_byte)
+  - [ ] Create mirrored_brain/ directory for content storage
+  - [ ] Update ingestion pipeline to write content to filesystem and store pointers
+  - [ ] Update search functionality to load content from filesystem using byte ranges
+  - [ ] Implement content caching layer
+- [ ] LRU Caching for Content
+  - [ ] Integrate LRU cache library
+  - [ ] Implement caching layer for content loaded from filesystem
+  - [ ] Add cache invalidation mechanisms
+- [ ] Memory Pressure Monitoring & Throttling
+  - [ ] Add memory monitoring utilities
+  - [ ] Implement throttling based on heap usage
+  - [ ] Add emergency stop mechanisms
+- [ ] Database Schema Optimization
+  - [ ] Add proper indexes for pointer fields
+  - [ ] Optimize FTS indexes for path-based search
+  - [ ] Review and optimize table structures
+
 ### Phase: Code Analysis Enhancement
 - [ ] AST pointer support for code files
 - [ ] Semantic code search ("find all functions calling X")

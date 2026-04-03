@@ -16,8 +16,11 @@ import { config } from '../config/index.js';
 export function apiKeyAuth(req: Request, res: Response, next: NextFunction): void {
   const apiKey = config.API_KEY;
 
-  // Allow health endpoints without auth
-  if (req.path === '/health' || req.path.startsWith('/health/')) {
+  // Allow health endpoints and test endpoints without auth
+  // Test endpoints are public for development convenience
+  if (req.path === '/health' || 
+      req.path.startsWith('/health/') ||
+      req.path.startsWith('/v1/test/')) {
     return next();
   }
 
