@@ -4,6 +4,7 @@ import { getState, clearState } from '../../services/scribe/scribe.js';
 import { PATHS, PROJECT_ROOT } from '../../config/paths.js';
 import { config } from '../../config/index.js';
 import { validate, schemas } from '../../middleware/validate.js';
+import fs from 'fs';
 
 // Track server control state
 let serverStartTime: Date | null = null;
@@ -386,59 +387,34 @@ export function setupSystemRoutes(app: Application) {
         return;
       }
 
-      // Security: Validate path is within allowed directories
       const pathModule = await import('path');
       const fs = await import('fs');
+      const { validatePathSafetyWithExistence } = await import('../../utils/security.js');
 
       // Resolve to absolute path
       const resolvedPath = pathModule.resolve(newPath);
+
+      // Security: Validate path is within PROJECT_ROOT
+      // We only allow watching paths within the project root for security
+      const pathValidation = await validatePathSafetyWithExistence(resolvedPath, [PROJECT_ROOT]);
       
-      // Ensure path exists
-      try {
-        await fs.promises.access(resolvedPath, fs.constants.R_OK);
-      } catch {
-        res.status(400).json({ error: 'Path does not exist or is not readable' });
-        return;
-      }
-
-      // Security: Ensure path is within PROJECT_ROOT or is an absolute path outside
-      // We allow paths outside PROJECT_ROOT but they must be explicitly absolute
-      if (!pathModule.isAbsolute(newPath)) {
-        res.status(400).json({ 
-          error: 'Path must be absolute for security reasons',
-          hint: 'Use an absolute path starting with / or C:\\',
+      if (!pathValidation.isValid) {
+        res.status(403).json({
+          error: 'Path traversal detected',
+          message: pathValidation.error,
+          hint: 'Only paths within PROJECT_ROOT are allowed for security reasons',
         });
         return;
-      }
-
-      // Normalize both paths for comparison
-      const normalizedPath = resolvedPath.replace(/\\/g, '/');
-      const normalizedProjectRoot = PROJECT_ROOT.replace(/\\/g, '/');
-
-      // Allowlist: paths must be either within PROJECT_ROOT or explicitly absolute
-      const isWithinProjectRoot = normalizedPath.startsWith(normalizedProjectRoot + '/') || 
-                                   normalizedPath === normalizedProjectRoot;
-
-      if (!isWithinProjectRoot) {
-        // For paths outside project root, require explicit confirmation
-        res.status(200).json({
-          status: 'warning',
-          message: 'Path is outside PROJECT_ROOT. Ensure this is intentional.',
-          path: resolvedPath,
-          security_note: 'External paths are allowed but should be trusted directories only',
-        });
-        // Still allow the path but log it
-        console.warn('[Security] Adding external watch path:', resolvedPath);
       }
 
       const { addWatchPath } = await import('../../services/ingest/watchdog.js');
-      const success = await addWatchPath(resolvedPath);
+      const success = await addWatchPath(pathValidation.resolvedPath);
 
       res.status(200).json({
         status: success ? 'success' : 'failed',
-        message: success ? `Now watching: ${resolvedPath}` : 'Failed to add path',
-        path: resolvedPath,
-        within_project_root: isWithinProjectRoot,
+        message: success ? `Now watching: ${pathValidation.resolvedPath}` : 'Failed to add path',
+        path: pathValidation.resolvedPath,
+        within_project_root: true,
       });
     } catch (e: any) {
       console.error('[API] Failed to add watch path:', e);
@@ -481,34 +457,42 @@ export function setupSystemRoutes(app: Application) {
       const { execFile } = await import('child_process');
       const util = await import('util');
       const pathModule = await import('path');
-      const { PROJECT_ROOT } = await import('../../config/paths.js');
+      const { validatePathSafetyWithExistence } = await import('../../utils/security.js');
       const execFilePromise = util.promisify(execFile);
       const { platform } = process;
 
-      // Security: Resolve requested directory to absolute path and verify it's within PROJECT_ROOT
+      // Security: Validate path is within PROJECT_ROOT to prevent traversal attacks
       const absoluteRequestedDir = pathModule.resolve(path);
-      const relativePath = pathModule.relative(PROJECT_ROOT, absoluteRequestedDir);
+      const pathValidation = await validatePathSafetyWithExistence(absoluteRequestedDir, [PROJECT_ROOT]);
+      
+      if (!pathValidation.isValid) {
+        console.warn(`[System] Rejected path traversal attempt: ${path} (resolved: ${absoluteRequestedDir})`);
+        res.status(403).json({
+          error: 'Path traversal detected',
+          message: pathValidation.error,
+        });
+        return;
+      }
 
-      // Check if it's an outside directory (e.g. starts with ..) or an absolute path (on Windows)
-      const isOutside = relativePath.startsWith('..') || pathModule.isAbsolute(relativePath);
-
-      if (isOutside && absoluteRequestedDir !== PROJECT_ROOT) {
-        console.warn(`[System] Rejected unauthorized explorer access: ${path} (resolved: ${absoluteRequestedDir})`);
-        return res.status(403).json({ error: 'Directory not authorized for explorer access' });
+      // Additional check: must be a directory
+      const stats = await fs.promises.stat(pathValidation.resolvedPath);
+      if (!stats.isDirectory()) {
+        res.status(400).json({ error: 'Path must be a directory' });
+        return;
       }
 
       // Open file explorer based on platform safely using execFile
       if (platform === 'win32') {
-        await execFilePromise('explorer.exe', [absoluteRequestedDir]);
+        await execFilePromise('explorer.exe', [pathValidation.resolvedPath]);
       } else if (platform === 'darwin') {
-        await execFilePromise('open', [absoluteRequestedDir]);
+        await execFilePromise('open', [pathValidation.resolvedPath]);
       } else {
-        await execFilePromise('xdg-open', [absoluteRequestedDir]);
+        await execFilePromise('xdg-open', [pathValidation.resolvedPath]);
       }
 
       res.status(200).json({
         status: 'success',
-        message: `Opened file explorer at: ${absoluteRequestedDir}`,
+        message: `Opened file explorer at: ${pathValidation.resolvedPath}`,
       });
     } catch (e: any) {
       console.error('[API] Failed to open file explorer:', e);

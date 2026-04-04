@@ -497,6 +497,41 @@ Most AI memory systems do the opposite: they hoard data, brute‑force compute s
 
 ---
 
+## 🔒 Security
+
+### Reporting Vulnerabilities
+
+**Security Contact:** Please open a draft security issue on GitHub or email responsibly
+
+**Response Time:** Within 48 hours for critical vulnerabilities
+
+### Security Features
+
+- ✅ **API Key Authentication** - Bearer token required for all endpoints
+- ✅ **Path Traversal Prevention** - All file paths validated against allowed directories (Standard 129)
+- ✅ **Input Validation** - Middleware-based schema validation
+- ✅ **Local-First Architecture** - No cloud dependencies, data stays on your machine
+- ✅ **Deterministic Retrieval** - No probabilistic leakage
+
+### Security Hardening (April 2026)
+
+**P0 Fixes:**
+- Path traversal prevention in `/v1/system/*` endpoints
+- Test file execution sandboxing
+- SQL injection prevention (in progress)
+- API key strength validation (in progress)
+
+**See:** [`specs/standards/129-path-traversal-prevention.md`](specs/standards/129-path-traversal-prevention.md)
+
+### Best Practices
+
+1. **Generate strong API keys** - Use 32+ characters with mixed types
+2. **Keep `user_settings.json` private** - Contains API keys and paths
+3. **Review watched paths** - Only trust directories you control
+4. **Update regularly** - Security patches released via GitHub
+
+---
+
 ## 📚 Documentation
 
 ### Getting Started
