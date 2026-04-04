@@ -6,6 +6,72 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] - Security Hardening
+
+### 🔒 Security Fixes (P0 Critical)
+
+**Problem:** Path traversal vulnerabilities in file path endpoints allowed access to files outside project root
+
+**Solution:**
+- ✅ Created `engine/src/utils/security.ts` - centralized path validation utility
+- ✅ Fixed `POST /v1/system/paths` - validates paths within PROJECT_ROOT only
+- ✅ Fixed `POST /v1/system/explorer` - validates directory paths before opening explorer
+- ✅ Fixed `POST /v1/test/run-file` - validates test file paths within tests directory
+- ✅ Comprehensive unit tests (`engine/tests/unit/security.test.ts`)
+- ✅ Documented in Standard 129: Path Traversal Prevention
+
+### 🛡️ Security Utility Functions
+
+**New:** `validatePathSafety(userPath, allowedBases)`
+- Validates resolved paths stay within allowed base directories
+- Rejects traversal attempts (`../`, `..\`, URL-encoded, null bytes)
+- Normalizes path separators for cross-platform consistency
+- Returns detailed error messages for debugging
+
+**New:** `validatePathSafetyWithExistence(userPath, allowedBases)`
+- Async version that also verifies file/directory exists
+- Checks read permissions
+
+**New:** `getSafePath(userPath, allowedBases)`
+- Combined validation + existence check
+- Throws error if validation fails
+
+### 🧪 Test Coverage
+
+**New test file:** `engine/tests/unit/security.test.ts`
+- 25+ test cases covering:
+  - Valid paths within allowed directories
+  - Path traversal attacks (Unix, Windows, URL-encoded)
+  - Edge cases (Unicode, null bytes, very long paths)
+  - Real-world attack scenarios
+
+### 📚 Documentation
+
+**New:** `specs/standards/129-path-traversal-prevention.md`
+- Complete security standard with:
+  - Vulnerable patterns to avoid
+  - Correct implementation examples
+  - Migration guide for existing code
+  - Testing requirements
+  - Threat model and limitations
+
+### 🔄 Migration Notes
+
+**Breaking Change:** Endpoints now reject paths outside PROJECT_ROOT
+
+If you were using external watch paths:
+```json
+// Old: Allowed any absolute path
+{ "path": "C:\\external\\directory" }
+
+// New: Must be within PROJECT_ROOT
+{ "path": "./relative/to/project" }
+```
+
+**Action Required:** Update external path references to use symlinks or move files within project root.
+
+---
+
 ## [5.0.0] - 2026-03-29 — Stable Release with Full-Featured UI
 
 ### 🎉 Major Version Release

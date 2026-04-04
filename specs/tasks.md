@@ -1,6 +1,6 @@
 # Anchor Engine - Current Tasks
 
-**Last Updated:** February 20, 2026 | **Current Sprint:** Production Stability
+**Last Updated:** April 3, 2026 | **Current Sprint:** Security Hardening
 
 ---
 
@@ -19,7 +19,21 @@
 
 ## 🎯 Current Focus
 
-### Phase: Documentation & Reproducibility (P0 - COMPLETED March 2026)
+### Phase: Security Hardening (P0 - April 2026)
+**Goal:** Address critical security vulnerabilities identified in March 2026 review
+
+- [x] Path traversal prevention utility (`engine/src/utils/security.ts`)
+- [x] Fix `/v1/system/paths` endpoint (Standard 129)
+- [x] Fix `/v1/system/explorer` endpoint (Standard 129)
+- [x] Fix `/v1/test/run-file` endpoint (Standard 129)
+- [x] Security unit tests (`engine/tests/unit/security.test.ts`)
+- [x] Document security standard (Standard 129)
+- [ ] SQL injection prevention (LIMIT clause parameterization)
+- [ ] Auth bypass audit on `/v1/test/*` endpoints
+- [ ] API key strength validation enhancement
+- [ ] Security documentation in README
+
+### Phase: Documentation & Reproducibility (COMPLETED March 2026)
 - [x] Benchmark suite with sample corpus generator
 - [x] Benchmark protocol documentation (Standard 077)
 - [x] STAR parameter tuning guide (Standard 078)
