@@ -79,11 +79,28 @@ app.use('/v1', apiKeyAuth);
 if (!config.API_KEY || config.API_KEY.trim() === '') {
   console.error('\n❌ FATAL: API key not configured!');
   console.error('   Please set server.api_key in user_settings.json');
-  console.error('   Example: { "server": { "api_key": "your-secret-key-here" } }\n');
+  console.error('   Requirements:');
+  console.error('   - Length: 32-128 characters');
+  console.error('   - Must contain at least one uppercase letter (A-Z)');
+  console.error('   - Must contain at least one lowercase letter (a-z)');
+  console.error('   - Must contain at least one digit (0-9)');
+  console.error('   Example: { "server": { "api_key": "MySecureKey123..." } }\n');
   process.exit(1);
 }
 
-StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: true });
+// Validate API key strength
+const apiKeyStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+if (!apiKeyStrengthRegex.test(config.API_KEY)) {
+  console.error('\n❌ FATAL: API key is too weak!');
+  console.error('   Your key does not meet the strength requirements:');
+  console.error('   - Must contain at least one uppercase letter (A-Z)');
+  console.error('   - Must contain at least one lowercase letter (a-z)');
+  console.error('   - Must contain at least one digit (0-9)');
+  console.error('   Example: "MySecureKey123..." or "aB3dEfGhIjKlMnOpQrStUvWxYz123456"\n');
+  process.exit(1);
+}
+
+StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: true, key_length: config.API_KEY.length });
 
 // Rate limiting — applied after auth so authenticated clients share the same window
 // General limit: 100 requests / minute per IP
