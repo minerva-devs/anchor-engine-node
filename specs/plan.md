@@ -26,6 +26,8 @@
 - [x] Settings UI help text enhancements
 - [x] Path traversal prevention (Standard 129) - Fixed 3 endpoints
 - [x] SQL injection prevention (Standard 130) - Parameterized LIMIT clauses
+- [x] Auth bypass prevention (Standard 131) - Removed /v1/test/* exemption, added input validation
+- [x] API key strength validation (Standard 132) - 32-128 chars with complexity requirements
 - [ ] Ablation study results (pending execution)
 - [ ] Cross-platform CI testing matrix (pending)
 

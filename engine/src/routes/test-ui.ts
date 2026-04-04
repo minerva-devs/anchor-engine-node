@@ -575,12 +575,19 @@ export function registerTestRoutes(app: any) {
   // Get snapshot
   app.get('/v1/test/snapshot/:name', async (req: Request, res: Response) => {
     const { name } = req.params;
-    const snapshotPath = path.join(process.cwd(), 'logs', `snapshot-${name}.json`);
     
+    // SECURITY FIX (Standard 131): Validate snapshot name to prevent path traversal
+    // Only allow alphanumeric, hyphens, and underscores
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return res.status(400).json({ error: 'Invalid snapshot name. Only alphanumeric, hyphens, and underscores allowed.' });
+    }
+    
+    const snapshotPath = path.join(process.cwd(), 'logs', `snapshot-${name}.json`);
+
     if (!fs.existsSync(snapshotPath)) {
       return res.status(404).json({ error: 'Snapshot not found' });
     }
-    
+
     const data = fs.readFileSync(snapshotPath, 'utf-8');
     res.json(JSON.parse(data));
   });

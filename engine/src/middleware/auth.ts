@@ -16,11 +16,9 @@ import { config } from '../config/index.js';
 export function apiKeyAuth(req: Request, res: Response, next: NextFunction): void {
   const apiKey = config.API_KEY;
 
-  // Allow health endpoints and test endpoints without auth
-  // Test endpoints are public for development convenience
-  if (req.path === '/health' || 
-      req.path.startsWith('/health/') ||
-      req.path.startsWith('/v1/test/')) {
+  // Allow health endpoints without auth (public monitoring)
+  // SECURITY FIX (Standard 131): Remove /v1/test/* bypass - test endpoints can expose data or write to filesystem
+  if (req.path === '/health' || req.path.startsWith('/health/')) {
     return next();
   }
 
