@@ -21,7 +21,14 @@ const __dirname = path.dirname(__filename);
 const ServerSettingsSchema = z.object({
   host: z.string().optional(),
   port: z.number().int().min(1).max(65535).optional(),
-  api_key: z.string().min(16, 'API key must be at least 16 characters').optional(),
+  // SECURITY FIX (Standard 132): API key must be at least 32 chars with mixed character types
+  // Prevents weak keys like "aaaaaaaaaaaaaaaa" or "1234567890123456"
+  api_key: z.string()
+    .min(32, 'API key must be at least 32 characters')
+    .max(128, 'API key must not exceed 128 characters')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, 
+      'API key must contain at least one uppercase letter, one lowercase letter, and one digit')
+    .optional(),
 });
 
 // Resource Management Schema

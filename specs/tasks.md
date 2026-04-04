@@ -31,6 +31,10 @@
 - [x] Physics Walker underflow fix (Standard 122)
 - [x] Settings UI help text enhancements
 - [x] Physics Walker Jest tests created
+- [x] Path traversal prevention (Standard 129) - `dev/security/path-traversal`
+- [x] SQL injection fix via parameterized LIMIT (Standard 130) - `dev/security/sql-injection`
+- [x] Auth bypass audit complete (Standard 131) - `dev/security/auth-bypass-audit`
+- [x] API key strength validation (Standard 132) - `dev/security/api-key-strength`
 - [ ] Ablation study framework (pending execution)
 - [ ] Cross-platform CI testing (pending)
 
