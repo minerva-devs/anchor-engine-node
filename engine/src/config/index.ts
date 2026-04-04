@@ -23,11 +23,12 @@ const ServerSettingsSchema = z.object({
   port: z.number().int().min(1).max(65535).optional(),
   // SECURITY FIX (Standard 132): API key must be at least 32 chars with mixed character types
   // Prevents weak keys like "aaaaaaaaaaaaaaaa" or "1234567890123456"
+  // Accepts: mixed case+digit OR 64+ char hex key (from crypto.randomBytes)
   api_key: z.string()
     .min(32, 'API key must be at least 32 characters')
     .max(128, 'API key must not exceed 128 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, 
-      'API key must contain at least one uppercase letter, one lowercase letter, and one digit')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$|^[a-f0-9]{64,}$/i,
+      'API key must contain uppercase, lowercase, and digit - OR be 64+ char hex')
     .optional(),
 });
 

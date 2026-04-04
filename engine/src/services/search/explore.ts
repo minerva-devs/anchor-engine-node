@@ -342,6 +342,7 @@ async function fetchContentAtomsByHubs(
   for (let i = 0; i < hubIds.length && allIds.length < maxCount; i += PGLITE_CHUNK_IDS) {
     const chunk = hubIds.slice(i, i + PGLITE_CHUNK_IDS);
     const placeholders = chunk.map((_, j) => `$${j + 1}`).join(', ');
+    const remaining = maxCount - allIds.length;
     const limit = Math.min(remaining, PGLITE_CHUNK_RESULT_IDS);
     // SECURITY FIX (Standard 130): Parameterized LIMIT prevents SQL injection
     const result = await db.run(

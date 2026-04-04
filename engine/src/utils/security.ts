@@ -20,11 +20,11 @@ export interface PathValidationResult {
 
 /**
  * Validate that a user-supplied path resolves to within one of the allowed base directories.
- * 
+ *
  * @param userPath - The path provided by the user (can be relative or absolute)
  * @param allowedBases - Array of allowed base directory paths (must be absolute)
  * @returns PathValidationResult with validation status and resolved path
- * 
+ *
  * @example
  * ```typescript
  * const result = validatePathSafety('../../../etc/passwd', [PROJECT_ROOT]);
@@ -47,12 +47,22 @@ export function validatePathSafety(
     };
   }
 
+  // SECURITY FIX: Reject paths containing null bytes (null byte injection attack)
+  // Node.js path.resolve() may silently truncate at null bytes
+  if (userPath.includes('\u0000')) {
+    return {
+      isValid: false,
+      resolvedPath: '',
+      error: 'Path cannot contain null bytes'
+    };
+  }
+
   // Resolve to absolute path
   const resolvedPath = path.resolve(userPath);
-  
+
   // Normalize path separators for consistent comparison (Windows -> Unix style)
   const normalizedResolved = resolvedPath.replace(/\\/g, '/');
-  
+
   // Check against each allowed base directory
   for (const baseDir of allowedBases) {
     // Ensure base directory exists and is absolute
@@ -60,13 +70,13 @@ export function validatePathSafety(
       console.error(`[Security] Invalid base directory (not absolute): ${baseDir}`);
       continue;
     }
-    
+
     // Normalize base directory
     const normalizedBase = baseDir.replace(/\\/g, '/');
-    
+
     // Check if resolved path starts with the base directory
     // Must be exact match or followed by path separator
-    if (normalizedResolved === normalizedBase || 
+    if (normalizedResolved === normalizedBase ||
         normalizedResolved.startsWith(normalizedBase + '/')) {
       return {
         isValid: true,
@@ -75,7 +85,7 @@ export function validatePathSafety(
       };
     }
   }
-  
+
   // Path is outside all allowed directories
   return {
     isValid: false,
@@ -85,8 +95,8 @@ export function validatePathSafety(
 }
 
 /**
- * Async version that also verifies the path exists on disk
- * 
+ * Async version that also verifies the path exists on disk and resolves symlinks
+ *
  * @param userPath - The path provided by the user
  * @param allowedBases - Array of allowed base directory paths
  * @returns PathValidationResult with validation status
@@ -97,15 +107,35 @@ export async function validatePathSafetyWithExistence(
 ): Promise<PathValidationResult> {
   // First do basic validation
   const basicResult = validatePathSafety(userPath, allowedBases);
-  
+
   if (!basicResult.isValid) {
     return basicResult;
   }
-  
-  // Then verify the path exists
+
+  // Then verify the path exists and resolve symlinks
   try {
-    await fs.promises.access(basicResult.resolvedPath, fs.constants.R_OK);
-    return basicResult;
+    // Get real path (resolves symlinks)
+    const realPath = await fs.promises.realpath(basicResult.resolvedPath);
+    
+    // SECURITY FIX: Re-validate after symlink resolution
+    // A symlink inside allowed base could point outside
+    const normalizedRealPath = realPath.replace(/\\/g, '/');
+    
+    for (const baseDir of allowedBases) {
+      const normalizedBase = baseDir.replace(/\\/g, '/');
+      if (normalizedRealPath === normalizedBase ||
+          normalizedRealPath.startsWith(normalizedBase + '/')) {
+        // Path is still within allowed base after symlink resolution
+        return basicResult;
+      }
+    }
+    
+    // Symlink points outside allowed directories
+    return {
+      isValid: false,
+      resolvedPath: basicResult.resolvedPath,
+      error: 'Symlink resolution: path points outside allowed directories'
+    };
   } catch (error: any) {
     return {
       isValid: false,

@@ -1,6 +1,6 @@
 /**
  * Security Utilities Tests
- * 
+ *
  * Tests for path traversal prevention and path validation utilities.
  */
 
@@ -8,12 +8,12 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import path from 'path';
 import fs from 'fs';
-import { 
-  validatePathSafety, 
+import {
+  validatePathSafety,
   validatePathSafetyWithExistence,
   getSafePath,
-  isPathSafe 
-} from '../src/utils/security.js';
+  isPathSafe
+} from '../../src/utils/security.js';
 
 // Get absolute paths for test fixtures
 const TEST_FIXTURES_DIR = path.join(process.cwd(), 'tests', 'fixtures', 'security');

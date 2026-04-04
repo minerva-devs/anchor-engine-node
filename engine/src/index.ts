@@ -81,21 +81,20 @@ if (!config.API_KEY || config.API_KEY.trim() === '') {
   console.error('   Please set server.api_key in user_settings.json');
   console.error('   Requirements:');
   console.error('   - Length: 32-128 characters');
-  console.error('   - Must contain at least one uppercase letter (A-Z)');
-  console.error('   - Must contain at least one lowercase letter (a-z)');
-  console.error('   - Must contain at least one digit (0-9)');
+  console.error('   - Must contain at least one uppercase letter (A-Z), one lowercase (a-z), and one digit (0-9)');
+  console.error('   - OR: 64+ character hex key (e.g., from crypto.randomBytes)');
   console.error('   Example: { "server": { "api_key": "MySecureKey123..." } }\n');
   process.exit(1);
 }
 
-// Validate API key strength
-const apiKeyStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
+// Validate API key strength (duplicate of Zod check - provides better error messages)
+// Accepts: mixed case+digit OR 64+ char hex key
+const apiKeyStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$|^[a-f0-9]{64,}$/i;
 if (!apiKeyStrengthRegex.test(config.API_KEY)) {
   console.error('\n❌ FATAL: API key is too weak!');
   console.error('   Your key does not meet the strength requirements:');
-  console.error('   - Must contain at least one uppercase letter (A-Z)');
-  console.error('   - Must contain at least one lowercase letter (a-z)');
-  console.error('   - Must contain at least one digit (0-9)');
+  console.error('   - Must contain at least one uppercase letter (A-Z), one lowercase (a-z), and one digit (0-9)');
+  console.error('   - OR: Be a 64+ character hex string (e.g., crypto.randomBytes(32).toString("hex"))');
   console.error('   Example: "MySecureKey123..." or "aB3dEfGhIjKlMnOpQrStUvWxYz123456"\n');
   process.exit(1);
 }
