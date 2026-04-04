@@ -376,10 +376,10 @@ async function runFileTest(filePath: string): Promise<TestFileResult> {
   const { PROJECT_ROOT } = await import('../config/paths.js');
 
   return new Promise((resolve) => {
-    // Security: Validate test file path is within allowed directories
-    // Test files must be within the project's tests directory
+    // Security: Validate test file path is within tests directory
+    // Test files must ONLY be within the project's tests/ directory
     const testsDir = path.join(PROJECT_ROOT, 'tests');
-    const pathValidation = validatePathSafety(filePath, [PROJECT_ROOT, testsDir]);
+    const pathValidation = validatePathSafety(filePath, [testsDir]);
     
     if (!pathValidation.isValid) {
       resolve({

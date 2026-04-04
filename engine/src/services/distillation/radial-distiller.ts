@@ -257,13 +257,15 @@ async function deduplicateLines(
 }> {
   const normalization = request.normalization || 'strict';
   const uniqueLines = new Map<string, DistillLine>(); // normalizedHash -> DistillLine
-  const seenCompoundHashes = new Set<string>(); // Standard 134: Tier 1 compound dedup
+  // Standard 134: Tier 1 compound dedup with bounded memory
+  const MAX_DEDUP_CACHE = 10000; // Cap at 10k compounds to prevent unbounded growth
+  const seenCompoundHashes = new Set<string>();
   let totalLines = 0;
   let duplicateLines = 0;
   let duplicateCompoundsSkipped = 0;
   let compoundsTotal = 0;
 
-  StructuredLogger.info('DISTILL_DEDUP_START', { normalization });
+  StructuredLogger.info('DISTILL_DEDUP_START', { normalization, maxDedupCache: MAX_DEDUP_CACHE });
 
   for await (const compound of compoundGenerator) {
     compoundsTotal++;
@@ -273,12 +275,27 @@ async function deduplicateLines(
     const compoundHash = hashContentBytes(compound.content);
     if (seenCompoundHashes.has(compoundHash)) {
       duplicateCompoundsSkipped++;
-      StructuredLogger.debug('DISTILL_TIER1_SKIP', {
-        compound_id: compound.compoundId,
-        source: compound.source,
-      });
+      // Aggregate debug logging to reduce noise
+      if (duplicateCompoundsSkipped % 100 === 0) {
+        StructuredLogger.debug('DISTILL_TIER1_SKIP_BATCH', {
+          skipped: duplicateCompoundsSkipped,
+          total: compoundsTotal,
+        });
+      }
       continue; // Skip entire compound — no split, no line hashing
     }
+    
+    // Enforce bounded memory: evict oldest entries when cache exceeds limit
+    if (seenCompoundHashes.size >= MAX_DEDUP_CACHE) {
+      // Convert to array, remove first 10% (oldest), rebuild set
+      const hashes = Array.from(seenCompoundHashes);
+      const toRemove = Math.floor(hashes.length * 0.1);
+      hashes.splice(0, toRemove);
+      seenCompoundHashes.clear();
+      hashes.forEach(h => seenCompoundHashes.add(h));
+      StructuredLogger.debug('DISTILL_DEDUP_EVICT', { evicted: toRemove, remaining: seenCompoundHashes.size });
+    }
+    
     seenCompoundHashes.add(compoundHash);
 
     // TIER 2: Line-level dedup (only for unique compounds)

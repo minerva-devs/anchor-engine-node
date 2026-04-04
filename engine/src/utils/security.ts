@@ -60,9 +60,6 @@ export function validatePathSafety(
   // Resolve to absolute path
   const resolvedPath = path.resolve(userPath);
 
-  // Normalize path separators for consistent comparison (Windows -> Unix style)
-  const normalizedResolved = resolvedPath.replace(/\\/g, '/');
-
   // Check against each allowed base directory
   for (const baseDir of allowedBases) {
     // Ensure base directory exists and is absolute
@@ -71,13 +68,18 @@ export function validatePathSafety(
       continue;
     }
 
-    // Normalize base directory
-    const normalizedBase = baseDir.replace(/\\/g, '/');
-
-    // Check if resolved path starts with the base directory
-    // Must be exact match or followed by path separator
-    if (normalizedResolved === normalizedBase ||
-        normalizedResolved.startsWith(normalizedBase + '/')) {
+    // SECURITY FIX: Use path.relative() for robust cross-platform path comparison
+    // This handles Windows case-insensitivity and path normalization correctly
+    const relativePath = path.relative(baseDir, resolvedPath);
+    
+    // Path is inside baseDir if relative path doesn't start with '..' and is not absolute
+    // On Windows, path.relative may return paths with backslashes, so check both formats
+    const isOutside = relativePath.startsWith('..') || 
+                      path.isAbsolute(relativePath) ||
+                      relativePath.startsWith(path.sep);
+    
+    if (!isOutside || relativePath === '') {
+      // Empty relative path means resolvedPath === baseDir (exact match)
       return {
         isValid: true,
         resolvedPath,
@@ -87,10 +89,11 @@ export function validatePathSafety(
   }
 
   // Path is outside all allowed directories
+  // SECURITY FIX: Don't leak resolved path in error message
   return {
     isValid: false,
     resolvedPath,
-    error: `Path traversal detected: resolved path '${resolvedPath}' is outside allowed directories`,
+    error: 'Path traversal detected: path is outside allowed directories',
   };
 }
 
