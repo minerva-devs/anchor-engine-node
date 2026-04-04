@@ -6,6 +6,134 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [5.1.0] - 2026-04-03 — Security Hardening Release (P0 Vulnerabilities Fixed)
+
+### 🔒 Security Fixes (Critical)
+
+**4 P0 Vulnerabilities Fixed** - March 2026 Security Review
+
+#### 1. Path Traversal Prevention (Standard 129)
+**Vulnerability:** User-supplied paths in `/v1/system/*` and `/v1/test/*` endpoints could escape intended directories via `../` sequences.
+
+**Impact:** High - Could read arbitrary files (e.g., `/etc/passwd`, `~/.ssh/id_rsa`)
+
+**Fix:**
+- Added path validation in `engine/src/routes/v1/system.ts` (3 endpoints)
+- Added path validation in `engine/src/routes/test-ui.ts` (1 endpoint)
+- All paths now validated to stay within `PROJECT_ROOT` and `NOTEBOOK_DIR`
+
+**Branch:** `dev/security/path-traversal`
+
+---
+
+#### 2. SQL Injection Prevention (Standard 130)
+**Vulnerability:** LIMIT clauses in search queries used string interpolation with user-derived values.
+
+**Impact:** High - Potential SQL injection via crafted search parameters
+
+**Fix:**
+- `engine/src/services/search/search.ts` - Molecule query now uses parameterized `$N` binding
+- `engine/src/services/search/explore.ts` - Atom fetch LIMIT now parameterized
+- All LIMIT values passed as query parameters, not interpolated strings
+
+**Branch:** `dev/security/sql-injection`
+
+---
+
+#### 3. Authentication Bypass Prevention (Standard 131)
+**Vulnerability:** All `/v1/test/*` endpoints bypassed authentication entirely for "development convenience."
+
+**Impact:** Critical - Test endpoints could:
+- Execute arbitrary test files (`/v1/test/run-file`)
+- Write arbitrary JSON to filesystem (`/v1/test/snapshot`)
+- Read arbitrary files via path traversal (`/v1/test/snapshot/:name`)
+
+**Fix:**
+- `engine/src/middleware/auth.ts` - Removed `/v1/test/*` from auth bypass whitelist
+- `engine/src/routes/test-ui.ts` - Added regex validation for snapshot name parameter
+- All test endpoints now require valid API key authentication
+
+**Branch:** `dev/security/auth-bypass-audit`
+
+---
+
+#### 4. API Key Strength Validation (Standard 132)
+**Vulnerability:** API keys only required 16 characters with no complexity requirements. Weak keys like `aaaaaaaaaaaaaaaa` were accepted.
+
+**Impact:** High - Weak keys vulnerable to brute force and dictionary attacks
+
+**Fix:**
+- `engine/src/config/index.ts` - Enhanced Zod schema validation:
+  - Minimum length: 16 → **32 characters**
+  - Maximum length: **128 characters**
+  - Required: uppercase + lowercase + digit
+- `engine/src/index.ts` - Runtime validation with clear error messages
+- Entropy increased from ~75 bits to **~190 bits** (billions of years to crack)
+
+**Migration:** Existing weak keys will be rejected. Generate new key:
+```bash
+# Using Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+**Branch:** `dev/security/api-key-strength`
+
+---
+
+### 📚 Security Standards Created
+
+- **Standard 129:** Path Traversal Prevention
+- **Standard 130:** SQL Injection Prevention (Parameterized LIMIT)
+- **Standard 131:** Authentication Bypass Prevention
+- **Standard 132:** API Key Strength Validation
+
+### 🔧 Technical Changes
+
+**Modified Files:**
+- `engine/src/middleware/auth.ts` - Auth bypass fix
+- `engine/src/routes/v1/system.ts` - Path traversal fix
+- `engine/src/routes/test-ui.ts` - Path traversal + input validation
+- `engine/src/services/search/search.ts` - SQL injection fix
+- `engine/src/services/search/explore.ts` - SQL injection fix
+- `engine/src/config/index.ts` - API key strength validation
+- `engine/src/index.ts` - API key runtime validation
+
+**Documentation:**
+- `specs/standards/129-path-traversal-prevention.md`
+- `specs/standards/130-sql-injection-prevention.md`
+- `specs/standards/131-auth-bypass-prevention.md`
+- `specs/standards/132-api-key-strength-validation.md`
+
+### 🎯 Security Review Summary
+
+| Vulnerability | CVSS Score | Status | Branch |
+|---------------|------------|--------|--------|
+| Path Traversal | 7.5 (High) | ✅ Fixed | `dev/security/path-traversal` |
+| SQL Injection | 8.6 (High) | ✅ Fixed | `dev/security/sql-injection` |
+| Auth Bypass | 8.6 (High) | ✅ Fixed | `dev/security/auth-bypass-audit` |
+| API Key Strength | 7.5 (High) | ✅ Fixed | `dev/security/api-key-strength` |
+
+### ⚠️ Breaking Changes
+
+**API Key Requirements Changed:**
+- Old keys with < 32 characters or no complexity will be **rejected**
+- Update your `user_settings.json`:
+  ```json
+  {
+    "server": {
+      "api_key": "YourNewSecureKey123..."  // 32-128 chars, mixed case + digit
+    }
+  }
+  ```
+
+### 📦 Version Updates
+
+- `package.json`: 5.1.0
+- `engine/package.json`: 5.1.0
+- `user_settings.json.template`: VERSION = "5.1.0"
+
+---
+
 ## [5.0.0] - 2026-03-29 — Stable Release with Full-Featured UI
 
 ### 🎉 Major Version Release
