@@ -27,8 +27,8 @@ const ServerSettingsSchema = z.object({
   api_key: z.string()
     .min(32, 'API key must be at least 32 characters')
     .max(128, 'API key must not exceed 128 characters')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$|^[a-f0-9]{64,}$/i,
-      'API key must contain uppercase, lowercase, and digit - OR be 64+ char hex')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z0-9]{32,128}$|^[a-f0-9]{64,}$/i,
+      'API key must be 32-128 alphanumeric chars with mixed case+digit - OR 64+ char hex')
     .optional(),
 });
 

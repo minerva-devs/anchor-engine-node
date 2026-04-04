@@ -90,7 +90,7 @@ if (!config.API_KEY || config.API_KEY.trim() === '') {
 // Validate API key strength (duplicate of Zod check - provides better error messages)
 // Accepts: mixed case+digit (32-128 chars) OR 64+ char hex key
 // Note: Zod schema enforces 32-128 length, runtime check adds length validation for hex keys
-const apiKeyStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{31,127}$|^[a-f0-9]{64,}$/i;
+const apiKeyStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z0-9]{32,128}$|^[a-f0-9]{64,}$/i;
 if (!apiKeyStrengthRegex.test(config.API_KEY)) {
   console.error('\n❌ FATAL: API key is too weak!');
   console.error('   Your key does not meet the strength requirements:');
