@@ -79,11 +79,28 @@ app.use('/v1', apiKeyAuth);
 if (!config.API_KEY || config.API_KEY.trim() === '') {
   console.error('\n❌ FATAL: API key not configured!');
   console.error('   Please set server.api_key in user_settings.json');
-  console.error('   Example: { "server": { "api_key": "your-secret-key-here" } }\n');
+  console.error('   Requirements:');
+  console.error('   - Length: 32-128 characters');
+  console.error('   - Must contain at least one uppercase letter (A-Z), one lowercase (a-z), and one digit (0-9)');
+  console.error('   - OR: 64+ character hex key (e.g., from crypto.randomBytes)');
+  console.error('   Example: { "server": { "api_key": "MySecureKey123..." } }\n');
   process.exit(1);
 }
 
-StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: true });
+// Validate API key strength (duplicate of Zod check - provides better error messages)
+// Accepts: mixed case+digit (32-128 chars) OR 64+ char hex key
+// Note: Zod schema enforces 32-128 length, runtime check adds length validation for hex keys
+const apiKeyStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z0-9]{32,128}$|^[a-f0-9]{64,}$/i;
+if (!apiKeyStrengthRegex.test(config.API_KEY)) {
+  console.error('\n❌ FATAL: API key is too weak!');
+  console.error('   Your key does not meet the strength requirements:');
+  console.error('   - Length: 32-128 characters with uppercase, lowercase, and digit');
+  console.error('   - OR: 64+ character hex string (e.g., crypto.randomBytes(32).toString("hex"))');
+  console.error('   Example: "MySecureKey123..." or hex key from crypto.randomBytes\n');
+  process.exit(1);
+}
+
+StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: true, key_length: config.API_KEY.length });
 
 // Rate limiting — applied after auth so authenticated clients share the same window
 // General limit: 100 requests / minute per IP

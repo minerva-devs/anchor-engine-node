@@ -372,17 +372,36 @@ interface TestFileResult extends TestResult {
 async function runFileTest(filePath: string): Promise<TestFileResult> {
   const startTime = Date.now();
   const { spawn } = await import('child_process');
+  const { validatePathSafety } = await import('../utils/security.js');
+  const { PROJECT_ROOT } = await import('../config/paths.js');
 
   return new Promise((resolve) => {
-    const fullPath = path.join(process.cwd(), filePath);
+    // Security: Validate test file path is within tests directory
+    // Test files must ONLY be within the project's tests/ directory
+    const testsDir = path.join(PROJECT_ROOT, 'tests');
+    const pathValidation = validatePathSafety(filePath, [testsDir]);
     
+    if (!pathValidation.isValid) {
+      resolve({
+        name: path.basename(filePath),
+        status: 'error',
+        duration: 0,
+        message: `Security error: ${pathValidation.error}`,
+        output: '',
+        exitCode: 1
+      });
+      return;
+    }
+    
+    const fullPath = pathValidation.resolvedPath;
+
     // Check if file exists
     if (!fs.existsSync(fullPath)) {
       resolve({
         name: path.basename(filePath),
         status: 'error',
         duration: 0,
-        message: `Test file not found: ${filePath}`,
+        message: `Test file not found: ${fullPath}`,
         output: '',
         exitCode: 1
       });
@@ -556,12 +575,19 @@ export function registerTestRoutes(app: any) {
   // Get snapshot
   app.get('/v1/test/snapshot/:name', async (req: Request, res: Response) => {
     const { name } = req.params;
-    const snapshotPath = path.join(process.cwd(), 'logs', `snapshot-${name}.json`);
+
+    // SECURITY FIX (Standard 131): Validate snapshot name to prevent path traversal
+    // Only allow alphanumeric, hyphens, and underscores
+    if (typeof name !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(name)) {
+      return res.status(400).json({ error: 'Invalid snapshot name. Only alphanumeric, hyphens, and underscores allowed.' });
+    }
     
+    const snapshotPath = path.join(process.cwd(), 'logs', `snapshot-${name}.json`);
+
     if (!fs.existsSync(snapshotPath)) {
       return res.status(404).json({ error: 'Snapshot not found' });
     }
-    
+
     const data = fs.readFileSync(snapshotPath, 'utf-8');
     res.json(JSON.parse(data));
   });

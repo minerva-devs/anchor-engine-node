@@ -458,7 +458,10 @@ export async function findAnchors(
     }
 
     // Replace hardcoded LIMIT 50 with the intended dynamic token budget scalar
-    moleculeQuery += ` ORDER BY score DESC LIMIT ${targetAtomCount}`;
+    // SECURITY FIX (Standard 130): Use parameterized LIMIT to prevent SQL injection
+    // SQLite requires LIMIT to be a parameter, not interpolated string
+    moleculeQuery += ` ORDER BY score DESC LIMIT $${moleculeParams.length + 1}`;
+    moleculeParams.push(targetAtomCount);
 
     try {
       let molResult = await db.run(moleculeQuery, moleculeParams);

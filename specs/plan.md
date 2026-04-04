@@ -1,150 +1,18 @@
 # Anchor Engine - Project Plan & Roadmap
 
-**Project Age:** 6 months (July 2025 - February 2026) | **Status:** Production Ready
+**Project Age:** 9 months (July 2025 - April 2026) | **Status:** Production Ready + Security Hardening
 
 ---
 
-## 6-Month Timeline: July 2025 - February 2026
+## 9-Month Timeline: July 2025 - April 2026
 
-### Month 1: July 2025 — Inception
-**Theme:** Concept & Initial Architecture
+### Month 1-8: July 2025 - February 2026 — Foundation to Production
+**Theme:** Build production-ready knowledge engine
 
-- ✅ Project founded with vision of "Sovereign Context Protocol"
-- ✅ Whitepaper drafted: "Decoupling Intelligence from Infrastructure"
-- ✅ Initial architecture designed (CozoDB-based)
-- ✅ Core concepts defined: Atoms, Molecules, Compounds
-- ✅ First prototype: Python-based ingestion
+✅ See completed phases in `specs/tasks.md`
 
-**Key Decisions:**
-- Local-first architecture (no cloud dependencies)
-- Agent harness agnosticism
-- Text files as source of truth
-
----
-
-### Month 2: August 2025 — Foundation
-**Theme:** Building the Core
-
-- ✅ CozoDB integration complete
-- ✅ Basic ingestion pipeline operational
-- ✅ First search algorithms implemented
-- ✅ Core tools created (db-builder, model-server-chat)
-- ✅ Model loading configuration (WebGPU optimization)
-
-**Challenges Overcome:**
-- WebGPU buffer limitations (256MB override)
-- Model quota/VRAM configuration
-- First successful context retrieval
-
----
-
-### Month 3: September 2025 — Stabilization
-**Theme:** Fixing Foundation Issues
-
-- ✅ Hardware optimization (Adreno GPU support)
-- ✅ Model profiles (Lite, Mid, High, Ultra)
-- ✅ Crash prevention (context clamping)
-- ✅ Mobile optimization (Service Worker)
-- ✅ Consciousness semaphore (resource arbitration)
-
-**Milestones:**
-- First stable multi-model support
-- GPU resource management system
-- Cross-machine sync via Dropbox/Git
-
----
-
-### Month 4: October 2025 — The Subconscious
-**Theme:** Background Processing & Memory
-
-- ✅ Root Dreamer (background memory consolidation)
-- ✅ Ingestion refinement (LLM-legible YAML)
-- ✅ Memory hygiene (Forgetting Curve)
-- ✅ Epochal Historian implementation
-- ✅ Mirror Protocol enhancement
-
-**Architecture Evolution:**
-- Recursive decomposition (Epochs → Episodes → Propositions)
-- File watcher improvements
-- Timestamped entries for better tracking
-
----
-
-### Month 5: November 2025 — Migration & Reliability
-**Theme:** Major Architecture Shift
-
-- ✅ Migration to Node.js monolith (Standard 034)
-- ✅ PGlite adoption (PostgreSQL-compatible)
-- ✅ FTS optimization (native BM25 search)
-- ✅ Operational safety (detached execution protocols)
-- ✅ Snapshot portability (Eject/Hydrate workflow)
-
-**Why PGlite?**
-- Better PostgreSQL compatibility
-- Improved stability over CozoDB
-- Standard SQL query patterns
-
----
-
-### Month 6: December 2025 — Acceleration
-**Theme:** Performance Optimization
-
-- ✅ Native module acceleration (C++ N-API)
-- ✅ Key Assassin (text sanitization) - 2.3x faster
-- ✅ Atomizer (text splitting) - sub-millisecond
-- ✅ Fingerprint (SimHash) - ~2ms/atom
-- ✅ Cortex upgrade (local inference with node-llama-cpp)
-- ✅ Multi-bucket schema migration
-
-**Performance Gains:**
-- 2.3x overall performance improvement
-- Sub-millisecond processing for typical operations
-- Zero-copy string processing
-
----
-
-### Month 7: January 2026 — Browser Paradigm
-**Theme:** Architectural Maturity
-
-- ✅ Hybrid Node.js/C++ architecture deployed
-- ✅ Tag-Walker protocol (replaces vector search)
-- ✅ Mirror 2.0 (semantic filesystem projection)
-- ✅ Smart Search Protocol (Standard 094)
-- ✅ Server startup sequence fix (Standard 088)
-- ✅ Monorepo migration (PNPM workspace)
-- ✅ Unified configuration (sovereign.yaml)
-
-**Browser Paradigm Realized:**
-- Just as browsers download only needed shards
-- Anchor loads only needed atoms
-- 4GB RAM laptops can navigate 10TB datasets
-
----
-
-### Month 8: February 2026 — Production Ready
-**Theme:** Final Polish & Deployment
-
-- ✅ Semantic Shift Architecture (Standard 084)
-- ✅ Universal Semantic Search (Standard 104)
-- ✅ Ephemeral Index (Standard 110)
-- ✅ Batched Ingestion (Standard 109)
-- ✅ UI consolidation (Glass Panel design)
-- ✅ Production deployment: 100MB+, 280K molecules
-- ✅ All 77 architecture standards documented
-
-**Production Metrics:**
-- 436 files ingested (~100MB)
-- ~280,000 molecules processed
-- ~1,500 atoms indexed
-- 331 files rehydrated successfully
-- Zero data loss with ephemeral index
-
----
-
-## Current Roadmap: Q2 2026
-
-### Phase: Documentation & Reproducibility (COMPLETED - March 2026)
-**Goal:** Make benchmarks reproducible and lower integration barrier
+### Month 9: March 2026 — Documentation & Reproducibility
+**Theme:** Make benchmarks reproducible, lower integration barrier
 
 - [x] Reproducible benchmark suite with sample corpus
 - [x] Benchmark protocol documentation (Standard 077)
@@ -156,8 +24,28 @@
 - [x] Tag limiting for output quality (Standard 121)
 - [x] Physics Walker temporal decay safety (Standard 122)
 - [x] Settings UI help text enhancements
+- [x] Path traversal prevention (Standard 129) - Fixed 3 endpoints
+- [x] SQL injection prevention (Standard 130) - Parameterized LIMIT clauses
+- [x] Auth bypass prevention (Standard 131) - Removed /v1/test/* exemption, added input validation
+- [x] API key strength validation (Standard 132) - 32-128 chars with complexity requirements
 - [ ] Ablation study results (pending execution)
 - [ ] Cross-platform CI testing matrix (pending)
+
+### Month 10: April 2026 — Security Hardening (CURRENT)
+**Theme:** Address critical security vulnerabilities
+
+- [x] Path traversal prevention utility
+- [x] Fix `/v1/system/paths` endpoint (Standard 129)
+- [x] Fix `/v1/system/explorer` endpoint (Standard 129)
+- [x] Fix `/v1/test/run-file` endpoint (Standard 129)
+- [x] Security unit test suite
+- [x] Document security standard (Standard 129)
+- [ ] SQL injection prevention (LIMIT clause)
+- [ ] Auth bypass audit on test endpoints
+- [ ] API key strength validation
+- [ ] Security README section
+
+---
 
 ### Phase: Agent Harness Integration
 **Goal:** Enable multiple agent frameworks

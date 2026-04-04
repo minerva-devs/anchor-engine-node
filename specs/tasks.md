@@ -1,6 +1,6 @@
 # Anchor Engine - Current Tasks
 
-**Last Updated:** February 20, 2026 | **Current Sprint:** Production Stability
+**Last Updated:** April 3, 2026 | **Current Sprint:** Security Hardening
 
 ---
 
@@ -19,7 +19,21 @@
 
 ## 🎯 Current Focus
 
-### Phase: Documentation & Reproducibility (P0 - COMPLETED March 2026)
+### Phase: Security Hardening (P0 - April 2026)
+**Goal:** Address critical security vulnerabilities identified in March 2026 review
+
+- [x] Path traversal prevention utility (`engine/src/utils/security.ts`)
+- [x] Fix `/v1/system/paths` endpoint (Standard 129)
+- [x] Fix `/v1/system/explorer` endpoint (Standard 129)
+- [x] Fix `/v1/test/run-file` endpoint (Standard 129)
+- [x] Security unit tests (`engine/tests/unit/security.test.ts`)
+- [x] Document security standard (Standard 129)
+- [x] SQL injection prevention (LIMIT clause parameterization) - Standard 130
+- [x] Auth bypass audit on `/v1/test/*` endpoints - Standard 131
+- [x] API key strength validation enhancement - Standard 132
+- [x] Security documentation in README
+
+### Phase: Documentation & Reproducibility (COMPLETED March 2026)
 - [x] Benchmark suite with sample corpus generator
 - [x] Benchmark protocol documentation (Standard 077)
 - [x] STAR parameter tuning guide (Standard 078)
@@ -31,6 +45,10 @@
 - [x] Physics Walker underflow fix (Standard 122)
 - [x] Settings UI help text enhancements
 - [x] Physics Walker Jest tests created
+- [x] Path traversal prevention (Standard 129) - `dev/security/path-traversal`
+- [x] SQL injection fix via parameterized LIMIT (Standard 130) - `dev/security/sql-injection`
+- [x] Auth bypass audit complete (Standard 131) - `dev/security/auth-bypass-audit`
+- [x] API key strength validation (Standard 132) - `dev/security/api-key-strength`
 - [ ] Ablation study framework (pending execution)
 - [ ] Cross-platform CI testing (pending)
 
@@ -47,6 +65,11 @@
 - [ ] Provenance bias controls (Sovereign vs External)
 
 ### Phase: Memory & Performance Optimizations (Based on Rust Implementation Insights)
+- [x] Zero-Copy Deduplication in Distillation (Standard 134)
+  - [x] Tier 1 compound-level SHA-256 dedup before line processing
+  - [x] Skip UTF-8 split + normalization for duplicate compounds
+  - [x] Stats tracking: compoundsSkipped, compoundsTotal, tier1_skip_rate
+  - [x] Documentation: specs/standards/134-zero-copy-dedup.md
 - [ ] Pointer-Only Storage Pattern Implementation
   - [ ] Modify database schema to store only pointers (source_path, start_byte, end_byte)
   - [ ] Create mirrored_brain/ directory for content storage

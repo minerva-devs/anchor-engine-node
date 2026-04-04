@@ -133,6 +133,14 @@ function hashLine(line: string): string {
 }
 
 /**
+ * Calculate hash for raw content bytes (Tier 1 compound dedup)
+ * Standard 134: Avoids UTF-8 split + line hashing for duplicate compounds
+ */
+function hashContentBytes(content: string): string {
+  return crypto.createHash('sha256').update(Buffer.from(content, 'utf8')).digest('base64url');
+}
+
+/**
  * PHASE 1: COLLECT
  * Stream compounds and radially inflate each
  */
@@ -238,22 +246,59 @@ async function* collectCompounds(
 /**
  * PHASE 2: DEDUPLICATE
  * Line-level deduplication with bounded memory
+ * Standard 134: Tier 1 compound-level dedup before line processing
  */
 async function deduplicateLines(
   compoundGenerator: AsyncGenerator<{ compoundId: string; content: string; source: string; timestamp: number }>,
   request: RadialDistillRequest,
 ): Promise<{
   uniqueLines: Map<string, DistillLine>;
-  stats: { total: number; unique: number; duplicate: number };
+  stats: { total: number; unique: number; duplicate: number; compoundsSkipped: number; compoundsTotal: number };
 }> {
   const normalization = request.normalization || 'strict';
   const uniqueLines = new Map<string, DistillLine>(); // normalizedHash -> DistillLine
+  // Standard 134: Tier 1 compound dedup with bounded memory
+  const MAX_DEDUP_CACHE = 10000; // Cap at 10k compounds to prevent unbounded growth
+  const seenCompoundHashes = new Set<string>();
   let totalLines = 0;
   let duplicateLines = 0;
+  let duplicateCompoundsSkipped = 0;
+  let compoundsTotal = 0;
 
-  StructuredLogger.info('DISTILL_DEDUP_START', { normalization });
+  StructuredLogger.info('DISTILL_DEDUP_START', { normalization, maxDedupCache: MAX_DEDUP_CACHE });
 
   for await (const compound of compoundGenerator) {
+    compoundsTotal++;
+
+    // TIER 1: Hash raw content bytes BEFORE splitting (Standard 134)
+    // This avoids O(N) split + normalize + hashLine for duplicate compounds
+    const compoundHash = hashContentBytes(compound.content);
+    if (seenCompoundHashes.has(compoundHash)) {
+      duplicateCompoundsSkipped++;
+      // Aggregate debug logging to reduce noise
+      if (duplicateCompoundsSkipped % 100 === 0) {
+        StructuredLogger.debug('DISTILL_TIER1_SKIP_BATCH', {
+          skipped: duplicateCompoundsSkipped,
+          total: compoundsTotal,
+        });
+      }
+      continue; // Skip entire compound — no split, no line hashing
+    }
+    
+    // Enforce bounded memory: evict oldest entries when cache exceeds limit
+    if (seenCompoundHashes.size >= MAX_DEDUP_CACHE) {
+      // Convert to array, remove first 10% (oldest), rebuild set
+      const hashes = Array.from(seenCompoundHashes);
+      const toRemove = Math.floor(hashes.length * 0.1);
+      hashes.splice(0, toRemove);
+      seenCompoundHashes.clear();
+      hashes.forEach(h => seenCompoundHashes.add(h));
+      StructuredLogger.debug('DISTILL_DEDUP_EVICT', { evicted: toRemove, remaining: seenCompoundHashes.size });
+    }
+    
+    seenCompoundHashes.add(compoundHash);
+
+    // TIER 2: Line-level dedup (only for unique compounds)
     const lines = compound.content.split('\n');
 
     for (let lineNum = 0; lineNum < lines.length; lineNum++) {
@@ -307,6 +352,8 @@ async function deduplicateLines(
       total: totalLines,
       unique: uniqueLines.size,
       duplicate: duplicateLines,
+      compoundsSkipped: duplicateCompoundsSkipped,
+      compoundsTotal: compoundsTotal,
     },
   };
 }
@@ -472,6 +519,10 @@ export async function radialDistill(
       ? (dedupStats.total / dedupStats.unique).toFixed(2)
       : '1.00';
 
+    const tier1SkipRate = dedupStats.compoundsTotal > 0
+      ? ((dedupStats.compoundsSkipped / dedupStats.compoundsTotal) * 100).toFixed(1)
+      : '0.0';
+
     // Aggregate provenance from all unique lines
     const sourceCompounds = Array.from(uniqueLines.values())
       .flatMap(line => line.provenance)
@@ -480,7 +531,7 @@ export async function radialDistill(
 
     const result: RadialDistillResult = {
       stats: {
-        compounds_processed: dedupStats.total, // Approximate
+        compounds_processed: dedupStats.compoundsTotal,
         lines_total: dedupStats.total,
         lines_unique: dedupStats.unique,
         lines_duplicate: dedupStats.duplicate,
@@ -507,6 +558,9 @@ export async function radialDistill(
       compression_ratio: compressionRatio,
       lines_unique: dedupStats.unique,
       lines_total: dedupStats.total,
+      tier1_compounds_skipped: dedupStats.compoundsSkipped,
+      tier1_compounds_total: dedupStats.compoundsTotal,
+      tier1_skip_rate: `${tier1SkipRate}%`,
     });
 
     // Standard 016: Record distill in database with pointers to file
