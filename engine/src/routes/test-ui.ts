@@ -575,10 +575,10 @@ export function registerTestRoutes(app: any) {
   // Get snapshot
   app.get('/v1/test/snapshot/:name', async (req: Request, res: Response) => {
     const { name } = req.params;
-    
+
     // SECURITY FIX (Standard 131): Validate snapshot name to prevent path traversal
     // Only allow alphanumeric, hyphens, and underscores
-    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+    if (typeof name !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(name)) {
       return res.status(400).json({ error: 'Invalid snapshot name. Only alphanumeric, hyphens, and underscores allowed.' });
     }
     

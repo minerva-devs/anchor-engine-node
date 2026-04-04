@@ -80,12 +80,38 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 ---
 
+### ⚡ Performance Improvements
+
+#### 5. Zero-Copy Deduplication in Distillation (Standard 134)
+**Problem:** The radial distiller processed every inflated compound through the full UTF-8 string split + line-level hashing pipeline, even when the compound content was a duplicate of content already seen.
+
+**Impact:** For 50-90% duplicate rates (common in large conversation logs, version histories), 50-90% of CPU time was wasted on duplicate processing.
+
+**Fix:**
+- Added Tier 1 compound-level SHA-256 dedup in `engine/src/services/distillation/radial-distiller.ts`
+- Content hashed as raw bytes BEFORE splitting into lines
+- Duplicate compounds skip the entire `split → normalizeLine → hashLine` pipeline
+- Only unique compounds proceed to Tier 2 line-level dedup
+- Stats now track `compoundsSkipped`, `compoundsTotal`, and `tier1_skip_rate`
+
+**Expected Performance:**
+- 50% duplicate rate → ~2x speedup on distillation
+- 90% duplicate rate → ~10x speedup on distillation
+- Memory overhead: ~43 bytes per compound for hash Set (negligible)
+
+**Cross-Reference:** Ported from `anchor-engine-rust` commit `0c67d23` (zero-copy dedup in distill)
+
+**Branch:** `dev/zero-copy-dedup`
+
+---
+
 ### 📚 Security Standards Created
 
 - **Standard 129:** Path Traversal Prevention
 - **Standard 130:** SQL Injection Prevention (Parameterized LIMIT)
 - **Standard 131:** Authentication Bypass Prevention
 - **Standard 132:** API Key Strength Validation
+- **Standard 134:** Zero-Copy Deduplication in Distillation
 
 ### 🔧 Technical Changes
 
@@ -95,6 +121,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 - `engine/src/routes/test-ui.ts` - Path traversal + input validation
 - `engine/src/services/search/search.ts` - SQL injection fix
 - `engine/src/services/search/explore.ts` - SQL injection fix
+- `engine/src/services/distillation/radial-distiller.ts` - Zero-copy dedup (Standard 134)
 - `engine/src/config/index.ts` - API key strength validation
 - `engine/src/index.ts` - API key runtime validation
 
@@ -103,6 +130,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 - `specs/standards/130-sql-injection-prevention.md`
 - `specs/standards/131-auth-bypass-prevention.md`
 - `specs/standards/132-api-key-strength-validation.md`
+- `specs/standards/134-zero-copy-dedup.md`
 
 ### 🎯 Security Review Summary
 

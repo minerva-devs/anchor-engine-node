@@ -28,10 +28,10 @@
 - [x] Fix `/v1/test/run-file` endpoint (Standard 129)
 - [x] Security unit tests (`engine/tests/unit/security.test.ts`)
 - [x] Document security standard (Standard 129)
-- [ ] SQL injection prevention (LIMIT clause parameterization)
-- [ ] Auth bypass audit on `/v1/test/*` endpoints
-- [ ] API key strength validation enhancement
-- [ ] Security documentation in README
+- [x] SQL injection prevention (LIMIT clause parameterization) - Standard 130
+- [x] Auth bypass audit on `/v1/test/*` endpoints - Standard 131
+- [x] API key strength validation enhancement - Standard 132
+- [x] Security documentation in README
 
 ### Phase: Documentation & Reproducibility (COMPLETED March 2026)
 - [x] Benchmark suite with sample corpus generator
@@ -65,6 +65,11 @@
 - [ ] Provenance bias controls (Sovereign vs External)
 
 ### Phase: Memory & Performance Optimizations (Based on Rust Implementation Insights)
+- [x] Zero-Copy Deduplication in Distillation (Standard 134)
+  - [x] Tier 1 compound-level SHA-256 dedup before line processing
+  - [x] Skip UTF-8 split + normalization for duplicate compounds
+  - [x] Stats tracking: compoundsSkipped, compoundsTotal, tier1_skip_rate
+  - [x] Documentation: specs/standards/134-zero-copy-dedup.md
 - [ ] Pointer-Only Storage Pattern Implementation
   - [ ] Modify database schema to store only pointers (source_path, start_byte, end_byte)
   - [ ] Create mirrored_brain/ directory for content storage
