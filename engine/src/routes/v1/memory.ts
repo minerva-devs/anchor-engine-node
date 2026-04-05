@@ -15,8 +15,8 @@ import type { Application, Request, Response } from 'express';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import type { ExploreRequest } from '../../services/search/explore.js';
 import { exploreMemory } from '../../services/search/explore.js';
-import type { RadialDistillRequest } from '../../services/distillation/radial-distiller.js';
-import { radialDistill } from '../../services/distillation/radial-distiller.js';
+import type { RadialDistillRequest } from '../../services/distillation/radial-distiller-v2.js';
+import { radialDistill } from '../../services/distillation/radial-distiller-v2.js';
 import { executeStreamingDistill, formatDistillSSE } from '../../services/distillation/streaming-distiller.js';
 import { validate, schemas } from '../../middleware/validate.js';
 import { db } from '../../core/db.js';
@@ -88,10 +88,13 @@ export function setupMemoryRoutes(app: Application) {
           output_format: body.output_format,
         });
 
-        const stream = executeStreamingDistill({
-          ...body,
-          batchSize: 100,
-        });
+        // Streaming distiller only supports json/yaml/compound — strip decision-records
+        const streamOpts: any = { ...body, batchSize: 100 };
+        if (streamOpts.output_format === 'decision-records') {
+          streamOpts.output_format = 'json';
+        }
+
+        const stream = executeStreamingDistill(streamOpts);
 
         // Set up SSE headers
         res.setHeader('Content-Type', 'text/event-stream');
@@ -112,15 +115,15 @@ export function setupMemoryRoutes(app: Application) {
         return;
       }
 
-      // Standard mode: Single JSON response (4.8.2 implementation)
+      // Standard mode: Single JSON response (v2 with tag-based + decision records support)
       const result = await radialDistill(body);
       const duration = Date.now() - startTime;
 
       StructuredLogger.info('RADIAL_DISTILL_COMPLETE', {
         compounds_processed: result.stats.compounds_processed,
-        lines_total: result.stats.lines_total,
-        lines_unique: result.stats.lines_unique,
-        lines_duplicate: result.stats.lines_duplicate,
+        blocks_total: result.stats.blocks_total,
+        blocks_unique: result.stats.blocks_unique,
+        decision_records: result.stats.decision_records,
         compression_ratio: result.stats.compression_ratio,
         duration_ms: duration,
       });

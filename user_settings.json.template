@@ -22,13 +22,25 @@
   },
   "paths": {
     "_description": "Directory paths - override these for custom installations",
+    "anchor_root": "<ANCHOR_ROOT>",
     "notebook": "notebook",
-    "inbox": "notebook/inbox",
-    "external_inbox": "notebook/external-inbox",
-    "distills": "notebook/distills",
-    "mirrored_brain": ".anchor/mirrored_brain",
+    "inbox": "<ANCHOR_ROOT>/inbox",
+    "external_inbox": "<ANCHOR_ROOT>/external-inbox",
+    "distills": "<ANCHOR_ROOT>/distills",
+    "mirrored_brain": "<ANCHOR_ROOT>/mirrored_brain",
+    "sessions": "<ANCHOR_ROOT>/sessions",
+    "logs": "<ANCHOR_ROOT>/logs",
+    "backups": "<ANCHOR_ROOT>/backups",
     "context": "engine/context",
-    "logs": "logs"
+    "models": "models",
+    "dist": "dist",
+    "engine_bin": "engine/bin",
+    "engine_src": "engine/src",
+    "engine_dist": "engine/dist",
+    "engine_context": "engine/context",
+    "engine_plugins": "engine/plugins",
+    "desktop_overlay_src": "packages/desktop-overlay/src",
+    "desktop_overlay_dist": "packages/desktop-overlay/dist"
   },
   "encryption": {
     "enabled": false,
@@ -135,3 +147,6 @@
     "log_dir": "./logs"
   }
 }
+
+// NOTE: This is a template file. Run the initialization script below to generate the actual user_settings.json
+// The script below handles path resolution and directory creation on first startup.

@@ -1,0 +1,10 @@
+{
+  "totalDocuments": 200,
+  "uniqueTags": 15,
+  "uniqueTopics": 21,
+  "dateRange": {
+    "start": "2023-11-16T15:14:30.257Z",
+    "end": "2024-05-11T06:15:09.940Z"
+  },
+  "seed": 42
+}

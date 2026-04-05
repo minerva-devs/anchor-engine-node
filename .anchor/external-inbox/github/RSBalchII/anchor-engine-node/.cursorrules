@@ -1,0 +1,42 @@
+# Cursor IDE Rules for Anchor Engine Node
+
+## 🚨 CRITICAL: Documentation Rules
+
+**NEVER create .md files outside these directories:**
+- `docs/` - User-facing documentation
+- `specs/` - Technical specifications
+- `[package]/README.md` - Package-specific READMEs only
+
+**FORBIDDEN locations:**
+- Root directory (except README.md, CHANGELOG.md, CONTRIBUTING.md, CODE_OF_CONDUCT.md)
+- `scripts/`, `tests/`, `benchmarks/`, `sample-data/` subdirectories
+- Any hidden directories
+
+## Before Creating Documentation
+
+1. **Search existing docs:** `grep -r "topic" docs/ specs/`
+2. **Check location:** Must be `docs/` or `specs/`
+3. **Verify uniqueness:** No duplicates, link instead
+4. **Keep it instructional:** No philosophy, only actionable content
+
+## Code Style
+
+- TypeScript with strict mode
+- ES modules (import/export)
+- Async/await for async operations
+- JSDoc comments for public APIs
+- Error handling with try/catch
+
+## Testing
+
+- Unit tests in `tests/` directory
+- Integration tests in `tests/integration/`
+- Run tests: `npm test`
+
+## When in Doubt
+
+**ASK THE USER** before creating documentation files.
+
+---
+
+See `.ai-instructions.md` for complete AI assistant guidelines.

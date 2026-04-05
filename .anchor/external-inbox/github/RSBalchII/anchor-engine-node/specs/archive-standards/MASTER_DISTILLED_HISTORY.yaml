@@ -1,0 +1,1796 @@
+metadata:
+  source: Anchor Engine Radial Distiller
+  distilled_at: '2026-03-13T22:09:54.885Z'
+  line_count: 350
+  parameters:
+    radius: 3
+    normalization: strict
+lines:
+  - content: '...metadata:'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'source: Anchor Engine Radial Distiller'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'distilled_at: ''2026-03-13T17:47:43.984Z'''
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'line_count: 93'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'parameters:'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'radius: 3'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'normalization: strict'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'lines:'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- cwd":"/data/data/com.termux/files/home'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'provenance:'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- >-'
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ../../.qwen/projects/-data-data-com-termux-files-home/chats/cf6b64f6-2378-41e2-bd8e-1b234ea6c2b5.jsonl
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ../../.qwen/projects/-data-data-com-termux-files-home/chats/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl...
+    provenance:
+      - inbox/distilled/distilled_2026-03-13T17-47-43-981Z.yaml
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 118: Native Core Stabilization & N-API Migration'
+    provenance:
+      - specs/archive-standards/118-native-core-stabilization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** February 2026'
+    provenance:
+      - specs/archive-standards/118-native-core-stabilization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** ⚠️ SUPERSEDED by Standard 119 (PGlite-First Architecture)'
+    provenance:
+      - specs/archive-standards/118-native-core-stabilization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Applies To:** Historical reference — C++ N-API bindings, SQLite3
+      integration (deprecated)
+    provenance:
+      - specs/archive-standards/118-native-core-stabilization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '---'
+    provenance:
+      - specs/archive-standards/118-native-core-stabilization.md
+      - specs/archive-standards/122-physics_walker_safety.md
+      - specs/archive-standards/119-pglite-first-architecture.md
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+      - specs/archive-standards/120-system_output_filtering.md
+      - specs/archive-standards/124-virtual_anchor_resolution.md
+      - specs/archive-standards/125-semantic_deduplication.md
+      - specs/archive-standards/127-pglite-memory-optimization.md
+      - specs/archive-standards/126-pointer_only_index_design.md
+      - specs/archive-standards/121-tag_limiting.md
+      - specs/archive-standards/116-phoenix-protocol.md
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+      - specs/archive-standards/131-async-file-io.md
+      - specs/archive-standards/130-test-coverage-requirements.md
+      - specs/archive-standards/129-command-injection-prevention.md
+      - specs/archive-standards/136-streaming-search.md
+      - specs/archive-standards/132-api-versioning.md
+      - specs/archive-standards/135-adaptive-concurrency-control.md
+      - specs/archive-standards/200-deployment_security.md
+      - specs/archive-standards/133-radial-distillation.md
+      - specs/archive-standards/Database_Schema.md
+      - specs/archive-standards/README.md
+      - specs/archive-standards/RESEARCH_LANDSCAPE.md
+      - specs/archive-standards/doc_policy.md
+      - specs/archive-standards/134-mobile-search-optimization.md
+      - specs/archive-standards/077-benchmark-protocol.md
+      - specs/archive-standards/086-dual_strategy_search.md
+      - specs/archive-standards/078-parameter-tuning.md
+      - specs/archive-standards/113-automatic_max_recall.md
+      - specs/archive-standards/117-arxiv_submission.md
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Note: Superseded by Standard 119'
+    provenance:
+      - specs/archive-standards/118-native-core-stabilization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      As of **February 27, 2026 (v4.3.0)**, this standard has been
+      **superseded** by [Standard 119: PGlite-First
+      Architecture](119-pglite-first-architecture.md)....
+    provenance:
+      - specs/archive-standards/118-native-core-stabilization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 122: Physics Walker Temporal Decay Safety'
+    provenance:
+      - specs/archive-standards/122-physics_walker_safety.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Version:** 1.0.0'
+    provenance:
+      - specs/archive-standards/122-physics_walker_safety.md
+      - specs/archive-standards/124-virtual_anchor_resolution.md
+      - specs/archive-standards/126-pointer_only_index_design.md
+      - specs/archive-standards/121-tag_limiting.md
+      - specs/archive-standards/200-deployment_security.md
+      - specs/archive-standards/077-benchmark-protocol.md
+      - specs/archive-standards/078-parameter-tuning.md
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** March 1, 2026'
+    provenance:
+      - specs/archive-standards/122-physics_walker_safety.md
+      - specs/archive-standards/121-tag_limiting.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Active'
+    provenance:
+      - specs/archive-standards/122-physics_walker_safety.md
+      - specs/archive-standards/119-pglite-first-architecture.md
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+      - specs/archive-standards/124-virtual_anchor_resolution.md
+      - specs/archive-standards/125-semantic_deduplication.md
+      - specs/archive-standards/127-pglite-memory-optimization.md
+      - specs/archive-standards/126-pointer_only_index_design.md
+      - specs/archive-standards/121-tag_limiting.md
+      - specs/archive-standards/136-streaming-search.md
+      - specs/archive-standards/132-api-versioning.md
+      - specs/archive-standards/077-benchmark-protocol.md
+      - specs/archive-standards/059-reliable-ingestion.md
+      - specs/archive-standards/078-parameter-tuning.md
+      - specs/archive-standards/104-universal-semantic-search.md
+      - specs/archive-standards/115-github-repository-ingestion.md
+      - specs/archive-standards/105-elastic-context-fuzzy-search.md
+      - specs/archive-standards/102-centralized-configuration-management.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Supersedes:** None'
+    provenance:
+      - specs/archive-standards/122-physics_walker_safety.md
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+      - specs/archive-standards/124-virtual_anchor_resolution.md
+      - specs/archive-standards/121-tag_limiting.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Summary'
+    provenance:
+      - specs/archive-standards/122-physics_walker_safety.md
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+      - specs/archive-standards/124-virtual_anchor_resolution.md
+      - specs/archive-standards/121-tag_limiting.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Standard 122 defines the **Temporal Decay Safety Protocol** for preventing
+      floating-point underflow errors in the Physics Walker's temporal decay
+      calculation. This standard ensures stable search execution regardless of
+      timestamp age distribution....
+    provenance:
+      - specs/archive-standards/122-physics_walker_safety.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 119: PGlite-First Architecture'
+    provenance:
+      - specs/archive-standards/119-pglite-first-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** February 27, 2026'
+    provenance:
+      - specs/archive-standards/119-pglite-first-architecture.md
+      - specs/archive-standards/126-pointer_only_index_design.md
+      - specs/archive-standards/200-deployment_security.md
+      - specs/archive-standards/077-benchmark-protocol.md
+      - specs/archive-standards/078-parameter-tuning.md
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Authority:** ARM64 Windows Migration'
+    provenance:
+      - specs/archive-standards/119-pglite-first-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Domain:** Database, Cross-Platform Compatibility'
+    provenance:
+      - specs/archive-standards/119-pglite-first-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. Context & Motivation'
+    provenance:
+      - specs/archive-standards/119-pglite-first-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '### 1.1 The ARM64 Windows Reality'
+    provenance:
+      - specs/archive-standards/119-pglite-first-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      In February 2026, the Anchor Engine was migrated from a dual
+      SQLite3/PGlite architecture to a **PGlite-first** approach. This decision
+      was driven by the fundamental incompatibility between native C++ binaries
+      and ARM64 Windows without recompilation....
+    provenance:
+      - specs/archive-standards/119-pglite-first-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 123: Search Result Tag Sanitization'
+    provenance:
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Version:** 1.1.0'
+    provenance:
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** March 3, 2026'
+    provenance:
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+      - specs/archive-standards/124-virtual_anchor_resolution.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Standard 123 defines the **Search Result Tag Sanitization** protocol with
+      two complementary functions:
+    provenance:
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      1. **stripInlineTags()** — Removes inline hashtag tokens (`#Word`,
+      `##19864Residential`) from content
+    provenance:
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      2. **stripTagFooters()** — Removes trailing structural metadata footers
+      from truncated snippets (e.g., YAML serialization artifacts)...
+    provenance:
+      - specs/archive-standards/123-search_result_tag_sanitization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 120: System Output Filtering'
+    provenance:
+      - specs/archive-standards/120-system_output_filtering.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Status:** Production Ready | **Version:** 1.0.0 | **Date:** February 28,
+      2026
+    provenance:
+      - specs/archive-standards/120-system_output_filtering.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Pain Point:** Self-contamination of knowledge graph from Anchor/MCP
+      system output
+    provenance:
+      - specs/archive-standards/120-system_output_filtering.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Overview'
+    provenance:
+      - specs/archive-standards/120-system_output_filtering.md
+      - specs/archive-standards/126-pointer_only_index_design.md
+      - specs/archive-standards/200-deployment_security.md
+      - specs/archive-standards/086-dual_strategy_search.md
+      - specs/archive-standards/078-parameter-tuning.md
+      - specs/archive-standards/113-automatic_max_recall.md
+      - specs/archive-standards/117-arxiv_submission.md
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Standard 120 defines the **System Output Filtering** protocol for
+      preventing recursive self-contamination of the Anchor Engine knowledge
+      graph.
+    provenance:
+      - specs/archive-standards/120-system_output_filtering.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      When chat logs or documents containing Anchor search results, MCP agent
+      output, or other system-generated metadata are ingested, they must be
+      **cleaned of system metadata** to prevent pollution of the knowledge graph
+      with synthetic scores, IDs, and formatting....
+    provenance:
+      - specs/archive-standards/120-system_output_filtering.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 124: Virtual Anchor Resolution for Physics Walker'
+    provenance:
+      - specs/archive-standards/124-virtual_anchor_resolution.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Standard 124 defines the **Virtual Anchor Resolution** protocol for
+      ensuring the Physics Walker receives real database molecule IDs instead of
+      in-memory `virtual_*` IDs created by the ContextInflator. Without this
+      resolution, the Physics Walker resolves 0 anchors and returns no
+      associative results....
+    provenance:
+      - specs/archive-standards/124-virtual_anchor_resolution.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 125: Semantic Deduplication of Search Results'
+    provenance:
+      - specs/archive-standards/125-semantic_deduplication.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Version:** 1.0'
+    provenance:
+      - specs/archive-standards/125-semantic_deduplication.md
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Introduced:** v4.4.2'
+    provenance:
+      - specs/archive-standards/125-semantic_deduplication.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**File:** `engine/src/services/search/search-utils.ts`'
+    provenance:
+      - specs/archive-standards/125-semantic_deduplication.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Problem'
+    provenance:
+      - specs/archive-standards/125-semantic_deduplication.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Search results frequently contained multiple semantically overlapping
+      snippets from the same source file. For example, a query for "Who is Rob?"
+      would return 3–4 snippets from `Sybil-History.md` all expressing the same
+      facts (neurodivergence, relationship with Dory) at slightly different byte
+      offsets — each beyond the proximity coalescing threshold but covering the
+      same semantic ground....
+    provenance:
+      - specs/archive-standards/125-semantic_deduplication.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 127: PGlite Memory Optimization'
+    provenance:
+      - specs/archive-standards/127-pglite-memory-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** March 6, 2026'
+    provenance:
+      - specs/archive-standards/127-pglite-memory-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Authority:** OOM Prevention Sprint'
+    provenance:
+      - specs/archive-standards/127-pglite-memory-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Domain:** Database, Performance, Embedded Deployment'
+    provenance:
+      - specs/archive-standards/127-pglite-memory-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. Problem'
+    provenance:
+      - specs/archive-standards/127-pglite-memory-optimization.md
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      PGlite's WASM runtime allocates a large internal buffer cache by default
+      (~1GB `shared_buffers`).
+    provenance:
+      - specs/archive-standards/127-pglite-memory-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      On top of the wink-nlp model and application heap, this pushed the process
+      past 6GB and caused
+    provenance:
+      - specs/archive-standards/127-pglite-memory-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: OOM crashes during concurrent searches on large corpora (215K+ atoms)....
+    provenance:
+      - specs/archive-standards/127-pglite-memory-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ...# Architecture Tradeoffs - Pointer-Only Index
+    provenance:
+      - specs/archive-standards/126-pointer_only_index_design.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Anchor Engine uses a **pointer-only index** architecture where the
+      database stores references (pointers) to content, while raw content lives
+      in the filesystem (`mirrored_brain/`). This document analyzes when this
+      approach excels and when it may be suboptimal.
+    provenance:
+      - specs/archive-standards/126-pointer_only_index_design.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '---...'
+    provenance:
+      - specs/archive-standards/126-pointer_only_index_design.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 121: Tag Limiting for Output Quality'
+    provenance:
+      - specs/archive-standards/121-tag_limiting.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Standard 121 defines the **Tag Limiting Protocol** for preventing output
+      bloat in copied YAML context. This standard ensures that molecule output
+      remains concise and readable by limiting the number of tags per molecule
+      to the most relevant ones....
+    provenance:
+      - specs/archive-standards/121-tag_limiting.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 116: Phoenix Protocol - Transactional Backup & Restore'
+    provenance:
+      - specs/archive-standards/116-phoenix-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Status:** IMPLEMENTED | **Date:** February 22, 2026 | **Last Updated:**
+      2026-03 | **Priority:** CRITICAL
+    provenance:
+      - specs/archive-standards/116-phoenix-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Problem Statement'
+    provenance:
+      - specs/archive-standards/116-phoenix-protocol.md
+      - specs/archive-standards/103-standalone-ui-capability.md
+      - specs/archive-standards/088-server-startup-sequence.md
+      - specs/archive-standards/101-byte-offset-protocol.md
+      - specs/archive-standards/100-pglite-type-handling.md
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'Prior to Phoenix Protocol, backup/restore operations were incomplete:'
+    provenance:
+      - specs/archive-standards/116-phoenix-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Database could be restored but filesystem remained empty'
+    provenance:
+      - specs/archive-standards/116-phoenix-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      - `inbox/`, `external-inbox/`, and `mirrored_brain/` had no files after
+      restore
+    provenance:
+      - specs/archive-standards/116-phoenix-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Mirror Protocol ran on startup before files existed'
+    provenance:
+      - specs/archive-standards/116-phoenix-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- No timing or performance metrics for restore operations...'
+    provenance:
+      - specs/archive-standards/116-phoenix-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 128: Illuminate & Explore — Corpus Traversal Modes'
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Active | **Version:** 2.0 | **Date:** 2026-03-08'
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Introduced:** v4.5.1 | **Revised:** v4.5.2'
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. Purpose'
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+      - specs/archive-standards/131-async-file-io.md
+      - specs/archive-standards/130-test-coverage-requirements.md
+      - specs/archive-standards/129-command-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Define two complementary corpus traversal modes accessible via `POST
+      /v1/memory/explore`:
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '| Mode | UI Prefix | Seed | Returns | Primary Use |'
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '|---|---|---|---|---|'
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      | **Explore** | `explore: <query>` | FTS query or atom IDs | Tag-hub
+      concept map | Discover what topics exist; skeleton for LLM orientation |
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      | **Illuminate** | `illuminate:` (empty) | Global top-degree hubs | Ranked
+      content atoms | Read the corpus narrative; surface representative passages
+      |...
+    provenance:
+      - specs/archive-standards/128-illuminate-bfs-traversal.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 131: Async File I/O for Non-blocking APIs'
+    provenance:
+      - specs/archive-standards/131-async-file-io.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Active | **Version:** 1.0 | **Date:** 2026-03-08'
+    provenance:
+      - specs/archive-standards/131-async-file-io.md
+      - specs/archive-standards/130-test-coverage-requirements.md
+      - specs/archive-standards/129-command-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Introduced:** v4.5.4'
+    provenance:
+      - specs/archive-standards/131-async-file-io.md
+      - specs/archive-standards/130-test-coverage-requirements.md
+      - specs/archive-standards/129-command-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Define requirements for using asynchronous file I/O in API endpoints to
+      prevent event loop blocking and ensure concurrent request handling.
+    provenance:
+      - specs/archive-standards/131-async-file-io.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This standard was established following the optimization of `/v1/settings`
+      endpoints which replaced synchronous `fs.readFileSync` with
+      `fs.promises.readFile`....
+    provenance:
+      - specs/archive-standards/131-async-file-io.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 130: Test Coverage Requirements'
+    provenance:
+      - specs/archive-standards/130-test-coverage-requirements.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Define minimum test coverage requirements and testing patterns for the
+      Anchor Engine codebase.
+    provenance:
+      - specs/archive-standards/130-test-coverage-requirements.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This standard was established following the addition of comprehensive test
+      suites for core modules in v4.5.4 (#89, #90, #91, #92, #98, #101, #103,
+      #104, #105, #110, #114)....
+    provenance:
+      - specs/archive-standards/130-test-coverage-requirements.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 129: Command Injection Prevention'
+    provenance:
+      - specs/archive-standards/129-command-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Define security requirements for preventing command injection
+      vulnerabilities when executing system commands from web-accessible
+      endpoints.
+    provenance:
+      - specs/archive-standards/129-command-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This standard was established following security patches to `/v1/git/run`
+      (#111) and `/v1/system/explorer` (#106) endpoints....
+    provenance:
+      - specs/archive-standards/129-command-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 136: Streaming Search — Memory-Efficient Result Delivery'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** March 11, 2026'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Authority:** Memory Optimization Sprint'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Domain:** Search, Performance, Mobile Deployment'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'Large search results (79+ anchors) cause memory spikes during:'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 1. Result retrieval from database
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 2. Context inflation for each result
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 3. Response serialization
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'On mobile devices with limited RAM (1-2GB), this causes:'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- OOM (Out of Memory) crashes'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- 56-second delays before rejection'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Poor user experience...'
+    provenance:
+      - specs/archive-standards/136-streaming-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 132: API Versioning Strategy'
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Created:** March 9, 2026'
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Purpose'
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+      - specs/archive-standards/077-benchmark-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Define a clear versioning strategy for the Anchor Engine REST API to
+      ensure backward compatibility and smooth upgrades for integrators.
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Versioning Scheme'
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '### URL-Based Versioning'
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'All API endpoints use a major version prefix:'
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: /v1/atoms
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: /v1/search
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: /v1/memory/distill...
+    provenance:
+      - specs/archive-standards/132-api-versioning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 135: Adaptive Concurrency Control'
+    provenance:
+      - specs/archive-standards/135-adaptive-concurrency-control.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** ACTIVE | **Version:** 1.0 | **Date:** 2026-03-10'
+    provenance:
+      - specs/archive-standards/135-adaptive-concurrency-control.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Introduced:** v4.5.5 | **Component:** Engine / Utils'
+    provenance:
+      - specs/archive-standards/135-adaptive-concurrency-control.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Target:** All platforms (Android/Termux, Linux, macOS, Windows)'
+    provenance:
+      - specs/archive-standards/135-adaptive-concurrency-control.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. Executive Summary'
+    provenance:
+      - specs/archive-standards/135-adaptive-concurrency-control.md
+      - specs/archive-standards/133-radial-distillation.md
+      - specs/archive-standards/134-mobile-search-optimization.md
+      - specs/archive-standards/104-universal-semantic-search.md
+      - specs/archive-standards/115-github-repository-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Define an adaptive concurrency system that automatically adjusts
+      processing modes based on available system memory. Prevents Out-Of-Memory
+      (OOM) crashes on low-memory devices while maintaining high performance on
+      high-memory systems....
+    provenance:
+      - specs/archive-standards/135-adaptive-concurrency-control.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ...# Security Guide - Anchor Engine Deployment
+    provenance:
+      - specs/archive-standards/200-deployment_security.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Classification:** Deployment Guidance'
+    provenance:
+      - specs/archive-standards/200-deployment_security.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This guide provides security recommendations for deploying Anchor Engine
+      in production environments. Anchor Engine is designed as "local-first"
+      software, but additional hardening may be required depending on your
+      threat model.
+    provenance:
+      - specs/archive-standards/200-deployment_security.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Threat Model...'
+    provenance:
+      - specs/archive-standards/200-deployment_security.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 133: Radial Distillation — Lossless Corpus Compression'
+    provenance:
+      - specs/archive-standards/133-radial-distillation.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** 🚧 DRAFT | **Version:** 1.0 | **Date:** 2026-03-09'
+    provenance:
+      - specs/archive-standards/133-radial-distillation.md
+      - specs/archive-standards/134-mobile-search-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Introduced:** v4.5.5 | **Supersedes:** Legacy distill.ts (naive
+      atom-level compression)
+    provenance:
+      - specs/archive-standards/133-radial-distillation.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Component:** Engine / Distillation Service'
+    provenance:
+      - specs/archive-standards/133-radial-distillation.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Define the **Radial Distillation** architecture for creating
+      near-lossless, deduplicated corpus compressions....
+    provenance:
+      - specs/archive-standards/133-radial-distillation.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Domain Standard: Data Pipeline'
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** LIVING | **Domain:** Data Ingestion & Processing'
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Maintained By:** Anchor Engine Team'
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+      - specs/archive-standards/Database_Schema.md
+      - specs/archive-standards/Search_Protocol.md
+      - specs/archive-standards/System_Architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Last Updated:** 2026-02-10'
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+      - specs/archive-standards/System_Architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. Overview'
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+      - specs/archive-standards/Database_Schema.md
+      - specs/archive-standards/Search_Protocol.md
+      - specs/archive-standards/System_Architecture.md
+      - specs/archive-standards/094-smart-search-protocol.md
+      - specs/archive-standards/105-elastic-context-fuzzy-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The Data Pipeline transforms raw files (Markdown, Code, logs) into
+      semantic **Atoms** stored in CozoDB. It enforces strict reliability
+      protocols ("Ghost Data" prevention) and applies intelligent tagging.
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 2. Reliable Ingestion (Standard 059)'
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'To prevent silent data loss ("Ghost Data"):'
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      *   **Read-After-Write (RAW)**: Every ingestion MUST explicitly verify the
+      write by querying the DB immediately after insertion....
+    provenance:
+      - specs/archive-standards/Data_Pipeline.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Domain Standard: Database Schema & ERD'
+    provenance:
+      - specs/archive-standards/Database_Schema.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** LIVING | **Domain:** Database (PGlite)'
+    provenance:
+      - specs/archive-standards/Database_Schema.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Last Updated:** 2026-03-08 (v4.5.2 — full ERD, three-tier atoms model)'
+    provenance:
+      - specs/archive-standards/Database_Schema.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Anchor uses **PGlite** (PostgreSQL compiled to WASM, running in-process)
+      for local, serverless storage. The schema implements a multi-resolution
+      content hierarchy: full documents → paragraph chunks → semantic tags,
+      connected by a graph of edges....
+    provenance:
+      - specs/archive-standards/Database_Schema.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ...# Architecture Standards Index
+    provenance:
+      - specs/archive-standards/README.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Last Updated:** March 11, 2026 | **Total Standards:** 94'
+    provenance:
+      - specs/archive-standards/README.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Active Standards (Current Implementation)'
+    provenance:
+      - specs/archive-standards/README.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'These standards define the current production architecture:'
+    provenance:
+      - specs/archive-standards/README.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '### v4.7.0 Standards (Streaming Search + Memory Management)'
+    provenance:
+      - specs/archive-standards/README.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '| # | Standard | Description | Status |'
+    provenance:
+      - specs/archive-standards/README.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '|---|----------|-------------|--------|'
+    provenance:
+      - specs/archive-standards/README.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      | **136** | [Streaming Search](136-streaming-search.md) | Memory-efficient
+      result streaming with Server-Sent Events | v1.0 |...
+    provenance:
+      - specs/archive-standards/README.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 010: Bridge Redirect Implementation - Smart Model Loading'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/010-bridge-redirect-implementation.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## What Happened?'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/010-bridge-redirect-implementation.md
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/018-streaming-cli-client-responsive-ux.md
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/026-ghost-engine-connection-management.md
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The Anchor Core system had inconsistent model loading behavior where some
+      models worked and others didn't. The issue was that the bridge was only
+      serving local files and returning 404 errors when files were missing,
+      instead of providing fallback to online sources.
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/010-bridge-redirect-implementation.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The browser components (like chat.html) were requesting model files from
+      the local bridge (localhost:8000), but if the model hadn't been downloaded
+      locally, they would fail with 404 errors instead of falling back to online
+      loading....
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/010-bridge-redirect-implementation.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Research Landscape: STAR Algorithm & Related Work'
+    provenance:
+      - specs/archive-standards/RESEARCH_LANDSCAPE.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** February 23, 2026'
+    provenance:
+      - specs/archive-standards/RESEARCH_LANDSCAPE.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Purpose:** Position STAR in research landscape, identify related work,
+      cite appropriately
+    provenance:
+      - specs/archive-standards/RESEARCH_LANDSCAPE.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Executive Summary'
+    provenance:
+      - specs/archive-standards/RESEARCH_LANDSCAPE.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **STAR** (Semantic Temporal Associative Retrieval) is a novel graph-based
+      retrieval algorithm that provides an alternative to dense vector RAG
+      systems. This document analyzes the research landscape, identifies key
+      related work, and provides citation guidance....
+    provenance:
+      - specs/archive-standards/RESEARCH_LANDSCAPE.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Domain Standard: Search Protocol'
+    provenance:
+      - specs/archive-standards/Search_Protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** LIVING | **Domain:** Search & Retrieval'
+    provenance:
+      - specs/archive-standards/Search_Protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Last Updated:** 2026-03-08 (Standard 128 v2.0 — Explore/Illuminate
+      semantic split)
+    provenance:
+      - specs/archive-standards/Search_Protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The **Universal Semantic Search** protocol unifies all retrieval
+      operations under a single, permissive, and context-aware strategy. It
+      prioritizes recall and relevance over exact keyword matching, using a
+      "Semantic First" approach....
+    provenance:
+      - specs/archive-standards/Search_Protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 018: Streaming CLI Client for Responsive UX'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/018-streaming-cli-client-responsive-ux.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The anchor.py CLI client was using `stream=False` for API requests,
+      causing the terminal to hang during long responses from 7B models. This
+      created a poor user experience where the terminal would freeze for 10-20
+      seconds during long answers, breaking the "fluid" feeling of a memory
+      assistant.
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/018-streaming-cli-client-responsive-ux.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## The Cost'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/018-streaming-cli-client-responsive-ux.md
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Poor user experience with hanging terminal during long responses'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/018-streaming-cli-client-responsive-ux.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- 1+ hours spent updating anchor.py to use streaming for better UX'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/018-streaming-cli-client-responsive-ux.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Users experiencing "frozen" terminal during model responses'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/018-streaming-cli-client-responsive-ux.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Break in the conversational flow of the memory assistant...'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/018-streaming-cli-client-responsive-ux.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Domain Standard: System Architecture'
+    provenance:
+      - specs/archive-standards/System_Architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** LIVING | **Domain:** Core System & Operations'
+    provenance:
+      - specs/archive-standards/System_Architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The Anchor Engine is a modular, local-first Knowledge OS. It operates as a
+      Node.js server with native C++ accelerants, managing a PGlite database and
+      communicating via HTTP/WebSocket.
+    provenance:
+      - specs/archive-standards/System_Architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 2. Server Startup Sequence (Standard 088)'
+    provenance:
+      - specs/archive-standards/System_Architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'To prevent `ECONNREFUSED` errors in the Electron wrapper:'
+    provenance:
+      - specs/archive-standards/System_Architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 1....
+    provenance:
+      - specs/archive-standards/System_Architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ...# Documentation Policy
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Active | **Version:** 2.0 | **Date:** February 23, 2026'
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Philosophy'
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'Documentation is **executable specification**. It should be:'
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '1. **Discoverable**: Find it in `specs/`, not scattered'
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '2. **Actionable**: Tells you exactly what to do'
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '3. **Living**: Updated with every code change'
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '4. **Minimal**: No duplication, single source of truth'
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '5. **Aligned**: Follows anchor-engine-node structure...'
+    provenance:
+      - specs/archive-standards/doc_policy.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 026: Ghost Engine Connection Management and Resilience'
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/026-ghost-engine-connection-management.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The Ghost Engine (headless browser running CozoDB WASM) was frequently
+      showing "disconnected" status in logs, causing 503 errors for memory
+      ingestion and search requests. The logs showed repeated "Ghost Engine
+      Disconnected" messages followed by successful connections when the engine
+      eventually came online. This created a frustrating user experience where
+      the system appeared broken even though it was working correctly once the
+      Ghost Engine connected....
+    provenance:
+      - >-
+        specs/archive-standards/archive/40-BRIDGE/026-ghost-engine-connection-management.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ...# Standard 134: Mobile Search Optimization — Memory-Constrained
+      Retrieval
+    provenance:
+      - specs/archive-standards/134-mobile-search-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Introduced:** v4.5.5 | **Component:** Engine / Search Service'
+    provenance:
+      - specs/archive-standards/134-mobile-search-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Target:** Android/Termux, Raspberry Pi, embedded devices (< 2GB RAM)'
+    provenance:
+      - specs/archive-standards/134-mobile-search-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Define memory-constrained search strategies for Anchor Engine deployments
+      on resource-limited devices....
+    provenance:
+      - specs/archive-standards/134-mobile-search-optimization.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ...# Standard 103: Standalone UI Capability (Internal Lightweight UI for
+      Independent Operation)
+    provenance:
+      - specs/archive-standards/103-standalone-ui-capability.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Status:** Active | **Authority:** Human-Locked | **Domain:**
+      Architecture
+    provenance:
+      - specs/archive-standards/103-standalone-ui-capability.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The Anchor Engine needs to operate independently as a standalone search
+      tool while maintaining seamless integration with the full system.
+      Previously, the engine relied solely on the external UI from
+      `packages/anchor-ui/dist`, making standalone operation impossible without
+      the full system....
+    provenance:
+      - specs/archive-standards/103-standalone-ui-capability.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 015: Browser-Based Control Center Architecture'
+    provenance:
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The system had fragmented interfaces requiring users to interact with both
+      browser UI and terminal commands. Context retrieval required switching
+      between interfaces, and vision processing required separate Python
+      scripts. This created inefficient workflows and poor user experience.
+    provenance:
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      - 6+ hours spent switching between browser and terminal for different
+      operations
+    provenance:
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Fragmented workflow requiring multiple interfaces for simple tasks'
+    provenance:
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Poor visibility into system state across different components'
+    provenance:
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Inefficient context retrieval and vision processing workflows'
+    provenance:
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Users had to remember multiple endpoints and interfaces...'
+    provenance:
+      - specs/archive-standards/archive/40-BRIDGE/015-browser-control-center.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ...# Benchmark Protocol - Anchor Engine
+    provenance:
+      - specs/archive-standards/077-benchmark-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Standard:** 077'
+    provenance:
+      - specs/archive-standards/077-benchmark-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This document defines the standardized benchmark methodology for Anchor
+      Engine performance measurement. All benchmarks follow these protocols to
+      ensure reproducibility, comparability, and scientific rigor.
+    provenance:
+      - specs/archive-standards/077-benchmark-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Principles'
+    provenance:
+      - specs/archive-standards/077-benchmark-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '### 1. Determinism'
+    provenance:
+      - specs/archive-standards/077-benchmark-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      All benchmarks must be **fully deterministic** when run with the same seed
+      value....
+    provenance:
+      - specs/archive-standards/077-benchmark-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 059: Reliable Ingestion (The "Ghost Data" Protocol)'
+    provenance:
+      - specs/archive-standards/059-reliable-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Trigger:** Ingestion API returning 200 OK while failing to persist data
+      to CozoDB.
+    provenance:
+      - specs/archive-standards/059-reliable-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. The Pain (Ghost Data & Silent Failures)'
+    provenance:
+      - specs/archive-standards/059-reliable-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      *   **symptom:** The `POST /v1/ingest` endpoint returned `200 OK` with a
+      valid ID, but the data was never written to the database.
+    provenance:
+      - specs/archive-standards/059-reliable-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      *   **Cost:** 6 hours of debugging search logic logic when ingestion was
+      the root cause....
+    provenance:
+      - specs/archive-standards/059-reliable-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 086: Dual-Strategy Search'
+    provenance:
+      - specs/archive-standards/086-dual_strategy_search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Status:** Production Ready | **Version:** 2.0.0 | **Date:** February 22,
+      2026
+    provenance:
+      - specs/archive-standards/086-dual_strategy_search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Supersedes:** Standard 086 v1.0 (Tag Walker only)'
+    provenance:
+      - specs/archive-standards/086-dual_strategy_search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Standard 086 defines the **Dual-Strategy Search** protocol for the Anchor
+      Engine. It supports two distinct search modes:
+    provenance:
+      - specs/archive-standards/086-dual_strategy_search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      1. **Standard Search** - Balanced 70/30 budget with temporal decay
+      (default)
+    provenance:
+      - specs/archive-standards/086-dual_strategy_search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      2. **Max-Recall Search** - Zero temporal decay, 3-hop traversal, maximum
+      context retrieval...
+    provenance:
+      - specs/archive-standards/086-dual_strategy_search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ...# STAR Parameter Tuning Guide
+    provenance:
+      - specs/archive-standards/078-parameter-tuning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Standard:** 078'
+    provenance:
+      - specs/archive-standards/078-parameter-tuning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The STAR (Semantic Temporal Associative Retrieval) algorithm uses
+      gravity-based scoring with tunable parameters. This guide explains
+      parameter choices, provides tuning methodology, and documents ablation
+      study frameworks.
+    provenance:
+      - specs/archive-standards/078-parameter-tuning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## STAR Scoring Formula'
+    provenance:
+      - specs/archive-standards/078-parameter-tuning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: Gravity Score = SharedTags × TimeDecay × Similarity...
+    provenance:
+      - specs/archive-standards/078-parameter-tuning.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 094: Smart Search Protocol'
+    provenance:
+      - specs/archive-standards/094-smart-search-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '> [!WARNING]'
+    provenance:
+      - specs/archive-standards/094-smart-search-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      > **DEPRECATED**: See Standard 104 (Universal Semantic Search) for current
+      implementation.
+    provenance:
+      - specs/archive-standards/094-smart-search-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** DEPRECATED (Superseded by 104)'
+    provenance:
+      - specs/archive-standards/094-smart-search-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** 2026-02-03'
+    provenance:
+      - specs/archive-standards/094-smart-search-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Component:** Engine / Search Service'
+    provenance:
+      - specs/archive-standards/094-smart-search-protocol.md
+      - specs/archive-standards/104-universal-semantic-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The Smart Search Protocol (SSP) enhances the semantic search engine
+      (Tag-Walker) with intelligent pre-processing and dynamic fallback
+      mechanisms....
+    provenance:
+      - specs/archive-standards/094-smart-search-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ...# Standard 095: Database Reset on Startup Protocol (The "Tabula Rasa"
+      Pattern)
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Status:** Active | **Topic:** Database Initialization & Clean State
+      Management
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. The Problem: Database Directory Conflicts'
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      During system startup, PGlite encounters directory creation conflicts when
+      the database directory already exists, causing startup failures with
+      `EEXIST: file already exists` errors.
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Symptoms:**'
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- `Error: EEXIST: file already exists, mkdir ''path/to/context_data''`'
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- `could not access status of transaction` errors during operations'
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Engine process exits with code 1 during startup'
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- System fails to initialize properly...'
+    provenance:
+      - specs/archive-standards/095-database-reset-on-startup.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ...# Standard 096: Timestamp Assignment Protocol (Temporal Context
+      Propagation)
+    provenance:
+      - specs/archive-standards/096-timestamp-assignment-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Status:** Active | **Topic:** Data Ingestion & Temporal Context
+      Management
+    provenance:
+      - specs/archive-standards/096-timestamp-assignment-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. The Problem: Static Timestamps'
+    provenance:
+      - specs/archive-standards/096-timestamp-assignment-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Previously, all data molecules received identical timestamps corresponding
+      to ingestion time rather than content-specific temporal markers. This
+      resulted in:
+    provenance:
+      - specs/archive-standards/096-timestamp-assignment-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Homogeneous timestamps across search results (e.g., all showing ``)'
+    provenance:
+      - specs/archive-standards/096-timestamp-assignment-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Lack of temporal diversity in chronological searches'
+    provenance:
+      - specs/archive-standards/096-timestamp-assignment-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Inability to distinguish content from different time periods'
+    provenance:
+      - specs/archive-standards/096-timestamp-assignment-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Poor temporal context for relationship narratives...'
+    provenance:
+      - specs/archive-standards/096-timestamp-assignment-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ...# Standard 088: Server Startup Sequence for Engine-Wrapper
+      Communication
+    provenance:
+      - specs/archive-standards/088-server-startup-sequence.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The Electron wrapper was experiencing ECONNREFUSED errors when attempting
+      to connect to the engine server, preventing UI access. The root cause was
+      improper startup sequencing where database initialization blocked server
+      startup.
+    provenance:
+      - specs/archive-standards/088-server-startup-sequence.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Solution Architecture'
+    provenance:
+      - specs/archive-standards/088-server-startup-sequence.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ┌─────────────────────────────────────────────────────────────────┐
+    provenance:
+      - specs/archive-standards/088-server-startup-sequence.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: │  OLD SEQUENCE (FAILED)                                         │
+    provenance:
+      - specs/archive-standards/088-server-startup-sequence.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ├─────────────────────────────────────────────────────────────────┤
+    provenance:
+      - specs/archive-standards/088-server-startup-sequence.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: │  1....
+    provenance:
+      - specs/archive-standards/088-server-startup-sequence.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 065: Graph-Based Associative Retrieval (Semantic-Lite)'
+    provenance:
+      - specs/archive-standards/065-graph-associative-retrieval.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Category:** Architecture / Search'
+    provenance:
+      - specs/archive-standards/065-graph-associative-retrieval.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Approved'
+    provenance:
+      - specs/archive-standards/065-graph-associative-retrieval.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** 2026-01-19'
+    provenance:
+      - specs/archive-standards/065-graph-associative-retrieval.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Context'
+    provenance:
+      - specs/archive-standards/065-graph-associative-retrieval.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Traditional Vector Search (HNSW) poses significant resource overhead
+      (RAM/CPU) and can be unstable in local environments (CozoDB driver
+      issues). Furthermore, for personal knowledge bases, "fuzzy" vector
+      neighbors often hallucinate connections that lack explicit structural
+      relevance....
+    provenance:
+      - specs/archive-standards/065-graph-associative-retrieval.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 101: Byte Offset Protocol'
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Status:** Active | **Authority:** Human-Locked | **Domain:** Data
+      Processing
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Unicode text has different byte lengths vs character counts. String
+      slicing with `substring()` uses character indices, causing incorrect
+      extraction when molecules use byte offsets.
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Solution: Buffer.subarray'
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '### Pattern'
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '```typescript'
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+      - specs/archive-standards/100-pglite-type-handling.md
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '// CORRECT: Use Buffer for byte-accurate extraction'
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: const buffer = Buffer.from(content, 'utf8');
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: const slice = buffer.subarray(startByte, endByte);
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: const text = slice.toString('utf8');...
+    provenance:
+      - specs/archive-standards/101-byte-offset-protocol.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 100: PGlite Type Handling Protocol'
+    provenance:
+      - specs/archive-standards/100-pglite-type-handling.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Active | **Authority:** Human-Locked | **Domain:** Database'
+    provenance:
+      - specs/archive-standards/100-pglite-type-handling.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      PGlite 0.2.0 changed array handling behavior. TEXT columns require JSON
+      strings, TEXT[] columns require raw arrays.
+    provenance:
+      - specs/archive-standards/100-pglite-type-handling.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Type Handling Rules'
+    provenance:
+      - specs/archive-standards/100-pglite-type-handling.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ### TEXT Columns (e.g., `atoms`, `molecules`, `embedding` in compounds
+      table)
+    provenance:
+      - specs/archive-standards/100-pglite-type-handling.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '// CORRECT: JSON stringify arrays for TEXT columns'
+    provenance:
+      - specs/archive-standards/100-pglite-type-handling.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'atoms: Array.isArray(row[6]) ?...'
+    provenance:
+      - specs/archive-standards/100-pglite-type-handling.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 113: Automatic Max-Recall Trigger'
+    provenance:
+      - specs/archive-standards/113-automatic_max_recall.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Status:** Production Ready | **Version:** 1.1.0 | **Date:** March 3,
+      2026
+    provenance:
+      - specs/archive-standards/113-automatic_max_recall.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Standard 113 defines the **automatic max-recall trigger** mechanism. When
+      a user requests a large token budget (>16k tokens / 65k chars), the search
+      automatically switches to max-recall mode for comprehensive retrieval.
+    provenance:
+      - specs/archive-standards/113-automatic_max_recall.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Updated (v1.1):** Added search serialization and memory pressure
+      downgrade to prevent OOM crashes during concurrent max-recall searches....
+    provenance:
+      - specs/archive-standards/113-automatic_max_recall.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ...# Standard 098: Horizontal Scaling Architecture (Distributed Processing
+      Protocol)
+    provenance:
+      - specs/archive-standards/098-scaling-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Planned | **Topic:** System Scaling & Distributed Processing'
+    provenance:
+      - specs/archive-standards/098-scaling-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. The Challenge: Single-Node Limitations'
+    provenance:
+      - specs/archive-standards/098-scaling-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'Current system operates on a single-node architecture limiting:'
+    provenance:
+      - specs/archive-standards/098-scaling-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Maximum dataset size that can be processed'
+    provenance:
+      - specs/archive-standards/098-scaling-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Concurrent user capacity'
+    provenance:
+      - specs/archive-standards/098-scaling-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Performance with large codebases'
+    provenance:
+      - specs/archive-standards/098-scaling-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Fault tolerance and high availability...'
+    provenance:
+      - specs/archive-standards/098-scaling-architecture.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 104: Universal Semantic Search Protocol'
+    provenance:
+      - specs/archive-standards/104-universal-semantic-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** 2026-02-10'
+    provenance:
+      - specs/archive-standards/104-universal-semantic-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      **Supersedes:** Standard 094 (Smart Search), Standard 086 (Tag-Walker
+      Calibration)
+    provenance:
+      - specs/archive-standards/104-universal-semantic-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This standard establishes the **Universal Semantic Search** architecture,
+      which unifies all search operations under a single, permissive, and
+      context-aware strategy....
+    provenance:
+      - specs/archive-standards/104-universal-semantic-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 115: GitHub Repository Ingestion'
+    provenance:
+      - specs/archive-standards/115-github-repository-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** 2026-02-21'
+    provenance:
+      - specs/archive-standards/115-github-repository-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Component:** Engine / Ingestion Service'
+    provenance:
+      - specs/archive-standards/115-github-repository-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This standard establishes the **GitHub Repository Ingestion** protocol,
+      enabling users to ingest entire GitHub repositories with a single click.
+      The system downloads repository tarballs, extracts source files, and
+      atomizes them into the knowledge graph with proper context
+      preservation....
+    provenance:
+      - specs/archive-standards/115-github-repository-ingestion.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 105: Elastic Context & Fuzzy Search Protocol'
+    provenance:
+      - specs/archive-standards/105-elastic-context-fuzzy-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Type:** Core Feature'
+    provenance:
+      - specs/archive-standards/105-elastic-context-fuzzy-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Created:** 2026-02-10'
+    provenance:
+      - specs/archive-standards/105-elastic-context-fuzzy-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Con** Semantic Search Scaling & Robustness'
+    provenance:
+      - specs/archive-standards/105-elastic-context-fuzzy-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This standard defines the "Elastic Context" scaling logic and "Fuzzy
+      Search" capabilities implemented to resolve issues with rigid context
+      windows and typo sensitivity. It ensures that the Anchor Engine delivers
+      **maximum useful context** while remaining **robust against user input
+      errors**....
+    provenance:
+      - specs/archive-standards/105-elastic-context-fuzzy-search.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 117: arXiv Submission Workflow'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Active | **Version:** 1.0 | **Date:** February 23, 2026'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This standard defines the workflow for preparing and submitting Anchor
+      Engine research papers to arXiv, ensuring consistency, reproducibility,
+      and proper documentation.
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Directory Structure'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: anchor-engine-node/
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '├── docs/arxiv/              # LaTeX source & submission materials'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '│   ├── star-whitepaper.tex  # Main LaTeX manuscript'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '│   ├── BIBLIOGRAPHY.bib     # Citation database'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '│   ├── compile.bat          # Build script (Windows)'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '│   └── prepare-submission.bat  # Package preparation'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '├── docs/                    # Developer documentation'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '│   ├── BIBLIOGRAPHY.bib     # Project-wide citation reference'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '│   └── ARCHITECTURE_DIAGRAMS.md  # Visual architecture (human-friendly)'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '└── specs/                   # Technical specifications'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '├── spec.md              # System specification (LLM-optimized)'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: └── standards/
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '├── 117-arxiv_submission.md  # This file'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '└── RESEARCH_LANDSCAPE.md  # Related work analysis...'
+    provenance:
+      - specs/archive-standards/117-arxiv_submission.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 102: Centralized Configuration Management'
+    provenance:
+      - specs/archive-standards/102-centralized-configuration-management.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Category:** Configuration / Operations'
+    provenance:
+      - specs/archive-standards/102-centralized-configuration-management.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Date:** 2026-02-09'
+    provenance:
+      - specs/archive-standards/102-centralized-configuration-management.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. Problem Statement'
+    provenance:
+      - specs/archive-standards/102-centralized-configuration-management.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      The system had multiple hardcoded configuration values scattered across
+      the codebase, making it difficult to customize deployments and maintain
+      consistent settings. Different components used different configuration
+      approaches, leading to inconsistencies and deployment challenges....
+    provenance:
+      - specs/archive-standards/102-centralized-configuration-management.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '...# Standard 099: SQL Injection Prevention Protocol'
+    provenance:
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Active | **Authority:** Human-Locked | **Domain:** Security'
+    provenance:
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      QueryBuilder must prevent SQL injection when constructing dynamic queries
+      with user-provided field/table names.
+    provenance:
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Solution: Identifier Escaping'
+    provenance:
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'private escapeIdentifier(identifier: string): string {'
+    provenance:
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: return '"' + identifier.replace(/"/g, '""') + '"';
+    provenance:
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '}...'
+    provenance:
+      - specs/archive-standards/099-sql-injection-prevention.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: ...# API Contracts - Anchor Engine
+    provenance:
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Base URL:** `http://localhost:3160`'
+    provenance:
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      This document provides concrete API examples for integrating with Anchor
+      Engine. All endpoints return JSON responses.
+    provenance:
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## Authentication'
+    provenance:
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Most `/v1/*` endpoints require an API key configured in
+      `user_settings.json`:
+    provenance:
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '```json'
+    provenance:
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: 'api_key": "your-secret-key-here...'
+    provenance:
+      - specs/archive-standards/105-api-contracts.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      ...# Standard 097: Enhanced Code Analysis (AST Integration & Code
+      Intelligence)
+    provenance:
+      - specs/archive-standards/097-enhanced-code-analysis.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '**Status:** Planned | **Topic:** Code Analysis & Intelligence Features'
+    provenance:
+      - specs/archive-standards/097-enhanced-code-analysis.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '## 1. The Challenge: Limited Code-Specific Analysis'
+    provenance:
+      - specs/archive-standards/097-enhanced-code-analysis.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: >-
+      Current system treats code as semantic content alongside text documents
+      but lacks sophisticated code-specific analysis capabilities:
+    provenance:
+      - specs/archive-standards/097-enhanced-code-analysis.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- No AST-based parsing for deep code understanding'
+    provenance:
+      - specs/archive-standards/097-enhanced-code-analysis.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Limited symbol resolution and cross-reference tracking'
+    provenance:
+      - specs/archive-standards/097-enhanced-code-analysis.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- No language-specific analysis features'
+    provenance:
+      - specs/archive-standards/097-enhanced-code-analysis.md
+    first_seen: '2026-03-13T22:08:20.000Z'
+  - content: '- Insufficient code quality and security scanning...'
+    provenance:
+      - specs/archive-standards/097-enhanced-code-analysis.md
+    first_seen: '2026-03-13T22:08:20.000Z'

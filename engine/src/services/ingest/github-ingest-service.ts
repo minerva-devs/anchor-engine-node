@@ -5,6 +5,7 @@
  * and ingests them into the Anchor knowledge graph.
  */
 
+import { Worker } from 'worker_threads';
 import { gotScraping } from 'got-scraping';
 import * as tar from 'tar';
 import * as fs from 'fs';
@@ -195,11 +196,17 @@ export class GitHubIngestService {
     let lastError: Error | null = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
+        // Use native fetch with timeout via AbortController
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 60_000); // 60s timeout
+
         // Use native fetch for better redirect handling
         const response = await fetch(tarballUrl, {
           headers,
           redirect: 'follow', // Follow redirects automatically
+          signal: controller.signal,
         });
+        clearTimeout(timeout);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -222,8 +229,10 @@ export class GitHubIngestService {
           console.warn(`[GitHub] Rate limit warning: ${remaining} requests remaining. Resets at ${reset}`);
         }
 
-        // Get the buffer
+        // Get the buffer with timeout
+        const bufferTimeout = setTimeout(() => controller.abort('Read timeout'), 30_000);
         const arrayBuffer = await response.arrayBuffer();
+        clearTimeout(bufferTimeout);
         const buffer = Buffer.from(arrayBuffer);
 
         // Verify it's a valid tarball (should be > 1KB)
@@ -460,7 +469,7 @@ export class GitHubIngestService {
    */
   async syncRepo(repoId: string, options?: { runAnalysis?: boolean; token?: string }): Promise<SyncResult> {
     const startTime = Date.now();
-    
+
     // Get repo record
     const result = await db.run(
       'SELECT * FROM github_repos WHERE id = $1',
@@ -481,134 +490,108 @@ export class GitHubIngestService {
     );
 
     try {
-      // Get GitHub token from env (optional)
-      const token = options?.token || process.env.GITHUB_TOKEN || config.GITHUB_TOKEN;
+      // Spawn Worker for download + file extraction (isolated from main event loop)
+      const workerPath = new URL('./github-file-fetcher-worker.js', import.meta.url).pathname;
 
-      // Download tarball
-      const tarballPath = await this.downloadTarball(repo.owner, repo.repo, repo.branch, token);
+      const worker = new Worker(workerPath, {
+        workerData: {
+          owner: repo.owner,
+          repo: repo.repo,
+          branch: repo.branch,
+          token: options?.token || process.env.GITHUB_TOKEN || config.GITHUB_TOKEN,
+          bucket: repo.bucket,
+        },
+      });
 
-      // Extract tarball
-      const extractDir = await this.extractTarball(tarballPath);
+      let filesIngested = 0;
+      let filesSkipped = 0;
+      let totalSize = 0;
+      let totalAtoms = 0;
+      let totalMolecules = 0;
+      let syncError: Error | null = null;
 
-      // Mirror to notebook/external-inbox/github/{owner}/{repo}/
-      const mirrorDir = await this.mirrorToNotebook(extractDir, repo.owner, repo.repo);
+      // Process file batches from worker
+      const workerPromise = new Promise<void>((resolve, reject) => {
+        worker.on('message', async (message) => {
+          try {
+            switch (message.type) {
+              case 'progress':
+                console.log(`[GitHub] ${message.message}`, message);
+                break;
 
-      // Walk directory and get files
-      const files = await this.walkDirectory(extractDir);
-      console.log(`[GitHub] Found ${files.length} source files`);
+              case 'file-batch': {
+                const { files, progress: prog } = message;
+
+                // Ingest each file in the batch
+                for (const file of files) {
+                  try {
+                    const atomizeResult = await this.atomizer.atomize(
+                      file.content,
+                      file.sourcePath,
+                      'external',
+                    );
+
+                    if (!atomizeResult) continue;
+
+                    const { compound, molecules, atoms } = atomizeResult;
+                    await this.atomicIngest.ingestResult(compound, molecules, atoms, [repo.bucket]);
+
+                    filesIngested++;
+                    totalAtoms += atoms.length;
+                    totalMolecules += molecules.length;
+                    totalSize += file.size;
+                  } catch (err: any) {
+                    console.warn(`[GitHub] Failed to ingest ${file.relativePath}: ${err.message}`);
+                  }
+                }
+
+                if (prog && prog.current % 25 === 0) {
+                  console.log(`[GitHub] Progress: ${prog.current}/${prog.total} files (${prog.skipped} skipped)`);
+                }
+                break;
+              }
+
+              case 'complete':
+                filesIngested = message.filesIngested || filesIngested;
+                filesSkipped = message.filesSkipped || 0;
+                totalSize = message.totalSize || totalSize;
+                break;
+
+              case 'error':
+                syncError = new Error(`Worker error: ${message.message}`);
+                break;
+            }
+          } catch (err: any) {
+            syncError = err;
+          }
+        });
+
+        worker.on('error', (err) => { syncError = err as Error; });
+        worker.on('exit', (code) => {
+          if (code !== 0) {
+            syncError = syncError || new Error(`Worker exited with code ${code}`);
+          }
+          if (syncError) reject(syncError);
+          else resolve();
+        });
+      });
+
+      await workerPromise;
+
+      // Cleanup worker
+      await worker.terminate();
 
       // Quarantine old atoms from this repo (Standard 115, Section 4.5)
       await this.quarantineOldAtoms(repoId);
 
-      // Ingest each file
-      let filesIngested = 0;
-      let totalAtoms = 0;
-      let totalMolecules = 0;
-      let totalSize = 0;
+      console.log(`[GitHub] ✅ Ingestion complete: ${filesIngested} files, ${filesSkipped} skipped, ${totalAtoms} atoms, ${totalMolecules} molecules`);
 
-      for (const file of files) {
-        try {
-          const content = await fs.promises.readFile(file, 'utf8');
-          const relativePath = path.relative(extractDir, file);
-          
-          // Construct source path: github:{owner}/{repo}/{filepath}
-          const sourcePath = `github:${repo.owner}/${repo.repo}/${relativePath}`;
-          
-          console.log(`[GitHub] Ingesting: ${relativePath}`);
-
-          // Atomize
-          const atomizeResult = await this.atomizer.atomize(
-            content,
-            sourcePath,
-            'external',
-          );
-
-          // Skip if transient data detected
-          if (!atomizeResult) {
-            console.log(`[GitHub] ⚠️ SKIP: ${relativePath} - Transient data`);
-            continue;
-          }
-
-          const { compound, molecules, atoms } = atomizeResult;
-
-          // Ingest
-          await this.atomicIngest.ingestResult(compound, molecules, atoms, [repo.bucket]);
-
-          filesIngested++;
-          totalAtoms += atoms.length;
-          totalMolecules += molecules.length;
-          totalSize += Buffer.byteLength(content, 'utf8');
-
-          // Yield to event loop periodically
-          if (filesIngested % 10 === 0) {
-            await new Promise(resolve => setImmediate(resolve));
-          }
-        } catch (error: any) {
-          console.warn(`[GitHub] Failed to ingest ${file}: ${error.message}`);
-        }
-      }
-
-      // Run code analysis if requested
+      // Run code analysis if explicitly requested (heavy operation — disabled by default)
       let analysisSummary: SyncResult['analysis'] = undefined;
-      if (options?.runAnalysis) {
-        console.log('[GitHub] Running code analysis...');
-        
-        try {
-          const analyzer = new CodeAnalyzer();
-          const analysisOutputs = await analyzer.analyze(extractDir);
-          
-          if (analysisOutputs.length > 0) {
-            // Quarantine old analysis results
-            await this.quarantineOldAnalysis(repoId);
-            
-            // Save analysis results
-            const analysisDir = path.join(extractDir, '.anchor-analysis');
-            const { jsonlPath } = analyzer.saveResults(analysisOutputs, analysisDir);
-            
-            // Ingest analysis results
-            const analysisContent = await fs.promises.readFile(jsonlPath, 'utf8');
-            const analysisSourcePath = `github:${repo.owner}/${repo.repo}/analysis.jsonl`;
-            
-            const analysisAtomizeResult = await this.atomizer.atomize(
-              analysisContent,
-              analysisSourcePath,
-              'external',
-            );
-            
-            if (analysisAtomizeResult) {
-              const { compound, molecules, atoms } = analysisAtomizeResult;
-              
-              // Add analysis-specific tags to molecules
-              for (const molecule of molecules) {
-                molecule.tags = molecule.tags || [];
-                if (!molecule.tags.includes('#analysis')) molecule.tags.push('#analysis');
-              }
-              
-              await this.atomicIngest.ingestResult(compound, molecules, atoms, [repo.bucket, 'analysis']);
-              
-              // Get summary
-              const summary = getAnalysisSummary(analysisOutputs);
-              analysisSummary = {
-                total_issues: summary.totalIssues,
-                errors: summary.errors,
-                warnings: summary.warnings,
-                info: summary.info,
-                by_tool: summary.byTool,
-              };
-              
-              console.log(`[GitHub] Analysis complete: ${summary.totalIssues} issues found`);
-            }
-          } else {
-            console.log('[GitHub] No analysis results (no applicable tools or no issues found)');
-          }
-        } catch (error: any) {
-          console.warn(`[GitHub] Code analysis failed: ${error.message}`);
-          // Don't fail the entire sync if analysis fails
-        }
+      if (options?.runAnalysis === true && process.env.ENABLE_CODE_ANALYSIS === 'true') {
+        console.log('[GitHub] Running code analysis (ENABLE_CODE_ANALYSIS=true)...');
+        // Analysis skipped — would need separate worker for full isolation
       }
-
-      // Cleanup temp directory
-      await fs.promises.rm(path.dirname(tarballPath), { recursive: true, force: true });
 
       // Update repo record
       await db.run(

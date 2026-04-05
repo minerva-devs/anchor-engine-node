@@ -19,8 +19,18 @@ export const PROJECT_ROOT = path.resolve(process.env.PROJECT_ROOT || path.join(_
 
 // Load user_settings.json for path overrides
 let userSettings: any = {};
+
+// Define Anchor root (centralized user data) - outside project root
+const ANCHOR_ROOT = path.resolve(
+  process.env.ANCHOR_ROOT ||
+  path.join(PROJECT_ROOT, '.anchor')
+);
+
+// Load user_settings.json from .anchor/ (primary) or project root (fallback)
 try {
-  const settingsPath = path.join(PROJECT_ROOT, 'user_settings.json');
+  const anchorSettingsPath = path.join(ANCHOR_ROOT, 'user_settings.json');
+  const projectSettingsPath = path.join(PROJECT_ROOT, 'user_settings.json');
+  const settingsPath = fs.existsSync(anchorSettingsPath) ? anchorSettingsPath : projectSettingsPath;
   if (fs.existsSync(settingsPath)) {
     userSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
   }
@@ -30,17 +40,15 @@ try {
 
 // Path configuration with user_settings.json overrides
 // Priority: Environment variables > user_settings.json > defaults
-const pathConfig = userSettings.paths || {};
-
 export const NOTEBOOK_DIR = path.resolve(
-  process.env.NOTEBOOK_DIR || 
-  pathConfig.notebook || 
+  process.env.NOTEBOOK_DIR ||
+  userSettings.paths?.notebook ||
   path.join(PROJECT_ROOT, 'notebook')
 );
 
 export const CONTEXT_DIR = path.resolve(
-  process.env.CONTEXT_DIR || 
-  pathConfig.context || 
+  process.env.CONTEXT_DIR ||
+  userSettings.paths?.context ||
   path.join(PROJECT_ROOT, 'engine', 'context')
 );
 
@@ -48,42 +56,32 @@ export const MODELS_DIR = path.resolve(process.env.MODELS_DIR || path.join(PROJE
 export const DIST_DIR = path.resolve(process.env.DIST_DIR || path.join(PROJECT_ROOT, 'dist'));
 export const BASE_PATH = PROJECT_ROOT;
 export const LOGS_DIR = path.resolve(
-  process.env.LOGS_DIR || 
-  pathConfig.logs || 
+  process.env.LOGS_DIR ||
+  userSettings.paths?.logs ||
   path.join(PROJECT_ROOT, 'logs')
 );
-
-// Ensure notebook directories exist
-import { mkdirSync } from 'fs';
-try {
-  mkdirSync(NOTEBOOK_DIR, { recursive: true });
-  mkdirSync(path.join(NOTEBOOK_DIR, 'inbox'), { recursive: true });
-  mkdirSync(path.join(NOTEBOOK_DIR, 'external-inbox'), { recursive: true });
-  mkdirSync(path.join(NOTEBOOK_DIR, 'distills'), { recursive: true });
-} catch (e) {
-  // Ignore errors - directories may already exist
-}
 
 // Define specific paths
 export const PATHS = {
   PROJECT_ROOT,
+  ANCHOR_ROOT,
   CONTEXT_DIR,
   MODELS_DIR,
   DIST_DIR,
-  BACKUPS_DIR: path.join(PROJECT_ROOT, 'backups'),
+  BACKUPS_DIR: path.resolve(process.env.BACKUPS_DIR || userSettings.paths?.backups || path.join(ANCHOR_ROOT, 'backups')),
   LOGS_DIR,
   CONFIG_FILE: path.join(PROJECT_ROOT, 'sovereign.yaml'),
-  USER_SETTINGS: path.join(PROJECT_ROOT, 'user_settings.json'),
+  USER_SETTINGS: path.join(ANCHOR_ROOT, 'user_settings.json'),
   DATABASE_FILE: path.join(CONTEXT_DIR, 'context.db'),
   NOTEBOOK_DIR,
-  INBOX_DIR: path.resolve(pathConfig.inbox || path.join(NOTEBOOK_DIR, 'inbox')),
-  EXTERNAL_INBOX_DIR: path.resolve(pathConfig.external_inbox || path.join(NOTEBOOK_DIR, 'external-inbox')),
-  DISTILLS_DIR: path.resolve(pathConfig.distills || path.join(NOTEBOOK_DIR, 'distills')),
-  MIRRORED_BRAIN_DIR: path.resolve(pathConfig.mirrored_brain || path.join(PROJECT_ROOT, '.anchor', 'mirrored_brain')),
+  // Centralized user data paths (from .anchor/)
+  INBOX_DIR: path.resolve(process.env.INBOX_DIR || userSettings.paths?.inbox || path.join(ANCHOR_ROOT, 'inbox')),
+  EXTERNAL_INBOX_DIR: path.resolve(process.env.EXTERNAL_INBOX_DIR || userSettings.paths?.external_inbox || path.join(ANCHOR_ROOT, 'external-inbox')),
+  DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || path.join(ANCHOR_ROOT, 'distills')),
+  MIRRORED_BRAIN_DIR: path.resolve(process.env.MIRRORED_BRAIN_DIR || userSettings.paths?.mirrored_brain || path.join(ANCHOR_ROOT, 'mirrored_brain')),
+  SESSIONS_DIR: path.resolve(process.env.SESSIONS_DIR || userSettings.paths?.sessions || path.join(ANCHOR_ROOT, 'sessions')),
   LIBRARIES_DIR: path.join(CONTEXT_DIR, 'libraries'),
   MIRRORS_DIR: path.join(CONTEXT_DIR, 'mirrors'),
-  SESSIONS_DIR: path.join(CONTEXT_DIR, 'sessions'),
-  TEMP_DIR: path.join(os.tmpdir(), 'sovereign-context-engine'),
   ENGINE_BIN: path.join(PROJECT_ROOT, 'engine', 'bin'),
   ENGINE_SRC: path.join(PROJECT_ROOT, 'engine', 'src'),
   ENGINE_DIST: path.join(PROJECT_ROOT, 'engine', 'dist'),
@@ -92,6 +90,32 @@ export const PATHS = {
   DESKTOP_OVERLAY_SRC: path.join(PROJECT_ROOT, 'packages', 'desktop-overlay', 'src'),
   DESKTOP_OVERLAY_DIST: path.join(PROJECT_ROOT, 'packages', 'desktop-overlay', 'dist'),
 };
+
+// Ensure anchor root and subdirectories exist
+try {
+  fs.mkdirSync(ANCHOR_ROOT, { recursive: true });
+  
+  // Create subdirectories if they don't exist
+  const subdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs', 'backups'];
+  for (const subdir of subdirs) {
+    const subdirPath = path.join(ANCHOR_ROOT, subdir);
+    if (!fs.existsSync(subdirPath)) {
+      fs.mkdirSync(subdirPath, { recursive: true });
+    }
+  }
+  
+  // Also ensure notebook directories exist (for backward compatibility)
+  try {
+    fs.mkdirSync(NOTEBOOK_DIR, { recursive: true });
+    fs.mkdirSync(path.join(NOTEBOOK_DIR, 'inbox'), { recursive: true });
+    fs.mkdirSync(path.join(NOTEBOOK_DIR, 'external-inbox'), { recursive: true });
+    fs.mkdirSync(path.join(NOTEBOOK_DIR, 'distills'), { recursive: true });
+  } catch (e) {
+    // Ignore errors - directories may already exist
+  }
+} catch (e) {
+  // Ignore errors - directories may already exist
+}
 
 // Export individual paths for convenience
 export const {
@@ -105,7 +129,5 @@ export const {
   DESKTOP_OVERLAY_SRC,
   DESKTOP_OVERLAY_DIST,
 } = PATHS;
-
-// NOTEBOOK_DIR is already exported above
 
 export default PATHS;

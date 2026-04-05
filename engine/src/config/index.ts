@@ -65,6 +65,10 @@ const SearchSettingsSchema = z.object({
 const DatabaseSettingsSchema = z.object({
   wipe_on_startup: z.boolean().optional(),
   wipe_on_shutdown: z.boolean().optional(),
+  shared_buffers_mb: z.number().int().positive().optional(),
+  effective_cache_size_mb: z.number().int().positive().optional(),
+  work_mem_mb: z.number().int().positive().optional(),
+  maintenance_work_mem_mb: z.number().int().positive().optional(),
 });
 
 // Memory Settings Schema
@@ -228,6 +232,10 @@ interface Config {
   DATABASE: {
     WIPE_ON_STARTUP: boolean; // Standard 051: Ephemeral Index (true = wipe & rebuild on each start)
     WIPE_ON_SHUTDOWN: boolean;
+    SHARED_BUFFERS_MB: number;
+    EFFECTIVE_CACHE_SIZE_MB: number;
+    WORK_MEM_MB: number;
+    MAINTENANCE_WORK_MEM_MB: number;
   };
 
   // Adaptive Concurrency (Standard 132)
@@ -388,6 +396,10 @@ const DEFAULT_CONFIG: Config = {
   DATABASE: {
     WIPE_ON_STARTUP: true,
     WIPE_ON_SHUTDOWN: true,
+    SHARED_BUFFERS_MB: 64,
+    EFFECTIVE_CACHE_SIZE_MB: 128,
+    WORK_MEM_MB: 8,
+    MAINTENANCE_WORK_MEM_MB: 32,
   },
 
   // Adaptive Concurrency (Standard 132)
@@ -460,12 +472,17 @@ function loadConfig(): Config {
   }
 
   // 2. Try Loading user_settings.json (Highest Priority for User Overrides)
-  // First try the root of the anchor-os project (monorepo setup)
+  // Primary: .anchor/user_settings.json (centralized user data)
+  // Fallback: project root user_settings.json (legacy / migration compatibility)
+  const anchorSettingsPath = path.join(__dirname, '..', '..', '..', '.anchor', 'user_settings.json');
   const userSettingsPath = path.join(__dirname, '..', '..', '..', 'user_settings.json');
-  if (fs.existsSync(userSettingsPath) && fs.statSync(userSettingsPath).isFile()) {
+
+  const primaryPath = fs.existsSync(anchorSettingsPath) ? anchorSettingsPath : userSettingsPath;
+
+  if (fs.existsSync(primaryPath) && fs.statSync(primaryPath).isFile()) {
     try {
-      const userSettings = JSON.parse(fs.readFileSync(userSettingsPath, 'utf8'));
-      console.log(`[Config] Loaded settings from ${userSettingsPath}`);
+      const userSettings = JSON.parse(fs.readFileSync(primaryPath, 'utf8'));
+      console.log(`[Config] Loaded settings from ${primaryPath}`);
 
       // Load LLM Settings (Provider + Model paths — single consolidated block)
       if (userSettings.llm) {
@@ -551,6 +568,10 @@ function loadConfig(): Config {
       if (userSettings.database) {
         if (userSettings.database.wipe_on_startup !== undefined) loadedConfig.DATABASE.WIPE_ON_STARTUP = userSettings.database.wipe_on_startup;
         if (userSettings.database.wipe_on_shutdown !== undefined) loadedConfig.DATABASE.WIPE_ON_SHUTDOWN = userSettings.database.wipe_on_shutdown;
+        if (userSettings.database.shared_buffers_mb !== undefined) loadedConfig.DATABASE.SHARED_BUFFERS_MB = userSettings.database.shared_buffers_mb;
+        if (userSettings.database.effective_cache_size_mb !== undefined) loadedConfig.DATABASE.EFFECTIVE_CACHE_SIZE_MB = userSettings.database.effective_cache_size_mb;
+        if (userSettings.database.work_mem_mb !== undefined) loadedConfig.DATABASE.WORK_MEM_MB = userSettings.database.work_mem_mb;
+        if (userSettings.database.maintenance_work_mem_mb !== undefined) loadedConfig.DATABASE.MAINTENANCE_WORK_MEM_MB = userSettings.database.maintenance_work_mem_mb;
       }
 
       // Load Limits and Thresholds

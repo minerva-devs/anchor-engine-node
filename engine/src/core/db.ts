@@ -138,6 +138,12 @@ export class Database {
       try {
         console.log(`[DB] Initializing PGlite at: ${dbPath}`);
         
+        // Read memory settings from config (with safe defaults)
+        const sharedBuffers = `${config.DATABASE?.SHARED_BUFFERS_MB || 64}MB`;
+        const effectiveCache = `${config.DATABASE?.EFFECTIVE_CACHE_SIZE_MB || 128}MB`;
+        const workMem = `${config.DATABASE?.WORK_MEM_MB || 8}MB`;
+        const maintWorkMem = `${config.DATABASE?.MAINTENANCE_WORK_MEM_MB || 32}MB`;
+
         // Initialize PGlite with optimized memory settings (Standard 127)
         // Memory reduction tactics for embedded deployment (phones + laptops)
         this.dbInstance = await new PGlite(dbPath, {
@@ -149,13 +155,13 @@ export class Database {
           relaxedDurability: true, // Skip fsync during ingestion (Standard 059)
           settings: {
             // Reduce PGlite WASM buffer cache from default 1GB
-            'shared_buffers': '256MB',
+            'shared_buffers': sharedBuffers,
             // Bound planner's estimate to prevent unbounded CTE memory
-            'effective_cache_size': '512MB',
+            'effective_cache_size': effectiveCache,
             // Per-operation memory for sorts/hashes (physics walker CTEs)
-            'work_mem': '16MB',
+            'work_mem': workMem,
             // Memory for VACUUM, CREATE INDEX, etc.
-            'maintenance_work_mem': '64MB',
+            'maintenance_work_mem': maintWorkMem,
             // WAL buffer size
             'wal_buffers': '4MB',
             // Spread checkpoint writes over 90% of checkpoint interval
@@ -166,15 +172,15 @@ export class Database {
             'seq_page_cost': 1.0,
           },
         });
-        
+
         console.log(`[DB] PGlite initialized successfully: ${dbPath}`);
-        console.log('[DB] Memory settings: shared_buffers=256MB, effective_cache_size=512MB, work_mem=16MB');
-        
+        console.log(`[DB] Memory settings: shared_buffers=${sharedBuffers}, effective_cache_size=${effectiveCache}, work_mem=${workMem}`);
+
         // Additional runtime memory bounds (applied after init)
         // These complement the constructor settings above
-        await this.dbInstance.exec("SET effective_cache_size = '512MB'");
-        await this.dbInstance.exec("SET work_mem = '16MB'");
-        await this.dbInstance.exec("SET maintenance_work_mem = '64MB'");
+        await this.dbInstance.exec(`SET effective_cache_size = '${effectiveCache}'`);
+        await this.dbInstance.exec(`SET work_mem = '${workMem}'`);
+        await this.dbInstance.exec(`SET maintenance_work_mem = '${maintWorkMem}'`);
       } catch (e: any) {
         console.error(`[DB] Failed to initialize PGlite: ${e.message}`);
         throw e;

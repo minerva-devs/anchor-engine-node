@@ -10,7 +10,7 @@
     "anchor-mcp": "mcp-server/dist/index.js"
   },
   "scripts": {
-    "start": "node --expose-gc --max-old-space-size=6144 engine/dist/index.js",
+    "start": "node scripts/validate-and-start.mjs",
     "dev": "pnpm --filter anchor-engine dev",
     "build": "pnpm build:all",
     "build:all": "pnpm --filter @rbalchii/anchor-types build && pnpm --filter @rbalchii/anchor-client build && pnpm --filter anchor-engine build && pnpm --filter @rbalchii/anchor-dashboard build && pnpm clean:ui-dist",

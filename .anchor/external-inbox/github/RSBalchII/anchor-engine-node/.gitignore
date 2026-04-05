@@ -1,0 +1,79 @@
+# Sensitive Data & Secrets
+.env
+.env.*
+*.env
+prompts/
+
+# Additional sensitive data patterns
+**/context_data/
+**/databases/
+**/personal_contacts/
+*secret*
+*token*
+*credential*
+
+# Database & Storage
+context.db/
+context_data/
+backups/
+logs/
+*.log
+*.sqlite
+*.sqlite-*
+*.db
+*.db-journal
+
+# Model Archives & Heavy Binaries
+archive/
+cpp/
+models/
+*.gguf
+
+# UI Build Artifacts (single-file UI in engine/public is used instead)
+packages/anchor-ui/dist/
+*.bin
+*.pth
+
+# Code Dependencies
+node_modules/
+dist/
+build/
+engine/build/
+native/bin/
+.pnpm-store/
+*.tsbuildinfo
+
+# Backups (keep at root but gitignore contents)
+backups/*.json
+backups/*.db
+
+# IDE & System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.bak
+
+# Test artifacts
+test-github-ingest-*/
+test-physics-db-*/
+
+# Temporary/User Specific
+codebase
+codebase/*
+external-inbox/*
+inbox/*
+local-data/*
+mirrored_brain/
+notebook/
+user_settings.json
+context/
+
+# Generated documentation
+QWEN.md
+
+# Android binary output
+engine/dist-android/
+
+engine/dist-win/
+coverage/

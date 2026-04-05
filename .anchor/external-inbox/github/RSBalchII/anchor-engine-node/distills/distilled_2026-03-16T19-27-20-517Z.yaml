@@ -1,0 +1,485 @@
+metadata:
+  source: Anchor Engine Radial Distiller
+  distilled_at: '2026-03-16T19:27:20.521Z'
+  line_count: 100
+  parameters:
+    radius: 3
+    normalization: strict
+lines:
+  - content: cwd":"/data/data/com.termux/files/home
+    provenance:
+      - inbox/0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3.jsonl
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+      - inbox/cf6b64f6-2378-41e2-bd8e-1b234ea6c2b5.jsonl
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+      - inbox/8ac09573-73ee-4766-8f38-37373e600d41.jsonl
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+      - inbox/6a85a0d4-b01a-4bb2-a08a-315a37245fc3.jsonl
+      - inbox/a198bad6-4b8a-4b6f-9422-644b8b2274b8.jsonl
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: version":"0.12.0
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: subslash_command
+    provenance:
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: systemPayload":phase":"invocation
+    provenance:
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: rawCommand":"/model}
+    provenance:
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: version":"0.12.2",role":"user
+    provenance:
+      - inbox/cf6b64f6-2378-41e2-bd8e-1b234ea6c2b5.jsonl
+      - inbox/a198bad6-4b8a-4b6f-9422-644b8b2274b8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: systemPayload":phase":"result
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"459a6389-4621-4fc4-922f-44a9bf8fab9c
+    provenance:
+      - inbox/8ac09573-73ee-4766-8f38-37373e600d41.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"8ac09573-73ee-4766-8f38-37373e600d41",2026-03-07T16:32:37.798Z",user
+    provenance:
+      - inbox/8ac09573-73ee-4766-8f38-37373e600d41.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: version":"0.11.1",role":"user
+    provenance:
+      - inbox/8ac09573-73ee-4766-8f38-37373e600d41.jsonl
+      - inbox/6a85a0d4-b01a-4bb2-a08a-315a37245fc3.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parts":[{hi inneee to update my giy config globally lets do so.   username
+      RSBalchII   email [EMAIL_REDACTED]]}}
+    provenance:
+      - inbox/8ac09573-73ee-4766-8f38-37373e600d41.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: uuid":"76204c53-24a0-4c2b-9b78-31121d4fe94f
+    provenance:
+      - inbox/8ac09573-73ee-4766-8f38-37373e600d41.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: parentUuid":"459a6389-4621-4fc4-922f-44a9bf8fab9c...
+    provenance:
+      - inbox/8ac09573-73ee-4766-8f38-37373e600d41.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"9440a212-0e63-4a89-9e6d-8bb729f80296
+    provenance:
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"236d683f-ce42-4085-accc-b05bff7fdf62",2026-03-10T23:19:22.550Z",system
+    provenance:
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: uuid":"41222f89-52dd-40e5-9551-6eca3d528225
+    provenance:
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: parentUuid":"9440a212-0e63-4a89-9e6d-8bb729f80296
+    provenance:
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      sessionId":"236d683f-ce42-4085-accc-b05bff7fdf62",2026-03-10T23:19:22.675Z",system...
+    provenance:
+      - inbox/236d683f-ce42-4085-accc-b05bff7fdf62.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"b0bfab6a-f10b-4668-8ffe-a06848bfbc32
+    provenance:
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"a057132d-deef-49fa-9214-e8f0bb923fa0",2026-03-09T21:41:20.293Z",system
+    provenance:
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: version":"0.11.1
+    provenance:
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: rawCommand":"/auth}
+    provenance:
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: uuid":"04394e68-8ed1-485e-9b71-c6ca8fea7a04
+    provenance:
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: parentUuid":"b0bfab6a-f10b-4668-8ffe-a06848bfbc32
+    provenance:
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      sessionId":"a057132d-deef-49fa-9214-e8f0bb923fa0",2026-03-09T21:41:20.397Z",system...
+    provenance:
+      - inbox/a057132d-deef-49fa-9214-e8f0bb923fa0.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"67f10903-4682-4c86-ac66-f38bb6d36c72
+    provenance:
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"03cdb3ca-08a3-43f3-8df6-ce27debd95fe",2026-03-12T23:05:52.137Z",system
+    provenance:
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: version":"0.12.2
+    provenance:
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: rawCommand":"/approval-mode}
+    provenance:
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: uuid":"1c4f8fa9-e757-40d4-a972-de59b06ddffc
+    provenance:
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: parentUuid":"67f10903-4682-4c86-ac66-f38bb6d36c72
+    provenance:
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      sessionId":"03cdb3ca-08a3-43f3-8df6-ce27debd95fe",2026-03-12T23:05:52.202Z",system...
+    provenance:
+      - inbox/03cdb3ca-08a3-43f3-8df6-ce27debd95fe.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"5d51a965-65ce-4119-b999-d0a006607332
+    provenance:
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"66d17907-70b4-4450-abda-30e8f2d15433",2026-03-12T19:53:27.678Z",system
+    provenance:
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: version":"0.12.1
+    provenance:
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: rawCommand":"/resune}
+    provenance:
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: uuid":"1f208b9e-34f3-45de-ac9f-65d7d1bbf8bb
+    provenance:
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: parentUuid":"5d51a965-65ce-4119-b999-d0a006607332
+    provenance:
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      sessionId":"66d17907-70b4-4450-abda-30e8f2d15433",2026-03-12T19:53:27.756Z",system...
+    provenance:
+      - inbox/66d17907-70b4-4450-abda-30e8f2d15433.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"0961cb00-b8e2-41d6-bc3e-22b61868cefb
+    provenance:
+      - inbox/6a85a0d4-b01a-4bb2-a08a-315a37245fc3.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"6a85a0d4-b01a-4bb2-a08a-315a37245fc3",2026-03-07T15:54:07.110Z",user
+    provenance:
+      - inbox/6a85a0d4-b01a-4bb2-a08a-315a37245fc3.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parts":[{lets install ripgrep globally and then in the anchor engine node
+      project lete pull from main and review the updates]}}
+    provenance:
+      - inbox/6a85a0d4-b01a-4bb2-a08a-315a37245fc3.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: uuid":"3614a746-beb3-4750-a6a3-bbaa1e0d27f1
+    provenance:
+      - inbox/6a85a0d4-b01a-4bb2-a08a-315a37245fc3.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: parentUuid":"0961cb00-b8e2-41d6-bc3e-22b61868cefb...
+    provenance:
+      - inbox/6a85a0d4-b01a-4bb2-a08a-315a37245fc3.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"0bf003e5-a302-4b96-bc8e-0262a8b4a60e
+    provenance:
+      - inbox/a198bad6-4b8a-4b6f-9422-644b8b2274b8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"a198bad6-4b8a-4b6f-9422-644b8b2274b8",2026-03-12T23:12:49.926Z",user
+    provenance:
+      - inbox/a198bad6-4b8a-4b6f-9422-644b8b2274b8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parts":[{▄▄▄▄▄▄  ▄▄     ▄▄ ▄▄▄▄▄▄▄ ▄▄▄    ▄▄  
+      ┌──────────────────────────────────────────────────────────┐\n 
+      ██╔═══██╗██║    ██║██╔════╝████╗  ██║  │ >_ Qwen Code (v0.12.2)...
+    provenance:
+      - inbox/a198bad6-4b8a-4b6f-9422-644b8b2274b8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"ea149a70-c43c-42a8-9eb0-5b05415e6076
+    provenance:
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"2401e1cd-5457-45b5-9208-0ab7bdd8f4e8",2026-03-07T02:38:43.021Z",system
+    provenance:
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: rawCommand":"/init}
+    provenance:
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: uuid":"7c30b3d6-0374-432a-9678-93c279eb088b
+    provenance:
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: parentUuid":"ea149a70-c43c-42a8-9eb0-5b05415e6076
+    provenance:
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: >-
+      sessionId":"2401e1cd-5457-45b5-9208-0ab7bdd8f4e8",2026-03-07T02:38:43.077Z",system
+    provenance:
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: rawCommand":"/init
+    provenance:
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: outputHistoryItems":[{info",Empty QWEN.md created....
+    provenance:
+      - inbox/2401e1cd-5457-45b5-9208-0ab7bdd8f4e8.jsonl
+    first_seen: '2026-03-16T18:21:40.000Z'
+  - content: ...uuid":"5769d423-03d6-44d1-860a-881d8745c389
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"d344043a-b169-47b0-beb5-79533b590500",2026-03-10T02:04:38.204Z",user
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: version":"0.12.0",role":"user
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      parts":[{Okay we had oom again. Let's go ahead and assess the situation.
+      What do the logs say?]}}
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: uuid":"ab1650c0-7607-4124-ac9e-d4e831cd1366
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: parentUuid":"5769d423-03d6-44d1-860a-881d8745c389
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      sessionId":"d344043a-b169-47b0-beb5-79533b590500",2026-03-10T02:04:44.197Z",system
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: subui_telemetry
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: systemPayload":uiEvent":event.name":"qwen-code.api_response
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: event.2026-03-10T02:04:44.195Z
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: response_id":"chatcmpl-098eb82e-8608-4953-b6a2-0e3b0481b449
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: model":"kimi-k2.5
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      status_code":200,"duration_ms":5906,"input_token_count":12049,"output_token_count":134,"cached_content_token_count":0,"thoughts_token_count":62,"tool_token_count":0,"total_token_count":12183,"prompt_id":"d344043a-b169-47b0-beb5-79533b590500########0
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: auth_openai}}
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: uuid":"643524d9-c01d-4ec5-a972-0970c944fa4e
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: parentUuid":"ab1650c0-7607-4124-ac9e-d4e831cd1366
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      sessionId":"d344043a-b169-47b0-beb5-79533b590500",2026-03-10T02:04:44.270Z",assistant
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: model":"kimi-k2.5",role":"model
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      parts":[{The user is referring to \"oom again\" which means Out Of
+      Memory....
+    provenance:
+      - inbox/d344043a-b169-47b0-beb5-79533b590500.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: ...uuid":"7858b708-c005-48e7-80ba-9b56dd7aa210
+    provenance:
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"50261645-57d3-4a45-ad5a-4908cd9bb263",2026-03-10T15:03:17.708Z",system
+    provenance:
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: uuid":"e825f300-abf4-464f-85e9-6a2fde003f56
+    provenance:
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: parentUuid":"7858b708-c005-48e7-80ba-9b56dd7aa210
+    provenance:
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      sessionId":"50261645-57d3-4a45-ad5a-4908cd9bb263",2026-03-10T15:03:17.778Z",system...
+    provenance:
+      - inbox/50261645-57d3-4a45-ad5a-4908cd9bb263.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: ...uuid":"2186cd80-7442-4c1f-82de-c343bf9b79f7
+    provenance:
+      - inbox/cf6b64f6-2378-41e2-bd8e-1b234ea6c2b5.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"cf6b64f6-2378-41e2-bd8e-1b234ea6c2b5",2026-03-12T23:15:35.355Z",user
+    provenance:
+      - inbox/cf6b64f6-2378-41e2-bd8e-1b234ea6c2b5.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      parts":[{hi please review the largest qwe n log it has our Zod work which
+      was accidentally deleted. It would be around 50 messages in the past . And
+      they're like $800 and some messages I think...
+    provenance:
+      - inbox/cf6b64f6-2378-41e2-bd8e-1b234ea6c2b5.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: ...uuid":"fc184bd3-968e-4bce-aa6c-3c3706796b22
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"218c6e32-5908-477c-ad51-4c9e90b3e5de",2026-03-10T23:23:01.906Z",system
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: uuid":"5a799cee-00f2-493e-80dc-3d09e7918f26
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: parentUuid":"fc184bd3-968e-4bce-aa6c-3c3706796b22
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      sessionId":"218c6e32-5908-477c-ad51-4c9e90b3e5de",2026-03-10T23:23:01.967Z",system
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: rawCommand":"/model
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: outputHistoryItems":[]}}
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: uuid":"7f7006c1-8c4b-4078-a7e9-571f560cdfa4
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: parentUuid":"5a799cee-00f2-493e-80dc-3d09e7918f26
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      sessionId":"218c6e32-5908-477c-ad51-4c9e90b3e5de",2026-03-10T23:23:14.858Z",user
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: >-
+      parts":[{$ For this session you're my co-pilot running in the terminal
+      while I'm driving\n    around and talking to you....
+    provenance:
+      - inbox/218c6e32-5908-477c-ad51-4c9e90b3e5de.jsonl
+    first_seen: '2026-03-16T18:23:20.000Z'
+  - content: ...uuid":"f8669174-666d-473c-8ab7-274e5f19d025
+    provenance:
+      - inbox/0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3.jsonl
+    first_seen: '2026-03-16T18:26:40.000Z'
+  - content: >-
+      parentUuid":null,"sessionId":"0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3",2026-03-13T23:11:38.477Z",user
+    provenance:
+      - inbox/0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3.jsonl
+    first_seen: '2026-03-16T18:26:40.000Z'
+  - content: version":"0.12.3",role":"user
+    provenance:
+      - inbox/0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3.jsonl
+    first_seen: '2026-03-16T18:26:40.000Z'
+  - content: >-
+      parts":[{Please review the anchor engine node project and let me know your
+      thoughts.]}}
+    provenance:
+      - inbox/0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3.jsonl
+    first_seen: '2026-03-16T18:26:40.000Z'
+  - content: uuid":"1123b059-ea24-4565-9039-2b3c95b5369f
+    provenance:
+      - inbox/0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3.jsonl
+    first_seen: '2026-03-16T18:26:40.000Z'
+  - content: parentUuid":"f8669174-666d-473c-8ab7-274e5f19d025
+    provenance:
+      - inbox/0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3.jsonl
+    first_seen: '2026-03-16T18:26:40.000Z'
+  - content: >-
+      sessionId":"0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3",2026-03-13T23:11:43.948Z",system...
+    provenance:
+      - inbox/0b9be90c-e6e4-4e5c-a708-0243ba4ccbf3.jsonl
+    first_seen: '2026-03-16T18:26:40.000Z'

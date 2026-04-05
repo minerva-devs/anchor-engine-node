@@ -4,7 +4,7 @@
   "server": {
     "host": "0.0.0.0",
     "port": 3160,
-    "api_key": "anchor-engine-default-key",
+    "api_key": "2bec68510a2da3dcfc9c3ff03a4abb5ca9c72f573af0a9602d4c92e031ba0263",
     "version": "4.8.2",
     "health_endpoint": "/health"
   },
