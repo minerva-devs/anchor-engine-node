@@ -11,6 +11,8 @@ import * as tar from 'tar';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
+import { fileURLToPath } from 'url';
 import { db } from '../../core/db.js';
 import { AtomizerService } from './atomizer-service.js';
 import { AtomicIngestService } from './ingest-atomic.js';
@@ -491,7 +493,7 @@ export class GitHubIngestService {
 
     try {
       // Spawn Worker for download + file extraction (isolated from main event loop)
-      const workerPath = new URL('./github-file-fetcher-worker.js', import.meta.url).pathname;
+      const workerPath = fileURLToPath(new URL('./github-file-fetcher-worker.js', import.meta.url));
 
       const worker = new Worker(workerPath, {
         workerData: {
@@ -535,6 +537,18 @@ export class GitHubIngestService {
 
                     const { compound, molecules, atoms } = atomizeResult;
                     await this.atomicIngest.ingestResult(compound, molecules, atoms, [repo.bucket]);
+
+                    // Track in sources table (Standard 115)
+                    const fileHash = crypto.createHash('md5').update(file.content).digest('hex');
+                    await db.run(
+                      `INSERT INTO sources (path, hash, total_atoms, last_ingest)
+                       VALUES ($1, $2, $3, $4)
+                       ON CONFLICT (path) DO UPDATE SET
+                         hash = EXCLUDED.hash,
+                         total_atoms = EXCLUDED.total_atoms,
+                         last_ingest = EXCLUDED.last_ingest`,
+                      [file.sourcePath, fileHash, atoms.length, Date.now()],
+                    );
 
                     filesIngested++;
                     totalAtoms += atoms.length;

@@ -380,16 +380,20 @@ export class LRUCache<K, V> {
       const percentageUsed = (heapUsed / heapTotal) * 100;
 
       if (percentageUsed >= this.criticalMemoryThreshold) {
-        // Critical: Evict 50% of cache
-        const targetSize = Math.floor(this.maxEntries * 0.5);
-        this.resize(targetSize);
+        // Critical: Evict 50% of cache (but keep minimum floor of 10 entries)
+        const targetSize = Math.max(10, Math.floor(this.maxEntries * 0.5));
+        if (this.cache.size > targetSize) {
+          this.resize(targetSize);
+        }
         console.log(
           `[LRUCache] CRITICAL: Evicted to ${targetSize} entries (memory: ${percentageUsed.toFixed(1)}%)`
         );
       } else if (percentageUsed >= this.memoryPressureThreshold) {
-        // High pressure: Evict 30% of cache
-        const targetSize = Math.floor(this.maxEntries * 0.7);
-        this.resize(targetSize);
+        // High pressure: Evict 30% of cache (but keep minimum floor of 20 entries)
+        const targetSize = Math.max(20, Math.floor(this.maxEntries * 0.7));
+        if (this.cache.size > targetSize) {
+          this.resize(targetSize);
+        }
         console.log(
           `[LRUCache] HIGH PRESSURE: Evicted to ${targetSize} entries (memory: ${percentageUsed.toFixed(1)}%)`
         );
@@ -431,8 +435,8 @@ export const searchResultCache = createLRUCache<string, any>({
   maxEntries: config.MAX_CACHE_SIZE || 100,
   ttlMs: config.CACHE_TTL_MS || 60000,
   enableMemoryPressureEviction: true,
-  memoryPressureThreshold: 70,
-  criticalMemoryThreshold: 85,
+  memoryPressureThreshold: 88,
+  criticalMemoryThreshold: 95,
 });
 
 /**
@@ -443,8 +447,8 @@ export const queryParseCache = createLRUCache<string, any>({
   maxEntries: 500,
   ttlMs: 300000, // 5 minutes
   enableMemoryPressureEviction: true,
-  memoryPressureThreshold: 70,
-  criticalMemoryThreshold: 85,
+  memoryPressureThreshold: 88,
+  criticalMemoryThreshold: 95,
 });
 
 /**
@@ -455,8 +459,8 @@ export const semanticExpansionCache = createLRUCache<string, string[]>({
   maxEntries: 1000,
   ttlMs: 600000, // 10 minutes
   enableMemoryPressureEviction: true,
-  memoryPressureThreshold: 70,
-  criticalMemoryThreshold: 85,
+  memoryPressureThreshold: 88,
+  criticalMemoryThreshold: 95,
 });
 
 /**
@@ -467,6 +471,6 @@ export const engramCache = createLRUCache<string, any>({
   maxEntries: 200,
   ttlMs: 120000, // 2 minutes
   enableMemoryPressureEviction: true,
-  memoryPressureThreshold: 70,
-  criticalMemoryThreshold: 85,
+  memoryPressureThreshold: 88,
+  criticalMemoryThreshold: 95,
 });

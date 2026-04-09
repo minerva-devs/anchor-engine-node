@@ -684,7 +684,8 @@
                         }
                         
                         // Add summary as first result
-                        const summaryText = `📊 Distillation Complete | Compression: ${data.stats?.compression_ratio || 'N/A'} | Lines: ${data.stats?.lines_unique || data.lines?.length || 0} | Duration: ${((data.stats?.duration_ms || 0) / 1000).toFixed(1)}s`;
+                        const linesCount = data.stats?.blocks_total ?? data.stats?.blocks_unique ?? data.stats?.decision_records ?? data.records?.length ?? data.output?.records_created ?? 0;
+                        const summaryText = `📊 Distillation Complete | Compression: ${data.stats?.compression_ratio || 'N/A'} | Lines: ${linesCount} | Duration: ${((data.stats?.duration_ms || 0) / 1000).toFixed(1)}s`;
                         const summaryResult = {
                             id: 'distill-summary',
                             content: summaryText,
@@ -1871,7 +1872,9 @@
 
             const loadSettings = async () => {
                 try {
-                    const data = await api.getSettings?.() || await fetch('/v1/settings').then(r => r.json());
+                    const data = await api.getSettings?.() || await fetch('/v1/settings', {
+                        headers: { 'Authorization': `Bearer ${API_KEY}` }
+                    }).then(r => r.json());
                     setSettings(data.settings || data);
                 } catch (error) {
                     console.error('Failed to load settings:', error);

@@ -16,7 +16,10 @@
     "version": "5.0.0"
   },
   "github": {
-    "token": "",
+    "_description": "GitHub Personal Access Token (PAT) for private repo access and higher rate limits",
+    "_token_help": "Generate at: https://github.com/settings/tokens (classic) or https://github.com/settings/personal-access-tokens (fine-grained)",
+    "_token_scopes": "Required scopes: 'repo' (private repos), 'public_repo' (public repos only)",
+    "token": "ghp_YOUR_PERSONAL_ACCESS_TOKEN_HERE",
     "default_branch": "main",
     "api_base_url": "https://api.github.com"
   },
