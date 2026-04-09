@@ -20,6 +20,7 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import { execSync } from 'child_process';
 
 // Configuration
 const PGLITE_CHUNK_IDS = 100;
@@ -69,6 +70,30 @@ export interface DecisionRecord {
   timestamp: string;
   provenance: string[];
   tags: string[];
+}
+
+/**
+ * Temporal metadata extracted via cascade
+ */
+export interface TemporalMetadata {
+  primary: string;           // YYYY-MM-DD
+  fallback_source: 'content' | 'git' | 'filename' | 'mtime';
+}
+
+/**
+ * Memory type classification
+ */
+export type MemoryType = 'episodic' | 'procedural' | 'semantic' | 'metacognitive';
+
+/**
+ * Enriched decision record with temporal and memory type metadata
+ */
+export interface EnrichedDecisionRecord extends DecisionRecord {
+  temporal: TemporalMetadata;
+  memory_type: MemoryType;
+  frequency?: number;
+  source_files?: string[];
+  related_entries?: string[];
 }
 
 /**
@@ -138,11 +163,13 @@ export interface RadialDistillRequest {
   };
   radius?: number;
   max_radius?: number;
-  output_format?: 'yaml' | 'json' | 'decision-records';
+  output_format?: 'yaml' | 'json' | 'decision-records' | 'json-full' | 'nested-yaml';
   output_path?: string;
   export_to_inbox?: boolean;
   auto_save?: boolean;
   mode?: 'standard' | 'tag-based';  // New: distillation mode
+  dry_run?: boolean;                 // New: preview without writing
+  similarity_threshold?: number;     // New: aggregation aggressiveness (0.0-1.0, default 0.85)
 }
 
 export interface RadialDistillResult {
@@ -168,11 +195,13 @@ export interface RadialDistillResult {
   };
   // Decision records (the actual distilled content)
   records?: DecisionRecord[];
-  // New: Digital object metadata for all processed compounds
+  // NEW: Enriched records with temporal, memory_type, and aggregation metadata
+  enriched_records?: EnrichedDecisionRecord[];
+  // Digital object metadata for all processed compounds
   digital_objects?: DigitalObjectMetadata[];
-  // New: Session index (subset of digital_objects for chat sessions)
+  // Session index (subset of digital_objects for chat sessions)
   session_index?: SessionIndexEntry[];
-  // New: Inflated content for tag-based mode (full atom content)
+  // Inflated content for tag-based mode (full atom content)
   inflated_content?: { content: string; source: string; tags: string[]; timestamp: number; }[];
 }
 
@@ -424,6 +453,274 @@ function assembleDecisionRecords(blocks: SemanticBlock[]): DecisionRecord[] {
   }
   
   return records;
+}
+
+// ============================================================================
+// NEW: Temporal Metadata Cascade (content → git → filename → mtime)
+// ============================================================================
+
+/**
+ * Extract temporal metadata via cascade fallback
+ * 1. Content-internal dates (ISO 8601, frontmatter)
+ * 2. Git history (if .git exists and file is tracked)
+ * 3. Filename patterns (2025-07-04_session.md, 20251119_notes.txt)
+ * 4. File mtime (fallback)
+ */
+function extractTemporalMetadata(content: string, sourcePath: string, mtime: number): TemporalMetadata {
+  // 1. Content-internal dates
+  const isoDateMatch = content.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  if (isoDateMatch) {
+    return { primary: isoDateMatch[1], fallback_source: 'content' };
+  }
+
+  // Frontmatter date
+  const frontmatterDateMatch = content.match(/^date:\s*"?(\d{4}-\d{2}-\d{2})"?/m);
+  if (frontmatterDateMatch) {
+    return { primary: frontmatterDateMatch[1], fallback_source: 'content' };
+  }
+
+  // 2. Git history (graceful degradation — skip if git unavailable)
+  try {
+    const gitLog = execSync(`git log -1 --format="%ai" -- "${sourcePath}"`, {
+      cwd: pathManager.getNotebookDir(),
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 3000,
+    });
+    const gitDateMatch = gitLog.match(/(\d{4}-\d{2}-\d{2})/);
+    if (gitDateMatch) {
+      return { primary: gitDateMatch[1], fallback_source: 'git' };
+    }
+  } catch {
+    // Git unavailable or file not tracked — proceed to filename fallback
+    StructuredLogger.debug('[Distill] Git log unavailable, proceeding to filename fallback', { sourcePath });
+  }
+
+  // 3. Filename patterns
+  const fileName = path.basename(sourcePath);
+  const fileNameDateMatch = fileName.match(/(\d{4})[-_]?(\d{2})[-_]?(\d{2})/);
+  if (fileNameDateMatch) {
+    const date = `${fileNameDateMatch[1]}-${fileNameDateMatch[2]}-${fileNameDateMatch[3]}`;
+    return { primary: date, fallback_source: 'filename' };
+  }
+
+  // 4. File mtime (fallback)
+  const mtimeDate = new Date(mtime).toISOString().split('T')[0];
+  return { primary: mtimeDate, fallback_source: 'mtime' };
+}
+
+// ============================================================================
+// NEW: Memory Type Inference
+// ============================================================================
+
+/**
+ * Infer memory type from content and source path
+ */
+function inferMemoryType(content: string, sourcePath: string): MemoryType {
+  const text = (content + ' ' + sourcePath).toLowerCase();
+
+  // Episodic: time-bound events, meetings, tasks, people
+  if (/\b(meeting|call|deadline|today|tomorrow|yesterday|this week|next week)\b/.test(text)) {
+    return 'episodic';
+  }
+  // Check for person names in conversational context
+  if (/\b(meeting with|talked to|asked|Carmen|Katie|Caitlin|Dory|Rob)\b/.test(text)) {
+    return 'episodic';
+  }
+  // Check for date-bound work logs
+  if (/\b(\d{4}-\d{2}-\d{2}.*said|noted|assigned|agreed)\b/.test(text)) {
+    return 'episodic';
+  }
+
+  // Procedural: how-to, workflows, code patterns, protocols
+  if (/\b(fix|workflow|protocol|step|implement|setup|install|configure|deploy|script)\b/.test(text)) {
+    return 'procedural';
+  }
+
+  // Metacognitive: self-reflection, learning, strategy
+  if (/\b(reflection|learned|realized|strategy|approach|thinking about|should have)\b/.test(text)) {
+    return 'metacognitive';
+  }
+
+  // Default: semantic (concepts, architecture, decisions)
+  return 'semantic';
+}
+
+// ============================================================================
+// NEW: Semantic Deduplication Across Sources
+// ============================================================================
+
+/**
+ * Deduplicate decision records across source files
+ * Groups records by title similarity + shared tags, merges with frequency count
+ * @param records Decision records to deduplicate
+ * @param similarityThreshold Hamming distance threshold for SimHash similarity (default 0.85)
+ */
+function deduplicateAcrossSources(
+  records: DecisionRecord[],
+  similarityThreshold: number = 0.85,
+): EnrichedDecisionRecord[] {
+  const enrichedRecords: EnrichedDecisionRecord[] = [];
+  const used = new Set<number>();
+
+  for (let i = 0; i < records.length; i++) {
+    if (used.has(i)) continue;
+
+    const record = records[i];
+    const related: { index: number; record: DecisionRecord }[] = [];
+
+    // Find similar records
+    for (let j = i + 1; j < records.length; j++) {
+      if (used.has(j)) continue;
+
+      const other = records[j];
+
+      // Check title similarity (exact match or high overlap)
+      const titleSim = computeTitleSimilarity(record.title, other.title);
+      if (titleSim < similarityThreshold) continue;
+
+      // Check shared tags
+      const sharedTags = record.tags.filter(t => other.tags.includes(t)).length;
+      const tagOverlap = sharedTags / Math.max(record.tags.length, other.tags.length, 1);
+      if (tagOverlap < 0.3 && titleSim < 0.95) continue;  // Need either high title sim OR tag overlap
+
+      related.push({ index: j, record: other });
+      used.add(j);
+    }
+
+    // Merge related records into enriched record
+    const allProvenance = [...record.provenance];
+    const allTags = [...new Set([...record.tags, ...related.flatMap(r => r.record.tags)])];
+
+    for (const rel of related) {
+      for (const prov of rel.record.provenance) {
+        if (!allProvenance.includes(prov)) allProvenance.push(prov);
+      }
+    }
+
+    const enriched: EnrichedDecisionRecord = {
+      ...record,
+      tags: allTags,
+      provenance: allProvenance,
+      temporal: extractTemporalMetadata(
+        [record.problem, ...(record.solution || []), record.rationale].filter(Boolean).join('\n') || record.title,
+        record.provenance[0] || '',
+        new Date(record.timestamp).getTime(),
+      ),
+      memory_type: inferMemoryType(
+        [record.problem, ...(record.solution || []), record.rationale].filter(Boolean).join('\n'),
+        record.provenance[0] || '',
+      ),
+      frequency: related.length + 1,
+      source_files: Array.from(new Set(allProvenance.map(p => path.basename(p)))),
+      related_entries: related.length > 0 ? related.map(r => r.record.id) : undefined,
+    };
+
+    enrichedRecords.push(enriched);
+  }
+
+  return enrichedRecords;
+}
+
+/**
+ * Compute title similarity (0.0-1.0) using word overlap
+ */
+function computeTitleSimilarity(title1: string, title2: string): number {
+  const words1 = new Set(title1.toLowerCase().split(/\s+/));
+  const words2 = new Set(title2.toLowerCase().split(/\s+/));
+
+  let overlap = 0;
+  for (const w of words1) {
+    if (words2.has(w)) overlap++;
+  }
+
+  return overlap / Math.max(words1.size, words2.size, 1);
+}
+
+// ============================================================================
+// NEW: Nested YAML v2 Emitter
+// ============================================================================
+
+/**
+ * Emit nested YAML v2 format grouped by source → temporal → semantic
+ */
+function emitNestedYaml(
+  enrichedRecords: EnrichedDecisionRecord[],
+  stats: RadialDistillResult['stats'],
+): string {
+  // Group by source file
+  const bySource = new Map<string, EnrichedDecisionRecord[]>();
+  for (const rec of enrichedRecords) {
+    const sourceFile = rec.source_files?.[0] || path.basename(rec.provenance[0] || 'unknown');
+    if (!bySource.has(sourceFile)) bySource.set(sourceFile, []);
+    bySource.get(sourceFile)!.push(rec);
+  }
+
+  const yamlObj = {
+    version: '2.0',
+    generated_at: new Date().toISOString(),
+    summary: {
+      compression_ratio: stats.compression_ratio,
+      blocks_total: stats.blocks_total,
+      blocks_unique: stats.blocks_unique,
+      distilled_entries: enrichedRecords.length,
+      duration_ms: stats.duration_ms,
+    },
+    sources: Array.from(bySource.entries()).map(([sourceFile, records]) => ({
+      file: sourceFile,
+      temporal_hint: records[0]?.temporal?.primary || 'unknown',
+      entries: records.map(rec => ({
+        id: rec.id,
+        title: rec.title,
+        frequency: rec.frequency || 1,
+        source_files: rec.source_files || [],
+        content: [
+          rec.problem ? `Problem: ${rec.problem}` : '',
+          rec.solution?.length ? `Solution:\n${rec.solution.join('\n')}` : '',
+          rec.rationale ? `Why: ${rec.rationale}` : '',
+        ].filter(Boolean).join('\n\n') || rec.title,
+        score: 1.0,
+        tags: rec.tags,
+        memory_type: rec.memory_type,
+        temporal: rec.temporal,
+      })),
+    })),
+  };
+
+  return yaml.dump(yamlObj, { lineWidth: -1, noRefs: true });
+}
+
+// ============================================================================
+// NEW: JSON-Full Emitter (full content preservation)
+// ============================================================================
+
+/**
+ * Emit JSON with full inflated content from tag-based mode
+ */
+function emitJsonFull(
+  enrichedRecords: EnrichedDecisionRecord[],
+  inflatedContent: { content: string; source: string; tags: string[]; timestamp: number; }[],
+  stats: RadialDistillResult['stats'],
+): Record<string, unknown> {
+  return {
+    version: '2.0',
+    generated_at: new Date().toISOString(),
+    summary: {
+      compression_ratio: stats.compression_ratio,
+      blocks_total: stats.blocks_total,
+      blocks_unique: stats.blocks_unique,
+      distilled_entries: enrichedRecords.length,
+      full_content_entries: inflatedContent.length,
+      duration_ms: stats.duration_ms,
+    },
+    records: enrichedRecords,
+    inflated_content: inflatedContent.map(item => ({
+      source: item.source,
+      tags: item.tags,
+      timestamp: new Date(item.timestamp).toISOString(),
+      content: item.content,
+    })),
+  };
 }
 
 /**
@@ -804,6 +1101,48 @@ async function finalizeDistillation(
   // Phase 3: REASSEMBLE - Build Decision Records
   const decisionRecords = assembleDecisionRecords(uniqueBlocks);
 
+  // Phase 3.5: SEMANTIC DEDUPLICATION (NEW) - Cross-source aggregation
+  const similarityThreshold = request.similarity_threshold ?? 0.85;
+  const enrichedRecords = deduplicateAcrossSources(decisionRecords, similarityThreshold);
+
+  StructuredLogger.info('DISTILL_AGGREGATION', {
+    before: decisionRecords.length,
+    after: enrichedRecords.length,
+    reduction: `${((1 - enrichedRecords.length / Math.max(1, decisionRecords.length)) * 100).toFixed(1)}%`,
+    similarity_threshold: similarityThreshold,
+  });
+
+  // Dry-run mode: return preview without writing
+  if (request.dry_run) {
+    StructuredLogger.info('DISTILL_DRY_RUN', { records: enrichedRecords.length });
+    return {
+      stats: {
+        compounds_processed: compoundsProcessed,
+        blocks_total: allBlocks.length,
+        blocks_unique: uniqueBlocks.length,
+        decision_records: enrichedRecords.length,
+        compression_ratio: `${(allBlocks.length / Math.max(1, enrichedRecords.length)).toFixed(1)}:1`,
+        duration_ms: Date.now() - startTime,
+        memory_peak_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+      },
+      output: {
+        format: request.output_format || 'decision-records',
+        size_bytes: 0,
+        records_created: enrichedRecords.length,
+      },
+      provenance: {
+        source_compounds: digitalObjects.map(d => d.source_path),
+        distilled_at: new Date().toISOString(),
+        parameters: request,
+      },
+      records: enrichedRecords as DecisionRecord[],
+      digital_objects: digitalObjects,
+      session_index: sessionIndex,
+      inflated_content: inflatedContent || [],
+      enriched_records: enrichedRecords,
+    };
+  }
+
   // Generate output
   const outputFormat = request.output_format || 'decision-records';
   let outputPath: string | undefined;
@@ -812,17 +1151,62 @@ async function finalizeDistillation(
   // Determine if we should save to file
   const shouldSaveToFile = request.output_path || request.auto_save;
 
-  if (outputFormat === 'json' || outputFormat === 'decision-records') {
+  if (outputFormat === 'nested-yaml') {
+    // NEW: Nested YAML v2 format
+    const yamlOutput = emitNestedYaml(enrichedRecords, {
+      compounds_processed: compoundsProcessed,
+      blocks_total: allBlocks.length,
+      blocks_unique: uniqueBlocks.length,
+      decision_records: enrichedRecords.length,
+      compression_ratio: `${(allBlocks.length / Math.max(1, enrichedRecords.length)).toFixed(1)}:1`,
+      duration_ms: Date.now() - startTime,
+      memory_peak_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    });
+    outputSize = yamlOutput.length;
+
+    if (shouldSaveToFile) {
+      const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
+      if (!fs.existsSync(distillsDir)) fs.mkdirSync(distillsDir, { recursive: true });
+      outputPath = request.output_path || path.join(
+        distillsDir,
+        `distilled_nested_${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`,
+      );
+      fs.writeFileSync(outputPath, yamlOutput);
+    }
+  } else if (outputFormat === 'json-full') {
+    // NEW: JSON with full inflated content
+    const jsonFullOutput = emitJsonFull(enrichedRecords, inflatedContent || [], {
+      compounds_processed: compoundsProcessed,
+      blocks_total: allBlocks.length,
+      blocks_unique: uniqueBlocks.length,
+      decision_records: enrichedRecords.length,
+      compression_ratio: `${(allBlocks.length / Math.max(1, enrichedRecords.length)).toFixed(1)}:1`,
+      duration_ms: Date.now() - startTime,
+      memory_peak_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    });
+    const jsonOutput = JSON.stringify(jsonFullOutput, null, 2);
+    outputSize = jsonOutput.length;
+
+    if (shouldSaveToFile) {
+      const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
+      if (!fs.existsSync(distillsDir)) fs.mkdirSync(distillsDir, { recursive: true });
+      outputPath = request.output_path || path.join(
+        distillsDir,
+        `distilled_full_${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
+      );
+      fs.writeFileSync(outputPath, jsonOutput);
+    }
+  } else if (outputFormat === 'json' || outputFormat === 'decision-records') {
     // Include digital objects and session index in JSON output
     const fullOutput = {
       metadata: {
         source: 'Anchor Engine Radial Distiller v2.0',
         distilled_at: new Date().toISOString(),
-        decision_records: decisionRecords.length,
+        decision_records: enrichedRecords.length,
         digital_objects_count: digitalObjects.length,
         session_index_count: sessionIndex.length,
       },
-      records: decisionRecords,
+      records: enrichedRecords,
       digital_objects: digitalObjects,
       session_index: sessionIndex,
     };
@@ -831,9 +1215,7 @@ async function finalizeDistillation(
 
     if (shouldSaveToFile) {
       const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
-      if (!fs.existsSync(distillsDir)) {
-        fs.mkdirSync(distillsDir, { recursive: true });
-      }
+      if (!fs.existsSync(distillsDir)) fs.mkdirSync(distillsDir, { recursive: true });
       outputPath = request.output_path || path.join(
         distillsDir,
         `distilled_standards_${new Date().toISOString().replace(/[:.]/g, '-')}.json`,
@@ -846,11 +1228,11 @@ async function finalizeDistillation(
       metadata: {
         source: 'Anchor Engine Radial Distiller v2.0',
         distilled_at: new Date().toISOString(),
-        decision_records: decisionRecords.length,
+        decision_records: enrichedRecords.length,
         digital_objects_count: digitalObjects.length,
         session_index_count: sessionIndex.length,
       },
-      records: decisionRecords,
+      records: enrichedRecords,
       digital_objects: digitalObjects,
       session_index: sessionIndex,
     });
@@ -859,9 +1241,7 @@ async function finalizeDistillation(
 
     if (shouldSaveToFile) {
       const distillsDir = path.join(pathManager.getNotebookDir(), 'distills');
-      if (!fs.existsSync(distillsDir)) {
-        fs.mkdirSync(distillsDir, { recursive: true });
-      }
+      if (!fs.existsSync(distillsDir)) fs.mkdirSync(distillsDir, { recursive: true });
       outputPath = request.output_path || path.join(
         distillsDir,
         `distilled_${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`,
@@ -877,8 +1257,8 @@ async function finalizeDistillation(
       compounds_processed: compoundsProcessed,
       blocks_total: allBlocks.length,
       blocks_unique: uniqueBlocks.length,
-      decision_records: decisionRecords.length,
-      compression_ratio: `${(allBlocks.length / Math.max(1, uniqueBlocks.length)).toFixed(1)}:1`,
+      decision_records: enrichedRecords.length,
+      compression_ratio: `${(allBlocks.length / Math.max(1, enrichedRecords.length)).toFixed(1)}:1`,
       duration_ms: duration,
       memory_peak_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
     },
@@ -886,26 +1266,29 @@ async function finalizeDistillation(
       format: outputFormat,
       path: outputPath,
       size_bytes: outputSize,
-      records_created: decisionRecords.length,
+      records_created: enrichedRecords.length,
     },
     provenance: {
       source_compounds: digitalObjects.map(d => d.source_path),
       distilled_at: new Date().toISOString(),
       parameters: request,
     },
-    // Return the actual decision records
-    records: decisionRecords,
+    // Return enriched decision records with temporal and memory type metadata
+    records: enrichedRecords as DecisionRecord[],
     // Digital object metadata for all processed compounds
     digital_objects: digitalObjects,
     // Session index for chat sessions
     session_index: sessionIndex,
     // Inflated content for tag-based mode (full atom content)
     inflated_content: inflatedContent || [],
+    // NEW: Enriched records with full metadata
+    enriched_records: enrichedRecords,
   };
 
   StructuredLogger.info('RADIAL_DISTILL_V2_COMPLETE', {
     records: result.stats.decision_records,
     compression: result.stats.compression_ratio,
+    aggregation_reduction: `${((1 - enrichedRecords.length / Math.max(1, decisionRecords.length)) * 100).toFixed(1)}%`,
     duration_ms: duration,
   });
 
@@ -927,7 +1310,7 @@ async function finalizeDistillation(
         parameters: {
           radius: request.radius,
           output_format: outputFormat,
-          decision_records: decisionRecords.length,
+          decision_records: enrichedRecords.length,
           digital_objects: digitalObjects.length,
           session_index: sessionIndex.length,
         },
