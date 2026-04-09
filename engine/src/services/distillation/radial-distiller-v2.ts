@@ -16,6 +16,7 @@ import { pathManager } from '../../utils/path-manager.js';
 import { getMirrorPath } from '../mirror/mirror.js';
 import { recordDistill } from './distill-manager.js';
 import { wasmModuleLoader } from '../../utils/wasm-module-loader.js';
+import { config } from '../../config/index.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -1102,7 +1103,7 @@ async function finalizeDistillation(
   const decisionRecords = assembleDecisionRecords(uniqueBlocks);
 
   // Phase 3.5: SEMANTIC DEDUPLICATION (NEW) - Cross-source aggregation
-  const similarityThreshold = request.similarity_threshold ?? 0.85;
+  const similarityThreshold = request.similarity_threshold ?? config.DISTILLER.SIMILARITY_THRESHOLD ?? 0.85;
   const enrichedRecords = deduplicateAcrossSources(decisionRecords, similarityThreshold);
 
   StructuredLogger.info('DISTILL_AGGREGATION', {

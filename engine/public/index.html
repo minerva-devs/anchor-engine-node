@@ -2296,6 +2296,57 @@
                             </div>
                         </div>
 
+                        {/* Distiller Settings Section */}
+                        <div className="glass-panel p-6 mb-6">
+                            <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-purple-400">
+                                <i data-lucide="flask-conical"></i>
+                                Distiller Settings
+                            </h3>
+                            <p className="text-xs text-gray-400 mb-4">
+                                Configure semantic aggregation behavior for the Radial Distiller v2. Controls how similar concepts are merged during distillation.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium block mb-2">Similarity Threshold</label>
+                                    <input
+                                        type="range"
+                                        min="0.50"
+                                        max="0.95"
+                                        step="0.05"
+                                        value={settings?.distiller?.similarity_threshold ?? 0.85}
+                                        onChange={(e) => updateSetting('distiller', 'similarity_threshold', parseFloat(e.target.value))}
+                                        className="w-full accent-purple-500 h-2 rounded-lg appearance-none cursor-pointer bg-white/5"
+                                    />
+                                    <p className="text-xs font-mono text-center mt-1">{((settings?.distiller?.similarity_threshold ?? 0.85) * 100).toFixed(0)}%</p>
+                                    <p className="text-xs text-purple-400/70 mt-1">
+                                        💡 Higher = conservative (fewer merges) • Lower = aggressive (more grouping)
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {settings?.distiller?.similarity_threshold >= 0.90 ? '🔒 High precision — legal/compliance docs' :
+                                         settings?.distiller?.similarity_threshold >= 0.80 ? '⚖️ Balanced — general PKM, architecture notes' :
+                                         '🔍 Aggressive — exploratory research, brainstorming'}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-medium block mb-2">Default Output Format</label>
+                                    <select
+                                        value={settings?.distiller?.output_format ?? 'decision-records'}
+                                        onChange={(e) => updateSetting('distiller', 'output_format', e.target.value)}
+                                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 outline-none focus:border-purple-500/50"
+                                    >
+                                        <option value="decision-records">Decision Records (default)</option>
+                                        <option value="json-full">JSON Full (with content)</option>
+                                        <option value="nested-yaml">Nested YAML v2</option>
+                                    </select>
+                                    <p className="text-xs text-purple-400/70 mt-1">
+                                        💡 Controls default distillation output format
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Database Section */}
                         <div className="glass-panel p-6 mb-6">
                             <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-red-400">

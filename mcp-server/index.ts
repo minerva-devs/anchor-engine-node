@@ -247,7 +247,7 @@ const TOOLS: Tool[] = [
   },
   {
     name: 'anchor_distill',
-    description: 'Run radial distillation on the corpus. Compresses knowledge into a deduplicated YAML/MD file that serves as a source of truth. Returns the output file path and compression stats.',
+    description: 'Run radial distillation on the corpus. Compresses knowledge into a deduplicated output. Supports semantic aggregation tuning.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -265,8 +265,16 @@ const TOOLS: Tool[] = [
         },
         output_format: {
           type: 'string',
-          enum: ['yaml', 'md'],
-          description: 'Output format (default: yaml)',
+          enum: ['yaml', 'json', 'decision-records', 'json-full', 'nested-yaml'],
+          description: 'Output format (default: json)',
+        },
+        similarity_threshold: {
+          type: 'number',
+          description: 'Semantic aggregation similarity (0.50-0.95). Higher=conservative, lower=aggressive (default: 0.85)',
+        },
+        dry_run: {
+          type: 'boolean',
+          description: 'Preview without writing output files (default: false)',
         },
       },
     },
@@ -565,23 +573,29 @@ async function handleQuery(args: any): Promise<string> {
 }
 
 async function handleDistill(args: any): Promise<string> {
-  const { seed = '', radius = 3, max_nodes = 500, output_format = 'yaml' } = args;
+  const { seed = '', radius = 3, max_nodes = 500, output_format = 'json', similarity_threshold, dry_run } = args;
 
   const result = await callAnchorAPI('/v1/memory/distill', 'POST', {
     seed: seed ? { query: seed } : { global: true },
     radius,
     max_nodes,
     output_format,
+    mode: 'tag-based',
+    similarity_threshold,
+    dry_run: dry_run || false,
   });
 
   if (result.status === 'success' || result.output) {
     const stats = result.stats || {};
+    const aggInfo = result.aggregation_reduction ? ` | Aggregation: -${result.aggregation_reduction}` : '';
     return `✅ Distillation Complete
 
 📊 Stats:
 - Compression Ratio: ${stats.compression_ratio || 'N/A'}
-- Lines: ${stats.lines_unique || 0} unique / ${stats.lines_total || 0} total
-- Duration: ${((stats.duration_ms || 0) / 1000).toFixed(1)}s
+- Records: ${stats.decision_records || 0} (from ${stats.blocks_total || 0} blocks)
+- Duration: ${((stats.duration_ms || 0) / 1000).toFixed(1)}s${aggInfo}
+${similarity_threshold !== undefined ? `- Similarity Threshold: ${(similarity_threshold * 100).toFixed(0)}%` : ''}
+${dry_run ? '- ⚠️ DRY RUN — no files written' : ''}
 
 📁 Output File: ${result.output?.path || 'N/A'}
 

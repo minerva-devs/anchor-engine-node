@@ -136,6 +136,12 @@ interface Config {
   CACHE_TTL_MS: number;
   MAX_CACHE_SIZE: number;
 
+  // Distiller Configuration (v2.1)
+  DISTILLER: {
+    SIMILARITY_THRESHOLD: number;
+    OUTPUT_FORMAT: string;
+  };
+
   // Watcher Settings
   WATCHER_DEBOUNCE_MS: number;
   WATCHER_STABILITY_THRESHOLD_MS: number;
@@ -299,6 +305,12 @@ const DEFAULT_CONFIG: Config = {
   MONITORING_INTERVAL_MS: 30000, // 30 seconds
   CACHE_TTL_MS: 60000, // 60 seconds (1 minute)
   MAX_CACHE_SIZE: 100,
+
+  // Distiller Configuration (v2.1)
+  DISTILLER: {
+    SIMILARITY_THRESHOLD: 0.85,
+    OUTPUT_FORMAT: 'decision-records',
+  },
 
   // Watcher Settings
   WATCHER_DEBOUNCE_MS: 2000,
@@ -600,6 +612,12 @@ function loadConfig(): Config {
         if (userSettings.ingestion.dedup_strength) loadedConfig.INGESTION.DEDUP_STRENGTH = userSettings.ingestion.dedup_strength;
         if (userSettings.ingestion.token_budget_default !== undefined) loadedConfig.INGESTION.TOKEN_BUDGET_DEFAULT = userSettings.ingestion.token_budget_default;
         if (userSettings.ingestion.ingestion_profile) loadedConfig.INGESTION.INGESTION_PROFILE = userSettings.ingestion.ingestion_profile;
+      }
+
+      // Load Distiller Configuration (v2.1)
+      if (userSettings.distiller) {
+        if (userSettings.distiller.similarity_threshold !== undefined) loadedConfig.DISTILLER.SIMILARITY_THRESHOLD = userSettings.distiller.similarity_threshold;
+        if (userSettings.distiller.output_format) loadedConfig.DISTILLER.OUTPUT_FORMAT = userSettings.distiller.output_format;
       }
 
     } catch (e: any) {
