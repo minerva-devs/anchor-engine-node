@@ -537,6 +537,12 @@
                 setLoading(true);
                 setResults([]);
                 const { algo, q } = parseQuery(query);
+
+                // Clear cached distill when running non-distill searches
+                if (algo !== 'distill') {
+                    setCachedDistillSummary(null);
+                }
+
                 try {
                     let data;
                     if (algo === 'distill') {
