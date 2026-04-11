@@ -12,6 +12,7 @@ import { smartChatSearch } from './search.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import type { SearchResult } from './search-utils.js';
 import type { UserContext } from '../../types/context.js';
+import { logSearchResults, SearchLogMetadata } from './search-results-logger.js';
 
 export interface StreamingSearchOptions {
   query: string;
@@ -22,6 +23,7 @@ export interface StreamingSearchOptions {
   useMaxRecall?: boolean;
   userContext?: UserContext;
   batchSize?: number;
+  verbose?: boolean; // Enable search results logging for test verification
 }
 
 export interface SearchBatch {
@@ -128,6 +130,18 @@ export async function* executeStreamingSearch(
       splitQueries: searchResult.splitQueries,
       durationMs: duration,
     };
+
+    // Log results to .anchor/logs/ if verbose mode is enabled (for test verification)
+    const logMetadata: SearchLogMetadata = {
+      strategy: searchResult.strategy,
+      totalResults: allResults.length,
+      durationMs: duration,
+      splitQueries: searchResult.splitQueries,
+      buckets: options.buckets,
+      tags: options.tags,
+    };
+
+    logSearchResults(options.query, allResults, logMetadata, { verbose: options.verbose });
 
     StructuredLogger.info('STREAMING_SEARCH_COMPLETE', {
       query: options.query.substring(0, 100),
