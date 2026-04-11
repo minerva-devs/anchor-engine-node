@@ -548,94 +548,159 @@ function inferMemoryType(content: string, sourcePath: string): MemoryType {
 }
 
 // ============================================================================
-// NEW: Semantic Deduplication Across Sources
+// NEW: Semantic Deduplication Across Sources (Enhanced)
 // ============================================================================
 
 /**
- * Deduplicate decision records across source files
- * Groups records by title similarity + shared tags, merges with frequency count
- * @param records Decision records to deduplicate
- * @param similarityThreshold Hamming distance threshold for SimHash similarity (default 0.85)
+ * Create a semantic key for grouping related concepts
+ * Uses content fingerprint + topic extraction for fuzzy matching
  */
-function deduplicateAcrossSources(
-  records: DecisionRecord[],
-  similarityThreshold: number = 0.85,
-): EnrichedDecisionRecord[] {
-  const enrichedRecords: EnrichedDecisionRecord[] = [];
-  const used = new Set<number>();
-
-  for (let i = 0; i < records.length; i++) {
-    if (used.has(i)) continue;
-
-    const record = records[i];
-    const related: { index: number; record: DecisionRecord }[] = [];
-
-    // Find similar records
-    for (let j = i + 1; j < records.length; j++) {
-      if (used.has(j)) continue;
-
-      const other = records[j];
-
-      // Check title similarity (exact match or high overlap)
-      const titleSim = computeTitleSimilarity(record.title, other.title);
-      if (titleSim < similarityThreshold) continue;
-
-      // Check shared tags
-      const sharedTags = record.tags.filter(t => other.tags.includes(t)).length;
-      const tagOverlap = sharedTags / Math.max(record.tags.length, other.tags.length, 1);
-      if (tagOverlap < 0.3 && titleSim < 0.95) continue;  // Need either high title sim OR tag overlap
-
-      related.push({ index: j, record: other });
-      used.add(j);
-    }
-
-    // Merge related records into enriched record
-    const allProvenance = [...record.provenance];
-    const allTags = [...new Set([...record.tags, ...related.flatMap(r => r.record.tags)])];
-
-    for (const rel of related) {
-      for (const prov of rel.record.provenance) {
-        if (!allProvenance.includes(prov)) allProvenance.push(prov);
-      }
-    }
-
-    const enriched: EnrichedDecisionRecord = {
-      ...record,
-      tags: allTags,
-      provenance: allProvenance,
-      temporal: extractTemporalMetadata(
-        [record.problem, ...(record.solution || []), record.rationale].filter(Boolean).join('\n') || record.title,
-        record.provenance[0] || '',
-        new Date(record.timestamp).getTime(),
-      ),
-      memory_type: inferMemoryType(
-        [record.problem, ...(record.solution || []), record.rationale].filter(Boolean).join('\n'),
-        record.provenance[0] || '',
-      ),
-      frequency: related.length + 1,
-      source_files: Array.from(new Set(allProvenance.map(p => path.basename(p)))),
-      related_entries: related.length > 0 ? related.map(r => r.record.id) : undefined,
-    };
-
-    enrichedRecords.push(enriched);
-  }
-
-  return enrichedRecords;
+function createSemanticKey(content: string): string {
+  // Extract topics from tags and headings
+  const topics = extractTags(content).join('_');
+  
+  // Compute SimHash of normalized content (64-bit)
+  const simhash = computeSimHash(content);
+  
+  // Combine into semantic key: topics + hash prefix for grouping
+  return `${topics || 'general'}:${simhash.substring(0, 8)}`;
 }
 
 /**
- * Compute title similarity (0.0-1.0) using word overlap
+ * Format aggregated content from multiple records
  */
-function computeTitleSimilarity(title1: string, title2: string): number {
-  const words1 = new Set(title1.toLowerCase().split(/\s+/));
-  const words2 = new Set(title2.toLowerCase().split(/\s+/));
+function formatAggregatedContent(records: DecisionRecord[]): string {
+  // Merge problem statements (prefer longest/most detailed)
+  const problems = records.map(r => r.problem).filter(Boolean);
+  const bestProblem = problems.length > 1 
+    ? problems.sort((a, b) => (b?.length || 0) - (a?.length || 0))[0]
+    : problems[0];
 
-  let overlap = 0;
-  for (const w of words1) {
-    if (words2.has(w)) overlap++;
+  // Merge solutions with deduplication
+  const allSolutions = records.flatMap(r => r.solution || []);
+  const uniqueSolutions = Array.from(new Set(allSolutions));
+
+  // Merge rationales
+  const rationales = records.map(r => r.rationale).filter(Boolean);
+  
+  return [
+    bestProblem ? `PROBLEM:\n${bestProblem}` : '',
+    uniqueSolutions.length > 0 ? `SOLUTION (${records.length} sources):\n` + uniqueSolutions.join('\n') : '',
+    rationales.length > 0 ? `RATIONALE:\n${rationales.join('\n\n')}` : ''
+  ].filter(Boolean).join('\n\n');
+}
+
+/**
+ * Calculate aggregate score based on source diversity and content quality
+ */
+function calculateGroupScore(records: DecisionRecord[]): number {
+  // Base score from frequency (more sources = higher confidence)
+  const freqScore = Math.min(1.0, records.length / 5);
+  
+  // Boost for diverse provenance (different files vs same file repeated)
+  const uniqueSources = new Set(records.flatMap(r => r.provenance)).size;
+  const diversityScore = uniqueSources > 1 ? 0.2 : 0;
+  
+  return freqScore + diversityScore;
+}
+
+/**
+ * Generate unified tags from multiple records
+ */
+function generateTags(records: DecisionRecord[]): string[] {
+  return Array.from(
+    new Set(records.flatMap(r => r.tags || []))
+  );
+}
+
+/**
+ * Infer memory type from aggregated content
+ */
+function inferMemoryTypeFromGroup(records: DecisionRecord[]): MemoryType {
+  // Use majority vote with fallback to most detailed record
+  const types = records.map(r => inferMemoryType(
+    [r.problem, ...(r.solution || []), r.rationale].filter(Boolean).join('\n'),
+    r.provenance[0] || ''
+  ));
+  
+  // Find mode (most common type)
+  const counts = new Map<MemoryType, number>();
+  for (const t of types) {
+    counts.set(t, (counts.get(t) || 0) + 1);
   }
+  
+  let bestType: MemoryType = 'semantic';
+  let maxCount = 0;
+  for (const [type, count] of counts) {
+    if (count > maxCount) {
+      maxCount = count;
+      bestType = type;
+    }
+  }
+  
+  return bestType;
+}
 
-  return overlap / Math.max(words1.size, words2.size, 1);
+/**
+ * Deduplicate decision records across source files using enhanced semantic aggregation
+ */
+function deduplicateAcrossSources(
+  records: DecisionRecord[],
+): EnrichedDecisionRecord[] {
+  const grouped = new Map<string, DecisionRecord[]>();
+  
+  // Group by semantic key (content fingerprint + topics)
+  for (const r of records) {
+    const content = [r.problem, ...(r.solution || []), r.rationale].filter(Boolean).join('\n') || r.title;
+    const key = createSemanticKey(content);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(r);
+  }
+  
+  // Transform groups into enriched records
+  return Array.from(grouped.entries()).map(([key, group]) => {
+    const earliestMtime = Math.min(...group.map(r => new Date(r.timestamp).getTime()));
+    const allProvenance = Array.from(new Set(group.flatMap(r => r.provenance)));
+    
+    return {
+      id: `agg_${hash(key)}`,
+      title: group[0].title, // Keep first record's title as anchor
+      problem: formatAggregatedContent(group).split('\n')[1]?.replace('PROBLEM:\n', '') || undefined,
+      solution: formatAggregatedContent(group).includes('SOLUTION') 
+        ? formatAggregatedContent(group).match(/SOLUTION \([^)]\):\s*(.+)/)?.[1] : undefined,
+      rationale: formatAggregatedContent(group).split('\n')[2]?.replace('RATIONALE:\n', '') || undefined,
+      supersedes: group.flatMap(r => r.supersedes).filter(Boolean),
+      status: inferStatusFromGroup(group),
+      timestamp: new Date(earliestMtime).toISOString(),
+      provenance: allProvenance,
+      tags: generateTags(group),
+      temporal: extractTemporalMetadata(
+        formatAggregatedContent(group),
+        group[0].provenance[0] || '',
+        earliestMtime
+      ),
+      memory_type: inferMemoryTypeFromGroup(group),
+      frequency: group.length,
+      source_files: Array.from(new Set(allProvenance.map(p => path.basename(p)))),
+      related_entries: group.length > 1 ? group.map(r => r.id) : undefined,
+    };
+  });
+}
+
+/**
+ * Hash helper for semantic keys
+ */
+function hash(str: string): string {
+  return crypto.createHash('sha256').update(str).digest('hex').substring(0, 16);
+}
+
+/**
+ * Infer status from aggregated records (prefer deprecated/archived over active)
+ */
+function inferStatusFromGroup(records: DecisionRecord[]): 'active' | 'deprecated' | 'archived' {
+  if (records.some(r => r.status === 'archived')) return 'archived';
+  if (records.some(r => r.status === 'deprecated')) return 'deprecated';
+  return 'active';
 }
 
 // ============================================================================
