@@ -1,0 +1,1 @@
+This is a test document about decision records. Decision records are a format for documenting architectural decisions. They include fields like title, date, decision, context, and rationale.

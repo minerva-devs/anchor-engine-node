@@ -3,7 +3,7 @@
 
 **A Browser‑Inspired Paradigm for Local‑First AI Memory**
 
-**Version:** 4.8.0 | **Date:** March 18, 2026 | **Author:** Robert S. Balch II
+**Version:** (VERSION) | **Date:** March 18, 2026 | **Author:** Robert S. Balch II
 
 ---
 
@@ -152,7 +152,7 @@ Graph traversal with:
 
 ---
 
-## 6. What's New in v4.8.0
+## 6. What's New in v5.0.0
 
 ### MCP Write Operations
 - **`anchor_ingest_text`** — Ingest raw text directly
@@ -168,7 +168,7 @@ Graph traversal with:
 ### Web UI Improvements
 - **Paste & Ingest** tab — Quick text ingestion
 - Bucket selector with guidance
-- Version badge (v4.8.0)
+- Version badge (v5.0.0)
 
 ### Philosophy Documentation
 - Core principles embedded throughout docs

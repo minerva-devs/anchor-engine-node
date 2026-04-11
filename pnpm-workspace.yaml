@@ -1,5 +1,10 @@
 packages:
-  - 'engine'
-  - 'packages/*'
-  - 'integrations/*'
-  - 'mcp-server'
+  - engine
+  - packages/*
+  - integrations/*
+  - mcp-server
+
+ignoredBuiltDependencies:
+  - esbuild
+  - msw
+  - sharp

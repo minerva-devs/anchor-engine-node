@@ -182,7 +182,7 @@ export interface IlluminateResponse {
 }
 
 // =============================================================================
-// Session Index (v4.8.0)
+// Session Index (v5.0.0)
 // =============================================================================
 
 export interface SessionIndexEntry {

@@ -405,12 +405,14 @@ const DEFAULT_CONFIG: Config = {
   },
 
   // Database Settings
+  // Standard 127: PGlite Memory Optimization - tuned for 31k atoms
+  // Increased from 64/128/8 to 256/512/32 for better cache performance
   DATABASE: {
     WIPE_ON_STARTUP: true,
     WIPE_ON_SHUTDOWN: true,
-    SHARED_BUFFERS_MB: 64,
-    EFFECTIVE_CACHE_SIZE_MB: 128,
-    WORK_MEM_MB: 8,
+    SHARED_BUFFERS_MB: 256,   // SQLite shared buffer cache for index pages
+    EFFECTIVE_CACHE_SIZE_MB: 512, // OS cache size hint for query planner
+    WORK_MEM_MB: 32,          // In-memory sort buffer (larger = faster complex queries)
     MAINTENANCE_WORK_MEM_MB: 32,
   },
 

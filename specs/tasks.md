@@ -49,6 +49,55 @@
 - [x] SQL injection fix via parameterized LIMIT (Standard 130) - `dev/security/sql-injection`
 - [x] Auth bypass audit complete (Standard 131) - `dev/security/auth-bypass-audit`
 - [x] API key strength validation (Standard 132) - `dev/security/api-key-strength`
+- [x] Security documentation in README
+
+### Phase: Frictionless Experience (P0 - April 2026)
+**Goal:** Zero-conf installation, automatic discovery, transparent operations
+
+**P0 - Critical (Must complete before next release):**
+- [ ] **Watchdog auto-enable** - Auto-start if `watcher.extra_paths` configured
+  - Related: `FRICTIONLESS_SPEC.md` Section 1.2
+  - Current: Manual start required from Settings UI
+  
+- [ ] **Startup banner with VERSION** - Display version from `user_settings.json`
+  - Related: `FRICTIONLESS_SPEC.md` Section 1.3
+  - Current: Hardcoded version in banner
+  
+- [ ] **Search returns content** - Return actual text in search results
+  - Related: `FRICTIONLESS_SPEC.md` Section 4.1
+  - Current: Returns metadata only, no content
+  
+- [ ] **MCP reads settings** - Auto-load API key from `user_settings.json`
+  - Related: `FRICTIONLESS_SPEC.md` Section 5.1
+  - Current: Requires env vars or manual config
+
+**P1 - High Priority (Complete within 2 weeks):**
+- [ ] **CLI commands** - `anchor start`, `anchor status`, `anchor search`
+  - Related: `FRICTIONLESS_SPEC.md` Section 6.1
+  - Current: Requires curl commands
+  
+- [ ] **Agent discovery** - Auto-detect Qwen, Claude, Cursor chat dirs
+  - Related: `FRICTIONLESS_SPEC.md` Section 2.1
+  - Current: Manual path configuration
+  
+- [ ] **Ingestion progress** - Real-time file-level stats
+  - Related: `FRICTIONLESS_SPEC.md` Section 3.1
+  - Current: Silent failures, no progress feedback
+  
+- [ ] **Debug endpoint** - Show why results filtered
+  - Related: `FRICTIONLESS_SPEC.md` Section 4.2
+  - Current: No debug info in responses
+
+**P2 - Medium Priority (Backlog):**
+- [ ] **Agent registration API** - `POST /v1/agent/register`
+  - Related: `FRICTIONLESS_SPEC.md` Section 2.2
+  - Current: Manual config via `user_settings.json`
+  
+- [ ] **Agent SDK** - `autoRegister: true` in client init
+  - Related: `FRICTIONLESS_SPEC.md` Section 8.3
+  - Current: Manual setup per agent
+
+- [x] API key strength validation (Standard 132) - `dev/security/api-key-strength`
 - [ ] Ablation study framework (pending execution)
 - [ ] Cross-platform CI testing (pending)
 
@@ -233,5 +282,34 @@ Tasks are complete when:
 
 ---
 
-**Full Task History:** See `specs/plan.md` for detailed 6-month timeline  
+**Full Task History:** See `specs/plan.md` for detailed 6-month timeline
 **Standards:** See `specs/standards/` for architecture documentation
+
+---
+
+## 📁 Documentation Cleanup (April 2026)
+
+**Goal:** Consolidate documentation into standard locations (docs/, specs/)
+
+### Phase: Documentation Organization (P1 - April 2026)
+
+- [ ] **MCP_AGENT_SETUP.md** - Move to `docs/integrations/mcp-agent.md`
+  - Current: Root directory
+  - Content: Automatic chat ingestion setup for AI agents
+  - Related to: Watchdog (Standard 001), MCP (Standard 003)
+
+- [ ] **PAIN_POINTS_DOCUMENTATION.md** - Move to `docs/guides/pain-points.md`
+  - Current: Root directory
+  - Content: Agent memory setup pain points (watchdog, database corruption)
+  - Related to: Watchdog auto-enable (Standard 001), Database integrity
+
+- [ ] **RECURSIVE_SEARCH_FALLBACKS.md** - Move to `docs/technical/search-strategy.md`
+  - Current: Root directory
+  - Content: Multi-layer recursive search fallback strategy
+  - Related to: Search algorithm (STAR), Fallback mechanisms
+
+- [ ] **.ai-instructions.md** - Move to `docs/development/ai-assistant.md`
+  - Current: Root directory
+  - Content: AI assistant rules for documentation creation
+  - Related to: Documentation standards
+

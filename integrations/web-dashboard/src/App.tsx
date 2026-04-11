@@ -53,7 +53,7 @@ export default function App() {
 
       <footer className="app-footer">
         <p>
-          Powered by <a href="https://github.com/RSBalchII/anchor-engine-node" target="_blank">Anchor Engine v4.8.2</a>
+          Powered by <a href="https://github.com/RSBalchII/anchor-engine-node" target="_blank">Anchor Engine v5.0.0</a>
           {' '}• <a href="https://github.com/RSBalchII/anchor-engine-node/tree/main/integrations/web-dashboard" target="_blank">Source</a>
         </p>
       </footer>

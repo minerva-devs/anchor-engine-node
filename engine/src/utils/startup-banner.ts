@@ -5,7 +5,7 @@
  * Shows database stats, watchdog status, MCP server status, API key status, and health endpoint.
  * 
  * Example Output:
- * ⚓ Anchor Engine v4.8.2
+ * ⚓ Anchor Engine (VERSION)
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * ✅ Database: 30,922 atoms, 156 sources, 423 tags
  * ✅ Watchdog: active, watching 3 paths
@@ -22,8 +22,7 @@
 import { db } from '../core/db.js';
 import { config } from '../config/index.js';
 import { getWatcherStatus } from '../services/ingest/watchdog.js';
-
-// Version is now loaded from config (user_settings.json -> server.version)
+import { VERSION } from './version.js';
 
 interface DatabaseStats {
   atoms: number;
@@ -137,7 +136,7 @@ export async function displayStartupBanner(options: BannerOptions): Promise<void
     const lines: string[] = [];
     
     // Header
-    lines.push(`⚓ Anchor Engine v${config.VERSION}`);
+    lines.push(`⚓ Anchor Engine (${VERSION})`);
     lines.push('━'.repeat(48));
     
     // Database stats
@@ -181,7 +180,7 @@ export async function displayStartupBanner(options: BannerOptions): Promise<void
   } catch (error: any) {
     // If banner fails, print minimal status
     console.error('[StartupBanner] Error displaying banner:', error.message);
-    console.log(`⚓ Anchor Engine v${config.VERSION} started in ${formatStartupTime(startupTimeMs)}`);
+    console.log(`⚓ Anchor Engine (${VERSION}) started in ${formatStartupTime(startupTimeMs)}`);
   }
 }
 
@@ -189,6 +188,6 @@ export async function displayStartupBanner(options: BannerOptions): Promise<void
  * Display a simplified startup message (for error cases or minimal mode)
  */
 export function displayMinimalStartupMessage(startupTimeMs: number): void {
-  console.log(`⚓ Anchor Engine v${config.VERSION} ready in ${formatStartupTime(startupTimeMs)}`);
+  console.log(`⚓ Anchor Engine (${VERSION}) ready in ${formatStartupTime(startupTimeMs)}`);
   console.log(`Health: http://${config.HOST}:${config.PORT}/health`);
 }

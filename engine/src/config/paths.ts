@@ -21,10 +21,14 @@ export const PROJECT_ROOT = path.resolve(process.env.PROJECT_ROOT || path.join(_
 let userSettings: any = {};
 
 // Define Anchor root (centralized user data) - outside project root
+// Standard 110: Uses local-data structure under .anchor for consistent data organization
 const ANCHOR_ROOT = path.resolve(
   process.env.ANCHOR_ROOT ||
   path.join(PROJECT_ROOT, '.anchor')
 );
+
+// Define local-data directory under .anchor (Standard 110 compliance)
+const LOCAL_DATA_DIR = path.join(ANCHOR_ROOT, 'local-data');
 
 // Load user_settings.json from .anchor/ (primary) or project root (fallback)
 try {
@@ -55,16 +59,19 @@ export const CONTEXT_DIR = path.resolve(
 export const MODELS_DIR = path.resolve(process.env.MODELS_DIR || path.join(PROJECT_ROOT, 'models'));
 export const DIST_DIR = path.resolve(process.env.DIST_DIR || path.join(PROJECT_ROOT, 'dist'));
 export const BASE_PATH = PROJECT_ROOT;
+
+// Standard 110: Logs directory under .anchor/local-data for centralized logging
 export const LOGS_DIR = path.resolve(
   process.env.LOGS_DIR ||
   userSettings.paths?.logs ||
-  path.join(PROJECT_ROOT, 'logs')
+  path.join(LOCAL_DATA_DIR, 'logs')
 );
 
 // Define specific paths
 export const PATHS = {
   PROJECT_ROOT,
   ANCHOR_ROOT,
+  LOCAL_DATA_DIR,
   CONTEXT_DIR,
   MODELS_DIR,
   DIST_DIR,
@@ -74,12 +81,12 @@ export const PATHS = {
   USER_SETTINGS: path.join(ANCHOR_ROOT, 'user_settings.json'),
   DATABASE_FILE: path.join(CONTEXT_DIR, 'context.db'),
   NOTEBOOK_DIR,
-  // Centralized user data paths (from .anchor/)
-  INBOX_DIR: path.resolve(process.env.INBOX_DIR || userSettings.paths?.inbox || path.join(ANCHOR_ROOT, 'inbox')),
-  EXTERNAL_INBOX_DIR: path.resolve(process.env.EXTERNAL_INBOX_DIR || userSettings.paths?.external_inbox || path.join(ANCHOR_ROOT, 'external-inbox')),
-  DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || path.join(ANCHOR_ROOT, 'distills')),
-  MIRRORED_BRAIN_DIR: path.resolve(process.env.MIRRORED_BRAIN_DIR || userSettings.paths?.mirrored_brain || path.join(ANCHOR_ROOT, 'mirrored_brain')),
-  SESSIONS_DIR: path.resolve(process.env.SESSIONS_DIR || userSettings.paths?.sessions || path.join(ANCHOR_ROOT, 'sessions')),
+  // Standard 110: Centralized user data paths under local-data/
+  INBOX_DIR: path.resolve(process.env.INBOX_DIR || userSettings.paths?.inbox || path.join(LOCAL_DATA_DIR, 'inbox')),
+  EXTERNAL_INBOX_DIR: path.resolve(process.env.EXTERNAL_INBOX_DIR || userSettings.paths?.external_inbox || path.join(LOCAL_DATA_DIR, 'external-inbox')),
+  DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || path.join(LOCAL_DATA_DIR, 'distills')),
+  MIRRORED_BRAIN_DIR: path.resolve(process.env.MIRRORED_BRAIN_DIR || userSettings.paths?.mirrored_brain || path.join(LOCAL_DATA_DIR, 'mirrored_brain')),
+  SESSIONS_DIR: path.resolve(process.env.SESSIONS_DIR || userSettings.paths?.sessions || path.join(LOCAL_DATA_DIR, 'sessions')),
   LIBRARIES_DIR: path.join(CONTEXT_DIR, 'libraries'),
   MIRRORS_DIR: path.join(CONTEXT_DIR, 'mirrors'),
   ENGINE_BIN: path.join(PROJECT_ROOT, 'engine', 'bin'),
@@ -94,7 +101,7 @@ export const PATHS = {
 // Ensure anchor root and subdirectories exist
 try {
   fs.mkdirSync(ANCHOR_ROOT, { recursive: true });
-  
+
   // Create subdirectories if they don't exist
   const subdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs', 'backups'];
   for (const subdir of subdirs) {
@@ -103,7 +110,16 @@ try {
       fs.mkdirSync(subdirPath, { recursive: true });
     }
   }
-  
+
+  // Create local-data subdirectories (Standard 110)
+  const localDataSubdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs'];
+  for (const subdir of localDataSubdirs) {
+    const localDataPath = path.join(LOCAL_DATA_DIR, subdir);
+    if (!fs.existsSync(localDataPath)) {
+      fs.mkdirSync(localDataPath, { recursive: true });
+    }
+  }
+
   // Also ensure notebook directories exist (for backward compatibility)
   try {
     fs.mkdirSync(NOTEBOOK_DIR, { recursive: true });

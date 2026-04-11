@@ -42,7 +42,7 @@ pnpm test:watch
   - Advanced search filters
   - File upload/drop
   - Metadata display
-  - Paste & Ingest (v4.8.0)
+  - Paste & Ingest (v5.0.0)
 
 **Run:**
 ```bash

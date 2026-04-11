@@ -384,7 +384,8 @@ curl -X POST http://localhost:3160/v1/memory/search \
 - **Localhost restriction** – Only accept local connections by default
 - **Bucket safety** – Defaults to `external-inbox` for untrusted content
 
-See full documentation: **[mcp-server/README.md](mcp-server/README.md)**
+See full documentation:
+- **[mcp-server/README.md](mcp-server/README.md)** - MCP server integration
 
 ---
 
@@ -516,12 +517,12 @@ Most AI memory systems do the opposite: they hoard data, brute‑force compute s
 ### Security Hardening (April 2026)
 
 **P0 Fixes:**
-- Path traversal prevention in `/v1/system/*` endpoints
-- Test file execution sandboxing
-- SQL injection prevention (in progress)
-- API key strength validation (in progress)
+- Path traversal prevention (`/v1/system/*` endpoints) - Standard 025
+- Auth bypass prevention (removed `/v1/test/*`) - Standard 024
+- API key strength (32-128 chars, mixed case/digits) - Standard 024
+- Zero-copy deduplication (SHA-256 before UTF-8) - Standard 026
 
-**See:** [`specs/standards/129-path-traversal-prevention.md`](specs/standards/129-path-traversal-prevention.md)
+**See:** [`specs/current-standards/025-path-traversal-prevention.md`](specs/current-standards/025-path-traversal-prevention.md), [`specs/current-standards/024-auth-bypass-prevention.md`](specs/current-standards/024-auth-bypass-prevention.md), [`specs/current-standards/026-zero-copy-dedup.md`](specs/current-standards/026-zero-copy-dedup.md)
 
 ### Best Practices
 
@@ -536,20 +537,27 @@ Most AI memory systems do the opposite: they hoard data, brute‑force compute s
 
 ### Getting Started
 - **[Quick Start](#-quick-start-5-minutes)** - Install & first query
-- **[docs/API.md](docs/API.md)** - Complete API reference
-- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guide (local, Docker, VPS, K8s)
-- **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues & fixes
+- **[API.md](docs/API.md)** - Complete API reference
+- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guide (local, Docker, VPS, K8s)
+- **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues & fixes
 
 ### Deep Dive
-- **[docs/whitepaper.md](docs/whitepaper.md)** - STAR algorithm whitepaper
+- **[whitepaper.md](docs/whitepaper.md)** - STAR algorithm whitepaper
+- **[paper.md](docs/paper.md)** - Academic paper (arXiv submission)
 - **[specs/spec.md](specs/spec.md)** - System specification with diagrams
-- **[specs/current-standards/](specs/current-standards/)** - Active standards (001-010)
+- **[specs/current-standards/](specs/current-standards/)** - Active standards (001-026)
+- **[specs/archive-legacy/](specs/archive-legacy/)** - Historical standards (059-136+)
 - **[engine/src/README.md](engine/src/README.md)** - Source code overview
 
 ### Integration
 - **[mcp-server/README.md](mcp-server/README.md)** - MCP integration (Claude, Cursor, Qwen)
 - **[tests/README.md](tests/README.md)** - Testing guide
 - **[benchmarks/README.md](benchmarks/README.md)** - Performance benchmarks
+
+### Additional Resources
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+- **[FRICTIONLESS_SPEC.md](FRICTIONLESS_SPEC.md)** - Frictionless experience
+- **[STANDARDS.md](docs/STANDARDS.md)** - Active standards index
 
 ---
 

@@ -964,7 +964,7 @@ export async function fetchAtomsByTag(tag: string): Promise<any[]> {
 /**
  * Tag-based distillation mode
  * Iterates through all tags, fetches all content for each tag, and deduplicates
- * Uses ContextInflator.inflate() to get full atom content (like v4.8.2)
+ * Uses ContextInflator.inflate() to get full atom content (like v5.0.0)
  */
 async function tagBasedDistill(request: RadialDistillRequest): Promise<{
   blocks: SemanticBlock[];
@@ -1011,7 +1011,7 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
       compoundsProcessed++;
 
       // Get content from mirrored_brain filesystem (Standard 051 - Pointer Only)
-      // This is the v4.8.2 approach that works reliably
+      // This is the v5.0.0 approach that works reliably
       let content = '';
       
       // Normalize provenance for getMirrorPath

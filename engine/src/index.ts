@@ -342,7 +342,7 @@ async function startServer() {
         console.warn('[Services] Watchdog auto-start failed:', error.message);
     }
 
-    // Dreamer service disabled - optimized for STAR algorithm startup (v4.0)
+    // Dreamer service disabled - optimized for STAR algorithm startup (VERSION)
     console.log('[Services] All service start commands queued');
 
     // ============================================

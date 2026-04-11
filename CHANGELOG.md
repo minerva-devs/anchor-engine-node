@@ -295,7 +295,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ### 📚 Documentation
 
 - **MCP README** - Added search prefixes section with examples
-- **CHANGELOG** - This file now includes v4.9.5 changes
+- **CHANGELOG** - This file now includes v5.0.0 changes
 
 ---
 

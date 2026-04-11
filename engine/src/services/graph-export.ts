@@ -165,7 +165,7 @@ export async function exportGraph(
   let markdown = `# Knowledge Graph Export
 
 > Generated: ${new Date().toISOString()}
-> Engine: Anchor Engine v4.9.0
+> Engine: Anchor Engine v5.0.0
 
 ---
 

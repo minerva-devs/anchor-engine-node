@@ -24,10 +24,11 @@
 - [x] Tag limiting for output quality (Standard 121)
 - [x] Physics Walker temporal decay safety (Standard 122)
 - [x] Settings UI help text enhancements
-- [x] Path traversal prevention (Standard 129) - Fixed 3 endpoints
-- [x] SQL injection prevention (Standard 130) - Parameterized LIMIT clauses
-- [x] Auth bypass prevention (Standard 131) - Removed /v1/test/* exemption, added input validation
-- [x] API key strength validation (Standard 132) - 32-128 chars with complexity requirements
+- [x] Path traversal prevention (Standard 025) - Fixed 3 endpoints
+- [x] SQL injection prevention (Standard 030) - Parameterized LIMIT clauses
+- [x] Auth bypass prevention (Standard 024) - Removed /v1/test/* exemption, added input validation
+- [x] API key strength validation (Standard 024) - 32-128 chars with complexity requirements
+- [x] Zero-copy deduplication (Standard 026) - SHA-256 before UTF-8 processing
 - [ ] Ablation study results (pending execution)
 - [ ] Cross-platform CI testing matrix (pending)
 
@@ -44,6 +45,31 @@
 - [ ] Auth bypass audit on test endpoints
 - [ ] API key strength validation
 - [ ] Security README section
+
+### Month 11: April 2026 — Frictionless Experience (CURRENT)
+**Theme:** Zero-conf installation, automatic discovery, transparent operations
+
+**Completed (April 10, 2026):**
+- [x] **Project consolidation** - Removed redundant anchor-engine-node version
+- [x] **README updates** - Updated with consolidated documentation references
+- [x] **Standards alignment** - Unified standard numbering (001-026)
+- [x] **Spec updates** - Updated `specs/plan.md` and `specs/spec.md`
+
+**Remaining:**
+- [ ] **Watchdog auto-enable** - Auto-start if `watcher.extra_paths` configured
+- [ ] **Startup banner with VERSION** - Display version from `user_settings.json`
+- [ ] **Search returns content** - Return actual text in search results
+- [ ] **MCP reads settings** - Auto-load API key from `user_settings.json`
+
+**P1 - High Priority (Complete within 2 weeks):**
+- [ ] **CLI commands** - `anchor start`, `anchor status`, `anchor search`
+- [ ] **Agent discovery** - Auto-detect Qwen, Claude, Cursor chat dirs
+- [ ] **Ingestion progress** - Real-time file-level stats
+- [ ] **Debug endpoint** - Show why results filtered
+
+**P2 - Medium Priority (Backlog):**
+- [ ] **Agent registration API** - `POST /v1/agent/register`
+- [ ] **Agent SDK** - `autoRegister: true` in client init
 
 ---
 

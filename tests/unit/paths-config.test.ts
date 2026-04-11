@@ -21,8 +21,9 @@ describe('PATHS Configuration', () => {
   });
 
   describe('INBOX_DIR', () => {
-    it('should be under local-data/inbox', () => {
-      expect(PATHS.INBOX_DIR).toContain('local-data');
+    it('should be under .anchor/inbox', () => {
+      // Standard 110: Updated to use .anchor structure instead of local-data
+      expect(PATHS.INBOX_DIR).toContain('.anchor');
       expect(PATHS.INBOX_DIR).toContain('inbox');
     });
 
@@ -36,8 +37,9 @@ describe('PATHS Configuration', () => {
   });
 
   describe('EXTERNAL_INBOX_DIR', () => {
-    it('should be under local-data/external-inbox', () => {
-      expect(PATHS.EXTERNAL_INBOX_DIR).toContain('local-data');
+    it('should be under .anchor/external-inbox', () => {
+      // Standard 110: Updated to use .anchor structure instead of local-data
+      expect(PATHS.EXTERNAL_INBOX_DIR).toContain('.anchor');
       expect(PATHS.EXTERNAL_INBOX_DIR).toContain('external-inbox');
     });
 
@@ -51,8 +53,9 @@ describe('PATHS Configuration', () => {
   });
 
   describe('MIRRORED_BRAIN_DIR', () => {
-    it('should be under local-data/mirrored_brain', () => {
-      expect(PATHS.MIRRORED_BRAIN_DIR).toContain('local-data');
+    it('should be under .anchor/mirrored_brain', () => {
+      // Standard 110: Updated to use .anchor structure instead of local-data
+      expect(PATHS.MIRRORED_BRAIN_DIR).toContain('.anchor');
       expect(PATHS.MIRRORED_BRAIN_DIR).toContain('mirrored_brain');
     });
 
@@ -80,7 +83,7 @@ describe('PATHS Configuration', () => {
   });
 
   describe('Data Directory Structure', () => {
-    it('should have all data directories under local-data/', () => {
+    it('should have all data directories under .anchor/', () => {
       const dataPaths = [
         PATHS.INBOX_DIR,
         PATHS.EXTERNAL_INBOX_DIR,
@@ -88,16 +91,18 @@ describe('PATHS Configuration', () => {
       ];
 
       dataPaths.forEach(p => {
-        expect(p).toMatch(/local-data[\/\\]/);
+        // Standard 110: Updated to check for .anchor instead of local-data
+        expect(p).toMatch(/\.anchor[\/\\]/);
       });
     });
 
     it('should maintain proper hierarchy', () => {
-      const localDataDir = path.join(PROJECT_ROOT, 'local-data');
-      
-      expect(PATHS.INBOX_DIR.startsWith(localDataDir)).toBe(true);
-      expect(PATHS.EXTERNAL_INBOX_DIR.startsWith(localDataDir)).toBe(true);
-      expect(PATHS.MIRRORED_BRAIN_DIR.startsWith(localDataDir)).toBe(true);
+      // Standard 110: Updated to use .anchor as the base directory
+      const anchorDir = path.join(PROJECT_ROOT, '.anchor');
+
+      expect(PATHS.INBOX_DIR.startsWith(anchorDir)).toBe(true);
+      expect(PATHS.EXTERNAL_INBOX_DIR.startsWith(anchorDir)).toBe(true);
+      expect(PATHS.MIRRORED_BRAIN_DIR.startsWith(anchorDir)).toBe(true);
     });
   });
 
@@ -122,15 +127,17 @@ describe('PATHS Configuration', () => {
     it('inbox paths should be detectable as internal', () => {
       const testPath = path.join(PATHS.INBOX_DIR, 'test.md');
       const normalizedPath = testPath.replace(/\\/g, '/');
-      
-      expect(normalizedPath).toContain('/local-data/inbox/');
+
+      // Standard 110: Updated to use .anchor structure
+      expect(normalizedPath).toContain('/.anchor/inbox/');
     });
 
     it('external-inbox paths should be detectable as external', () => {
       const testPath = path.join(PATHS.EXTERNAL_INBOX_DIR, 'test.md');
       const normalizedPath = testPath.replace(/\\/g, '/');
-      
-      expect(normalizedPath).toContain('/local-data/external-inbox/');
+
+      // Standard 110: Updated to use .anchor structure
+      expect(normalizedPath).toContain('/.anchor/external-inbox/');
     });
   });
 });

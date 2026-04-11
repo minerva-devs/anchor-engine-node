@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 4.3.2 | **Status:** Production Ready | **Updated:** February 28, 2026
+**Version:** 5.0.0 | **Status:** Production Ready | **Updated:** March 18, 2026
 
 ## Quick Reference
 
@@ -17,21 +17,64 @@
 
 ## Related Documentation
 
-- **[docs/README.md](../README.md)** - Quick start and installation
+- **[README.md](../README.md)** - Quick start and installation
+- **[docs/INDEX.md](../docs/INDEX.md)** - Documentation navigation hub
 - **[docs/API.md](../docs/API.md)** - Complete API reference
 - **[docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)** - Deployment guide
 - **[docs/TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md)** - Troubleshooting guide
 - **[docs/whitepaper.md](../docs/whitepaper.md)** - STAR Algorithm whitepaper (arXiv ready)
 - **[engine/src/README.md](../engine/src/README.md)** - Source code overview
 - **[tests/README.md](../tests/README.md)** - Testing guide
-- **[specs/current-standards/](current-standards/)** - Active architecture standards
-- **[specs/API-ROUTE-MAP.md](API-ROUTE-MAP.md)** - Detailed API specification
+- **[specs/current-standards/](current-standards/)** - Active architecture standards (001-026)
+- **[specs/archive-legacy/](archive-legacy/)** - Historical standards (059-136+)
 
 ---
 
-## Recent Changes (v4.2.1)
+## Recent Changes (v5.0.0)
 
-### C++ Optimization Project (Archived)
+### Standards Consolidation
+
+**Branch:** `standards-consolidation`
+
+**Changes:**
+- Consolidated 26 active standards (001-026) into `specs/current-standards/`
+- Merged security standards (023-026: path traversal, auth bypass, API key strength, zero-copy dedup)
+- Consolidated historical archives into `specs/archive-legacy/`
+- Removed redundant `specs/standards/` directory
+- Kept `specs/archive-standards/` for historical standards (059-136+)
+- Updated all documentation to reference unified standards structure
+
+### Memory Management Improvements
+
+**Changes:**
+- Enhanced four-tier memory thresholds (500MB → 1500MB)
+- Improved search serialization to prevent heap doubling
+- Better GC integration with global.gc() calls
+- Memory-aware deduplication for cross-file similarity detection
+
+### Security Hardening
+
+**Changes:**
+- API key validation: 32-128 chars with mixed case/digits (Standard 025)
+- Path traversal prevention (Standard 023)
+- Auth bypass prevention - removed /v1/test/* endpoints (Standard 024)
+- Rate limiting for MCP server (60 req/min)
+- Write operations opt-in with bucket validation
+
+---
+
+## Related Documentation
+
+- **[README.md](../README.md)** - Quick start and installation
+- **[docs/README.md](../docs/README.md)** - Documentation navigation hub
+- **[docs/API.md](../docs/API.md)** - Complete API reference
+- **[docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)** - Deployment guide
+- **[docs/TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md)** - Troubleshooting guide
+- **[docs/whitepaper.md](../docs/whitepaper.md)** - STAR Algorithm whitepaper (arXiv ready)
+- **[engine/src/README.md](../engine/src/README.md)** - Source code overview
+- **[tests/README.md](../tests/README.md)** - Testing guide
+- **[specs/current-standards/](current-standards/)** - Active architecture standards (001-026)
+- **[specs/archive-legacy/](archive-legacy/)** - Historical standards (059-136+)
 
 **Branch:** `cpp-optimization`
 
@@ -387,7 +430,7 @@ flowchart TB
 
 ---
 
-## Performance Benchmarks (v4.1.2)
+## Performance Benchmarks (v5.0.0)
 
 ### Search Performance
 
@@ -403,8 +446,8 @@ flowchart TB
 
 ### Deduplication
 
-- **Before v4.1.2:** 30% dedup rate
-- **After v4.1.2:** 45% dedup rate (+15%)
+- **Before v5.0.0:** 25-35% dedup rate
+- **After v5.0.0:** 40-50% dedup rate (+15%)
 
 ### Memory Management
 
@@ -440,7 +483,7 @@ flowchart LR
 
 ---
 
-## Project History (July 2025 - February 2026)
+## Project History (July 2025 - March 2026)
 
 | Phase | Date | Milestone |
 |-------|------|-----------|
@@ -449,7 +492,8 @@ flowchart LR
 | **Stabilization** | Oct-Nov 2025 | PGlite migration, reliability fixes |
 | **Acceleration** | Dec 2025 | Native C++ modules (Deprecated in v4.3.0) |
 | **Browser Paradigm** | Jan 2026 | Tag-Walker replaces vector search |
-| **Production** | Feb 2026 | 100MB ingested, 280K molecules, ready |
+| **Standards Consolidation** | Feb 2026 | Unified 26 standards (001-026) |
+| **Production** | Mar 2026 | 100MB ingested, 280K molecules, v5.0.0 |
 
 ---
 
@@ -458,7 +502,7 @@ flowchart LR
 ```
 anchor-engine-node/
 ├── README.md              # Quick start & overview
-├── CHANGELOG.md           # Version history (v4.1.2 latest)
+├── CHANGELOG.md           # Version history (v5.0.0 latest)
 ├── docs/
 │   ├── whitepaper.md      # The Sovereign Context Protocol (95% compliance)
 │   ├── INDEX.md           # Documentation navigation hub
@@ -480,28 +524,38 @@ anchor-engine-node/
 
 ---
 
-## Active Standards
+## Active Standards (Unified: 001-026)
 
-### Core Standards (v4.1.2)
+| # | Name | Status |
+|---|------|--------|
+| **001** | Memory-Safe Ingestion | 10MB file limit, 10,000 molecule limit | ✅ |
+| **002** | Reproducible Benchmarking | Standardized test framework | ✅ |
+| **003** | MCP Tool Interface | Model Context Protocol integration | ✅ |
+| **004** | Streaming Search | SSE-based result streaming | ✅ |
+| **005** | Adaptive Concurrency Control | Memory-aware search pacing | ✅ |
+| **006** | Mobile Search Optimization | Low-memory device support | ✅ |
+| **007** | PGlite Memory Optimization | WASM buffer tuning | ✅ |
+| **008** | Radial Distillation | Knowledge compression | ✅ v2.0 |
+| **009** | Illuminate BFS Traversal | Graph exploration | ✅ |
+| **010** | Radial Distillation v2 | Decision Records output | ✅ |
+| **011** | Security Hardening | API key validation | ✅ |
+| **012** | Data Integrity | Source tracking | ✅ |
+| **013** | WASM Fallback | Native module fallback | ✅ |
+| **014** | Operational Visibility | System status endpoints | ✅ |
+| **015** | Configuration Management | Path/setting management | ✅ |
+| **016** | MCP Integration Testing | Tool validation | ✅ |
+| **017** | Dependency Validation | Package verification | ✅ |
+| **018** | Configuration Validation | Zod schema validation | ✅ |
+| **019** | Code Analysis | ESLint integration | ✅ |
+| **020** | Ephemeral Database | Disposable PGlite index | ✅ |
+| **021** | Pointer-Only Storage | Byte-offset indexing | ✅ |
+| **022** | Documentation Hygiene | Standard updates | ✅ |
+| **023** | Path Traversal Prevention | Input validation | ✅ P0 |
+| **024** | Auth Bypass Prevention | Test endpoint removal | ✅ P0 |
+| **025** | API Key Strength | 32-128 chars, mixed case | ✅ P0 |
+| **026** | Zero-Copy Deduplication | SHA-256 before UTF-8 | ✅ P1 |
 
-| # | Name | File | Description | Status |
-|---|------|------|-------------|--------|
-| **086** | Dual-Strategy Search | specs/standards/STANDARD_086_*.md | Standard + Max-Recall modes, SimHash dedup | ✅ v2.0 |
-| **113** | Automatic Max-Recall | specs/standards/STANDARD_113_*.md | Auto-trigger at >16k tokens | ✅ v1.0 |
-| **116** | Phoenix Protocol | specs/standards/STANDARD_116_*.md | Backup/Restore with filesystem rebuild | ✅ v1.0 |
-| **120** | System Output Filtering | specs/standards/STANDARD_120_*.md | Prevents self-contamination via sanitization/blacklists | ✅ v1.0 |
-
-### Legacy Standards (Still Valid)
-
-| # | Name | Description |
-|---|------|-------------|
-| **110** | Ephemeral Index | Disposable database pattern |
-| **109** | Batched Ingestion | Large file handling (>50MB) |
-| **104** | Universal Semantic Search | Unified search architecture |
-| **094** | Smart Search Protocol | Fuzzy fallback (deprecated but referenced) |
-| **088** | Server Startup Sequence | ECONNREFUSED fix |
-| **065** | Graph Associative Retrieval | Tag-Walker protocol |
-| **059** | Reliable Ingestion | Ghost Data Protocol |
+**Legacy Standards** (059-136+): Historical specs in `specs/archive-standards/`
 
 See `specs/standards/` for complete standards index.
 
@@ -520,12 +574,12 @@ GET  /v1/tags                    # List tags
 
 ---
 
-## Performance Benchmarks
+## Performance Benchmarks (v5.0.0)
 
 | Metric | Result | Target | Status |
 |--------|--------|--------|--------|
 | **90MB Ingestion** | ~178s | <200s | ✅ |
-| **Memory Peak** | <1GB | <1GB | ✅ |
+| **Memory Peak** | ~1.6GB | <2GB | ✅ |
 | **Search Latency (p95)** | ~150ms | <200ms | ✅ |
 | **SimHash Speed** | ~2ms/atom | <5ms | ✅ |
 
@@ -534,11 +588,10 @@ GET  /v1/tags                    # List tags
 ## Documentation
 
 - **[README.md](../README.md)** - Quick start, API examples, troubleshooting
-- **[CHANGELOG.md](../CHANGELOG.md)** - Version history with 6-month timeline
+- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (v5.0.0)
 - **[docs/whitepaper.md](../docs/whitepaper.md)** | The Sovereign Context Protocol
-- **[specs/tasks.md](tasks.md)** - Current sprint tasks
-- **[specs/plan.md](plan.md)** - Project roadmap
-- **[specs/standards/](standards/)** - Architecture standards
+- **[specs/standards/](standards/)** - Active architecture standards (001-026)
+- **[specs/archive-standards/](archive-standards/)** - Historical standards (059-136+)
 
 ---
 

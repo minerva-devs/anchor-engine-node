@@ -1,6 +1,6 @@
 # Anchor Engine - Documentation Index
 
-**Version:** 4.8.0 | **Updated:** March 18, 2026 | **Status:** ✅ Production Ready
+**Version:** 5.0.0 | **Updated:** April 10, 2026 | **Status:** ✅ Production Ready
 
 ---
 
@@ -8,23 +8,42 @@
 
 ### Getting Started
 - **[README.md](../README.md)** - Quick start, installation, usage guide
-- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (latest: v4.8.0)
-- **[CONTRIBUTING.md](../CONTRIBUTING.md)** - How to contribute
+- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (latest: v5.0.0)
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute
 
 ### Core Documentation
-- **[docs/API.md](API.md)** - Complete API reference
-- **[docs/DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment guide (local, Docker, VPS, K8s)
-- **[docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Troubleshooting guide
-- **[docs/whitepaper.md](whitepaper.md)** - STAR Algorithm whitepaper
-- **[specs/spec.md](../specs/spec.md)** - System specification with architecture diagrams
-- **[specs/current-standards/](../specs/current-standards/)** - Active architecture standards (001-010)
+- **[whitepaper.md](whitepaper.md)** - STAR Algorithm whitepaper
+- **[paper.md](paper.md)** - Academic paper
+- **[STANDARDS.md](STANDARDS.md)** - Active standards index
+- **[FRICTIONLESS_SPEC.md](FRICTIONLESS_SPEC.md)** - Frictionless specification
+- **[code-patterns.md](code-patterns.md)** - Code patterns
+- **[CONFIGURATION_SINGLE_SOURCE_OF_TRUTH.md](CONFIGURATION_SINGLE_SOURCE_OF_TRUTH.md)** - Configuration
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment guide
+- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Troubleshooting guide
+
+### Technical Reference
+- **[API.md](API.md)** - Complete API reference
+- **[endpoints.md](endpoints.md)** - API endpoints detail
+- **[common-issues.md](common-issues.md)** - Common issues
+- **[STAR_Whitepaper_Executive.md](STAR_Whitepaper_Executive.md)** - Executive summary
+
+### Architecture & Standards
+- **[specs/spec.md](../specs/spec.md)** - System specification with diagrams
+- **[specs/plan.md](../specs/plan.md)** - Development roadmap
+- **[specs/tasks.md](../specs/tasks.md)** - Current tasks
+- **[specs/doc_policy.md](../specs/doc_policy.md)** - Documentation policy
+- **[specs/current-standards/](../specs/current-standards/)** - Active standards (001-026)
+- **[specs/archive-legacy/](../specs/archive-legacy/)** - Historical standards (059-136+)
 
 ### Development
+- **[ai-assistant.md](ai-assistant.md)** - AI assistant integration
+- **[refactoring-guide.md](refactoring-guide.md)** - Refactoring guidelines
+- **[test-framework-separation.md](test-framework-separation.md)** - Testing framework
+- **[search-strategy.md](search-strategy.md)** - Search strategy
 - **[engine/src/README.md](../engine/src/README.md)** - Source code overview
-- **[tests/README.md](../tests/README.md)** - Testing guide
-- **[benchmarks/README.md](../benchmarks/README.md)** - Benchmarking framework
-- **[mcp-server/README.md](../mcp-server/README.md)** - MCP server integration
-- **[specs/current-standards/022-documentation-hygiene.md](../specs/current-standards/022-documentation-hygiene.md)** - Documentation rules & hygiene
+- **[tests/README.md](tests/README.md)** - Testing guide
+- **[benchmarks/README.md](benchmarks/README.md)** - Benchmarking framework
+- **[mcp-server/README.md](mcp-server/README.md)** - MCP server integration
 
 ---
 
@@ -34,38 +53,41 @@
 → Start with **[README.md](../README.md)** - Quick Start section
 
 ### "I need API documentation"
-→ Read **[docs/API.md](API.md)** - Complete API reference with examples
+→ Read **[API.md](API.md)** and **[endpoints.md](endpoints.md)** - Complete API reference with examples
 
 ### "I want to deploy to production"
-→ Follow **[docs/DEPLOYMENT.md](DEPLOYMENT.md)** - All deployment options
+→ Follow **[DEPLOYMENT.md](DEPLOYMENT.md)** - All deployment options
 
 ### "Something's not working"
-→ Check **[docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Common issues and fixes
+→ Check **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** and **[common-issues.md](common-issues.md)** - Common issues and fixes
 
 ### "I need to understand the system architecture"
 → Study **[specs/spec.md](../specs/spec.md)** - System specification with diagrams
 
 ### "I'm researching the theory behind Anchor Engine"
-→ Read **[docs/whitepaper.md](whitepaper.md)** - Academic paper
+→ Read **[whitepaper.md](whitepaper.md)** and **[paper.md](paper.md)** - Academic papers
 
 ### "I want to understand the search algorithm"
-→ See **[specs/current-standards/004-streaming-search.md](../specs/current-standards/004-streaming-search.md)**
+→ See **[search-strategy.md](search-strategy.md)** - Search strategy and patterns
 
 ### "How does distillation work?"
 → Read **[specs/current-standards/010-radial-distillation-v2.md](../specs/current-standards/010-radial-distillation-v2.md)**
 
 ### "I want to contribute code"
-→ Start with **[engine/src/README.md](../engine/src/README.md)** - Source overview
-
-### "I need to write tests"
-→ Follow **[tests/README.md](../tests/README.md)** - Testing guide
+→ Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** and **[refactoring-guide.md](refactoring-guide.md)**
 
 ### "I want to connect via MCP"
-→ See **[mcp-server/README.md](../mcp-server/README.md)** - MCP integration
+→ See **[mcp-agent.md](mcp-agent.md)** and **[qwen-code.md](qwen-code.md)** - MCP integration
+
+### "I need to write tests"
+→ Follow **[TESTING.md](TESTING.md)** and **[test-framework-separation.md](test-framework-separation.md)**
+
+### "I want to explore security standards?"
+→ Explore **[specs/current-standards/](../specs/current-standards/)** - 26 active standards (001-026)
 
 ---
 
-## 📊 Key Metrics (v4.8.0)
+## 📊 Key Metrics (v5.0.0)
 
 | Metric | Value | Status |
 |--------|-------|--------|
@@ -76,6 +98,9 @@
 | **Deduplication Rate** | 40-50% | ✅ With SimHash |
 | **Session Index** | NEW in v4.8.0 | ✅ Two-tier retrieval |
 | **MCP Write Ops** | NEW in v4.8.0 | ✅ Opt-in ingest |
+| **Active Standards** | 26 (001-026) | ✅ Consolidated |
+| **Historical Standards** | 45 (059-136+) | ✅ Merged |
+| **Documentation Files** | 48 | ✅ Flattened structure |
 
 ---
 
@@ -84,33 +109,77 @@
 ```
 anchor-engine-node/
 ├── README.md                      # Start here - Quick start & usage
-├── CHANGELOG.md                   # What's new (v4.8.0)
+├── CHANGELOG.md                   # What's new (v5.0.0)
 ├── CONTRIBUTING.md                # How to contribute
+├── LICENSE                        # AGPL-3.0 license
+├── user_settings.json             # Configuration source of truth
 │
-├── docs/
-│   ├── API.md                     # ✅ NEW - Complete API reference
-│   ├── DEPLOYMENT.md              # ✅ NEW - Deployment guide
-│   ├── TROUBLESHOOTING.md         # ✅ NEW - Troubleshooting
-│   ├── whitepaper.md              # STAR algorithm paper
+├── docs/                          # Flattened documentation (no subdirs)
+│   ├── whitepaper.md              # STAR algorithm whitepaper
+│   ├── paper.md                   # Academic paper (arXiv)
+│   ├── BIBLIOGRAPHY.bib           # Academic bibliography
+│   ├── star-whitepaper.tex        # LaTeX whitepaper source
+│   ├── RELATED_WORK.tex           # Related work documentation
+│   ├── compile.bat                # Build script
+│   ├── prepare-submission.bat     # Submission script
+│   ├── joss_response.md           # JOSS response
+│   ├── review.md                  # Review documentation
+│   │
+│   ├── API.md                     # API reference
+│   ├── endpoints.md               # API endpoints detail
+│   ├── DEPLOYMENT.md              # Deployment guide
+│   ├── TROUBLESHOOTING.md         # Troubleshooting guide
+│   ├── common-issues.md           # Common issues reference
+│   ├── STANDARDS.md               # Active standards index
+│   ├── FRICTIONLESS_SPEC.md       # Frictionless specification
 │   ├── code-patterns.md           # Code patterns
-│   ├── INDEX.md                   # This file - navigation hub
-│   └── arxiv/                     # arXiv submission docs
+│   ├── CONFIGURATION_SINGLE_SOURCE_OF_TRUTH.md # Configuration
+│   ├── MD_FILES_INVENTORY.md      # Documentation inventory
+│   ├── SPRINT-4-SUMMARY.md        # Sprint summary
+│   ├── PROJECT_STATE_ASSESSMENT.md # Project assessment
+│   │
+│   ├── ai-assistant.md            # AI assistant guide
+│   ├── refactoring-guide.md       # Refactoring guidelines
+│   ├── test-framework-separation.md # Testing framework
+│   ├── search-strategy.md         # Search strategy
+│   ├── search-test-report.md      # Search testing
+│   │
+│   ├── mcp-agent.md               # MCP agent integration
+│   ├── mcp-setup.md               # MCP setup guide
+│   ├── qwen-code.md               # Qwen Code integration
+│   ├── CLAW-CODE-INTEGRATION.md   # CLAW integration
+│   ├── MCP_SEARCH_FIX.md          # MCP search fixes
+│   │
+│   ├── BUILDING.md                # Building guide
+│   ├── INSTALL_NPM.md             # NPM installation
+│   ├── NPM_PUBLISH_SUMMARY.md     # NPM publishing
+│   ├── orchestrator.md            # Orchestrator guide
+│   ├── pain-points.md             # Pain points
+│   │
+│   ├── TESTING.md                 # Testing framework
+│   ├── TESTING_FRAMEWORK_COMPLETE.md # Complete testing
+│   ├── TEST_UI_INTEGRATION.md     # UI integration
+│   ├── TEST_UI_RUST_INTEGRATION.md # Rust integration
+│   │
+│   ├── AGENT_CONTROLLED_ENGINE.md # Agent-controlled engine
+│   ├── code-review-v4.8.1-decision-record.md # Code review
+│   └── TODAY_SUMMARY.md             # Daily summary
 │
 ├── specs/
-│   ├── spec.md                    # System spec with diagrams
-│   ├── API-ROUTE-MAP.md           # Detailed API spec
-│   ├── plan.md                    # Roadmap
+│   ├── spec.md                    # System specification
+│   ├── plan.md                    # Development roadmap
 │   ├── tasks.md                   # Current tasks
-│   ├── current-standards/         # ✅ Active standards (001-010)
-│   ├── archive-standards/         # Historical standards (059-200+)
-│   └── archive-legacy/            # Legacy docs
+│   ├── doc_policy.md              # Documentation policy
+│   ├── current-standards/         # Active standards (001-026)
+│   ├── archive-legacy/            # Historical standards (059-136+)
+│   └── decisions/                 # Decision records
 │
 ├── engine/
 │   └── src/
-│       └── README.md              # ✅ NEW - Source code overview
+│       └── README.md              # Source code overview
 │
 ├── tests/
-│   └── README.md                  # ✅ NEW - Testing guide
+│   └── README.md                  # Testing guide
 │
 ├── benchmarks/
 │   └── README.md                  # Benchmarking framework
@@ -125,30 +194,36 @@ anchor-engine-node/
 
 ### Beginner (Just Getting Started)
 1. **[README.md](../README.md)** - Installation & first query
-2. **[docs/API.md](API.md)** - API basics
+2. **[API.md](API.md)** - API basics
 3. **[CHANGELOG.md](../CHANGELOG.md)** - Recent features
 
 ### Intermediate (Understanding the System)
 1. **[specs/spec.md](../specs/spec.md)** - Full system specification
-2. **[specs/current-standards/004-streaming-search.md](../specs/current-standards/004-streaming-search.md)** - Search algorithm
+2. **[search-strategy.md](search-strategy.md)** - Search algorithm
 3. **[specs/current-standards/010-radial-distillation-v2.md](../specs/current-standards/010-radial-distillation-v2.md)** - Distillation v2.0
 4. **[engine/src/README.md](../engine/src/README.md)** - Source overview
 
 ### Advanced (Deep Dive)
-1. **[docs/whitepaper.md](whitepaper.md)** - Theoretical foundation
-2. **[tests/README.md](../tests/README.md)** - Test suite
+1. **[whitepaper.md](whitepaper.md)** - Theoretical foundation
+2. **[paper.md](paper.md)** - Academic paper
 3. **[specs/current-standards/](../specs/current-standards/)** - All active standards
-4. **[docs/DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment
+4. **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment
 
 ### Contributor (Writing Code)
-1. **[CONTRIBUTING.md](../CONTRIBUTING.md)** - Contribution guidelines
-2. **[engine/src/README.md](../engine/src/README.md)** - Source structure
-3. **[tests/README.md](../tests/README.md)** - Testing requirements
+1. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+2. **[refactoring-guide.md](refactoring-guide.md)** - Source structure
+3. **[TESTING.md](TESTING.md)** - Testing requirements
 4. **[specs/current-standards/](../specs/current-standards/)** - Architecture standards
 
 ---
 
-## 🔬 Recent Updates (v4.8.0 - Mar 18, 2026)
+## 🔬 Recent Updates (v5.0.0 - April 10, 2026)
+
+### Documentation Consolidation
+- **Flattened Structure:** Removed all subdirectories, consolidated 48 files in `docs/`
+- **Updated Standards:** Merged 26 active standards (001-026) into `specs/current-standards/`
+- **Historical Archive:** Consolidated 45 historical standards (059-136+) into `specs/archive-legacy/`
+- **Updated References:** All documentation links now point to consolidated locations
 
 ### New Features
 - **Session Index** - Two-tier memory retrieval (index → targeted fetch)
@@ -156,45 +231,47 @@ anchor-engine-node/
 - **Paste & Ingest UI** - Quick text ingestion via Web UI
 - **Philosophy Documentation** - Core principles embedded throughout docs
 
-### New Documentation
-- **docs/API.md** - Complete API reference
-- **docs/DEPLOYMENT.md** - Deployment guide (all platforms)
-- **docs/TROUBLESHOOTING.md** - Troubleshooting by category
-- **engine/src/README.md** - Source code overview
-- **tests/README.md** - Testing guide
-
-### Documentation Consolidation
-- Merged architecture diagrams into `specs/spec.md`
-- Archived 7 redundant historical documents
-- Updated all links to point to current docs
+### Security Hardening
+- **Path Traversal Prevention** - Standard 025
+- **Auth Bypass Prevention** - Standard 024
+- **API Key Strength** - Standard 024
+- **Zero-Copy Deduplication** - Standard 026
 
 ---
 
 ## 📁 Documentation Categories
 
 ### User-Facing
-| Document | Audience | Purpose |
-|----------|----------|---------|
-| README.md | All users | Quick start & usage |
-| docs/API.md | Developers | API reference |
-| docs/DEPLOYMENT.md | DevOps | Deployment guide |
-| docs/TROUBLESHOOTING.md | All users | Fix common issues |
-| mcp-server/README.md | MCP users | MCP integration |
+| Document | Purpose |
+|----------|---------|
+| README.md | Quick start & usage |
+| DEPLOYMENT.md | Deployment guide |
+| TROUBLESHOOTING.md | Fix common issues |
+| FRICTIONLESS_SPEC.md | Frictionless experience |
 
 ### Developer-Facing
-| Document | Audience | Purpose |
-|----------|----------|---------|
-| engine/src/README.md | Contributors | Source overview |
-| tests/README.md | Contributors | Testing guide |
-| benchmarks/README.md | Contributors | Performance testing |
-| specs/current-standards/ | Contributors | Architecture standards |
+| Document | Purpose |
+|----------|---------|
+| API.md | API reference |
+| refactoring-guide.md | Development guidelines |
+| TESTING.md | Testing framework |
+| search-strategy.md | Search implementation |
 
 ### Academic/Research
-| Document | Audience | Purpose |
-|----------|----------|---------|
-| docs/whitepaper.md | Researchers | STAR algorithm paper |
-| specs/spec.md | Architects | System specification |
-| docs/arxiv/ | Researchers | arXiv submission |
+| Document | Purpose |
+|----------|---------|
+| whitepaper.md | STAR algorithm paper |
+| paper.md | Academic paper |
+| BIBLIOGRAPHY.bib | Research bibliography |
+| star-whitepaper.tex | LaTeX source |
+
+### Integration
+| Document | Purpose |
+|----------|---------|
+| mcp-agent.md | MCP integration |
+| qwen-code.md | Qwen Code integration |
+| CLAW-CODE-INTEGRATION.md | CLAW integration |
+| MCP_SEARCH_FIX.md | Search enhancements |
 
 ---
 
@@ -210,18 +287,18 @@ anchor-engine-node/
 ## 📞 Support & Contribution
 
 ### Getting Help
-- Check **[docs/TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for common issues
+- Check **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for common issues
 - Review **[specs/spec.md](../specs/spec.md)** for system understanding
 - Read **[CHANGELOG.md](../CHANGELOG.md)** for recent fixes
 
 ### Contributing
-1. Read **[CONTRIBUTING.md](../CONTRIBUTING.md)** for guidelines
-2. Review **[engine/src/README.md](../engine/src/README.md)** for source structure
+1. Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines
+2. Review **[refactoring-guide.md](refactoring-guide.md)** for source structure
 3. Follow **[specs/current-standards/](../specs/current-standards/)** for architecture
-4. Run **[tests/README.md](../tests/README.md)** test suite before submitting
+4. Run **[TESTING.md](TESTING.md)** test suite before submitting
 
 ---
 
-**Last Updated:** March 18, 2026  
-**Version:** 4.8.0  
+**Last Updated:** April 10, 2026
+**Version:** 5.0.0
 **Status:** ✅ Production Ready

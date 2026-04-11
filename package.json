@@ -22,7 +22,18 @@
     "postinstall": "pnpm build:all",
     "start-with-logging": "node --expose-gc engine/dist/index.js > ../../logs/anchor_engine.log 2>&1",
     "postversion": "node scripts/sync-version.mjs && git add engine/package.json README.md && git commit --amend --no-edit",
-    "prepublishOnly": "pnpm run build && pnpm test"
+    "prepublishOnly": "pnpm run build && pnpm test",
+    "test:all": "node tests/run-tests-with-logger.js",
+    "test:unit": "node tests/run-tests-with-logger.js --unit",
+    "test:integration": "node tests/run-tests-with-logger.js --integration",
+    "test:benchmarks": "node tests/run-tests-with-logger.js --benchmarks",
+    "test:compare": "tsx scripts/compare-tests.ts",
+    "test:compare:pattern": "tsx scripts/compare-tests.ts --pattern",
+    "test:cross-route": "tsx scripts/test-cross-route.ts",
+    "test:cross-route:ingest": "tsx scripts/test-cross-route.ts --ingest",
+    "test:cross-route:search": "tsx scripts/test-cross-route.ts --search",
+    "test:cross-route:distill": "tsx scripts/test-cross-route.ts --distill",
+    "test:validate-decision-records": "node scripts/decision-record-validator.js"
   },
   "keywords": [
     "llm-memory",
@@ -90,7 +101,9 @@
     "rimraf": "^5.0.5",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.1",
-    "ts-prune": "^0.10.3"
+    "ts-prune": "^0.10.3",
+    "tsx": "^4.21.0",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=18.0.0"

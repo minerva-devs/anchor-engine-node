@@ -41,7 +41,7 @@ The `anchor_query` tool supports special prefixes for advanced search strategies
 
 ---
 
-## What's New in v4.9.0
+## What's New in v5.0.0
 
 ### GitHub Ingestion with Code Analysis (NEW!)
 
@@ -270,7 +270,7 @@ Get system statistics.
 {}
 ```
 
-### `anchor_ingest_text` (NEW in v4.8.0)
+### `anchor_ingest_text` (NEW in v5.0.0)
 
 Ingest raw text content into Anchor Engine memory. Content is atomized deterministically (no LLM processing).
 
@@ -325,7 +325,7 @@ Ingest raw text content into Anchor Engine memory. Content is atomized determini
 
 ---
 
-### `anchor_ingest_file` (NEW in v4.8.0)
+### `anchor_ingest_file` (NEW in v5.0.0)
 
 Ingest a file from filesystem into Anchor Engine. Content is atomized deterministically.
 
@@ -368,7 +368,7 @@ Ingest a file from filesystem into Anchor Engine. Content is atomized determinis
 
 ---
 
-### `anchor_github_ingest` (NEW in v4.9.0)
+### `anchor_github_ingest` (NEW in v5.0.0)
 
 Ingest a GitHub repository into Anchor Engine. Downloads source files and optionally runs code analysis and/or includes full commit history.
 
