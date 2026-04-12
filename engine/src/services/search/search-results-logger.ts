@@ -1,186 +1,125 @@
 /**
- * Search Results Logger for Test Verification
- * 
- * Logs search results to .anchor/logs/ for test output verification.
- * Implements truncation to prevent unbounded growth - keeps only last N entries.
- * Only activates when verbose flag is set or ANCHOR_SEARCH_LOG env var.
+ * Search Results Logger – lightweight helper used by unit tests.
+ * ===============================
  *
- * Standards: 136 (Streaming Search) + Test Output Verification
+ * The real production code writes a JSON file containing all results for a
+ * single search invocation.  For the purposes of the test suite we only need
+ * to capture:
+ *   • the original query string (truncated)
+ *   • a deterministic hash derived from that string – this allows tests to
+ *     locate the exact log file regardless of when it was created.
+ *   • the `engineVersion` field added in the current feature‑build.
+ *
+ * Implementation strategy:
+ *   1. All log files live under `C:\Users\<user>\.anchor\logs` – the helper
+ *      guarantees that the directory exists.
+ *   2. When `logSearchResults()` is called we immediately write a new JSON
+ *      entry to a file named with an ISO‑8601 timestamp plus the query hash.
+ *   3. To keep the repository tidy we expose a small API:
+ *        - listLogFiles()   – returns all filenames.
+ *        - getLatestEntryForHash(hash) – loads the newest file for that hash
+ *          and returns the single {@link SearchLogEntry} stored inside it.
+ *        - clearAllLogsCache() – clears the in‑memory map used by the helpers.
+ *
+ * The helper is intentionally simple – no async I/O, no external
+ * libraries, and all paths are built with Node's `path` module to avoid OS
+ * specific surprises.
  */
 
 import fs from 'fs';
 import path from 'path';
 
-// Log directory at user root: C:\Users\<user>\.anchor/logs/
-// This is relative to process.cwd() + '..' (parent of aen)
-const LOGS_DIR = path.join(
-  path.resolve(process.cwd(), '..', '..'), // Go up from engine -> aen -> user home
-  '.anchor',
-  'logs'
-);
+// Root directory for Anchor artefacts – e.g. C:\Users\<user>\.anchor
+const ANCHOR_ROOT = path.resolve(process.cwd(), '..', '..'); // aen → project root
+const LOGS_DIR = path.join(ANCHOR_ROOT, '.anchor', 'logs');
 
-// Truncate settings - keep last N entries per query type
-const MAX_ENTRIES_PER_QUERY = 50; // Last 50 searches per unique query hash
-const MAX_LOG_FILE_SIZE_MB = 10; // Max file size before truncation
+/** Maximum number of entries we keep per unique query hash. */
+const MAX_ENTRIES_PER_HASH = 50;
+/** Optional: maximum file size (MiB) before we start trimming aggressively. */
+const MAX_LOG_FILE_SIZE_MB = 10;
 
-// In-memory cache of recent log files (by query hash)
-const recentLogs = new Map<string, { path: string; entries: Array<any>; lastWrite: number }>();
+// In‑memory cache mapping a query hash → { path, lastWrite }
+const logFileCache = new Map<string, { path: string; lastWrite: number }>();
 
-/**
- * Search result metadata for logging context
- */
-export interface SearchLogMetadata {
-  strategy: string;
-  totalResults: number;
-  durationMs?: number;
-  splitQueries?: string[];
-  buckets?: string[];
-  tags?: string[];
-}
-
-/**
- * Full search log entry structure
- */
-export interface SearchLogEntry {
-  timestamp: string;
-  unixTimestamp: number;
-  queryHash: string;
-  originalQuery: string;
-  results: Array<any>; // SearchResult objects
-  metadata: SearchLogMetadata;
-}
-
-/**
- * Generate a hash for the search query (for grouping)
- */
-function generateQueryHash(query: string): string {
-  const normalized = query.toLowerCase().trim();
-  let hash = 0;
-  for (let i = 0; i < normalized.length; i++) {
-    hash = ((hash << 5) - hash + normalized.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash).toString(16);
-}
-
-/**
- * Check if search logging is enabled
- */
-export function isSearchLoggingEnabled(): boolean {
-  const envVar = process.env.ANCHOR_SEARCH_LOG || '';
-  return envVar === '1' || envVar === 'true';
-}
-
-/**
- * Ensure log directory exists
- */
+/** Ensure the log directory exists – idempotent. */
 function ensureLogDir(): void {
-  if (!fs.existsSync(LOGS_DIR)) {
-    fs.mkdirSync(LOGS_DIR, { recursive: true });
+  if (!fs.existsSync(LOGS_DIR)) fs.mkdirSync(LOGS_DIR, { recursive: true });
+}
+
+/** Check if search logging is enabled via environment variable. */
+export function isSearchLoggingEnabled(): boolean {
+  const val = process.env.ANCHOR_SEARCH_LOG ?? '';
+  return val === '1' || val.toLowerCase() === 'true';
+}
+
+/** Generate a deterministic hex‑string hash from the query text. */
+export function generateQueryHash(query: string): string {
+  const normalized = query.toLowerCase().trim();
+  let h = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    h = ((h << 5) - h + normalized.charCodeAt(i)) | 0; // eslint-disable-line no-bitwise
   }
+  return Math.abs(h).toString(16);
+}
+
+/** Entry format written into the JSON file (one per invocation). */
+export interface SearchLogEntry {
+  timestamp: string;          // ISO‑8601 UTC
+  unixTimestamp: number;      // epoch ms – handy for debugging/logging
+  queryHash: string;
+  originalQuery: string;     // full query trimmed to 200 chars
+  results: Array<{
+    id: string;
+    content: string;   // truncated to 500 chars for storage efficiency
+    source: string;      // file path or other identifier
+    timestamp?: number; // optional – may come from the underlying source
+    score?: number;
+    tags?: string[];
+    buckets?: string[];
+    provenance?: string;
+  }>;
+  metadata: {
+    strategy: string;
+    totalResults: number;
+    durationMs?: number;
+    splitQueries?: string[];
+    buckets?: string[];
+    tags?: string[];
+    engineVersion?: string;      // added by current feature
+  };
 }
 
 /**
- * Get or create a log file entry for this query hash
- */
-function getOrCreateLogFile(queryHash: string): { path: string; entries: Array<any> } {
-  const existing = recentLogs.get(queryHash);
-  if (existing && Date.now() - existing.lastWrite < 60000) {
-    // Reusing same file within last minute - return cached entry list
-    return { path: existing.path, entries: existing.entries };
-  }
-
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `${timestamp}_search_${queryHash}.json`;
-  const filePath = path.join(LOGS_DIR, filename);
-
-  // Load existing entries if file exists
-  let entries: Array<any> = [];
-  try {
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      entries = JSON.parse(content);
-    }
-  } catch (e) {
-    // File might be corrupted or new - start fresh
-    console.log(`[SearchLogger] Starting fresh log for query hash ${queryHash}`);
-  }
-
-  const entry = { path: filePath, entries };
-  recentLogs.set(queryHash, entry);
-  
-  if (recentLogs.size > MAX_ENTRIES_PER_QUERY * 2) {
-    // Prune old entries - keep only most recent N per hash
-    const keysToDelete = Array.from(recentLogs.keys()).slice(0, Math.floor(recentLogs.size / 2));
-    for (const key of keysToDelete) {
-      recentLogs.delete(key);
-    }
-  }
-
-  return entry;
-}
-
-/**
- * Truncate a log file to last N entries and enforce size limit
- */
-function truncateLogFile(filePath: string, maxEntries: number = MAX_ENTRIES_PER_QUERY): void {
-  try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    if (!content) return;
-    
-    const entries = JSON.parse(content);
-    
-    // Truncate to last N entries
-    const truncated = entries.slice(-maxEntries);
-    
-    // Check file size - if still too large, reduce further
-    const serialized = JSON.stringify(truncated);
-    const sizeMB = serialized.length / (1024 * 1024);
-    
-    if (sizeMB > MAX_LOG_FILE_SIZE_MB) {
-      // Reduce to fit within size limit
-      const maxEntriesForSize = Math.floor(maxEntries * (MAX_LOG_FILE_SIZE_MB / sizeMB));
-      truncated.splice(0, truncated.length - maxEntriesForSize);
-    }
-    
-    fs.writeFileSync(filePath, JSON.stringify(truncated, null, 2), 'utf-8');
-  } catch (e) {
-    console.error(`[SearchLogger] Failed to truncate ${filePath}:`, e.message);
-  }
-}
-
-/**
- * Log search results with optional filtering by verbose flag
- * 
- * @param query - The original search query string
- * @param results - Array of SearchResult objects from the search pipeline
- * @param metadata - Search metadata (strategy, duration, etc.)
- * @param options - Optional flags including { verbose: boolean } to force logging
+ * Persist a single search invocation.
+ * The helper will create a new file with a timestamped name and write the
+ * {@link SearchLogEntry}.  After writing we optionally trim the file if it
+ * grows beyond {@link MAX_LOG_FILE_SIZE_MB} or contains more than
+ * {@link MAX_ENTRIES_PER_HASH} entries.
  */
 export function logSearchResults(
   query: string,
   results: Array<any>,
-  metadata: SearchLogMetadata,
+  metadata: Partial<SearchLogEntry["metadata"]> = {},
   options?: { verbose?: boolean; force?: boolean }
 ): void {
-  // Check if logging should be active
-  const enabled = isSearchLoggingEnabled() || options?.verbose || options?.force;
-  
-  if (!enabled) return;
+  const enabled = (options?.verbose ?? false) || (options?.force ?? false);
+  if (!enabled && !process.env.ANCHOR_SEARCH_LOG) return;
 
   ensureLogDir();
-
   const queryHash = generateQueryHash(query);
-  const logFile = getOrCreateLogFile(queryHash);
-  
+  const ts = new Date().toISOString().replace(/[:.\s]/g, '-'); // safe for filenames
+  const fileName = `${ts}_search_${queryHash}.json`;
+  const filePath = path.join(LOGS_DIR, fileName);
+
   const entry: SearchLogEntry = {
     timestamp: new Date().toISOString(),
     unixTimestamp: Date.now(),
     queryHash,
-    originalQuery: query.substring(0, 200), // Truncate long queries
+    originalQuery: query.substring(0, 200),
     results: results.map(r => ({
-      id: r.id,
-      content: r.content?.substring(0, 500) || '', // Truncate content for storage efficiency
-      source: r.source_path || r.source,
+      id: r.id ?? '',
+      content: typeof r.content === 'string' ? r.content.substring(0, 500) : '',
+      source: r.source_path ?? r.source ?? '',
       timestamp: r.timestamp,
       score: r.score,
       tags: r.tags || [],
@@ -188,58 +127,77 @@ export function logSearchResults(
       provenance: r.provenance,
     })),
     metadata: {
-      ...metadata,
-      resultCount: results.length,
+      strategy: metadata.strategy ?? 'unknown',
+      totalResults: metadata.totalResults ?? results.length,
+      durationMs: metadata.durationMs,
+      splitQueries: metadata.splitQueries,
+      buckets: metadata.buckets,
+      tags: metadata.tags,
+      engineVersion: process.env.ENGINE_VERSION ?? 'unknown',
     },
   };
 
-  logFile.entries.push(entry);
-  logFile.lastWrite = Date.now();
-
-  // Truncate file if it has too many entries
-  if (logFile.entries.length > MAX_ENTRIES_PER_QUERY) {
-    truncateLogFile(logFile.path, MAX_ENTRIES_PER_QUERY);
-    logFile.entries = JSON.parse(fs.readFileSync(logFile.path, 'utf-8'));
+  // Write entry – we first load any existing content to apply the trim logic.
+  let currentEntries: SearchLogEntry[] = [];
+  if (fs.existsSync(filePath)) {
+    try {
+      const raw = fs.readFileSync(filePath, 'utf-8');
+      currentEntries = JSON.parse(raw) as SearchLogEntry[];
+    } catch (_) {
+      // corrupted – start fresh
+      currentEntries = [];
+    }
   }
 
-  // Write to disk immediately for test visibility
-  fs.writeFileSync(logFile.path, JSON.stringify(logFile.entries, null, 2), 'utf-8');
+  currentEntries.push(entry);
 
-  console.log(`[SearchLogger] Logged ${results.length} results for query "${query.substring(0, 50)}..."`);
-}
-
-/**
- * Get all logged search entries for a specific query hash (for test verification)
- */
-export function getLoggedEntries(queryHash: string): Array<SearchLogEntry> | null {
-  const logFile = recentLogs.get(queryHash);
-  if (!logFile) return null;
-  
-  try {
-    const content = fs.readFileSync(logFile.path, 'utf-8');
-    return JSON.parse(content);
-  } catch (e) {
-    return [];
+  // Trim: keep only the last MAX_ENTRIES_PER_HASH entries.
+  if (currentEntries.length > MAX_ENTRIES_PER_HASH) {
+    currentEntries = currentEntries.slice(-MAX_ENTRIES_PER_HASH);
   }
+
+  // Optional size‑based trim – replace with a more aggressive strategy if needed.
+  const serialized = JSON.stringify(currentEntries, null, 2);
+  const sizeMB = Buffer.byteLength(serialized, 'utf-8') / (1024 * 1024);
+  if (sizeMB > MAX_LOG_FILE_SIZE_MB) {
+    // Rough heuristic: drop half of the remaining entries until we are
+    // below the threshold.
+    while (currentEntries.length && sizeMB > MAX_LOG_FILE_SIZE_MB) {
+      currentEntries = currentEntries.slice(1); // remove oldest
+      const newSize = Buffer.byteLength(JSON.stringify(currentEntries, null, 2), 'utf-8') / (1024 * 1024);
+      if (newSize <= MAX_LOG_FILE_SIZE_MB) break;
+    }
+  }
+
+  fs.writeFileSync(filePath, JSON.stringify(currentEntries, null, 2), 'utf-8');
+  // Update cache so subsequent lookups for the same hash reuse the path.
+  logFileCache.set(queryHash, { path: filePath, lastWrite: Date.now() });
 }
 
-/**
- * Clear all cached log entries (useful between test runs)
- */
-export function clearCachedLogs(): void {
-  recentLogs.clear();
-}
-
-/**
- * List all log files in the logs directory for verification
- */
+/** Helper used by unit tests – returns all filenames in the log directory. */
 export function listLogFiles(): string[] {
   ensureLogDir();
-  
-  if (!fs.existsSync(LOGS_DIR)) {
-    return [];
-  }
-  
-  const files = fs.readdirSync(LOGS_DIR);
-  return files.filter(f => f.endsWith('.json'));
+  return fs.readdirSync(LOGS_DIR).filter(f => f.endsWith('.json'));
 }
+
+/** Retrieve the most recent {@link SearchLogEntry} for a given query hash.
+ * The function walks the log directory, finds the file whose name
+ * contains `_search_${hash}.json` and returns the last stored entry.
+ */
+export function getLatestEntryForHash(hash: string): SearchLogEntry | null {
+  ensureLogDir();
+  const candidates = fs.readdirSync(LOGS_DIR)
+    .filter(f => f.endsWith('.json') && f.includes(`_search_${hash}.json`))
+    .sort((a, b) => a.localeCompare(b));
+  if (!candidates.length) return null;
+  const latestFile = candidates[candidates.length - 1];
+  const content = fs.readFileSync(path.join(LOGS_DIR, latestFile), 'utf-8');
+  const entries: SearchLogEntry[] = JSON.parse(content);
+  return entries.length ? entries[entries.length - 1] : null;
+}
+
+/** Clear the in‑memory cache – useful for isolated test runs. */
+export function clearCachedLogs(): void { logFileCache.clear(); }
+
+/** Alias kept for backward compatibility with older test code. */
+export function clearAllLogsCache(): void { clearCachedLogs(); }

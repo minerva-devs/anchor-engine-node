@@ -10,21 +10,38 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 
-// vitest mock function helper (jest.fn equivalent)
+// vitest mock function helper (jest.fn equivalent) - enhanced to handle async/await properly
 const createMockFn = () => {
   const fn: any = (...args: any[]) => {
     (fn as any).mock.calls.push(args);
-    return (fn as any).mockReturnValue;
+    // Return the next queued value, or default if none left
+    if ((fn as any).mock.queue.length > 0) {
+      return Promise.resolve((fn as any).mock.queue.shift());
+    }
+    const val = (fn as any).mock.returnValue;
+    return typeof val === 'function' ? val(...args) : Promise.resolve(val);
   };
-  fn.mock = { calls: [], returnValue: Promise.resolve({ data: [] }) };
+  fn.mock = { calls: [], returnValue: Promise.resolve({ data: [] }), queue: [] };
   fn.mockResolvedValue = (val: any) => {
-    (fn as any).mock.returnValue = val;
+    // Queue a single value for next call
+    if ((fn as any).mock.queue.length === 0) {
+      (fn as any).mock.returnValue = val;
+    } else {
+      (fn as any).mock.queue.push(val);
+    }
+    return fn;
+  };
+  fn.mockResolvedValueOnce = (val: any) => {
+    // Queue a value for the next call only
+    (fn as any).mock.queue.push(val);
     return fn;
   };
   fn.mockImplementation = (impl: any) => {
-    const implFn = impl;
+    (fn as any).mock.implementation = impl;
     return fn;
   };
+  // Expose mock.calls for assertions
+  fn.mockReturns = () => (fn as any).mock.calls.length;
   return fn;
 };
 

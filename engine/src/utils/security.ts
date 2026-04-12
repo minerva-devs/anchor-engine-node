@@ -67,8 +67,8 @@ export function validatePathSafety(
     };
   }
 
-  // Resolve to absolute path using decoded URL string
-  const resolvedPath = path.resolve(decodedPath);
+  // Resolve to absolute path using decoded URL string - ensure consistent path format
+  const resolvedPath = path.resolve(decodedPath).replace(/\\/g, '/');
 
   // Check against each allowed base directory
   for (const baseDir of allowedBases) {
