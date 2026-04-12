@@ -127,6 +127,83 @@ describe('WebLLMService', () => {
             await service.initialize();
             expect(callback).toHaveBeenCalledWith({ text: 'Loading...', progress: 0.1 });
         });
+
+        it('should handle initialization timeout with vi.useFakeTimers', async () => {
+            const callback = vi.fn();
+            service.setProgressCallback(callback);
+            
+            // Use fake timers for deterministic timing behavior
+            vi.useFakeTimers();
+            
+            let progressStep = 0;
+            (CreateMLCEngine as any).mockImplementation((_modelId: string, options?: any) => {
+                if (options?.initProgressCallback) {
+                    // Simulate multiple progress updates
+                    const steps = [0.1, 0.5, 0.9];
+                    for (const step of steps) {
+                        setTimeout(() => {
+                            options.initProgressCallback({ text: 'Loading...', progress: step });
+                        }, step * 100); // Simulated time units
+                    }
+                }
+                
+                return new Promise((resolve) => {
+                    setTimeout(() => resolve(mockEngine), 500);
+                });
+            });
+
+            await service.initialize();
+            
+            // Advance all timers to completion
+            vi.advanceTimersByTime(600);
+            
+            expect(callback).toHaveBeenCalledTimes(3);
+            expect(callback).toHaveBeenCalledWith({ text: 'Loading...', progress: 0.1 });
+            expect(callback).toHaveBeenCalledWith({ text: 'Loading...', progress: 0.5 });
+            expect(callback).toHaveBeenCalledWith({ text: 'Loading...', progress: 0.9 });
+            
+            vi.useRealTimers();
+        });
+
+        it('should handle progressive loading verification', async () => {
+            const callback = vi.fn();
+            service.setProgressCallback(callback);
+            
+            let resolveEngine: any;
+            const mockPromise = new Promise<any>((resolve) => {
+                resolveEngine = resolve;
+            });
+
+            (CreateMLCEngine as any).mockImplementation((_modelId: string, options?: any) => {
+                if (options?.initProgressCallback) {
+                    // Simulate progressive loading with multiple callbacks
+                    options.initProgressCallback({ text: 'Downloading model...', progress: 0.25 });
+                    setTimeout(() => {
+                        options.initProgressCallback({ text: 'Loading weights...', progress: 0.75 });
+                    }, 10);
+                }
+                return mockPromise;
+            });
+
+            // Start initialization
+            const init = service.initialize();
+            
+            // Trigger progress callbacks manually during loading
+            if ((CreateMLCEngine as any).mock.calls.length > 0) {
+                const options = (CreateMLCEngine as any).mock.calls[0][1];
+                if (options?.initProgressCallback) {
+                    options.initProgressCallback({ text: 'Loading...', progress: 0.5 });
+                }
+            }
+
+            // Resolve the promise
+            resolveEngine(mockEngine);
+            
+            await init;
+            
+            expect(callback).toHaveBeenCalledWith({ text: 'Downloading model...', progress: 0.25 });
+            expect(service.isInitialized()).toBe(true);
+        });
     });
 
     describe('generate', () => {
