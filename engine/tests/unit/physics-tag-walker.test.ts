@@ -13,7 +13,7 @@
  * Coverage Goal: >80% for physics-tag-walker.ts (729 lines)
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from 'vitest';
 
 // Mock dependencies
 jest.mock('../../core/db.js', () => ({

@@ -11,9 +11,10 @@
 import fs from 'fs';
 import path from 'path';
 
-// Log directory relative to project root (.anchor/logs/)
+// Log directory at user root: C:\Users\<user>\.anchor/logs/
+// This is relative to process.cwd() + '..' (parent of aen)
 const LOGS_DIR = path.join(
-  path.resolve(process.cwd(), '..'),
+  path.resolve(process.cwd(), '..', '..'), // Go up from engine -> aen -> user home
   '.anchor',
   'logs'
 );

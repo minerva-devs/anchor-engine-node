@@ -5,7 +5,7 @@
  * Note: Full database integration tests require database setup.
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 // Import after mocks
 import {

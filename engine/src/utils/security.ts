@@ -47,9 +47,19 @@ export function validatePathSafety(
     };
   }
 
-  // SECURITY FIX: Reject paths containing null bytes (null byte injection attack)
-  // Node.js path.resolve() may silently truncate at null bytes
-  if (userPath.includes('\u0000')) {
+  // SECURITY FIX: Decode URL-encoded characters BEFORE validation
+  // This catches attacks like %2e%2e%2f (../) or %00 (null byte)
+  let decodedPath = userPath;
+  try {
+    decodedPath = decodeURIComponent(userPath);
+  } catch (e) {
+    // If decoding fails, use original path but still validate
+    decodedPath = userPath;
+  }
+
+  // SECURITY FIX: Reject paths containing null bytes AFTER URL decoding
+  // Attackers can use %00 to inject null bytes
+  if (decodedPath.includes('\u0000')) {
     return {
       isValid: false,
       resolvedPath: '',
@@ -57,8 +67,8 @@ export function validatePathSafety(
     };
   }
 
-  // Resolve to absolute path
-  const resolvedPath = path.resolve(userPath);
+  // Resolve to absolute path using decoded URL string
+  const resolvedPath = path.resolve(decodedPath);
 
   // Check against each allowed base directory
   for (const baseDir of allowedBases) {

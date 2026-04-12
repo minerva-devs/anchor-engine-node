@@ -12,7 +12,7 @@
  * Coverage Goal: >80% for search-utils.ts (572 lines)
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 import * as fs from 'fs';
 
 // Mock dependencies

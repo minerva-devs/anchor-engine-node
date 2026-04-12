@@ -7,7 +7,7 @@
  * Coverage Goal: >40% (from 0%)
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from 'vitest';
 import { AtomizerService } from '../../src/services/ingest/atomizer-service.js';
 
 describe('AtomizerService', () => {

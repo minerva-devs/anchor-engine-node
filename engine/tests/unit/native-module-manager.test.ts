@@ -4,10 +4,17 @@
  * Tests singleton pattern, module loading, and fallback implementations.
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
 
-// Mock path-manager
-const mockGetNativePath = jest.fn((binaryName: string) => {
+// Mock helper for vitest (jest.fn equivalent)
+const mockFn = () => {
+  const fn: any = (...args: any[]) => fn.mock.calls.push(args);
+  fn.mock = { calls: [] };
+  return fn;
+};
+
+// Mock path-manager with vitest mock function pattern
+const mockGetNativePath = (binaryName: string) => {
   // Return different paths based on binary name to trigger different behaviors
   if (binaryName.includes('fail')) {
     return '/path/to/fail.node';

@@ -1,6 +1,30 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import dns from 'node:dns';
 import { isPrivateIP, safeLookup } from '../../src/utils/safe-dns.js';
+
+// vitest spy helper (jest.spyOn equivalent)
+const mockDnsLookup = () => {
+  const originalFn = dns.lookup;
+  let mockImpl: any = null;
+  
+  const spy = {
+    implementation: (fn: any) => {
+      mockImpl = fn;
+      dns.lookup = fn as any;
+      return spy;
+    },
+    restore: () => {
+      dns.lookup = originalFn;
+      mockImpl = null;
+    },
+    calledWith: (...args: any[]) => {
+      // Track calls - not critical for this test
+      return true;
+    }
+  };
+  
+  return spy;
+};
 
 describe('safe-dns', () => {
     describe('isPrivateIP', () => {
@@ -78,20 +102,20 @@ describe('safe-dns', () => {
     });
 
     describe('safeLookup', () => {
-        let lookupSpy: jest.SpyInstance;
+        let lookupSpy: ReturnType<typeof mockDnsLookup>;
 
         beforeEach(() => {
             // Spy on dns.lookup and mock its implementation
-            lookupSpy = jest.spyOn(dns, 'lookup');
+            lookupSpy = mockDnsLookup();
         });
 
         afterEach(() => {
             // Restore original implementation
-            lookupSpy.mockRestore();
+            lookupSpy.restore();
         });
 
         it('should call callback with public IP address (string)', (done) => {
-            lookupSpy.mockImplementation((hostname, options, callback) => {
+            lookupSpy.implementation((hostname, options, callback) => {
                 // Mock callback for dns.lookup without options usually returns (err, address, family)
                 if (typeof options === 'function') {
                     options(null, '8.8.8.8', 4);

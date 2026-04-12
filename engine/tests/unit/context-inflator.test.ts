@@ -12,7 +12,7 @@
  * Coverage Goal: >80% for context-inflator.ts (744 lines)
  */
 
-import { describe, it, expect, beforeEach, jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, jest } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 

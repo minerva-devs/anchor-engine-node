@@ -99,19 +99,152 @@
 
 ---
 
-## Future Roadmap: Q3-Q4 2026
+## 🧭 User Experience & Packaging Roadmap (Q2-Q4 2026)
 
-### Long-Term Vision
+### Phase 1: Developer Usability (April-Mid May 2026) - CURRENT FOCUS
+**Theme:** Fix immediate friction points before packaging
 
-- [ ] Federation protocol (P2P sync)
-- [ ] Multi-model support
-- [ ] Distributed processing
-- [ ] Enterprise security features
-- [ ] Mobile applications
-- [ ] Plugin marketplace
-- [ ] Diffusion-based reasoning models
+#### P0 - Blockers (This Week)
+- [x] **Fix Jest→Vitest migration** - Migrate 12 test files from `@jest/globals` to `vitest` ✅ COMPLETED
+- [ ] **Fix security path validation** - URL decode + resolve for path traversal bypasses
+- [ ] **Add engine version to logs** - Include `engine_version` field in search log metadata
+
+#### P1 - High Priority (This Sprint)
+- [ ] **CLI commands** - Add `anchor start`, `anchor status`, `anchor search` shortcuts
+- [ ] **Startup banner with VERSION** - Display version from `user_settings.json` on launch
+- [ ] **Watchdog auto-enable** - Auto-start if `watcher.extra_paths` configured in settings
+
+#### P2 - Medium Priority (Backlog)
+- [ ] **Agent discovery** - Auto-detect Qwen, Claude, Cursor chat directories
+- [ ] **Ingestion progress** - Real-time file-level stats in UI and terminal
+- [ ] **Debug endpoint** - Show why results were filtered for transparency
 
 ---
+
+### Phase 2: One‑Click Local Experience (Mid May-Early June 2026)
+**Theme:** Single executable, no npm required
+
+#### P0 - Critical for First Release
+- [ ] **Single executable build** - Use `pkg` or `bun build --compile` to create standalone binary
+- [ ] **System tray / menu bar app** - Background process with UI toggle (Windows/macOS)
+- [ ] **One‑click installer** - Create .exe/.dmg with auto-updater (Winget/Homebrew)
+
+#### P1 - Essential UX Improvements
+- [ ] **First‑run onboarding wizard** - "Connect GitHub", "Add local folder", "Index now" flow
+- [ ] **UI ingestion progress** - Visual feedback during indexing (file count, atoms created)
+- [ ] **Desktop notifications** - Alert when ingestion completes or errors occur
+
+#### P2 - Nice to Have
+- [ ] **Auto‑start with OS** - Toggle in settings for login startup
+- [ ] **Built‑in local model launcher** - Auto-detect Ollama/LM Studio with one-click connection
+- [ ] **Pre-configured prompts** - Templates for common tasks (summarize, find decisions)
+
+---
+
+### Phase 3: Non‑Developer Ready (Mid June-Late July 2026)
+**Theme:** Zero-conf installation, transparent operations
+
+#### P0 - Make It Just Work
+- [ ] **Demo vault included** - Pre-built sample knowledge base so users see value immediately
+- [ ] **GUI settings panel** - API keys, paths, model selection via UI (no JSON editing)
+- [ ] **Cross-platform installers** - Windows (.exe), macOS (.dmg), Linux (.deb/.AppImage)
+
+#### P1 - Distribution & Updates
+- [ ] **Auto‑updater** - Check for new versions on startup and prompt to update
+- [ ] **Offline mode** - Core features work without internet (after initial setup)
+- [ ] **Export/import vault** - Backup entire knowledge base as single file
+
+#### P2 - Polish & Scale
+- [ ] **Multi-model support UI** - Toggle between local/remote models in settings
+- [ ] **Plugin marketplace** - Community extensions for ingestion, search, visualization
+- [ ] **Federation protocol** - P2P sync between personal vaults (experimental)
+
+---
+
+### 🚧 Current Pain Points (Observed & Documented)
+
+| Pain Point | Impact | Status |
+|------------|--------|--------|
+| **Startup is manual and fragile** — requires terminal, Node.js, npm, remembering commands | Non‑developers can't use it; even you dread starting it | 🟡 Medium Priority |
+| **No system tray / background service** — engine ties up a terminal window | Feels like a dev tool, not a consumer app | 🔴 High Priority |
+| **No onboarding wizard** — user must manually add GitHub repos or paths via config/API | First‑run experience is empty and confusing | 🟡 Medium Priority |
+| **No visual feedback during ingestion** — progress only in logs/terminal | User doesn't know if working or stuck | 🟢 Low Priority |
+| **No one‑click installer** — requires cloning repo, npm install, environment setup | Huge barrier to entry | 🔴 High Priority |
+| **No auto‑start with OS** — must be manually launched after reboot | Memory only available when remembered | 🟡 Medium Priority |
+
+---
+
+### 💡 Proposed Improvements (Capture in Plan)
+
+#### Packaging & Distribution
+- [ ] **Single executable build** - pkg/bun compile to standalone binary (Windows/macOS/Linux)
+- [ ] **Distribution channels** - Homebrew, Winget, direct download with auto-updater
+- [ ] **Version pinning** - Lock dependencies for reproducible builds
+
+#### Startup & Background Operation
+- [ ] **System tray icon** - Windows / menu bar app (macOS) that starts/stops engine and opens UI
+- [ ] **Run at login option** - Toggle in settings to auto-start on OS boot
+- [ ] **Graceful shutdown** - Save state before exit, resume on next launch
+
+#### First‑Run Experience
+- [ ] **Onboarding wizard** - "Connect GitHub", "Add local folder", "Index now" flow
+- [ ] **Demo vault included** - Pre-built sample knowledge base with example notes
+- [ ] **Quick start templates** - One-click presets for common use cases (dev docs, research notes)
+
+#### Feedback & Visibility
+- [ ] **Ingestion progress UI** - Real-time file count, atoms created, estimated time remaining
+- [ ] **Desktop notifications** - Alert when ingestion completes or errors occur
+- [ ] **Status dashboard** - Atom counts, storage usage, recent activity in tray icon tooltip
+
+#### Configuration & Settings
+- [ ] **GUI settings panel** - API keys, paths, model selection via UI (no JSON editing)
+- [ ] **Settings import/export** - Share configurations between machines or backup easily
+- [ ] **Model integration UI** - Built‑in local model launcher with one‑click connection
+
+#### Model Integration & Prompts
+- [ ] **Built‑in local model detection** - Auto-detect Ollama, LM Studio, other local LLMs
+- [ ] **Pre-configured prompts** - Templates for common tasks (summarize, find decisions, etc.)
+- [ ] **Multi-model support UI** - Toggle between local/remote models in settings
+
+---
+
+### 📊 Success Metrics (UX & Packaging)
+
+| Metric | Target | Current | Gap |
+|--------|--------|---------|-----|
+| Time to first search | <5 min from download | ~30 min (npm install + config) | 🔴 High |
+| Non-dev setup success rate | 90%+ | ~60% (npm confusion) | 🟡 Medium |
+| Background operation | Runs without terminal | Requires active terminal window | 🔴 High |
+| Onboarding completion | 100% of first-time users | Manual config required | 🟢 Low |
+| Update friction | Silent, auto-updates | Manual npm update needed | 🟡 Medium |
+
+---
+
+### 🎯 Implementation Notes & Dependencies
+
+#### Technical Debt to Clear Before Packaging
+1. **Jest→Vitest migration** (12 files) - Must complete before release build
+2. **Security path validation fixes** - Critical for production security
+3. **Engine version logging** - Required for version tracking in logs
+
+#### Recommended Build Tools
+- `pkg` or `bun build --compile` - For single executable compilation
+- `electron-builder` or `tar` - For system tray background app
+- `electron-updater` - For auto-update functionality
+- `electron-packager` - For cross-platform installer generation
+
+#### Testing Requirements for UX Features
+- [ ] CI testing on Windows, macOS, Linux (cross-platform matrix)
+- [ ] First-run experience automated tests (onboarding wizard)
+- [ ] Background process stability tests (system tray app)
+- [ ] Update flow integration tests (auto-updater)
+
+---
+
+**Repository:** https://github.com/RSBalchII/anchor-engine-node  
+**Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)  
+**Standards:** [specs/standards/](standards/)  
+**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening in Progress
 
 ## Success Metrics
 

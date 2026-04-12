@@ -5,7 +5,7 @@
  * and underflow prevention for very old timestamps.
  */
 
-import { describe, test, expect, beforeEach, afterAll } from '@jest/globals';
+import { describe, test, expect, beforeEach, afterAll } from 'vitest';
 import { PGlite } from '@electric-sql/pglite';
 import * as path from 'path';
 import * as fs from 'fs';

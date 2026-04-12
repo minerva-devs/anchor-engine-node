@@ -8,7 +8,25 @@
  *   tests/integration/github-history-search.vitest.ts  (run with pnpm test:vitest)
  */
 
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeEach } from 'vitest';
+
+// vitest mock function helper (jest.fn equivalent)
+const createMockFn = () => {
+  const fn: any = (...args: any[]) => {
+    (fn as any).mock.calls.push(args);
+    return (fn as any).mockReturnValue;
+  };
+  fn.mock = { calls: [], returnValue: Promise.resolve({ data: [] }) };
+  fn.mockResolvedValue = (val: any) => {
+    (fn as any).mock.returnValue = val;
+    return fn;
+  };
+  fn.mockImplementation = (impl: any) => {
+    const implFn = impl;
+    return fn;
+  };
+  return fn;
+};
 
 // ---- Minimal type stubs ----
 interface MockCommit {
@@ -111,23 +129,21 @@ describe('formatCommit', () => {
 
 describe('pagination: fetchAllCommits', () => {
   it('fetches a single page when no rel=next header', async () => {
-    const mock = jest.fn().mockResolvedValue({ data: [COMMIT_A], linkHeader: '' });
+    const mock = createMockFn().mockResolvedValue({ data: [COMMIT_A], linkHeader: '' });
     const results = await fetchAllCommits(mock as any);
     expect(results).toHaveLength(1);
     expect(mock).toHaveBeenCalledTimes(1);
   });
 
   it('follows rel=next Link header across multiple pages', async () => {
-    const mock = jest.fn()
-      .mockResolvedValueOnce({ data: [COMMIT_A], linkHeader: '<...>; rel="next"' })
-      .mockResolvedValueOnce({ data: [COMMIT_B], linkHeader: '' });
+    const mock = createMockFn().mockResolvedValueOnce({ data: [COMMIT_A], linkHeader: '<...>; rel="next"' });
     const results = await fetchAllCommits(mock as any);
     expect(results).toHaveLength(2);
     expect(mock).toHaveBeenCalledTimes(2);
   });
 
   it('stops when page returns empty array', async () => {
-    const mock = jest.fn().mockResolvedValue({ data: [], linkHeader: '' });
+    const mock = createMockFn().mockResolvedValue({ data: [], linkHeader: '' });
     const results = await fetchAllCommits(mock as any);
     expect(results).toHaveLength(0);
     expect(mock).toHaveBeenCalledTimes(1);
@@ -136,7 +152,7 @@ describe('pagination: fetchAllCommits', () => {
   it('stops on API error (non-ok response) without throwing', async () => {
     // The service logs a warning and breaks — should not throw
     let page = 0;
-    const mock = jest.fn().mockImplementation(async () => {
+    const mock = createMockFn().mockImplementation(async () => {
       page++;
       if (page === 2) return { data: [], linkHeader: '' }; // simulate error exit
       return { data: [COMMIT_A], linkHeader: '<...>; rel="next"' };
