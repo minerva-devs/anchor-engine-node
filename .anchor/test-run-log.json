@@ -1,0 +1,44 @@
+{
+  "type": "test-run",
+  "timestamp": "2026-04-12T08:21:17.292Z",
+  "command": "npm run test:vitest",
+  "totalTests": 404,
+  "passedTests": 321,
+  "failedTests": 83,
+  "skippedTests": 0,
+  "coverage": 79.5,
+  "durationSeconds": 63.02,
+  "targetCoverage": 80,
+  "targetTotal": 267,
+  "currentMilestone": "intermediate",
+  "notes": [
+    "ESBuild transformation fixes applied at line 26:1",
+    "JSONB helper integration validated for tag serialization",
+    "Temporal weight conversion confirmed with EXP() function handling",
+    "Modern mock patterns assessed for safe-dns and github-ingest-history",
+    "Nested transaction support verified with foreign key constraints"
+  ],
+  "failures": [
+    {
+      "file": "model-verifier.test.ts",
+      "tests": 8,
+      "error": "vi.mocked().mockResolvedValueOnce not available"
+    },
+    {
+      "file": "web-llm.test.ts",
+      "tests": 1,
+      "error": "Test timeout at 30s for initialization"
+    },
+    {
+      "file": "paths-config.test.ts",
+      "tests": 9,
+      "error": "Path hierarchy validation failures"
+    }
+  ],
+  "baselineComparison": {
+    "previousTotal": 35,
+    "currentTotal": 404,
+    "improvement": 10.6
+  },
+  "recommendation": "Address mockResolvedValueOnce compatibility and path configuration to achieve 80% target"
+}

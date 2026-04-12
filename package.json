@@ -10,6 +10,7 @@
     "anchor-mcp": "mcp-server/dist/index.js"
   },
   "scripts": {
+    "test:vitest": "vitest run --config engine/vitest.config.ts --reporter=verbose",
     "start": "node scripts/validate-and-start.mjs",
     "dev": "pnpm --filter anchor-engine dev",
     "build": "pnpm build:all",

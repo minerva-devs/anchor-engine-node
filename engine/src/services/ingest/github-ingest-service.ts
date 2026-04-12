@@ -762,6 +762,12 @@ export class GitHubIngestService {
     let page = 1;
     const PER_PAGE = 100;
 
+    // Validate owner/repo/branch to prevent SSRF (#37)
+    const isValidIdentifier = /^[a-zA-Z0-9_.-]{1,100}$/;
+    if (!isValidIdentifier.test(owner) || !isValidIdentifier.test(repo) || !isValidIdentifier.test(branch)) {
+      throw new Error(`Invalid owner, repo, or branch format`);
+    }
+
     console.log(`[GitHub] Fetching commit history for ${owner}/${repo} (branch: ${branch})`);
 
     while (true) {
