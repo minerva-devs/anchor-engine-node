@@ -1,6 +1,6 @@
 /**
  * Physics Tag Walker Tests
- * 
+ *
  * Tests the PhysicsTagWalker class including temporal decay handling
  * and underflow prevention for very old timestamps.
  */
@@ -28,7 +28,7 @@ describe('Physics Tag Walker', () => {
     await db.waitReady;
 
     // Create required tables
-    await db.run(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS atoms (
         id TEXT PRIMARY KEY,
         content TEXT NOT NULL,
@@ -45,7 +45,7 @@ describe('Physics Tag Walker', () => {
       )
     `);
 
-    await db.run(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS tags (
         id SERIAL PRIMARY KEY,
         atom_id TEXT REFERENCES atoms(id),
@@ -53,7 +53,7 @@ describe('Physics Tag Walker', () => {
       )
     `);
 
-    await db.run(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS molecules (
         id TEXT PRIMARY KEY,
         content TEXT NOT NULL,
@@ -84,15 +84,15 @@ describe('Physics Tag Walker', () => {
     const veryOld = now - 10000000000; // 10 billion ms ago (~115 days)
 
     // Insert test atoms
-    await db.run(`
+    await db.query(`
       INSERT INTO atoms (id, content, timestamp, tags, simhash)
-      VALUES 
+      VALUES
         ('atom1', 'Recent content', ${now}, '["#test", "#recent"]', '0000000000000000'),
         ('atom2', 'Very old content', ${veryOld}, '["#test", "#old"]', '0000000000000000')
     `);
 
-    await db.run(`
-      INSERT INTO tags (atom_id, tag) VALUES 
+    await db.query(`
+      INSERT INTO tags (atom_id, tag) VALUES
         ('atom1', '#test'),
         ('atom1', '#recent'),
         ('atom2', '#test'),
@@ -101,11 +101,11 @@ describe('Physics Tag Walker', () => {
 
     // Test the temporal decay calculation that was causing underflow
     // This should NOT throw "value out of range: underflow"
-    const result = await db.run(`
-      SELECT 
+    const result = await db.query(`
+      SELECT
         id,
         timestamp,
-        CASE 
+        CASE
           WHEN ABS(timestamp - ${now}) > 8640000000 THEN 0.0
           ELSE EXP(-0.0001 * ABS(timestamp - ${now}))
         END as temporal_weight
@@ -126,15 +126,15 @@ describe('Physics Tag Walker', () => {
     const oneHourAgo = now - 3600000; // 1 hour ago
     const oneDayAgo = now - 86400000; // 1 day ago
 
-    await db.run(`
+    await db.query(`
       INSERT INTO atoms (id, content, timestamp, tags, simhash)
-      VALUES 
+      VALUES
         ('atom1', 'One hour ago', ${oneHourAgo}, '["#test"]', '0000000000000000'),
         ('atom2', 'One day ago', ${oneDayAgo}, '["#test"]', '0000000000000000')
     `);
 
-    const result = await db.run(`
-      SELECT 
+    const result = await db.query(`
+      SELECT
         id,
         EXP(-0.0001 * ABS(timestamp - ${now})) as temporal_weight
       FROM atoms
@@ -155,23 +155,23 @@ describe('Physics Tag Walker', () => {
   test('should find atoms by shared tags', async () => {
     const now = Date.now();
 
-    await db.run(`
+    await db.query(`
       INSERT INTO atoms (id, content, timestamp, tags, simhash)
-      VALUES 
+      VALUES
         ('atom1', 'Content about robots', ${now}, '["#robots", "#ai"]', '0000000000000000'),
         ('atom2', 'More about robots', ${now}, '["#robots", "#tech"]', '0000000000000000'),
         ('atom3', 'About cooking', ${now}, '["#cooking", "#food"]', '0000000000000000')
     `);
 
-    await db.run(`
-      INSERT INTO tags (atom_id, tag) VALUES 
+    await db.query(`
+      INSERT INTO tags (atom_id, tag) VALUES
         ('atom1', '#robots'), ('atom1', '#ai'),
         ('atom2', '#robots'), ('atom2', '#tech'),
         ('atom3', '#cooking'), ('atom3', '#food')
     `);
 
     // Find atoms sharing tags with atom1
-    const result = await db.run(`
+    const result = await db.query(`
       SELECT DISTINCT a2.id, COUNT(DISTINCT t1.tag) as shared_tags
       FROM atoms a1
       JOIN tags t1 ON a1.id = t1.atom_id
@@ -191,16 +191,16 @@ describe('Physics Tag Walker', () => {
    * Test 4: Verify SimHash similarity calculation
    */
   test('should calculate SimHash similarity correctly', async () => {
-    await db.run(`
+    await db.query(`
       INSERT INTO atoms (id, content, timestamp, simhash)
-      VALUES 
+      VALUES
         ('atom1', 'Same hash', 1000, '0000000000000000'),
         ('atom2', 'Same hash', 1000, '0000000000000000'),
         ('atom3', 'Different hash', 1000, 'FFFFFFFFFFFFFFFF')
     `);
 
-    const result = await db.run(`
-      SELECT 
+    const result = await db.query(`
+      SELECT
         id,
         simhash,
         1.0 - (bit_count(('x' || LPAD(COALESCE(simhash, '0'), 16, '0'))::bit(64) # ('x' || '0000000000000000')::bit(64)) / 64.0) as similarity
@@ -212,7 +212,7 @@ describe('Physics Tag Walker', () => {
     const atom1 = result.rows.find(r => r.id === 'atom1');
     const atom2 = result.rows.find(r => r.id === 'atom2');
     const atom3 = result.rows.find(r => r.id === 'atom3');
-    
+
     expect(atom1.similarity).toBe(1.0);
     expect(atom2.similarity).toBe(1.0);
     expect(atom3.similarity).toBe(0.0); // Completely different
@@ -225,16 +225,16 @@ describe('Physics Tag Walker', () => {
     const now = Date.now();
     const veryOld = now - 20000000000; // 20 billion ms ago (~231 days)
 
-    await db.run(`
+    await db.query(`
       INSERT INTO atoms (id, content, timestamp, tags, simhash)
-      VALUES 
+      VALUES
         ('anchor', 'Anchor atom', ${now}, '["#test"]', '0000000000000000'),
         ('recent', 'Recent atom', ${now}, '["#test"]', '0000000000000000'),
         ('old', 'Old atom', ${veryOld}, '["#test"]', '0000000000000000')
     `);
 
-    await db.run(`
-      INSERT INTO tags (atom_id, tag) VALUES 
+    await db.query(`
+      INSERT INTO tags (atom_id, tag) VALUES
         ('anchor', '#test'),
         ('recent', '#test'),
         ('old', '#test')
@@ -242,7 +242,7 @@ describe('Physics Tag Walker', () => {
 
     // This is the full physics weighting formula from production code
     // It should NOT throw underflow errors
-    const result = await db.run(`
+    const result = await db.query(`
       WITH anchor_stats AS (
         SELECT id as anchor_id, timestamp as anchor_ts, simhash as anchor_sh
         FROM atoms WHERE id = 'anchor'
@@ -257,14 +257,14 @@ describe('Physics Tag Walker', () => {
         GROUP BY a.id, a.timestamp, a.simhash
       ),
       scored AS (
-        SELECT 
+        SELECT
           c.atom_id,
           c.timestamp,
           c.shared_tags,
           MAX(
             GREATEST(0.0, LEAST(1.0,
               (c.shared_tags / 10.0) *
-              CASE 
+              CASE
                 WHEN ABS(c.timestamp - ast.anchor_ts) > 8640000000 THEN 0.0
                 ELSE EXP(-0.0001 * ABS(c.timestamp - ast.anchor_ts))
               END

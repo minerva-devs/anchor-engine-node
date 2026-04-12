@@ -81,21 +81,38 @@
 - [ ] Performance monitoring for multi-harness
 - [ ] External developer API documentation
 
-### Phase: Advanced RAG Features
-**Goal:** Enterprise-grade retrieval
+### Deferred Work (Postponed to Q3 2026+)
+**Rationale:** Security hardening and UX packaging take priority; these items will be addressed after core stability is established.
 
-- [ ] Backup & restore system
-- [ ] Rolling context slicer (middle-out)
-- [ ] Live context visualizer (RAG IDE)
-- [ ] Provenance bias controls
+#### Code Analysis Enhancement (Deferred)
+**Goal:** Deep code understanding via AST-based retrieval
 
-### Phase: Code Analysis Enhancement
-**Goal:** Deep code understanding
+- [ ] AST pointer support - Link atoms to source code locations
+- [ ] Semantic code search - Query by code structure, not just keywords
+- [ ] Import/export graph edges - Visualize relationships between modules
+- [ ] Type-aware retrieval - Leverage TypeScript types for better context
 
-- [ ] AST pointer support
-- [ ] Semantic code search
-- [ ] Import/export graph edges
-- [ ] Type-aware retrieval
+#### Advanced RAG Features (Deferred)
+**Goal:** Enterprise-grade retrieval capabilities
+
+- [ ] Backup & restore system - Automated snapshots of knowledge base
+- [ ] Rolling context slicer (middle-out) - Optimize context window usage
+- [ ] Live context visualizer (RAG IDE) - Real-time view of active context
+- [ ] Provenance bias controls - Track and prioritize source contributions
+
+#### Security Hardening (Deferred to Q3 2026+)
+**Goal:** Comprehensive security posture
+
+- [ ] SQL injection prevention - Parameterized LIMIT clauses across all queries
+- [ ] Auth bypass audit on test endpoints - Ensure no endpoints skip validation
+- [ ] API key strength validation - Enforce 32-128 char keys with complexity rules
+- [ ] Security README section - Document security practices and standards
+
+#### Ablation Studies & Testing (Deferred)
+**Goal:** Validate design decisions through systematic experimentation
+
+- [ ] Ablation study results - Measure impact of individual features on performance
+- [ ] Cross-platform CI testing matrix - Test across Windows, macOS, Linux environments
 
 ---
 
