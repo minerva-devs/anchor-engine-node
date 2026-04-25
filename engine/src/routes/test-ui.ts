@@ -5,11 +5,23 @@ import { Request, Response } from 'express';
 import { db } from '../core/db.js';
 import { config } from '../config/index.js';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 import fs from 'fs';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Properly construct paths for ES modules in Node.js
+const getBaseUrl = () => {
+  try {
+    const url = new URL('.', import.meta.url);
+    return fileURLToPath(url.pathname).replace(/\\/g, '/');
+  } catch (e) {
+    // Fallback for environments where URL parsing fails
+    return process.cwd();
+  }
+};
+
+const baseUrl = getBaseUrl();
+const __filename = path.join(baseUrl, 'test-ui.js').replace(/\\/g, '/');
+const __dirname = baseUrl.replace(/\\/g, '/');
 
 interface TestResult {
   name: string;
@@ -254,7 +266,259 @@ const testCategories: TestCategory[] = [
         validate: (res) => ({ pass: typeof res.is_running === 'boolean' })
       }
     ]
-  }
+  },
+  {
+    name: 'Security Tests',
+    icon: 'shield',
+    tests: [
+      {
+        id: 'test-tag-infection-v2',
+        name: 'Tag Infection V2',
+        description: 'Test tag-based content isolation and infection prevention',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_tag_infection_v2.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      },
+      {
+        id: 'test-query-builder-security',
+        name: 'Query Builder Security',
+        description: 'Test SQL query construction security',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_query_builder_security.js' },
+        validate: (res) => ({ pass: res.success === true })
+      },
+      {
+        id: 'test-infection-generator',
+        name: 'Infection Generator',
+        description: 'Test content infection propagation detection',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_infection_generator.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Atomizer & Parser Logic',
+    icon: 'microscope',
+    tests: [
+      {
+        id: 'test-atomizer-logic',
+        name: 'Atomizer Logic Tests',
+        description: 'Test semantic atomization logic and boundaries',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_atomizer_logic.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      },
+      {
+        id: 'test-byte-offsets',
+        name: 'Byte Offset Tests',
+        description: 'Test byte offset calculation and tracking',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_byte_offsets.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      },
+      {
+        id: 'test-atomic-ingest',
+        name: 'Atomic Ingest Tests',
+        description: 'Test atomic ingestion pipeline integrity',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_atomic_ingest.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Context Retrieval & Quality',
+    icon: 'eye',
+    tests: [
+      {
+        id: 'test-context-re retrieval',
+        name: 'Context Retrieval Tests',
+        description: 'Test context retrieval algorithms and ranking',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_context_retrieval.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      },
+      {
+        id: 'test-context-quality',
+        name: 'Context Quality Tests',
+        description: 'Test context quality improvements and scoring',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_context_quality_improvements.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Search & Query Logic',
+    icon: 'magnifier',
+    tests: [
+      {
+        id: 'test-search-walker',
+        name: 'Search Walker Tests',
+        description: 'Test search traversal algorithms',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_search_walker.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      },
+      {
+        id: 'test-query-expansion',
+        name: 'Query Expansion Tests',
+        description: 'Test query expansion and enrichment algorithms',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_query_expansion.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Agent & Runtime Tests',
+    icon: 'bot',
+    tests: [
+      {
+        id: 'test-agent-runtime',
+        name: 'Agent Runtime Tests',
+        description: 'Test agent execution and lifecycle management',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_agent_runtime.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Pipeline & Integrity',
+    icon: 'task_queue',
+    tests: [
+      {
+        id: 'test-pipeline-integrity',
+        name: 'Pipeline Integrity Tests',
+        description: 'Test overall pipeline data integrity checks',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_pipeline_integrity.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Token & Parameter Tests',
+    icon: 'numeric_text',
+    tests: [
+      {
+        id: 'test-token-utils',
+        name: 'Token Utils Tests',
+        description: 'Test token counting and budgeting utilities',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_token_utils.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      },
+      {
+        id: 'test-param-clamping',
+        name: 'Parameter Clamping Tests',
+        description: 'Test input parameter validation and clamping',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_param_clamping.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Personal Data & Mirror',
+    icon: 'folder',
+    tests: [
+      {
+        id: 'test-personal-data',
+        name: 'Personal Data Tests',
+        description: 'Test personal data handling and processing',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_personal_data.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Chat & Streaming',
+    icon: 'chat_bubble',
+    tests: [
+      {
+        id: 'test-chat-streaming',
+        name: 'Chat Streaming Tests',
+        description: 'Test chat message streaming and delivery',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_chat_streaming.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Universal Topology',
+    icon: 'network',
+    tests: [
+      {
+        id: 'test-universal-topology',
+        name: 'Universal Topology Tests',
+        description: 'Test universal data topology and relationships',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/test_universal_topology.d.ts' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Performance Tests',
+    icon: 'speedometer',
+    tests: [
+      {
+        id: 'test-native-bench',
+        name: 'Native Module Benchmarks',
+        description: 'Test native module performance metrics',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/unit/native_bench.js' },
+        validate: (res) => ({ pass: res.success === true })
+      },
+      {
+        id: 'test-memory-bench',
+        name: 'Memory Performance Tests',
+        description: 'Test memory usage and optimization',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: 'tests/benchmarks/memory_bench.js' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
+  {
+    name: 'Minimal Framework Tests',
+    icon: 'cactus',
+    tests: [
+      {
+        id: 'test-foo',
+        name: 'Custom Test Runner',
+        description: 'Run custom test',
+        endpoint: '/v1/test/run-file',
+        method: 'POST',
+        body: { file: '' },
+        validate: (res) => ({ pass: res.success === true })
+      }
+    ]
+  },
 ];
 
 // Run a single test

@@ -63,9 +63,9 @@ export function validateAnchorHierarchy(filePath: string): {
     };
   }
   
-  const isInInbox = normalized.includes('/inbox/') || normalized.match(/\/inbox[\/\\]/);
-  const isInExternalInbox = normalized.includes('/external-inbox/') || normalized.match(/\/external-inbox[\/\\]/);
-  const isInMirroredBrain = normalized.includes('/mirrored_brain/') || normalized.match(/\/mirrored_brain[\/\\]/);
+  const isInInbox = normalized.includes('/inbox/') || normalized.match(/\/inbox[\/\\]/) !== null;
+  const isInExternalInbox = normalized.includes('/external-inbox/') || normalized.match(/\/external-inbox[\/\\]/) !== null;
+  const isInMirroredBrain = normalized.includes('/mirrored_brain/') || normalized.match(/\/mirrored_brain[\/\\]/) !== null;
   
   return {
     valid: true,

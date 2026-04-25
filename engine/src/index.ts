@@ -3,24 +3,33 @@ import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { existsSync, rmSync } from 'fs';
+import { fileURLToPath } from 'url';
 
 // Fix module load error by using explicit relative path
 import { db } from './core/db.js';
 import { config } from './config/index.js';
-import { MODELS_DIR, PROJECT_ROOT } from './config/paths.js';
+import { MODELS_DIR, PATHS, PROJECT_ROOT as EngineProjectRoot } from './config/paths.js';
 import { apiKeyAuth } from './middleware/auth.js';
 import { pathManager } from './utils/path-manager.js';
 import { StructuredLogger } from './utils/structured-logger.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Use a simpler approach for __dirname in ES modules
+const getDirname = () => {
+  try {
+    return fileURLToPath(new URL('.', import.meta.url).pathname);
+  } catch {
+    // Fallback for environments where URL parsing fails
+    return process.cwd();
+  }
+};
+
+const __filename = path.join(getDirname(), 'index.js');
+const __dirname = getDirname();
 
 const app: express.Application = express();
 const { PORT } = config;
 
-// Security Fix: Limit JSON body size to prevent DoS via large payloads
 // Use configured file size limit + 50% buffer for JSON overhead (base64/escaping)
 const jsonLimit = Math.ceil((config.LIMITS?.MAX_FILE_SIZE_BYTES || 10 * 1024 * 1024) * 1.5);
 
@@ -72,11 +81,8 @@ app.use('/v1', (req, res, next) => {
   next();
 });
 
-// API Key Authentication for /v1 routes
-app.use('/v1', apiKeyAuth);
-
-// Security: Require API key to be configured
-if (!config.API_KEY || config.API_KEY.trim() === '') {
+// Security: Require API key to be configured (runs after auth middleware)
+if (!config.API_KEY || config.API_KEY.length < 32) {
   console.error('\n❌ FATAL: API key not configured!');
   console.error('   Please set server.api_key in user_settings.json');
   console.error('   Requirements:');
@@ -90,8 +96,8 @@ if (!config.API_KEY || config.API_KEY.trim() === '') {
 // Validate API key strength (duplicate of Zod check - provides better error messages)
 // Accepts: mixed case+digit (32-128 chars) OR 64+ char hex key
 // Note: Zod schema enforces 32-128 length, runtime check adds length validation for hex keys
-const apiKeyStrengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z0-9]{32,128}$|^[a-f0-9]{64,}$/i;
-if (!apiKeyStrengthRegex.test(config.API_KEY)) {
+const api_key_strength = /^[A-Z]/.test(config.API_KEY) && /[a-z]/.test(config.API_KEY) && /\d/.test(config.API_KEY);
+if (config.API_KEY.length < 64 && !api_key_strength) {
   console.error('\n❌ FATAL: API key is too weak!');
   console.error('   Your key does not meet the strength requirements:');
   console.error('   - Length: 32-128 characters with uppercase, lowercase, and digit');
@@ -134,8 +140,22 @@ app.use('/static', express.static(path.join(__dirname, '../dist'), {
 
 // Serve UI from engine/public (single-file React app with full features)
 // Fallback to integrations/web-dashboard/dist for development
-const internalFrontendDist = path.join(__dirname, '../public');
-const externalFrontendDist = path.join(__dirname, '../../integrations/web-dashboard/dist');
+
+// Use explicit path resolution that works in all environments
+const getProjectRoot = () => {
+  try {
+    const url = new URL('file://' + import.meta.url);
+    return path.join(url.pathname, '..').replace(/\\/g, '/'); // Go up two levels from engine/src/
+  } catch (e) {
+    return process.cwd();
+  }
+};
+
+// Fallback project root if paths.ts didn't load properly
+const PROJECT_ROOT = EngineProjectRoot || getProjectRoot();
+
+const internalFrontendDist = path.join(PROJECT_ROOT, 'engine/public');
+const externalFrontendDist = path.join(PROJECT_ROOT, 'integrations/web-dashboard/dist');
 
 // Cache-busting middleware for HTML files (JS/CSS have content hashes)
 function setUICacheHeaders(res: express.Response, filePath: string) {

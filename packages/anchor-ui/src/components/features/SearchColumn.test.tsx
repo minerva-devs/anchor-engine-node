@@ -11,10 +11,8 @@ import userEvent from '@testing-library/user-event';
 import { SearchColumn } from './SearchColumn';
 import { createMockSearchResponse, createDuplicateResults, createMixedContentResults, createEdgeCaseResults, createBrokenScoreResults, mockApi, resetMocks, setupDefaultMocks } from '../../__tests__/utils/search-mocks';
 
-// Mock the API service
-vi.mock('../../services/api', () => ({
-  api: mockApi
-}));
+// Mock the API service as static import
+import { mockApi } from '../../__tests__/utils/search-mocks';
 
 describe('SearchColumn Component', () => {
   const defaultProps = {

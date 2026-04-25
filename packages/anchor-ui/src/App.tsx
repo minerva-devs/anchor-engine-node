@@ -11,6 +11,7 @@ import { QuarantinePage } from './components/features/QuarantinePage';
 import { ChatInterface } from './components/Chat/ChatInterface';
 import { ModelSelector } from './components/Chat/ModelSelector';
 import { PathManager } from './components/features/PathManager';
+import { TestPage } from './components/features/TestPage';
 import { GithubModal } from './components/features/GithubModal';
 import { GitCommandsModal } from './components/features/GitCommandsModal';
 import { navigate } from './utils/routing';
@@ -506,7 +507,8 @@ function App() {
           {currentPath === '/' || currentPath === '/search' ? <SearchPage /> :
             currentPath === '/quarantine' ? <QuarantinePage /> :
               currentPath === '/paths' ? <PathManager /> :
-                <div style={{ padding: '4rem 2rem' }}>🚧 Module "{currentPath}" Under Construction</div>}
+                currentPath === '/test' ? <TestPage /> :
+                  <div style={{ padding: '4rem 2rem' }}>🚧 Module "{currentPath}" Under Construction</div>}
         </>
       )}
     </div>

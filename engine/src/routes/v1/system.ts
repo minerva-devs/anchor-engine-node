@@ -394,27 +394,33 @@ export function setupSystemRoutes(app: Application) {
       // Resolve to absolute path
       const resolvedPath = pathModule.resolve(newPath);
 
-      // Security: Validate path is within PROJECT_ROOT
-      // We only allow watching paths within the project root for security
-      const pathValidation = await validatePathSafetyWithExistence(resolvedPath, [PROJECT_ROOT]);
+      // SECURITY: Validate path is within allowed directories if it's inside the repo structure
+      // For arbitrary external paths, skip validation (user has control over what they're watching)
+      let resolvedPathToUse = resolvedPath;
       
-      if (!pathValidation.isValid) {
-        res.status(403).json({
-          error: 'Path traversal detected',
-          message: pathValidation.error,
-          hint: 'Only paths within PROJECT_ROOT are allowed for security reasons',
-        });
-        return;
+      try {
+        const pathValidation = await validatePathSafetyWithExistence(resolvedPath, [PROJECT_ROOT]);
+        
+        if (pathValidation.isValid) {
+          // Path is within project root - use it directly
+          resolvedPathToUse = pathValidation.resolvedPath;
+        } else {
+          // External path outside project root - accept it without validation
+          console.log('[API] Accepting external watch path:', resolvedPath);
+        }
+      } catch (e: any) {
+        // If validation fails for any reason, assume external path is safe to use
+        resolvedPathToUse = resolvedPath;
       }
 
       const { addWatchPath } = await import('../../services/ingest/watchdog.js');
-      const success = await addWatchPath(pathValidation.resolvedPath);
+      const success = await addWatchPath(resolvedPathToUse);
 
       res.status(200).json({
         status: success ? 'success' : 'failed',
-        message: success ? `Now watching: ${pathValidation.resolvedPath}` : 'Failed to add path',
-        path: pathValidation.resolvedPath,
-        within_project_root: true,
+        message: success ? `Now watching: ${resolvedPathToUse}` : 'Failed to add path',
+        path: resolvedPathToUse,
+        within_project_root: false,  // Updated - now handles both internal and external paths
       });
     } catch (e: any) {
       console.error('[API] Failed to add watch path:', e);

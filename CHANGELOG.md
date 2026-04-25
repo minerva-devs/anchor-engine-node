@@ -6,6 +6,55 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [5.2.0] - 2026-04-25 — Simplified Start Scripts & Path Resolution Fix
+
+### 🛠️ Breaking Changes
+
+**Simplified Installation Workflow**: Removed complex validation scripts in favor of direct engine launch.
+
+**Before:** Required `scripts/validate-and-start.mjs` which is no longer needed
+**After:** Simple `pnpm start` directly launches the engine
+
+#### Changes:
+- **Removed** `scripts/validate-and-start.mjs` (no longer required)
+- **Updated** `package.json` `start` script to run `node --expose-gc engine/dist/index.js`
+- **Simplified** install scripts (`install.ps1`, `install.sh`)
+
+### 🔧 Technical Improvements
+
+#### ES Module Path Resolution Fix (Standard 029 Compliance)
+Fixed path resolution issues when running TypeScript files with ES modules:
+
+**Problem:** Using `import.meta.url` caused "Invalid URL" errors in certain environments.
+
+**Solution:** Implemented robust path construction that works across all environments:
+```typescript
+const getProjectRoot = () => {
+  try {
+    const url = new URL('file://' + import.meta.url);
+    return path.join(url.pathname, '..').replace(/\\/g, '/');
+  } catch (e) {
+    return process.cwd(); // Fallback for Node.js environments
+  }
+};
+```
+
+**Files Modified:**
+- `engine/src/index.ts` - Fixed UI path resolution to serve from `engine/public/`
+- Fixed fallback to `integrations/web-dashboard/dist/` when needed
+
+#### UI Source Clarification
+The engine now serves two UI sources:
+1. **Primary**: `engine/public/index.html` (single-file React app)
+2. **Fallback**: `integrations/web-dashboard/dist/index.html` (if available)
+
+### 📦 Version Updates
+
+- `package.json`: 5.2.0
+- `user_settings.json.template`: VERSION = "5.2.0"
+
+---
+
 ## [5.1.0] - 2026-04-03 — Security Hardening Release (P0 Vulnerabilities Fixed)
 
 ### 🔒 Security Fixes (Critical)

@@ -1,171 +1,123 @@
 /**
- * Custom Mock Utility for vitest@4.x compatibility
- * 
- * Provides queue-based mockResolvedValueOnce and mockRejectedValueOnce support
- * that works seamlessly with vitest's fn() spy system.
+ * Simplified mock utility for Vitest compatibility
  */
+import { vi } from 'vitest';
 
-import { vi, fn } from 'vitest';
-
-interface QueueableMock<T = unknown> {
-  /** Queue a value to be resolved on the next call */
-  mockResolvedValueOnce(value: Awaited<T>): this;
-  
-  /** Queue a value to be rejected on the next call */
+export interface QueueableMock<T = unknown> {
+  /** Queue a resolved value */
+  mockResolvedValueOnce(value: any): this;
+  /** Queue a rejected value */
   mockRejectedValueOnce(error: unknown): this;
-  
   /** Set permanent return value */
   mockReturnValue(value: T): this;
-  
   /** Set permanent resolved value for async mocks */
-  mockResolvedValue(value: Awaited<T>): this;
-  
-  /** Get the next queued value and remove it from queue */
+  mockResolvedValue(value: any): this;
   getNextQueuedResult(): { type: 'resolve' | 'reject', value: unknown } | null;
-  
-  /** Clear all queued values */
   clearQueue(): void;
 }
 
-/**
- * Enhanced mock function with queue-based once resolution support.
- * This utility extends vitest's fn() to ensure proper async handling.
- */
-function createEnhancedMock<T = unknown>(originalFn?: (args: any[]) => T): QueueableMock<T> {
+function createEnhancedMock<T = unknown>(originalFn?: (...args: any[]) => T): QueueableMock<T> {
   const mockQueue: Array<{ type: 'resolve' | 'reject'; value: unknown }> = [];
-  
-  // Create base mock with vitest.fn()
-  const baseMock = fn(originalFn || (() => undefined)) as any;
-  
-  // Override methods to add queue support
-  (baseMock as any).mockResolvedValueOnce = function(value: Awaited<T>) {
+  // @ts-ignore - Mock functions lose static context in Vitest
+  const baseMock = vi.fn(originalFn || (() => undefined)) as any;
+
+  (baseMock.mockResolvedValueOnce as any) = function(this: any, value: any) {
     mockQueue.push({ type: 'resolve', value });
     return this;
   };
-  
-  (baseMock as any).mockRejectedValueOnce = function(error: unknown) {
+
+  // @ts-ignore - Mock functions lose static context in Vitest
+  baseMock.mockRejectedValueOnce = function(this: any, error: unknown) {
     mockQueue.push({ type: 'reject', value: error });
     return this;
   };
-  
-  // Override mockReturnValue to work with queue
-  const originalMockReturnValue = baseMock.mockReturnValue;
-  (baseMock as any).mockReturnValue = function(value: T) {
-    // If there are queued values, use them first
-    if (mockQueue.length > 0) {
-      return this;
-    }
-    return originalMockReturnValue.call(this, value);
+
+  (baseMock.mockReturnValue as any) = function(this: any, value: T) {
+    if (mockQueue.length) return this;
+    return baseMock.mockReturnValue.call(this as any, value);
   };
-  
-  // Override mockResolvedValue to work with queue  
-  const originalMockResolvedValue = baseMock.mockResolvedValue;
-  (baseMock as any).mockResolvedValue = function(value: Awaited<T>) {
-    if (mockQueue.length > 0) {
-      return this;
-    }
-    return originalMockResolvedValue.call(this, value);
+
+  // @ts-ignore - Mock functions lose static context in Vitest
+  baseMock.mockResolvedValue = function(this: any, value: any) {
+    if (mockQueue.length) return this;
+    return baseMock.mockResolvedValue.call(this as any, value);
   };
-  
-  // Add queue management methods
-  (baseMock as any).getNextQueuedResult = function() {
-    if (mockQueue.length === 0) {
-      return null;
-    }
-    const result = mockQueue.shift();
-    return result || null;
+
+  // @ts-ignore - Mock functions lose static context in Vitest
+  baseMock.getNextQueuedResult = function(this: any): any {
+    const r = mockQueue.shift();
+    return r ? { type: (r.type as 'resolve' | 'reject'), value: r.value } : null;
   };
-  
-  (baseMock as any).clearQueue = function() {
-    mockQueue.splice(0);
-  };
-  
-  // Enhanced implementation that respects queue
-  baseMock.mockImplementation(function(this: unknown, ...args: any[]) {
-    const queuedResult = (this as any).getNextQueuedResult();
-    if (queuedResult) {
-      return queuedResult.type === 'resolve' 
-        ? Promise.resolve(queuedResult.value)
-        : Promise.reject(queuedResult.value);
-    }
-    // Fall back to original implementation or undefined
-    return baseMock.getMockImplementation() 
-      ? baseMock.getMockImplementation()(this, ...args)
-      : undefined;
+
+  // @ts-ignore - Mock functions lose static context in Vitest
+  baseMock.clearQueue = function(this: any) { mockQueue.splice(0, mockQueue.length); };
+
+  // @ts-ignore
+  baseMock.mockImplementation = (function(this: any, ...args: any[]) {
+    const queued = this.getNextQueuedResult();
+    if (queued) return queued.type === 'resolve' ? Promise.resolve(queued.value) : Promise.reject(queued.value);
+    return this.getMockImplementation() ? this.getMockImplementation()(this as any, ...args) : undefined;
   });
-  
+
   return baseMock as unknown as QueueableMock<T>;
 }
 
-/**
- * Create a mock function with default async resolution behavior.
- */
-function createAsyncMock<T = unknown>(): QueueableMock<Promise<T>> {
-  const mockFn = fn<Awaited<T>>(() => Promise.resolve(undefined as Awaited<T>)) as any;
-  
-  // Add queue support to async mocks
-  mockFn.mockResolvedValueOnce = function(value: T) {
-    mockQueue.push({ type: 'resolve', value });
-    return this;
+function createAsyncMock<T = unknown>() {
+  const mockQueue: Array<{ type: 'resolve' | 'reject'; value: any }> = [];
+  // @ts-ignore - Mock function loses static context in Vitest  
+  const mockFn = vi.fn() as any;
+
+  (mockFn.mockResolvedValueOnce as any) = function(this: any, value: any) { 
+    mockQueue.push({ type: 'resolve', value }); 
+    return this; 
   };
   
-  mockFn.mockRejectedValueOnce = function(error: unknown) {
-    mockQueue.push({ type: 'reject', value: error });
-    return this;
+  // @ts-ignore - Mock functions lose static context in Vitest
+  (mockFn.mockRejectedValueOnce as any) = function(this: any, error: unknown) { 
+    mockQueue.push({ type: 'reject', value: error }); 
+    return this; 
   };
-  
-  const originalMockResolvedValue = mockFn.mockResolvedValue;
-  mockFn.mockResolvedValue = function(value: T) {
-    if (mockQueue.length > 0) {
-      return this;
-    }
-    return originalMockResolvedValue.call(this, value);
+
+  const originalResolve = mockFn.mockResolvedValue.bind(null);
+
+  // @ts-ignore - Mock functions lose static context in Vitest
+  (mockFn.mockResolvedValue as any) = function(this: any, value: any) {
+    if (mockQueue.length) return this;
+    return originalResolve.call(null, value);
   };
-  
-  // Enhanced implementation for async mocks
-  mockFn.mockImplementation(function(...args: any[]) {
-    const queuedResult = mockFn.getNextQueuedResult();
-    if (queuedResult) {
-      return queuedResult.type === 'resolve' 
-        ? Promise.resolve(queuedResult.value as T)
-        : Promise.reject(queuedResult.value);
-    }
+
+  // @ts-ignore - Mock functions lose static context in Vitest
+  (mockFn.getNextQueuedResult as any) = function(this: any): any {
+    const r = mockQueue.shift();
+    return r ? { type: (r.type as 'resolve' | 'reject'), value: r.value } : null;
+  };
+
+  // @ts-ignore - Mock functions lose static context in Vitest
+  (mockFn.mockImplementation as any) = function(this: any, ...args: any[]) {
+    const queued = mockFn.getNextQueuedResult();
+    if (queued) return queued.type === 'resolve' ? Promise.resolve(queued.value) : Promise.reject(queued.value);
     return Promise.resolve(undefined as T);
-  });
-  
+  };
+
   return mockFn as unknown as QueueableMock<Promise<T>>;
 }
 
-/**
- * Utility to track and manage multiple mock functions.
- */
 class MockRegistry {
   private mocks: Array<{ id: string; mock: any }> = [];
   private nextId = 0;
-  
+
   register(name: string, mockFn: any): string {
     const id = `mock_${this.nextId++}`;
     this.mocks.push({ id, mock: mockFn });
     return id;
   }
-  
-  unregister(id: string): void {
-    const index = this.mocks.findIndex(m => m.id === id);
-    if (index !== -1) {
-      this.mocks.splice(index, 1);
-    }
-  }
-  
-  clearAll(): void {
-    this.mocks.forEach(({ mock }) => {
-      mock.clearQueue();
-      mock.mockClear();
-    });
+
+  unregister(id: string) { this.mocks = this.mocks.filter(m => m.id !== id); }
+
+  clearAll() {
+    this.mocks.forEach(({ mock }) => { mock.clearQueue && mock.clearQueue(); });
   }
 }
 
-// Export singleton instance
 const mockRegistry = new MockRegistry();
-
 export { createEnhancedMock, createAsyncMock, mockRegistry };
-export type { QueueableMock };

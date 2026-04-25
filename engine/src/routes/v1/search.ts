@@ -124,7 +124,7 @@ export function setupSearchRoutes(app: Application) {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('X-Accel-Buffering', 'no');
 
-      // Stream results to client
+      // Stream results to client with progress tracking
       let totalResults = 0;
       for await (const event of stream) {
         res.write(formatSSE(event));
@@ -132,6 +132,11 @@ export function setupSearchRoutes(app: Application) {
         // Accumulate result count from batch events
         if (event.type === 'batch') {
           totalResults += event.results.length;
+        }
+        
+        // Also track from progress events for accurate cumulative count
+        if (event.type === 'progress' && event.currentResults !== undefined) {
+          totalResults = Math.max(totalResults, event.currentResults);
         }
 
         if (event.type === 'error') {

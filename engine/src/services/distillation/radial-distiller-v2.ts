@@ -646,6 +646,7 @@ function inferMemoryTypeFromGroup(records: DecisionRecord[]): MemoryType {
  */
 function deduplicateAcrossSources(
   records: DecisionRecord[],
+  similarityThreshold?: number,
 ): EnrichedDecisionRecord[] {
   const grouped = new Map<string, DecisionRecord[]>();
   
@@ -666,10 +667,10 @@ function deduplicateAcrossSources(
       id: `agg_${hash(key)}`,
       title: group[0].title, // Keep first record's title as anchor
       problem: formatAggregatedContent(group).split('\n')[1]?.replace('PROBLEM:\n', '') || undefined,
-      solution: formatAggregatedContent(group).includes('SOLUTION') 
-        ? formatAggregatedContent(group).match(/SOLUTION \([^)]\):\s*(.+)/)?.[1] : undefined,
+      solution: formatAggregatedContent(group).includes('SOLUTION')
+        ? [formatAggregatedContent(group).match(/SOLUTION \([^)]\):\s*(.+)/)?.[1] || ''].filter(Boolean) : undefined,
       rationale: formatAggregatedContent(group).split('\n')[2]?.replace('RATIONALE:\n', '') || undefined,
-      supersedes: group.flatMap(r => r.supersedes).filter(Boolean),
+      supersedes: group.flatMap(r => r.supersedes || []).filter(Boolean),
       status: inferStatusFromGroup(group),
       timestamp: new Date(earliestMtime).toISOString(),
       provenance: allProvenance,
@@ -925,7 +926,6 @@ function buildSessionIndex(chatSessions: ChatSessionMetadata[]): SessionIndexEnt
 
 /**
  * Fetch all unique tags from the database
- * A/B Tests: tags junction table vs atoms.tags[] array
  */
 export async function fetchAllTags(): Promise<string[]> {
   try {
@@ -937,8 +937,10 @@ export async function fetchAllTags(): Promise<string[]> {
     const atomsTagsResult = await db.run('SELECT DISTINCT UNNEST(tags) as tag FROM atoms WHERE tags IS NOT NULL AND tags != \'{}\' ORDER BY tag');
     const atomsTagsCount = atomsTagsResult.rows?.length || 0;
 
-    // A/B Test logging
-    console.log(`[A/B Test][fetchAllTags] Source A (tags table): ${tagsTableCount} | Source B (atoms.tags[]): ${atomsTagsCount}`);
+    // Legacy A/B test logging (can be enabled via LOG_LEVEL for debugging)
+    if (config.LOG_LEVEL === 'debug') {
+      console.log(`[A/B Test][fetchAllTags] Source A (tags table): ${tagsTableCount} | Source B (atoms.tags[]): ${atomsTagsCount}`);
+    }
 
     // Use whichever source has data (prefer atoms.tags[] as primary)
     if (atomsTagsCount > 0) {
@@ -971,7 +973,6 @@ export async function fetchAllTags(): Promise<string[]> {
 
 /**
  * Fetch all atoms for a specific tag with full content
- * A/B Tests: tags junction table vs atoms.tags[] array containment
  */
 export async function fetchAtomsByTag(tag: string): Promise<any[]> {
   try {
@@ -989,8 +990,8 @@ export async function fetchAtomsByTag(tag: string): Promise<any[]> {
     );
     const atomsTagsCount = atomsTagsResult.rows?.length || 0;
 
-    // A/B Test logging (sample every 10th call to reduce noise)
-    if (Math.random() < 0.1) {
+    // Legacy A/B test logging (sample every 10th call to reduce noise)
+    if (config.LOG_LEVEL === 'debug' && Math.random() < 0.1) {
       console.log(`[A/B Test][fetchAtomsByTag][${tag}] Source A (tags table): ${tagsTableCount} | Source B (atoms.tags[]): ${atomsTagsCount}`);
     }
 
@@ -1085,17 +1086,36 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
       else if (prov.includes('quarantine')) prov = 'quarantine';
       else prov = 'internal';
       
+      // Fix: Handle GitHub-style paths that are absolute paths, not relative from inbox roots
+      
       const mirrorPath = getMirrorPath(atom.source_path || '', prov);
       
-      // Try mirrored_brain first
+      // Try mirrored_brain first (works for standard relative paths)
       if (mirrorPath && fs.existsSync(mirrorPath)) {
         content = fs.readFileSync(mirrorPath, 'utf-8');
       } else {
-        // Fallback: try notebook directory
-        const notebookDir = pathManager.getNotebookDir();
-        const localPath = path.join(notebookDir, atom.source_path || '');
-        if (fs.existsSync(localPath)) {
-          content = fs.readFileSync(localPath, 'utf-8');
+        // Fix: Extract filename from GitHub-style absolute paths
+        let resolvedPath = atom.source_path || '';
+        
+        // Check if this is a GitHub-style path (contains "github:" prefix or unusual separators)
+        if (resolvedPath.startsWith('github:') || resolvedPath.includes('inbox\\chats')) {
+          // Extract the actual file path - it's after the last "/" or "\"
+          const match = resolvedPath.match(/(?:^|[\/\\])([^\/\\]+$)/);
+          if (match) {
+            resolvedPath = match[1];
+          }
+        }
+        
+        // Try as absolute path directly first
+        if (path.isAbsolute(resolvedPath) && fs.existsSync(resolvedPath)) {
+          content = fs.readFileSync(resolvedPath, 'utf-8');
+        } else {
+          // Fallback: try notebook directory with resolved relative path
+          const notebookDir = pathManager.getNotebookDir();
+          const localPath = path.join(notebookDir, resolvedPath);
+          if (fs.existsSync(localPath)) {
+            content = fs.readFileSync(localPath, 'utf-8');
+          }
         }
       }
 

@@ -1,37 +1,50 @@
-# Contributing to Anchor Engine ⚓
+# Contributing Guide
 
-First off, thank you for considering contributing to Anchor Engine. It's people like you that make this project meaningful.
+Thank you for your interest in improving **Anchor Engine**! Below you'll find the workflow we follow to keep code quality high and onboarding smooth.
 
-## How to Contribute
-
-### 1. Issues
-- If you find a bug or have a feature request, please open an issue.
-- Check existing issues first to avoid duplicates.
-- Be clear and descriptive—screenshots or logs help a lot.
-
-### 2. Pull Requests
-We welcome PRs! Here's the process:
-
-- **Fork the repo** and create your branch from `main`.
-- If you're fixing a bug or adding a feature, please open an issue first so we can discuss it.
-- Make sure your code follows the existing style (we use Prettier for formatting).
-- Include tests if you're adding functionality.
-- Update the README or docs if needed.
-- Submit your PR and wait for review. I'll do my best to respond within a few days.
-
-### 3. Development Setup
-```bash
+## How to Submit Changes?
+1. Fork this repository and clone locally:
+   ```bash
 git clone https://github.com/RSBalchII/anchor-engine-node.git
-cd anchor-engine-node
-pnpm install
-pnpm build
-pnpm start
+   cd anchor-engine-node
+   ```
+2. Checkout a new branch with a descriptive name (e.g., `feat/search/token-utils`).
+3. Make your changes – run tests locally (`npm test`) and ensure all of them pass.
+4. Commit with an *atomic* commit message following our style guide (see below).
+5. Push the branch and open a Pull Request against `main`.
+
+## Code Style & Linting
+- We use **ESLint** with the Airbnb base configuration plus TypeScript support.
+- All files are automatically formatted by **Prettier** on save or via `git commit -S --edit`.
+- The CI pipeline runs `eslint . --ext .ts,.tsx` and fails if any lint errors remain.
+
+## Writing Tests
+- Our test runner is **Jest** configured in `jest.config.js`.
+- For unit‑tests create files under `__tests__/` mirroring the folder structure you’re testing, e.g.:`
+  src/services/search/__tests__/search.service.test.ts`
+- Aim for at least **70 % coverage** on new/changed code – we generate overall coverage reports as part of every push.
+
+## Documentation Updates
+If your change adds a new feature or significantly alters existing behaviour, please update:
+- The top‑level README section that covers the feature overview.
+- Any relevant API docs (`docs/api/*.md`).
+- Add examples to the demo app if applicable.
+
+## Commit Message Conventions
+We follow a simplified version of [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) so PR titles look consistent:
 ```
+type(scope): description (optional)
+``` 
+e.g., `feat(search): add token‑budget support`. If a change touches multiple areas pick one primary type.
 
-### 4. Code of Conduct
-Be respectful. This is a small project, but we treat everyone with kindness.
+## Pull Request Checklist
+| Item | Description |
+|------|-------------|
+| ✅ Code compiles & passes all tests |
+| ✅ Linting rules satisfied |
+| ✅ Updated documentation present? |
+| ✅ No breaking changes unless documented in changelog |
+| ✅ CI builds successfully |
 
-### 5. Questions?
-Feel free to open an issue with the `question` label, or reach out directly.
-
-Thank you for helping make Anchor Engine better. ⚓
+> *Feel free to skip any irrelevant items.*
+---

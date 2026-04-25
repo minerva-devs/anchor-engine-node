@@ -12,7 +12,7 @@ import { smartChatSearch } from './search.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import type { SearchResult } from './search-utils.js';
 import type { UserContext } from '../../types/context.js';
-import { logSearchResults, SearchLogMetadata } from './search-results-logger.js';
+import { logSearchResults } from './search-results-logger.js';
 
 export interface StreamingSearchOptions {
   query: string;
@@ -43,13 +43,28 @@ export interface SearchMetadata {
   durationMs?: number;
 }
 
+export interface SearchProgress {
+  type: 'progress';
+  batchNumber: number;
+  totalBatches: number;
+  currentResults: number;
+  percentageComplete: number;
+}
+
+export interface SearchCounterUpdate {
+  type: 'counter';
+  metricName: string;
+  value: number;
+  timestamp: number;
+}
+
 export interface SearchError {
   type: 'error';
   message: string;
   details?: string;
 }
 
-export type StreamingSearchEvent = SearchBatch | SearchMetadata | SearchError;
+export type StreamingSearchEvent = SearchBatch | SearchMetadata | SearchProgress | SearchCounterUpdate | SearchError;
 
 /**
  * Execute search with streaming results
@@ -91,10 +106,16 @@ export async function* executeStreamingSearch(
       splitQueries: searchResult.splitQueries,
     };
 
-    // Stream results in batches
+    // Stream results in batches with progress updates
     for (let i = 0; i < allResults.length; i += batchSize) {
       const batch = allResults.slice(i, i + batchSize);
       const batchNumber = Math.floor(i / batchSize) + 1;
+      
+      // Calculate current position for progress tracking
+      const currentResults = i + batch.length;
+      const percentageComplete = totalBatches > 0 
+        ? ((batchNumber - 1) / totalBatches) * 100 
+        : 0;
 
       // Allow event loop to breathe between batches
       await new Promise(resolve => setImmediate(resolve));
@@ -104,6 +125,25 @@ export async function* executeStreamingSearch(
         global.gc();
       }
 
+      // Yield progress update BEFORE batch (gives user visual cue that work is happening)
+      yield {
+        type: 'progress',
+        batchNumber,
+        totalBatches,
+        currentResults,
+        percentageComplete: Math.round(percentageComplete * 10) / 10,
+      };
+
+      // Also track some metrics as counter updates for detailed feedback
+      const counterUpdate = {
+        type: 'counter' as const,
+        metricName: `results_processed_${i}`,
+        value: currentResults,
+        timestamp: Date.now() - startTime,
+      } as SearchCounterUpdate;
+      yield counterUpdate;
+
+      // Now send the batch results
       yield {
         type: 'batch',
         results: batch,
@@ -116,6 +156,7 @@ export async function* executeStreamingSearch(
         batchNumber,
         totalBatches,
         resultsInBatch: batch.length,
+        cumulativeResults: currentResults,
       });
     }
 
@@ -132,7 +173,7 @@ export async function* executeStreamingSearch(
     };
 
     // Log results to .anchor/logs/ if verbose mode is enabled (for test verification)
-    const logMetadata: SearchLogMetadata = {
+    const logMetadata = {
       strategy: searchResult.strategy,
       totalResults: allResults.length,
       durationMs: duration,

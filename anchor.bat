@@ -1,5 +1,4 @@
 @echo off
-echo Launching Anchor Console...
-cd engine
-npx ts-node tools/anchor.ts
+echo Starting Anchor Engine...
+pnpm install && pnpm build && pnpm start
 pause
