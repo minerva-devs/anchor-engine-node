@@ -3,11 +3,14 @@
  *
  * Verifies that path configuration is correct and consistent
  * across the Anchor Engine system. Updated to handle cross-platform paths.
+ * 
+ * All tests are logged with full execution flow for deep debugging.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, onTestFailed, onTestFinished } from 'vitest';
 import { PATHS, PROJECT_ROOT } from '../../engine/src/config/paths.js';
 import * as path from 'path';
+import { testLogger, type SearchType } from '../test-logger.js';
 
 // Cross-platform path normalization utility function for test comparisons
 function normalizePath(pathStr: string): string {
@@ -263,11 +266,11 @@ describe('PATHS Configuration', () => {
       // Check if inbox is under .anchor/ or projects/aen/notebook/ structure
       let isInInternalInbox = false;
       try {
-        isInInternalInbox = 
+        isInInternalInbox =
           (normalizedPath.includes('/.anchor/') && normalizedPath.includes('/inbox')) ||
           (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('notebook') && normalizedPath.includes('inbox'));
       } catch (e) {}
-      
+
       expect(isInInternalInbox).toBe(true);
     });
 
@@ -278,12 +281,109 @@ describe('PATHS Configuration', () => {
       // Check if external-inbox is under .anchor/ or projects/aen/notebook/ structure
       let isInExternalInbox = false;
       try {
-        isInExternalInbox = 
+        isInExternalInbox =
           (normalizedPath.includes('/.anchor/') && normalizedPath.includes('/external-inbox')) ||
           (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('notebook') && normalizedPath.includes('external-inbox'));
       } catch (e) {}
-      
+
       expect(isInExternalInbox).toBe(true);
     });
   });
 });
+
+// =============================================================================
+// TEST LOGGING HOOKS - Ensures all tests are linked in the main pnpm output log
+// =============================================================================
+
+// Log this test suite to the test logger for deep flow analysis
+const suiteName = 'PATHS Configuration';
+const searchType: SearchType = 'path' as const;
+
+// Register hooks for vitest lifecycle events
+let isSetup = false;
+
+beforeAll(() => {
+  if (!isSetup) {
+    // Initialize the test logger with this suite's metadata
+    testLogger.ensureMainOutputLog();
+    
+    // Record suite start
+    const suiteEntry: any = {
+      name: suiteName,
+      type: searchType,
+      status: 'running' as const,
+      start_time: Date.now(),
+      file: __filename,
+      line: 0,
+      full_file_path: `tests/unit/paths-config.test.ts`,
+    };
+    testLogger.activeTests.set(suiteName, suiteEntry);
+    
+    isSetup = true;
+  }
+});
+
+afterAll(() => {
+  // Ensure the main output log has all results
+  if (isSetup) {
+    const summary = testLogger.getSummary();
+    console.log(`\n[PATHS TEST SUITE] Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}, Skipped: ${summary.skipped}`);
+    
+    // Finalize the main output log
+    testLogger.ensureMainOutputLog();
+  }
+});
+
+// Hook for individual test failures
+onTestFailed((test) => {
+  const suiteEntry = testLogger.activeTests.get(test.name || 'unknown');
+  if (suiteEntry && suiteEntry.status !== 'failed') {
+    // Mark the test as failed in our logger
+    suiteEntry.status = 'failed';
+    suiteEntry.error = test.error?.message || 'Unknown error';
+    suiteEntry.end_time = Date.now();
+    suiteEntry.duration_ms = suiteEntry.end_time - suiteEntry.start_time;
+  }
+});
+
+// Hook for all tests finishing (pass, fail, skip)
+onTestFinished((test) => {
+  const testName = test.name || 'unknown';
+  let suiteEntry = testLogger.activeTests.get(testName);
+  
+  // If this is a new test not yet in our map
+  if (!suiteEntry && test.status === 'run') {
+    suiteEntry = {
+      name: testName,
+      type: searchType,
+      status: 'passed' as const,
+      start_time: Date.now(),
+      file: __filename,
+      line: 0,
+      full_file_path: `tests/unit/paths-config.test.ts`,
+    };
+    testLogger.activeTests.set(testName, suiteEntry);
+    
+    // Log the passing test
+    const logEntry = { ...suiteEntry, error: undefined };
+    testLogger.log(logEntry, true);
+  } else if (suiteEntry) {
+    // Update with actual status
+    suiteEntry.status = test.status as any;
+    if (test.error && !suiteEntry.error) {
+      suiteEntry.error = test.error.message || 'Unknown error';
+    }
+    if (!suiteEntry.end_time) {
+      suiteEntry.end_time = Date.now();
+      suiteEntry.duration_ms = suiteEntry.end_time - suiteEntry.start_time;
+    }
+    
+    // Re-log with correct status
+    const logEntry: any = { ...suiteEntry };
+    delete (logEntry as any).error?.error; // Remove nested error if exists
+    testLogger.log(logEntry, true);
+  }
+});
+
+// Export the logger for use in other tests
+export { testLogger };

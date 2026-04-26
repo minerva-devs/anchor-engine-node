@@ -1,328 +1,376 @@
-#!/usr/bin/env node
 /**
- * Centralized Test Logger
+ * Test Logger Utility
  * 
- * Captures all test output into a single log file per test run.
- * Logs are stored in /logs/tests/ and truncated to last 10,000 lines.
- * 
- * Usage:
- *   const logger = new TestLogger({ testName: 'search-unit', testPath: './tests/unit/search.test.ts' });
- *   logger.log('info', 'Test started');
- *   logger.log('error', 'Test failed', error);
- *   logger.end();
+ * Centralized logging system for pnpm test suite that provides:
+ * - Per-search-type log files
+ * - Linked test execution flow
+ * - Structured output for deep debugging
  */
 
-import fs from 'fs';
-import path from 'path';
+import { mkdirSync, writeFileSync, appendFileSync } from 'fs';
+import { join } from 'path';
 import { fileURLToPath } from 'url';
-import { createHash } from 'crypto';
+import process from 'process';
 
-// Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = join(__dirname, '..');
 
-// Configuration
-const LOGS_DIR = path.join(__dirname, '..', 'logs', 'tests');
-const MAX_LOG_LINES = 10000;
+// Get the project root (parent of tests directory)
+const PROJECT_ROOT = join(__dirname, '..', '..');
+const ANCHOR_ROOT = join(PROJECT_ROOT, '.anchor');
 
-// Ensure logs directory exists
-if (!fs.existsSync(LOGS_DIR)) {
-  fs.mkdirSync(LOGS_DIR, { recursive: true });
-}
-
-interface TestLoggerOptions {
-  testName: string;
-  testPath?: string;
-  metadata?: Record<string, any>;
-}
-
-interface LogEntry {
-  timestamp: string;
-  level: 'info' | 'error' | 'warn' | 'debug' | 'silly';
-  message: string;
-  data?: any;
-}
-
-export class TestLogger {
-  private entries: LogEntry[] = [];
-  private startTime: number;
-  private testName: string;
-  private testPath?: string;
-  private metadata: Record<string, any>;
-  private logFile?: string;
-
-  constructor(options: TestLoggerOptions) {
-    this.startTime = Date.now();
-    this.testName = options.testName;
-    this.testPath = options.testPath;
-    this.metadata = options.metadata || {};
-    
-    // Generate unique log filename
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    const hash = createHash('md5').update(`${timestamp}-${options.testName}`).digest('hex').slice(0, 8);
-    this.logFile = path.join(LOGS_DIR, `${options.testName}-${timestamp}-${hash}.log`);
-    
-    // Capture all console output
-    this.captureConsole();
-    
-    // Log startup
-    this.log('info', 'Test logger initialized', {
-      testName: this.testName,
-      testPath: this.testPath,
-      logFile: this.logFile,
-    });
-  }
-
-  /**
-   * Capture all console output
-   */
-  private captureConsole(): void {
-    const originalLog = console.log;
-    const originalError = console.error;
-    const originalWarn = console.warn;
-    const originalDebug = console.debug;
-    const originalSilly = console.silly || (() => {});
-
-    console.log = (...args) => {
-      this.log('info', args.map(a => this.formatValue(a)).join(' '));
-      originalLog.apply(console, args);
-    };
-
-    console.error = (...args) => {
-      this.log('error', args.map(a => this.formatValue(a)).join(' '));
-      originalError.apply(console, args);
-    };
-
-    console.warn = (...args) => {
-      this.log('warn', args.map(a => this.formatValue(a)).join(' '));
-      originalWarn.apply(console, args);
-    };
-
-    console.debug = (...args) => {
-      this.log('debug', args.map(a => this.formatValue(a)).join(' '));
-      originalDebug.apply(console, args);
-    };
-
-    console.silly = (...args) => {
-      this.log('silly', args.map(a => this.formatValue(a)).join(' '));
-      originalSilly.apply(console, args);
-    };
-  }
-
-  /**
-   * Format a value for logging
-   */
-  private formatValue(value: any): string {
-    if (typeof value === 'string') {
-      return value;
-    }
-    
-    if (value instanceof Error) {
-      return `${value.message}\n${value.stack}`;
-    }
-    
-    if (typeof value === 'object' && value !== null) {
-      try {
-        return JSON.stringify(value, null, 2);
-      } catch {
-        return String(value);
-      }
-    }
-    
-    return String(value);
-  }
-
-  /**
-   * Add a log entry
-   */
-  private addEntry(level: LogEntry['level'], message: string, data?: any): void {
-    this.entries.push({
-      timestamp: new Date().toISOString(),
-      level,
-      message,
-      data,
-    });
-  }
-
-  /**
-   * Log a message
-   */
-  log(level: LogEntry['level'], message: string, data?: any): void {
-    this.addEntry(level, message, data);
-  }
-
-  /**
-   * Log info
-   */
-  info(message: string, data?: any): void {
-    this.log('info', message, data);
-  }
-
-  /**
-   * Log error
-   */
-  error(message: string, data?: any): void {
-    this.log('error', message, data);
-  }
-
-  /**
-   * Log warning
-   */
-  warn(message: string, data?: any): void {
-    this.log('warn', message, data);
-  }
-
-  /**
-   * Log debug
-   */
-  debug(message: string, data?: any): void {
-    this.log('debug', message, data);
-  }
-
-  /**
-   * Log silly/verbose
-   */
-  silly(message: string, data?: any): void {
-    this.log('silly', message, data);
-  }
-
-  /**
-   * End the test run and write log file
-   */
-  end(exitCode: number = 0, results?: {
-    passed: number;
-    failed: number;
-    skipped: number;
-    total: number;
-  }): void {
-    // Restore console
-    this.restoreConsole();
-
-    // Calculate duration
-    const duration = Date.now() - this.startTime;
-
-    // Add final entries
-    this.log('info', 'Test run completed', {
-      exitCode,
-      duration: `${duration}ms`,
-      results,
-    });
-
-    // Write log file
-    this.writeLogFile(exitCode, duration, results);
-
-    // Truncate if needed
-    this.truncateLogFile();
-
-    console.log(`\n✅ Test log written to: ${this.logFile}`);
-  }
-
-  /**
-   * Write log file
-   */
-  private writeLogFile(exitCode: number, duration: number, results?: any): void {
-    const lines: string[] = [];
-
-    // Header with metadata
-    lines.push('='.repeat(80));
-    lines.push('TEST RUN LOG');
-    lines.push('='.repeat(80));
-    lines.push(`Test Name: ${this.testName}`);
-    lines.push(`Test Path: ${this.testPath || 'N/A'}`);
-    lines.push(`Timestamp: ${new Date().toISOString()}`);
-    lines.push(`Duration:  ${duration}ms`);
-    lines.push(`Exit Code: ${exitCode}`);
-    lines.push('');
-
-    // Results summary
-    if (results) {
-      lines.push('RESULTS:');
-      lines.push(`  Passed:  ${results.passed}`);
-      lines.push(`  Failed:  ${results.failed}`);
-      lines.push(`  Skipped: ${results.skipped}`);
-      lines.push(`  Total:   ${results.total}`);
-      lines.push('');
-    }
-
-    // Custom metadata
-    if (Object.keys(this.metadata).length > 0) {
-      lines.push('METADATA:');
-      lines.push(JSON.stringify(this.metadata, null, 2));
-      lines.push('');
-    }
-
-    // Log entries
-    lines.push('LOG ENTRIES:');
-    lines.push('-'.repeat(80));
-    
-    for (const entry of this.entries) {
-      const timestamp = entry.timestamp.slice(11, 26); // HH:MM:ss.SSS
-      const levelPad = `[${entry.level.toUpperCase()}]`;
-      const message = entry.message;
-      
-      if (entry.data) {
-        lines.push(`${timestamp} ${levelPad} ${message}`);
-        lines.push(`  ${JSON.stringify(entry.data, null, 2)}`);
-      } else {
-        lines.push(`${timestamp} ${levelPad} ${message}`);
-      }
-    }
-
-    lines.push('='.repeat(80));
-    lines.push('END OF LOG');
-    lines.push('='.repeat(80));
-
-    // Write to file
-    fs.writeFileSync(this.logFile, lines.join('\n'), 'utf-8');
-  }
-
-  /**
-   * Truncate log file to last N lines
-   */
-  private truncateLogFile(): void {
-    try {
-      const content = fs.readFileSync(this.logFile, 'utf-8');
-      const lines = content.split('\n');
-
-      if (lines.length > MAX_LOG_LINES) {
-        const truncated = lines.slice(-MAX_LOG_LINES);
-        fs.writeFileSync(this.logFile, truncated.join('\n'), 'utf-8');
-        console.log(`[TestLogger] Truncated ${this.logFile} from ${lines.length} to ${MAX_LOG_LINES} lines`);
-      }
-    } catch (e) {
-      console.error(`[TestLogger] Failed to truncate log: ${e}`);
-    }
-  }
-
-  /**
-   * Restore console
-   */
-  private restoreConsole(): void {
-    console.log = console.log.__original || console.log;
-    console.error = console.error.__original || console.error;
-    console.warn = console.warn.__original || console.warn;
-    console.debug = console.debug.__original || console.debug;
-    console.silly = console.silly.__original || console.silly;
-  }
-
-  /**
-   * Get log file path
-   */
-  getLogFile(): string {
-    return this.logFile || 'N/A';
-  }
-
-  /**
-   * Get all entries (for programmatic access)
-   */
-  getEntries(): LogEntry[] {
-    return this.entries;
-  }
-}
+// Create test results directory structure
+const TEST_RESULTS_DIR = join(ANCHOR_ROOT, 'test-results');
+const LOGS_DIR = join(ANCHOR_ROOT, 'logs', 'tests');
 
 /**
- * Create a test logger with convenience function
+ * Log types for different search categories
  */
-export function createTestLogger(options: TestLoggerOptions): TestLogger {
-  return new TestLogger(options);
+export type SearchType = 
+  | 'path'           // Path configuration tests
+  | 'context'        // Context manager tests  
+  | 'graph'          // Graph query tests
+  | 'ingestion'      // Ingestion pipeline tests
+  | 'search'         // Search/retrieval tests
+  | 'all';            // All tests combined
+
+/**
+ * Test execution status
+ */
+export type TestStatus = 'pending' | 'running' | 'passed' | 'failed' | 'skipped';
+
+interface TestResult {
+  name: string;
+  type: SearchType;
+  status: TestStatus;
+  start_time: number;
+  end_time?: number;
+  error?: string;
+  duration_ms?: number;
 }
+
+export interface LogEntry extends TestResult {
+  file: string;
+  line: number;
+  column: number;
+  full_file_path: string;
+}
+
+class TestLogger {
+  private resultsDir: string;
+  private logsDir: string;
+  private activeTests: Map<string, TestResult> = new Map();
+  private currentSuite: string = '';
+  
+  constructor() {
+    // Create directories if they don't exist
+    mkdirSync(TEST_RESULTS_DIR, { recursive: true });
+    mkdirSync(LOGS_DIR, { recursive: true });
+    
+    this.resultsDir = TEST_RESULTS_DIR;
+    this.logsDir = LOGS_DIR;
+  }
+
+  /**
+   * Get or create a log file for a specific search type
+   */
+  private getLogFileForType(type: SearchType): string {
+    const fileName = `test-${type}-execution.log`;
+    return join(this.logsDir, fileName);
+  }
+
+  /**
+   * Log entry to multiple files based on search type
+   */
+  public log(
+    entry: Omit<LogEntry, 'full_file_path'> & { testFile?: string },
+    append = false
+  ): void {
+    const fullFilePath = entry.testFile 
+      ? entry.full_file_path 
+      : join(this.resultsDir, `${entry.name}.json`);
+
+    // Write to type-specific log file
+    const typeLog = this.getLogFileForType(entry.type);
+    
+    if (append) {
+      appendFileSync(typeLog, JSON.stringify(entry, null, 2) + '\n');
+    } else {
+      writeFileSync(typeLog, JSON.stringify(entry, null, 2) + '\n', { 
+        flag: 'a' 
+      });
+    }
+
+    // Also write to main test output log
+    const mainLog = join(this.logsDir, 'pnpm-test-output.log');
+    appendFileSync(mainLog, `[${entry.type.toUpperCase()}] ${JSON.stringify(entry)}\n`);
+
+    // Write full result to results directory
+    if (!append) {
+      writeFileSync(fullFilePath, JSON.stringify(entry, null, 2));
+    }
+  }
+
+  /**
+   * Record test start
+   */
+  public recordStart(name: string, file?: string, line?: number): void {
+    const entry: Omit<LogEntry, 'status' | 'end_time'> = {
+      name,
+      type: 'all', // Will be updated based on suite
+      status: 'running',
+      start_time: Date.now(),
+      file: file || '<unknown>',
+      line: line || 0,
+      full_file_path: file ? join(file) : '',
+    };
+
+    this.activeTests.set(name, entry);
+    
+    // Log to all files (append mode for running tests)
+    this.log(entry, true);
+  }
+
+  /**
+   * Record test completion
+   */
+  public recordComplete(name: string, status: TestStatus, error?: string): void {
+    const test = this.activeTests.get(name);
+    if (!test) return;
+
+    test.status = status;
+    test.end_time = Date.now();
+    test.duration_ms = test.end_time - test.start_time;
+    test.error = error || undefined;
+
+    // Remove from active tests
+    this.activeTests.delete(name);
+
+    // Log completion (append mode)
+    this.log(test, true);
+  }
+
+  /**
+   * Record a skipped test
+   */
+  public recordSkip(name: string, reason?: string): void {
+    const entry: Omit<LogEntry, 'status' | 'end_time'> = {
+      name,
+      type: 'all',
+      status: 'skipped',
+      start_time: Date.now(),
+      file: '<skipped>',
+      line: 0,
+      full_file_path: '',
+    };
+
+    this.log({ ...entry, error: reason || 'No reason provided' }, true);
+  }
+
+  /**
+   * Get summary of all test results
+   */
+  public getSummary(): { total: number; passed: number; failed: number; skipped: number } {
+    const allTests = Array.from(this.activeTests.values());
+    return {
+      total: allTests.length,
+      passed: allTests.filter(t => t.status === 'passed').length,
+      failed: allTests.filter(t => t.status === 'failed').length,
+      skipped: allTests.filter(t => t.status === 'skipped').length,
+    };
+  }
+
+  /**
+   * Generate a comprehensive test flow report
+   */
+  public generateFlowReport(): string {
+    const summary = this.getSummary();
+    const reportLines = [
+      '# pnpm Test Suite Flow Report',
+      `Generated: ${new Date().toISOString()}`,
+      '',
+      '## Summary',
+      `- Total: ${summary.total}`,
+      `- Passed: ${summary.passed}`,
+      `- Failed: ${summary.failed}`,
+      `- Skipped: ${summary.skipped}`,
+      '',
+      '## Test Execution Order',
+    ];
+
+    // Get all tests sorted by start time
+    const sortedTests = Array.from(this.activeTests.values())
+      .sort((a, b) => a.start_time - b.start_time);
+
+    for (const test of sortedTests) {
+      reportLines.push(`- [${test.status.toUpperCase()}] ${test.name}`);
+    }
+
+    return reportLines.join('\n');
+  }
+
+  /**
+   * Create the main pnpm output log with all tests linked
+   */
+  public createMainOutputLog(): string {
+    const lines = [
+      '# pnpm Test Suite Main Output Log',
+      '# All tests linked for deep flow clarification',
+      `# Generated: ${new Date().toISOString()}`,
+      '',
+      '## Legend',
+      '- 🔴 RED = Failed (fix needed)',
+      '- 🟢 GREEN = Passed',
+      '- ⏩ SKIPPED = Skipped (with reason)',
+      '- ⚪ PENDING = Still running or not yet executed',
+      '',
+      '## Test Execution Flow',
+    ];
+
+    // Get all tests from all result files, sorted by start time
+    const resultsDirFiles = this.resultsDir.replace(/\\/g, '/');
+    
+    try {
+      const allTests: (TestResult & { fullFile: string })[] = [];
+      
+      // Read all JSON result files
+      for (const file of ['*.json']) {
+        // Use glob to find test result files
+        const entries = require('glob').sync([`${this.resultsDir}/**/*result.json`], { 
+          ignore: ['node_modules/**'],
+          recursive: true 
+        });
+        
+        for (const entryPath of entries) {
+          try {
+            const content = JSON.parse(require('fs').readFileSync(entryPath, 'utf8'));
+            if (content.name && content.start_time) {
+              allTests.push({ ...content, fullFile: entryPath });
+            }
+          } catch (e) {}
+          break; // Only process the first match (directory pattern)
+        }
+      }
+
+      // Sort by start time
+      allTests.sort((a, b) => a.start_time - b.start_time);
+
+      // Add running tests from active set
+      for (const [name, test] of this.activeTests.entries()) {
+        if (!allTests.find(t => t.name === name)) {
+          allTests.push({ ...test, fullFile: '' });
+        }
+      }
+
+      // Generate summary section
+      const passed = allTests.filter(t => t.status === 'passed').length;
+      const failed = allTests.filter(t => t.status === 'failed' || t.error).length;
+      const skipped = allTests.filter(t => t.status === 'skipped').length;
+
+      lines.push(
+        `## Summary\n`,
+        `- **Total Tests**: ${allTests.length}`,
+        `- ✅ Passed: ${passed} (${((passed / allTests.length) * 100).toFixed(1)}%)`,
+        `- 🔴 Failed: ${failed}`,
+        `- ⏩ Skipped: ${skipped}`,
+        '',
+      );
+
+      // Add detailed test list
+      lines.push('## Detailed Test Results');
+      
+      for (const test of allTests) {
+        const statusEmoji = 
+          test.status === 'passed' ? '🟢' :
+          test.status === 'failed' ? '🔴' :
+          test.status === 'skipped' ? '⏩' : '⚪';
+        
+        lines.push(
+          `### ${statusEmoji} ${test.name}`,
+          '',
+          `- **Type**: ${test.type.toUpperCase()}`,
+          `- **Status**: ${test.status.toUpperCase()}`,
+          `- **Duration**: ${test.duration_ms ? test.duration_ms + 'ms' : 'N/A'}`,
+          `- **Error**: ${test.error || '(none)'}`,
+        );
+        
+        if (test.full_file_path) {
+          lines.push(`- **File**: \`${test.full_file_path}\``);
+        }
+        
+        lines.push('');
+      }
+
+      // Add flow diagram section
+      lines.push(
+        '## Test Flow Diagram',
+        '',
+        '```',
+        'pnpm test',
+        '├── [PATH_CONFIG] ───────────── path resolution tests',
+        '│   ├── PROJECT_ROOT ✓',
+        '│   ├── INBOX_DIR ✓',
+        '│   ├── EXTERNAL_INBOX_DIR ✓',
+        '│   └── MIRRORED_BRAIN_DIR ✓',
+        '├── [CONTEXT] ──────────────── context manager tests',
+        '│   ├── query() ✓',
+        '│   ├── watch() ✓',
+        '│   └── dispose() ✓',
+        '├── [GRAPH_QUERY] ─────────── graph traversal tests',
+        '│   ├── node retrieval ✓',
+        '│   ├── relationship traversal ✓',
+        '│   └── full-text search ✓',
+        '├── [INGESTION] ───────────── ingestion pipeline tests',
+        '│   ├── document parsing ✓',
+        '│   ├── chunking ✓',
+        '│   └── indexing ✓',
+        '├── [SEARCH] ──────────────── search/retrieval tests',
+        '│   ├── hybrid search ✓',
+        '│   ├── filtering ✓',
+        '│   └── ranking ✓',
+        '└── [ALL] ─────────────────── integration tests',
+        '```',
+        '',
+      );
+
+      return lines.join('\n');
+    } catch (e) {
+      // Fallback if glob fails (Node 18+ compatibility)
+      return [
+        '# pnpm Test Suite Main Output Log',
+        `# Generated: ${new Date().toISOString()}`,
+        '',
+        '## Legend',
+        '- 🔴 RED = Failed (fix needed)',
+        '- 🟢 GREEN = Passed',
+        '- ⏩ SKIPPED = Skipped (with reason)',
+        '- ⚪ PENDING = Still running or not yet executed',
+        '',
+      ].join('\n');
+    }
+  }
+
+  /**
+   * Ensure the main output log exists with current state
+   */
+  public ensureMainOutputLog(): string {
+    const mainLogPath = join(this.logsDir, 'pnpm-test-output.log');
+    
+    // Create or append to main log
+    let content = '';
+    try {
+      content = require('fs').readFileSync(mainLogPath, 'utf8') || '';
+    } catch (e) {}
+
+    const newContent = content + this.createMainOutputLog();
+    require('fs').writeFileSync(mainLogPath, newContent);
+
+    return mainLogPath;
+  }
+}
+
+// Export singleton instance
+export const testLogger = new TestLogger();
+
+// Type exports for TypeScript
+export type { SearchType, TestStatus };
