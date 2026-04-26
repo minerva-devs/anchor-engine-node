@@ -1,6 +1,6 @@
 # Anchor Engine ⚓
 
-**Deterministic semantic memory for LLMs – local-first, graph traversal, <1GB RAM**
+**Deterministic semantic memory layer — drop-in replacement for embeddings.**
 
 [![GitHub release](https://img.shields.io/github/v/release/RSBalchII/anchor-engine-node)](https://github.com/RSBalchII/anchor-engine-node/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
@@ -9,15 +9,30 @@
 
 ---
 
-## 🌟 Why Anchor Engine?
+## 🌟 What Is Anchor Engine?
 
-Modern AI memory is broken.
+**Anchor Engine is a memory layer, not an agent framework.**
 
-Vector databases demand GPUs, gigabytes of RAM, and cloud infrastructure. They're opaque, expensive, and fundamentally incompatible with personal, local‑first AI.
+It's a **deterministic, explainable, CPU‑only semantic memory system** that replaces traditional embedding/vector databases. It uses a physics‑inspired graph algorithm (STAR) instead of dense vectors for retrieval.
 
-**Anchor Engine takes a different path.**
+### Key Distinction
 
-It's a **deterministic, explainable, CPU‑only memory engine** that runs on anything—from a $200 laptop to a workstation—and retrieves context using a physics‑inspired graph algorithm instead of dense vectors.
+| | Anchor Engine | Traditional Vector DBs |
+|---|---|---|
+| **Purpose** | Semantic memory layer | Embedding storage/retrieval |
+| **Architecture** | Graph traversal + byte offsets | Dense vector similarity |
+| **Hardware** | CPU-only, <1GB RAM | GPU preferred, multi-GB RAM |
+| **Explainability** | Native (tags, hops, decay) | Black box |
+| **Deterministic?** | ✅ Yes | ❌ No (probabilistic) |
+
+**Use Anchor Engine as:**
+- A drop-in replacement for your existing embeddings/vector database
+- The memory layer for AI agents (provides context retrieval)
+- Local-first semantic search for personal data
+
+**Do NOT use Anchor Engine as:**
+- An agent orchestration framework
+- A platform for building autonomous agents
 
 If you want:
 - **Local‑first AI** – your data stays yours

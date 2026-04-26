@@ -1079,40 +1079,35 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
       // Get content from mirrored_brain filesystem (Standard 051 - Pointer Only)
       // This is the v5.0.0 approach that works reliably
       let content = '';
-      
+
       // Normalize provenance for getMirrorPath
       let prov = atom.provenance || 'external';
       if (prov.includes('external')) prov = 'external';
       else if (prov.includes('quarantine')) prov = 'quarantine';
       else prov = 'internal';
-      
-      // Fix: Handle GitHub-style paths that are absolute paths, not relative from inbox roots
-      
-      const mirrorPath = getMirrorPath(atom.source_path || '', prov);
-      
+
+      const sourcePath = atom.source_path || '';
+
+      // Handle GitHub URL format: github:user/repo/path/to/file.md
+      // These are URLs, not filesystem paths - skip them for local distillation
+      if (sourcePath.startsWith('github:')) {
+        console.warn(`[TagBasedDistill] Skipping GitHub URL: ${sourcePath}`);
+        continue;
+      }
+
+      const mirrorPath = getMirrorPath(sourcePath, prov);
+
       // Try mirrored_brain first (works for standard relative paths)
       if (mirrorPath && fs.existsSync(mirrorPath)) {
         content = fs.readFileSync(mirrorPath, 'utf-8');
       } else {
-        // Fix: Extract filename from GitHub-style absolute paths
-        let resolvedPath = atom.source_path || '';
-        
-        // Check if this is a GitHub-style path (contains "github:" prefix or unusual separators)
-        if (resolvedPath.startsWith('github:') || resolvedPath.includes('inbox\\chats')) {
-          // Extract the actual file path - it's after the last "/" or "\"
-          const match = resolvedPath.match(/(?:^|[\/\\])([^\/\\]+$)/);
-          if (match) {
-            resolvedPath = match[1];
-          }
-        }
-        
-        // Try as absolute path directly first
-        if (path.isAbsolute(resolvedPath) && fs.existsSync(resolvedPath)) {
-          content = fs.readFileSync(resolvedPath, 'utf-8');
+        // Try source_path directly if it's a valid filesystem path
+        if (path.isAbsolute(sourcePath) && fs.existsSync(sourcePath)) {
+          content = fs.readFileSync(sourcePath, 'utf-8');
         } else {
-          // Fallback: try notebook directory with resolved relative path
+          // Fallback: try notebook directory with relative path
           const notebookDir = pathManager.getNotebookDir();
-          const localPath = path.join(notebookDir, resolvedPath);
+          const localPath = path.join(notebookDir, sourcePath);
           if (fs.existsSync(localPath)) {
             content = fs.readFileSync(localPath, 'utf-8');
           }
@@ -1121,7 +1116,7 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
 
       // Skip if no content found
       if (!content) {
-        console.warn(`[TagBasedDistill] No content found for atom ${atom.id} at ${atom.source_path}`);
+        console.warn(`[TagBasedDistill] No content found for atom ${atom.id} at ${sourcePath}`);
         continue;
       }
 

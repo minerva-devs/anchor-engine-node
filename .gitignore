@@ -3,6 +3,7 @@
 .env.*
 *.env
 prompts/
+skill.json
 
 # Additional sensitive data patterns
 **/context_data/
