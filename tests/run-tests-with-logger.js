@@ -77,22 +77,42 @@ console.log(`Running ${testCategory.name}`);
 console.log(`Category: ${category}`);
 console.log(`Pattern: ${testCategory.pattern}`);
 console.log(`Timestamp: ${timestamp}`);
+if (grepPattern) {
+  console.log(`Grep Filter: ${grepPattern}`);
+}
 console.log('='.repeat(80) + '\n');
 
-// Spawn vitest process
+// Build vitest command - use full path to avoid npx issues on Windows
 const vitestConfigPath = path.join(ROOT, 'engine', 'vitest.config.ts');
-const vitest = spawn('npx', [
-  'vitest',
-  'run',
-  '--config',
-  vitestConfigPath,
-  '--reporter',
-  'verbose',
-  ...(grepPattern ? ['--grep', grepPattern] : []),
-], {
+const cmdArgs = ['run'];
+
+// Add config path using --config flag
+cmdArgs.push('--config');
+cmdArgs.push(vitestConfigPath);
+
+// Add reporter option
+cmdArgs.push('--reporter');
+cmdArgs.push('verbose');
+
+if (grepPattern) {
+  // Use --test-name-pattern for filtering (vitest v4+)
+  const escapedPattern = grepPattern.replace(/"/g, '\\"');
+  cmdArgs.push(`--test-name-pattern="${escapedPattern}"`);
+}
+
+// Add coverage flag if present in environment
+const coverage = process.env.VITEST_COVERAGE || '';
+if (coverage) {
+  cmdArgs.push('--coverage');
+}
+
+// Use absolute path to vitest in engine/node_modules
+const vitestPath = path.join(ROOT, 'engine', 'node_modules', 'vitest', 'vitest.mjs');
+
+const vitest = spawn('node', [vitestPath], {
   cwd: ROOT,
   stdio: 'inherit',
-  shell: true,
+  shell: false,
 });
 
 let exitCode = 0;

@@ -84,7 +84,7 @@ export const PATHS = {
   // Standard 110: Centralized user data paths under local-data/
   INBOX_DIR: path.resolve(process.env.INBOX_DIR || userSettings.paths?.inbox || path.join(LOCAL_DATA_DIR, 'inbox')),
   EXTERNAL_INBOX_DIR: path.resolve(process.env.EXTERNAL_INBOX_DIR || userSettings.paths?.external_inbox || path.join(LOCAL_DATA_DIR, 'external-inbox')),
-  DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || path.join(LOCAL_DATA_DIR, 'distills')),
+  DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || NOTEBOOK_DIR),
   MIRRORED_BRAIN_DIR: path.resolve(process.env.MIRRORED_BRAIN_DIR || userSettings.paths?.mirrored_brain || path.join(LOCAL_DATA_DIR, 'mirrored_brain')),
   SESSIONS_DIR: path.resolve(process.env.SESSIONS_DIR || userSettings.paths?.sessions || path.join(LOCAL_DATA_DIR, 'sessions')),
   LIBRARIES_DIR: path.join(CONTEXT_DIR, 'libraries'),
@@ -145,5 +145,12 @@ export const {
   DESKTOP_OVERLAY_SRC,
   DESKTOP_OVERLAY_DIST,
 } = PATHS;
+
+// Export provenance configuration
+export const DEFAULT_PROVENANCE = path.resolve(
+  process.env.DEFAULT_PROVENANCE ||
+  userSettings.paths?.default_provenance ||
+  'internal'
+);
 
 export default PATHS;

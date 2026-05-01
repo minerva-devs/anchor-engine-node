@@ -32,6 +32,8 @@
 - **[specs/plan.md](../specs/plan.md)** - Development roadmap
 - **[specs/tasks.md](../specs/tasks.md)** - Current tasks
 - **[specs/doc_policy.md](../specs/doc_policy.md)** - Documentation policy
+- **[docs/guides/versioning-policy.md]** - Versioning and breaking changes guide
+- **[docs/guides/pain-points.md]** - Known setup issues & troubleshooting
 - **[specs/current-standards/](../specs/current-standards/)** - Active standards (001-026)
 - **[specs/archive-legacy/](../specs/archive-legacy/)** - Historical standards (059-136+)
 

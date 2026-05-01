@@ -539,6 +539,11 @@ Most AI memory systems do the opposite: they hoard data, brute‑force compute s
 
 **See:** [`specs/current-standards/025-path-traversal-prevention.md`](specs/current-standards/025-path-traversal-prevention.md), [`specs/current-standards/024-auth-bypass-prevention.md`](specs/current-standards/024-auth-bypass-prevention.md), [`specs/current-standards/026-zero-copy-dedup.md`](specs/current-standards/026-zero-copy-dedup.md)
 
+### Versioning Policy
+
+For information on semantic versioning and breaking changes:
+- **[docs/guides/versioning-policy.md]** - Versioning guidelines for public APIs
+
 ---
 
 ### 🔒 Security Audit Summary (April 12, 2026 — CodeQL Analysis of ~206 Alerts)

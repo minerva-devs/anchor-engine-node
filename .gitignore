@@ -1,80 +1,114 @@
-# Sensitive Data & Secrets
-.env
-.env.*
-*.env
-prompts/
-skill.json
+# .gitignore
 
-# Additional sensitive data patterns
-**/context_data/
-**/databases/
-**/personal_contacts/
-*secret*
-*token*
-*credential*
+# Dependencies
+/node_modules/
 
-# Database & Storage
-context.db/
-context_data/
-backups/
-logs/
+# Logs and build artifacts
+/dist/
 *.log
-*.sqlite
-*.sqlite-*
-*.db
-*.db-journal
+npm-debug.log*
+yarn-error.log*
 
-# Model Archives & Heavy Binaries
-archive/
-cpp/
-models/
-*.gguf
+# Environment variables and secrets
+.env
+.localrc
 
-# UI Build Artifacts (single-file UI in engine/public is used instead)
-packages/anchor-ui/dist/
-*.bin
-*.pth
+# Agent specific caches and temporary files
+.cache/
+temp/
+logs/heartbeat.md.tmp # Temporary file for heartbeat checks
 
-# Code Dependencies
-node_modules/
-dist/
-build/
-engine/build/
-native/bin/
-.pnpm-store/
-*.tsbuildinfo
-
-# Backups (keep at root but gitignore contents)
-backups/*.json
-backups/*.db
-
-# IDE & System
+# Development tools - NOT project data (keep out of repo)
 .vscode/
 .idea/
-.DS_Store
-Thumbs.db
-*.bak
+.cline/
+
+# QwenPaw agent files
+.qwenpaw/
+.qwenpaw/*
+!qwen-mcp-config.json # Keep MCP config for dev
+
+# Reme agent store
+.reme_store_v1
+
+# Skill system
+.skill.json.lock
+
+# Zenodo metadata (keep - useful for publishing)
+.zenodo.json
+
+
+
+# ============================================
+# Runtime Data Directories (now in .anchor/)
+# These should be rebuilt in C:\Users\<user>\.anchor\
+# ============================================
+
+# Anchor root directory (expanded path)
+${anchor_root}/
+
+# Agent directories
+.jules/
+.tooling/
+
+# Runtime data - all moved to .anchor structure
+AEN/
+backup/
+benchmarks/
+dialog/
+distillation-v2-temp/
+embedding_cache/
+engines/
+file_store/
+logs/
+media/
+memory/
+notebook/
+orchestration/
+reports/
+sessions/
+test_minimal_db/
+tool_result/
+tool_results/
+user_data/
+
+# Runtime data files - moved to .anchor
+chats.json
+distillation-output.json
+heartbeat.md
+test-settings.json
 
 # Test artifacts
-test-github-ingest-*/
-test-physics-db-*/
+engine-build-output.txt
+engine-direct-tests.txt
+engine-error.txt
+engine-rebuild-output*.txt
+engine-root-tests.txt
+engine-tests-junit.xml
+engine-tests.txt
+npx-vitest-results.txt
+pnpm-start-tests.bat
+test-results.txt
+vite-aliases.txt
+vitest-from-root.txt
 
-# Temporary/User Specific
-codebase
-codebase/*
-external-inbox/*
-inbox/*
-local-data/*
-mirrored_brain/
-notebook/
-user_settings.json
-context/
+# Temp/bug files
+$null
+filename.endsWith(ext)))
 
-# Generated documentation
-QWEN.md
+# ============================================
+# Docker config (KEEP - needed for docker users)
+# ============================================
+user_settings.docker.json # Keep for Docker setup
 
-# Android binary output
-engine/dist-android/
-
-engine/dist-win/
-coverage/
+# Source code directories (KEEP)
+engine/
+packages/
+mcp-server/
+tests/
+docs/
+scripts/
+specs/
+shared/
+skills/
+integrations/

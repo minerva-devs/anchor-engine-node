@@ -84,7 +84,7 @@
     "sharp": "^0.34.5",
     "tar": "^7.5.10",
     "turndown": "^7.2.2",
-    "uuid": "^13.0.0",
+    "uuid": "^14.0.0",
     "wink-eng-lite-web-model": "^1.7.1",
     "wink-nlp": "^2.3.0",
     "winston": "^3.19.0",

@@ -22,9 +22,11 @@ Radial Distillation v2.0 produces **Decision Records** — structured JSON objec
 **Key Improvements:**
 1. **Semantic Units:** Extracts sections by markdown headings, not lines
 2. **Decision Records:** Structured JSON with problem/solution/rationale fields
-3. **Self-Contamination Prevention:** Filters `distilled_*.yaml` files from ingestion
+3. **Self-Contamination Prevention:** Filters `distilled_*.yaml` files from ingestion (checks both filename and directory paths)
 4. **Temporal Preservation:** Uses file mtime, not batch time
 5. **Block-Level Deduplication:** SimHash on semantic blocks, not lines
+
+**Note:** Phase 4 (semantic block extraction) is implemented in a separate utility module (`block-extractor.ts`) for better code organization and reusability.
 
 ---
 

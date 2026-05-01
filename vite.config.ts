@@ -1,11 +1,9 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
-
 export default defineConfig({
   test: {
-    globals: true,
+    name: '@rbalchii/anchor-engine',
     environment: 'node',
-    include: ['**/*.test.ts'],
+    include: ['engine/tests/**/*.test.ts'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -32,4 +30,4 @@ export default defineConfig({
   },
 });
 
-// Engine setup file (separate)
+// Root setup file (separate)

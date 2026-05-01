@@ -1,5 +1,0 @@
-packages:
-  - 'engine'
-  - 'packages/*'
-  - 'integrations/*'
-  - 'mcp-server'

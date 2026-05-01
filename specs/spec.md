@@ -490,7 +490,7 @@ flowchart LR
 | **Inception** | July 2025 | Project started, initial architecture |
 | **Foundation** | Aug-Sep 2025 | CozoDB integration, core ingestion |
 | **Stabilization** | Oct-Nov 2025 | PGlite migration, reliability fixes |
-| **Acceleration** | Dec 2025 | Native C++ modules (Deprecated in v4.3.0) |
+| **Acceleration** | Dec 2025 | Rust WASM packages (@rbalchii/*-wasm), zero native compilation |
 | **Browser Paradigm** | Jan 2026 | Tag-Walker replaces vector search |
 | **Standards Consolidation** | Feb 2026 | Unified 26 standards (001-026) |
 | **Production** | Mar 2026 | 100MB ingested, 280K molecules, v5.0.0 |
@@ -540,7 +540,7 @@ anchor-engine-node/
 | **010** | Radial Distillation v2 | Decision Records output | ✅ |
 | **011** | Security Hardening | API key validation | ✅ |
 | **012** | Data Integrity | Source tracking | ✅ |
-| **013** | WASM Fallback | Native module fallback | ✅ |
+| **013** | WASM Fallback | Rust WASM fallbacks for performance-critical operations | ✅ |
 | **014** | Operational Visibility | System status endpoints | ✅ |
 | **015** | Configuration Management | Path/setting management | ✅ |
 | **016** | MCP Integration Testing | Tool validation | ✅ |
@@ -626,7 +626,7 @@ flowchart TB
         G[Mirror Protocol<br/>Filesystem Sync]
     end
 
-    subgraph NATIVE["Native Modules<br/>@rbalchii/* N-API"]
+    subgraph WASM["WASM Packages<br/>@rbalchii/*-wasm"]
         H[Atomizer<br/>Text Splitting]
         I[Fingerprint<br/>SimHash]
         J[KeyAssassin<br/>Keyword Extraction]

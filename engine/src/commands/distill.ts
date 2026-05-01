@@ -10,15 +10,18 @@
  *   --radius, -r      Inflation radius (default: 2000)
  *   --output, -o      Output file path (default: ./reports/distill-report-<timestamp>.md)
  *   --yaml            Output as YAML
+  --format=decision-records  Output as Decision Records (semantic blocks)
  *   --json            Output as JSON
+  --format=decision-records  Output as Decision Records (semantic blocks)
  *   --export, -e      Export to inbox/distilled/ folder
  *   --strict          Strict normalization (default)
  *   --lenient         Lenient normalization
  */
 
 import { db } from '../core/db.js';
-import type { RadialDistillRequest } from '../services/distillation/radial-distiller.js';
-import { radialDistill } from '../services/distillation/radial-distiller.js';
+import type { RadialDistillRequest } from '../services/distillation/radial-distiller-v2.js';
+import { radialDistill as radialDistillV2 } from '../services/distillation/radial-distiller-v2.js';
+import { radialDistill as radialDistillLegacy } from '../services/distillation/radial-distiller.js';
 import { config } from '../config/index.js';
 import path from 'path';
 import fs from 'fs';
@@ -65,9 +68,21 @@ Examples:
   const strictNormalization = args.includes('--strict');
   const lenientNormalization = args.includes('--lenient');
 
+  // Check if decision-records format is requested (via --format flag or direct argument)
+  const hasDecisionRecordsFlag = args.includes('--format') && args[args.indexOf('--format') + 1] === 'decision-records';
+  const explicitFormat = args.find(a => a.startsWith('--format'))?.split('=')[1];
+
   const outputIndex = args.indexOf('--output') !== -1 ? args.indexOf('--output') : args.indexOf('-o');
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const ext = asYaml ? 'yaml' : (asJson ? 'json' : 'md');
+
+  let outputFormat: RadialDistillRequest['output_format'] = 'decision-records'; // Default to decision-records in v2
+  if (explicitFormat && explicitFormat.includes('yaml')) {
+    outputFormat = 'yaml';
+  } else if (explicitFormat && explicitFormat.includes('json-full')) {
+    outputFormat = 'json-full';
+  }
+
+  const ext = outputFormat === 'yaml' ? 'yaml' : (outputFormat === 'decision-records' ? 'json' : outputFormat === 'json-full' ? 'json' : 'md');
   const defaultOutput = `./reports/distill-report-${timestamp}.${ext}`;
   const outputPath = outputIndex >= 0 ? args[outputIndex + 1] : defaultOutput;
 
@@ -86,15 +101,15 @@ Examples:
     console.log('Initializing database...');
     await db.init();
 
-    // Standard 133: Radial Distillation
+    // Standard 133: Radial Distillation (v2)
     const radialRequest: RadialDistillRequest = {
       seed: {
         query: seedQuery,
         compound_ids: seedIds,
       },
       radius: radius,
-      normalization: strictNormalization ? 'strict' : (lenientNormalization ? 'lenient' : 'strict'),
-      output_format: asYaml ? 'yaml' : (asJson ? 'json' : 'compound'),
+      max_radius: radius * 2, // Use double radius for deduplication buffer zone
+      output_format: asYaml ? 'yaml' : (asJson ? 'json' : 'decision-records'),
       output_path: outputPath,
       export_to_inbox: exportToInbox,
     };
@@ -102,19 +117,17 @@ Examples:
     console.log('Radial Distilling (Standard 133)...');
     console.log(`  Target: ${seedQuery || (seedIds ? seedIds.join(',') : 'All Compounds')}`);
     console.log(`  Radius: ${radius} chars`);
-    console.log(`  Normalization: ${radialRequest.normalization}`);
     console.log('  Mode: Line-level deduplication');
     if (exportToInbox) console.log('  Export: Enabled (→ inbox/distilled/)');
     console.log();
 
-    const result = await radialDistill(radialRequest);
+    const result = await radialDistillV2(radialRequest);
 
     console.log();
     console.log('Radial Distillation Complete:');
     console.log(`  Compounds Processed: ${result.stats.compounds_processed}`);
-    console.log(`  Total Lines: ${result.stats.lines_total}`);
-    console.log(`  Unique Lines: ${result.stats.lines_unique}`);
-    console.log(`  Duplicates Removed: ${result.stats.lines_duplicate}`);
+    console.log(`  Blocks Total: ${result.stats.blocks_total}`);
+    console.log(`  Unique Blocks: ${result.stats.blocks_unique}`);
     console.log(`  Compression: ${result.stats.compression_ratio}`);
     console.log(`  Duration: ${(result.stats.duration_ms / 1000).toFixed(2)}s`);
     console.log(`  Memory Peak: ${result.stats.memory_peak_mb}MB`);
