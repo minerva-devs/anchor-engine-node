@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "anchor": {
+      "command": "/data/data/com.termux/files/home/projects/anchor-engine-node/anchor-mcp-wrapper.sh",
+      "env": {}
+    }
+  }
+}

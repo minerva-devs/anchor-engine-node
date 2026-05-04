@@ -7,6 +7,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { homedir } from 'os';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
 import { z } from 'zod';
@@ -486,10 +487,10 @@ function loadConfig(): Config {
   }
 
   // 2. Try Loading user_settings.json (Highest Priority for User Overrides)
-  // Primary: .anchor/user_settings.json (centralized user data)
-  // Fallback: project root user_settings.json (legacy / migration compatibility)
-  const anchorSettingsPath = path.join(__dirname, '..', '..', '..', '.anchor', 'user_settings.json');
-  const userSettingsPath = path.join(__dirname, '..', '..', '..', 'user_settings.json');
+  // Primary: ~/.anchor/user_settings.json (user's home directory)
+  // Fallback: ./user_settings.json (legacy / migration compatibility)
+  const anchorSettingsPath = path.join(homedir(), '.anchor', 'user_settings.json');
+  const userSettingsPath = path.join(process.cwd(), 'user_settings.json');
 
   const primaryPath = fs.existsSync(anchorSettingsPath) ? anchorSettingsPath : userSettingsPath;
 

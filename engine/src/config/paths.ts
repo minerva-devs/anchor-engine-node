@@ -6,7 +6,7 @@
  */
 
 import * as path from 'path';
-import * as os from 'os';
+import { homedir } from 'os';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 
@@ -20,11 +20,11 @@ export const PROJECT_ROOT = path.resolve(process.env.PROJECT_ROOT || path.join(_
 // Load user_settings.json for path overrides
 let userSettings: any = {};
 
-// Define Anchor root (centralized user data) - outside project root
-// Standard 110: Uses local-data structure under .anchor for consistent data organization
+// Define Anchor root (centralized user data) - in user's home directory (~/.anchor)
+// This matches the standard config location (~/.config, ~/.gitconfig, etc.)
 const ANCHOR_ROOT = path.resolve(
   process.env.ANCHOR_ROOT ||
-  path.join(PROJECT_ROOT, '.anchor')
+  path.join(homedir(), '.anchor')
 );
 
 // Define local-data directory under .anchor (Standard 110 compliance)

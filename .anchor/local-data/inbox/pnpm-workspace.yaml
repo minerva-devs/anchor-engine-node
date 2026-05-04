@@ -1,0 +1,8 @@
+packages:
+  - packages/anchor-core
+  - packages/anchor-ui
+  - packages/api-client
+  - packages/shared
+  - packages/types
+  - engine
+  - mcp-server

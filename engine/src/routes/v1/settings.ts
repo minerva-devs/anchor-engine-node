@@ -4,30 +4,31 @@
  * Provides endpoints for reading and updating user_settings.json
  */
 
-import type { Application, Request, Response } from 'express';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { config } from '../../config/index.js';
-import { PROJECT_ROOT, PATHS } from '../../config/paths.js';
+import type { Application, Request, Response } from "express";
+import * as fs from "fs";
+import * as path from "path";
+import { fileURLToPath } from "url";
+import { config } from "../../config/index.js";
+import { PROJECT_ROOT, PATHS } from "../../config/paths.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Resolve settings file path — prefer .anchor/user_settings.json over root
+// Resolve settings file path — prefer PATHS.USER_SETTINGS (~/.anchor/user_settings.json) over root
 function getSettingsPath(): string {
-  const anchorPath = path.join(PROJECT_ROOT, '.anchor', 'user_settings.json');
+  const anchorPath = PATHS.USER_SETTINGS;
   if (fs.existsSync(anchorPath)) return anchorPath;
-  return path.join(PROJECT_ROOT, 'user_settings.json');
+  // Fallback: project root user_settings.json for dev environments without ~/.anchor
+  return path.join(PROJECT_ROOT, "user_settings.json");
 }
 const SETTINGS_PATH = getSettingsPath();
 
 // Default settings template
 const DEFAULT_SETTINGS = {
   server: {
-    host: '0.0.0.0',
+    host: "0.0.0.0",
     port: 3160,
-    api_key: '',
+    api_key: "",
   },
   database: {
     // Standard 051: Ephemeral Index.
@@ -46,11 +47,11 @@ const DEFAULT_SETTINGS = {
     entity_extraction: {
       enabled: true,
       min_confidence: 0.6,
-      categories: ['PERSON', 'ORG', 'PRODUCT', 'EVENT', 'LOCATION'],
+      categories: ["PERSON", "ORG", "PRODUCT", "EVENT", "LOCATION"],
     },
   },
   search: {
-    strategy: 'hybrid',
+    strategy: "hybrid",
     hide_years_in_tags: true,
     max_chars_default: 524288,
     max_chars_limit: 2000000,
@@ -89,7 +90,7 @@ const DEFAULT_SETTINGS = {
     // 'auto' = detect based on free RAM
     // 'low_memory' = force sequential processing (Termux/mobile)
     // 'high_memory' = force parallel processing (desktop/server)
-    environment: 'auto',
+    environment: "auto",
     // Memory threshold in MB below which to use sequential processing (default: 2048)
     sequential_threshold_mb: 2048,
     // Memory threshold in MB above which to use full parallel processing (default: 8192)
@@ -104,59 +105,68 @@ const DEFAULT_SETTINGS = {
 };
 
 export function setupSettingsRoutes(app: Application) {
-  
   // GET /v1/settings - Get all settings
-  app.get('/v1/settings', async (_req: Request, res: Response) => {
+  app.get("/v1/settings", async (_req: Request, res: Response) => {
     try {
-      const settings = JSON.parse(await fs.promises.readFile(SETTINGS_PATH, 'utf-8'));
+      const settings = JSON.parse(
+        await fs.promises.readFile(SETTINGS_PATH, "utf-8"),
+      );
       res.status(200).json({
-        status: 'success',
+        status: "success",
         settings,
       });
     } catch (error: any) {
       res.status(500).json({
-        status: 'error',
+        status: "error",
         error: `Failed to read settings: ${error.message}`,
       });
     }
   });
 
   // PUT /v1/settings - Update all settings
-  app.put('/v1/settings', async (req: Request, res: Response) => {
+  app.put("/v1/settings", async (req: Request, res: Response) => {
     try {
       const newSettings = req.body;
-      
+
       // Validate settings structure
-      if (!newSettings || typeof newSettings !== 'object') {
+      if (!newSettings || typeof newSettings !== "object") {
         return res.status(400).json({
-          status: 'error',
-          error: 'Invalid settings format',
+          status: "error",
+          error: "Invalid settings format",
         });
       }
 
       // Write to file
-      fs.writeFileSync(SETTINGS_PATH, JSON.stringify(newSettings, null, 4), 'utf-8');
-      
+      fs.writeFileSync(
+        SETTINGS_PATH,
+        JSON.stringify(newSettings, null, 4),
+        "utf-8",
+      );
+
       res.status(200).json({
-        status: 'success',
-        message: 'Settings updated successfully',
+        status: "success",
+        message: "Settings updated successfully",
       });
     } catch (error: any) {
       res.status(500).json({
-        status: 'error',
+        status: "error",
         error: `Failed to write settings: ${error.message}`,
       });
     }
   });
 
   // PUT /v1/settings/:category - Update specific category
-  app.put('/v1/settings/:category', async (req: Request, res: Response) => {
+  app.put("/v1/settings/:category", async (req: Request, res: Response) => {
     try {
-      const category = Array.isArray(req.params.category) ? req.params.category[0] : req.params.category;
+      const category = Array.isArray(req.params.category)
+        ? req.params.category[0]
+        : req.params.category;
       const newCategorySettings = req.body;
 
       // Read current settings
-      const settings: any = JSON.parse(await fs.promises.readFile(SETTINGS_PATH, 'utf-8'));
+      const settings: any = JSON.parse(
+        await fs.promises.readFile(SETTINGS_PATH, "utf-8"),
+      );
 
       // Update specific category
       settings[category] = {
@@ -165,41 +175,49 @@ export function setupSettingsRoutes(app: Application) {
       };
 
       // Write back
-      fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 4), 'utf-8');
+      fs.writeFileSync(
+        SETTINGS_PATH,
+        JSON.stringify(settings, null, 4),
+        "utf-8",
+      );
 
       res.status(200).json({
-        status: 'success',
+        status: "success",
         message: `${category} settings updated`,
         settings: settings[category],
       });
     } catch (error: any) {
       res.status(500).json({
-        status: 'error',
+        status: "error",
         error: `Failed to update settings: ${error.message}`,
       });
     }
   });
 
   // GET /v1/settings/defaults - Get default settings
-  app.get('/v1/settings/defaults', (_req: Request, res: Response) => {
+  app.get("/v1/settings/defaults", (_req: Request, res: Response) => {
     res.status(200).json({
-      status: 'success',
+      status: "success",
       settings: DEFAULT_SETTINGS,
     });
   });
 
   // POST /v1/settings/reset - Reset to defaults
-  app.post('/v1/settings/reset', async (req: Request, res: Response) => {
+  app.post("/v1/settings/reset", async (req: Request, res: Response) => {
     try {
-      fs.writeFileSync(SETTINGS_PATH, JSON.stringify(DEFAULT_SETTINGS, null, 4), 'utf-8');
+      fs.writeFileSync(
+        SETTINGS_PATH,
+        JSON.stringify(DEFAULT_SETTINGS, null, 4),
+        "utf-8",
+      );
 
       res.status(200).json({
-        status: 'success',
-        message: 'Settings reset to defaults',
+        status: "success",
+        message: "Settings reset to defaults",
       });
     } catch (error: any) {
       res.status(500).json({
-        status: 'error',
+        status: "error",
         error: `Failed to reset settings: ${error.message}`,
       });
     }
@@ -207,10 +225,10 @@ export function setupSettingsRoutes(app: Application) {
 
   // GET /v1/settings/paths - Get auto-discovered file paths (Standard 051)
   // Returns universal paths based on project root, no hardcoded values
-  app.get('/v1/settings/paths', async (_req: Request, res: Response) => {
+  app.get("/v1/settings/paths", async (_req: Request, res: Response) => {
     try {
       res.status(200).json({
-        status: 'success',
+        status: "success",
         paths: {
           project_root: PROJECT_ROOT,
           inbox: PATHS.INBOX_DIR,
@@ -224,7 +242,7 @@ export function setupSettingsRoutes(app: Application) {
       });
     } catch (error: any) {
       res.status(500).json({
-        status: 'error',
+        status: "error",
         error: `Failed to discover paths: ${error.message}`,
       });
     }
