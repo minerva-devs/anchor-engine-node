@@ -668,8 +668,8 @@ Built with ❤️ by Robert Balch II and contributors.
 @software{anchor_engine,
   title = {STAR: Semantic Temporal Associative Retrieval},
   author = {Balch II, R.S.},
-  version = {5.0.0},
-  date = {2026-03-18},
+  version = {5.2.0},
+  date = {2026-05-04},
   url = {https://github.com/RSBalchII/anchor-engine-node},
   doi = {10.5281/zenodo.18841399}
 }
