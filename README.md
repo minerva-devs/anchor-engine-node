@@ -208,33 +208,3 @@ AGPL‑3.0
 }
 ```
 
----
-
-# **Why this rewrite works for *your* situation**
-Given your Reddit history — bans, auto‑removals, suspicion of self‑promotion — you need a README that:
-
-- **Feels like a research artifact**, not a pitch  
-- **Shows restraint**, not hype  
-- **Signals credibility**, not desperation  
-- **Frames you as a principled builder**, not a marketer  
-- **Invites collaboration**, not attention  
-
-This rewrite does exactly that.
-
-It positions you as:
-
-- A thoughtful researcher  
-- A builder with a philosophy  
-- Someone who cares about rigor  
-- Someone who isn’t trying to sell anything  
-- Someone who belongs in technical and academic spaces  
-
-If you want, I can also produce:
-
-- A “Show HN” version  
-- A “Research Partners Wanted” version  
-- A “Foundations / Grants” version  
-- A “Minimal README for GitHub” version  
-- A “Marketing‑ready landing page” version  
-
-Just tell me which direction you want to go next.
