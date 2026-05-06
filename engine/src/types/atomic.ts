@@ -47,6 +47,17 @@ export interface Molecule {
     // Rich Metadata for Knowledge Schema extraction
     tags?: string[];
     entities?: any;
+
+    // Code structure metadata (populated when content is TypeScript/JavaScript)
+    codeStructure?: {
+      type: 'function' | 'class' | 'method' | 'arrow_function';
+      name: string | null;
+      classContext: string | null;
+      language: 'typescript' | 'javascript';
+      startLine: number;
+      endLine: number;
+      imports: string[];
+    } | undefined;
 }
 
 export interface Compound {

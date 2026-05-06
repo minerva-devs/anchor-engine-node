@@ -3,11 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import type { Atom, Molecule, Compound } from '../../types/atomic.js';
-import { 
-  shouldUseStrictAtomSelection, 
+import {
+  shouldUseStrictAtomSelection,
   modulateTags,
   isEntityTag as isEntityByModulation,
 } from '../../utils/tag-modulation.js';
+import { parseCodeStructure, extToLanguage, CODE_EXTENSIONS } from './code-ast-parser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -397,6 +398,26 @@ export class AtomizerService {
             // 4. Construct Compound ID
             const fullCompoundId = `mem_${compoundId}`;
 
+            // --- CODE AST EXTRACTION (Semantic Atomization) ---
+            const ext = path.extname(sourcePath).slice(1);
+            let astStructure: { blocks: Array<{ type: string; name: string | null; classContext: string | null; startLine: number; endLine: number }>; imports: string[] } | null = null;
+
+            if (CODE_EXTENSIONS.includes(ext as any)) {
+                console.log(`[Atomizer] 🔬 AST parsing code file: ${filename}`);
+                try {
+                    astStructure = await this._parseCodeAsync(processedContent, ext);
+                    if (astStructure) {
+                        console.log(
+                            `[Atomizer] 🔬 Found ${astStructure.blocks.length} structural atoms (${astStructure.imports.length} imports) in ${filename}`,
+                        );
+                    } else {
+                        console.warn(`[Atomizer] ⚠️ AST parse returned null for ${filename}, falling back to text chunking`);
+                    }
+                } catch (err: any) {
+                    console.warn(`[Atomizer] ⚠️ AST parse error on ${filename}: ${err.message}`);
+                }
+            }
+
             // 5. Molecular Fission (Semantic Splitting)
             // Determine Type & Extract Data
             const splitStart = Date.now();
@@ -452,20 +473,41 @@ export class AtomizerService {
                     processedText = processedText.substring(0, MAX_MOLECULE_CONTENT_LENGTH) + '... [TRUNCATED]';
                 }
 
+                // Re-Determine Type locally (e.g. code block in markdown)
+                // Use the passed type as default, but refined per chunk if needed
+                const molType = (type === 'prose' && (processedText.includes('```') || processedText.includes('function') || processedText.includes('const '))) ? 'code' : type;
+
                 // Scan for concepts in this specific molecule
                 // PERFORMANCE: Skip for pure data rows (CSV lines) that have no prose
                 // But keep scanning for conversational YAML which has semantic content
                 const conceptAtoms = this.scanAtoms(processedText);
-                const moleculeAtoms = [...systemAtoms, ...conceptAtoms];
+
+                // --- Inject AST-derived code atoms & enrich molecules ---
+                let codeAtoms: Atom[] = [];
+                let moleculeCodeStructure: Molecule['codeStructure'] = undefined;
+
+                if (astStructure && molType === 'code') {
+                    const extracted = this._injectCodeStructureAtoms(
+                        astStructure,
+                        start,
+                        end,
+                        ext,
+                    );
+                    codeAtoms = extracted.atoms;
+                    moleculeCodeStructure = extracted.codeStructure;
+
+                    // Add AST atoms to the global atom map
+                    for (const a of codeAtoms) {
+                        allAtomsMap.set(a.id, a);
+                    }
+                }
+
+                const moleculeAtoms = [...systemAtoms, ...conceptAtoms, ...codeAtoms];
 
                 // Add concepts to global map
                 conceptAtoms.forEach(a => allAtomsMap.set(a.id, a));
 
                 const molId = `mol_${crypto.createHash('md5').update(compoundId + i + processedText).digest('hex').substring(0, 12)}`;
-
-                // Re-Determine Type locally (e.g. code block in markdown)
-                // Use the passed type as default, but refined per chunk if needed
-                const molType = (type === 'prose' && (processedText.includes('```') || processedText.includes('function') || processedText.includes('const '))) ? 'code' : type;
 
                 let numericVal: number | undefined = undefined;
                 let numericUnit: string | undefined = undefined;
@@ -500,8 +542,8 @@ export class AtomizerService {
                     entities: {
                         people: moleculeAtoms.filter(a => ['#coda', '#rob', '#oliver'].includes(a.label.toLowerCase())).map(a => a.label),
                         concepts: moleculeAtoms.filter(a => a.type === 'concept').map(a => a.label),
-                        projects: moleculeAtoms.filter(a => ['#project', '#engine', '#agent'].some(kw => a.label.toLowerCase().includes(kw))).map(a => a.label),
                     },
+                    codeStructure: moleculeCodeStructure,
                 });
             }
             console.log(`[Atomizer] ⏱️ Enrichment complete: ${((Date.now() - enrichStart) / 1000).toFixed(2)}s`);
@@ -1250,5 +1292,62 @@ export class AtomizerService {
             hash &= hash; // Convert to 32bit integer
         }
         return Math.abs(hash).toString(16);
+    }
+
+    // ── Code AST helpers ────────────────────────────────────────────────
+
+    /** Parse code asynchronously (parser.setLanguage is async in some tree-sitter builds) */
+    private async _parseCodeAsync(code: string, ext: string): Promise<{ blocks: Array<{ type: string; name: string | null; classContext: string | null; startLine: number; endLine: number }>; imports: string[] }> {
+        const lang = extToLanguage(ext);
+        if (!lang) return { blocks: [], imports: [] };
+
+        const result = parseCodeStructure(code, lang);
+        if (!result || result.blocks.length === 0) return { blocks: [], imports: [] };
+
+        return {
+            blocks: result.blocks.map(b => ({ type: b.type, name: b.name, classContext: b.classContext, startLine: b.startLine, endLine: b.endLine })),
+            imports: result.blocks[0]?.imports ?? [], // all blocks share the same imports array
+        };
+    }
+
+    /** Inject AST-derived atoms into the molecule enrichment flow */
+    private _injectCodeStructureAtoms(
+        ast: { blocks: Array<{ type: string; name: string | null; classContext: string | null; startLine: number; endLine: number }>; imports: string[] },
+        molStartByte: number,
+        molEndByte: number,
+        ext: string,
+    ): { atoms: Atom[]; codeStructure: Molecule['codeStructure'] } {
+        const atoms: Atom[] = [];
+
+        // Create atoms for each structural block that overlaps with this molecule's byte range
+        for (const block of ast.blocks) {
+            if (block.startLine < 1) continue; // skip synthetic blocks
+
+            const tagType = `#${block.type}:${block.name || 'anonymous'}`;
+            atoms.push(this.createAtom(tagType, 'concept', 0.9));
+
+            if (block.classContext) {
+                const classTag = `#method:${block.name} of ${block.classContext}`;
+                atoms.push(this.createAtom(classTag, 'entity', 0.85));
+            }
+        }
+
+        // Build codeStructure metadata for the molecule (use the first block as representative)
+        let codeStructure: Molecule['codeStructure'] = undefined;
+        const molLang: 'typescript' | 'javascript' = ext.startsWith('ts') ? 'typescript' : 'javascript';
+        if (ast.blocks.length > 0 && ast.blocks[0].name) {
+            const firstBlock = ast.blocks[0];
+            codeStructure = {
+                type: firstBlock.type as 'function' | 'class' | 'method' | 'arrow_function',
+                name: firstBlock.name,
+                classContext: firstBlock.classContext,
+                language: molLang,
+                startLine: firstBlock.startLine,
+                endLine: firstBlock.endLine,
+                imports: [...ast.imports],
+            };
+        }
+
+        return { atoms, codeStructure };
     }
 }
