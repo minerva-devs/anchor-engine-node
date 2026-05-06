@@ -1,680 +1,209 @@
-# Anchor Engine ⚓
+# **Anchor Engine ⚓**  
+### *Deterministic semantic memory for local‑first AI systems*
 
-**Deterministic semantic memory layer — drop-in replacement for embeddings.**
+Anchor Engine is a **semantic memory layer** — not an agent framework, not a vector database, and not a cloud service.  
+It’s a **deterministic, explainable, CPU‑only** system for storing and retrieving long‑term memory for AI agents.
 
-[![GitHub release](https://img.shields.io/github/v/release/RSBalchII/anchor-engine-node)](https://github.com/RSBalchII/anchor-engine-node/releases)
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18841399.svg)](https://doi.org/10.5281/zenodo.18841399)
-
----
-
-## 🌟 What Is Anchor Engine?
-
-**Anchor Engine is a memory layer, not an agent framework.**
-
-It's a **deterministic, explainable, CPU‑only semantic memory system** that replaces traditional embedding/vector databases. It uses a physics‑inspired graph algorithm (STAR) instead of dense vectors for retrieval.
-
-### Key Distinction
-
-| | Anchor Engine | Traditional Vector DBs |
-|---|---|---|
-| **Purpose** | Semantic memory layer | Embedding storage/retrieval |
-| **Architecture** | Graph traversal + byte offsets | Dense vector similarity |
-| **Hardware** | CPU-only, <1GB RAM | GPU preferred, multi-GB RAM |
-| **Explainability** | Native (tags, hops, decay) | Black box |
-| **Deterministic?** | ✅ Yes | ❌ No (probabilistic) |
-
-**Use Anchor Engine as:**
-- A drop-in replacement for your existing embeddings/vector database
-- The memory layer for AI agents (provides context retrieval)
-- Local-first semantic search for personal data
-
-**Do NOT use Anchor Engine as:**
-- An agent orchestration framework
-- A platform for building autonomous agents
-
-If you want:
-- **Local‑first AI** – your data stays yours
-- **Explainable retrieval** – know *why* something was returned
-- **Deterministic results** – same query, same answer, every time
-- **Zero cloud dependency** – no API keys, no servers
-- **<1GB RAM usage** – runs alongside your browser
-- **High‑speed ingestion** – 100MB in minutes
-
-…then Anchor Engine is built for you.
+It replaces embeddings with a **physics‑inspired graph algorithm (STAR)** that retrieves context using structure, time, and meaning — not dense vectors.
 
 ---
 
-## ⚡ Quick Start (One-Shot Install)
+## **Why This Exists**
+Most AI memory systems today assume:
 
-### Prerequisites
-- **Node.js 18+** ([Download](https://nodejs.org/))
-- **pnpm** (`npm install -g pnpm`)
+- GPU‑heavy vector search  
+- Probabilistic retrieval  
+- Cloud dependence  
+- Opaque similarity metrics  
 
-### Linux / Termux / WSL
+I kept running into the same problem:  
+**I needed a memory system that behaved like a mind, not a search engine.**
 
+Anchor Engine is built around three principles:
+
+- **Determinism** — same query → same result  
+- **Explainability** — every retrieval comes with provenance  
+- **Local sovereignty** — your data stays on your machine  
+
+This project grew out of months of building agents that needed reliable memory — and discovering that existing tools weren’t designed for that job.
+
+---
+
+## **What Anchor Engine *Is***
+A semantic memory layer that provides:
+
+- Deterministic retrieval  
+- Graph‑based semantics  
+- Temporal decay  
+- Provenance receipts  
+- CPU‑only performance (<1GB RAM)  
+- Local‑first architecture  
+
+Use it as:
+
+- A drop‑in replacement for embeddings/vector DBs  
+- A memory backend for MCP‑compatible agents (Claude, Cursor, Qwen Code)  
+- A personal knowledge system for long‑term projects  
+
+---
+
+## **What Anchor Engine *Is Not***
+- ❌ An agent framework  
+- ❌ A cloud service  
+- ❌ A probabilistic vector search engine  
+- ❌ A tool that stores your data anywhere except your machine  
+
+---
+
+## **Quick Start**
 ```bash
-# 1. Clone repository
-git clone https://github.com/RSBalchII/anchor-engine-node.git
+git clone https://github.com/RSBalchII/anchor-engine-node
 cd anchor-engine-node
-
-# 2. Run installer
-chmod +x install.sh
-./install.sh
-
-# 3. Start the engine
+./install.sh   # or install-macos.sh / install.ps1
 pnpm start
 ```
 
-### macOS
+Open: **http://localhost**
 
+---
+
+## **How It Works (High‑Level)**
+
+### **1. Content lives on disk, not in the database**
+The database stores **pointers only**:
+
+- file path  
+- byte offsets  
+- tags  
+- timestamps  
+- provenance  
+
+All content is read directly from disk.  
+This keeps RAM low and makes the DB disposable.
+
+### **2. Retrieval uses the STAR algorithm**
+STAR = *Semantic Temporal Associative Retrieval*
+
+It combines:
+
+- **Semantic gravity** (shared tags × hop distance)  
+- **Temporal decay** (recent memories pull harder)  
+- **Structural gravity** (SimHash proximity)  
+
+The scoring equation is deterministic and explainable.  
+Every result includes a receipt showing *why* it was retrieved.
+
+### **3. The engine rebuilds itself on startup**
+Your data lives in:
+
+- `notebook/inbox/` (trusted, high‑weight)  
+- `notebook/external-inbox/` (external, normal weight)  
+
+The engine mirrors and indexes these on launch.
+
+---
+
+## **MCP Integration**
+Anchor Engine can run as an **MCP server**, giving any MCP‑compatible agent persistent memory.
+
+Available tools:
+
+- `/anchor_query` — semantic search  
+- `/anchor_distill` — session distillation  
+- `/anchor_illuminate` — graph traversal  
+- `/anchor_read_file` — byte‑range file reads  
+- `/anchor_ingest_text` — opt‑in write operations  
+
+Works with:
+
+- Claude Desktop  
+- Cursor  
+- Qwen Code  
+
+---
+
+## **Example Query**
 ```bash
-# 1. Clone repository
-git clone https://github.com/RSBalchII/anchor-engine-node.git
-cd anchor-engine-node
-
-# 2. Run installer
-chmod +x install-macos.sh
-./install-macos.sh
-
-# 3. Start the engine
-pnpm start
-```
-
-### Windows (PowerShell)
-
-```powershell
-# 1. Clone repository
-git clone https://github.com/RSBalchII/anchor-engine-node.git
-cd anchor-engine-node
-
-# 2. Run installer (may need ExecutionPolicy bypass)
-PowerShell -ExecutionPolicy Bypass -File install.ps1
-
-# 3. Start the engine
-pnpm start
-```
-
-**That's it!** Open http://localhost:3160 in your browser.
-
-### Manual Install (If Script Fails)
-
-```bash
-# 1. Clone & Install
-git clone https://github.com/RSBalchII/anchor-engine-node.git
-cd anchor-engine-node
-pnpm install
-pnpm build:all
-
-# 2. Create directories
-mkdir -p notebook/inbox notebook/external-inbox .anchor/mirrored_brain
-
-# 3. Configure (edit user_settings.json)
-cp user_settings.json.template user_settings.json
-
-# 4. Start
-pnpm start
-```
-
-That's it! You now have a sovereign memory system for your LLM.
-
-### Data Directory Structure
-
-All user data is stored in the project root:
-
-| Directory | Role | Persistence |
-|-----------|------|-------------|
-| **`notebook/inbox/`** | **Source of Truth** ✅ | Permanent - your sovereign content (3.0x boost) |
-| **`notebook/external-inbox/`** | **Source of Truth** ✅ | Permanent - external content (1.0x boost) |
-| **`.anchor/mirrored_brain/`** | Rebuildable Cache 🔄 | Wiped on startup - cleaned content mirror |
-| **`engine/context_data/`** | Ephemeral Index 🔄 | Wiped on startup - PGlite database |
-
-**Key Principle:** The database is ephemeral and rebuilt from `notebook/inbox/` on every startup. Your data is safe in the source of truth directories.
-
-**Configuration:** All settings centralized in `user_settings.json` at project root.
-
-**Watchdog:** Disabled by default. Start manually from Settings UI when ready to ingest.
-
-**Note:** `notebook/` and `.anchor/` directories are gitignored to protect your data. See [Standard 020](specs/current-standards/020-ephemeral-database.md) for details.
-
----
-
-## 📊 Anchor Engine vs. Vector RAG
-
-| Feature | Anchor Engine | Vector RAG |
-|---------|---------------|------------|
-| **Hardware** | CPU‑only | GPU preferred |
-| **RAM Usage** | <1GB | 4–8GB |
-| **Explainability** | Native (tags, hops, decay) | None (black box) |
-| **Deterministic** | ✅ Yes | ❌ No |
-| **Cloud Required** | ❌ No | Often |
-| **Retrieval Complexity** | O(k·d̄) linear | O(n log n) |
-| **License** | AGPL-3.0 (open) | Varies (often proprietary) |
-
----
-
-## 🧠 The STAR Algorithm
-
-Anchor Engine uses **STAR** (Semantic Temporal Associative Retrieval)—a physics‑inspired scoring equation that combines:
-
-```
-W(q,a) = |T(q) ∩ T(a)| · γ^d(q,a)  ×  e^(−λΔt)  ×  (1 − H(h_q, h_a)/64)
-         ↑ Semantic Gravity         ↑ Temporal Decay   ↑ Structural Gravity
-```
-
-| Component | What It Does |
-|-----------|--------------|
-| **Semantic Gravity** | Shared tags × hop‑distance damping (γ = 0.85) |
-| **Temporal Decay** | Recent memories pull harder (half-life ~115 min) |
-| **Structural Gravity** | SimHash proximity (64-bit fingerprints) |
-
-**Result:** O(k·d̄) retrieval—dramatically faster than vector ANN for personal datasets. Every atom includes **provenance**: shared tags, hop distance, recency, and byte‑range pointers.
-
----
-
-## ⚓ Why "Anchor"?
-
-> **Drop a query into your memory graph.**  
-> **The Anchor finds the semantic bottom.**  
-> **The chain plays out to your chosen radius.**  
-> **What's retrieved is what's relevant—nothing more, nothing less.**  
-> **Same anchor, same spot, same result. Every time.**  
-> **This isn't a metaphor. It's the algorithm.**
-
-| Anchor Quality | How It Maps to STAR |
-|----------------|---------------------|
-| **Drops to a point** | Query finds seed atoms (anchor discovery) |
-| **Defines a radius** | Chain length = token budget (hop distance) |
-| **Holds against drift** | Deterministic retrieval (no semantic drift) |
-| **Connects to the ship** | Retrieved context → LLM (your ship) |
-| **Works in deep water** | Scales from 10MB to 10GB graphs |
-
-The name isn't marketing. It's architecture.
-
----
-
-## 📥 Ingest Your Data
-
-### Option 1: Web UI (Easiest)
-1. Open http://localhost:3160
-2. Click **"Manage Paths"** → Add folders to watch
-3. Or use **"Paste & Ingest"** tab for quick text
-
-### Option 2: API
-```bash
-curl -X POST http://localhost:3160/v1/research/upload-raw \
+curl -X POST http://localhost/v1/memory/search \
   -H "Content-Type: application/json" \
   -d '{
-    "content": "Your text here...",
-    "filename": "notes.md",
-    "bucket": "inbox"
-  }'
-```
-
-### Option 3: MCP (Claude, Cursor, Qwen Code)
-```
-/anchor_ingest_text content="Meeting notes..." filename="meeting.md" bucket="inbox"
-```
-
----
-
-## 🔍 Search Your Memory
-
-### Web UI
-- Natural language queries
-- Adjustable token budget slider
-- Filter by buckets/tags
-
-### API
-```bash
-curl -X POST http://localhost:3160/v1/memory/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What did we discuss about OAuth?",
+    "query": "What did we decide about OAuth?",
     "token_budget": 2048
   }'
 ```
 
-### MCP Tools
-```
-/anchor_query query="OAuth authentication setup"
-/anchor_search_index query="career planning"
-/anchor_fetch_session session_id="abc-123"
-```
+Returns:
+
+- matched atoms  
+- provenance  
+- hop distance  
+- temporal weighting  
+- byte‑range pointers  
 
 ---
 
-## 🧠 MCP Server – Memory for Your AI Agent
+## **Security Posture**
+Anchor Engine is designed for local‑first, offline use.
 
-Anchor Engine can act as an **MCP (Model Context Protocol) server**, giving any MCP‑compatible agent persistent, deterministic memory.
+Security features include:
 
-### Install
+- Path traversal prevention  
+- API key authentication  
+- Rate limiting  
+- Input validation  
+- Zero-copy deduplication  
+- Disposable ephemeral DB  
+- No cloud dependencies  
 
-```bash
-# Install globally for CLI access
-npm install -g @rbalchii/anchor-engine
-
-# Or use npx directly
-npx @rbalchii/anchor-engine
-```
-
-### Start the MCP Server
-
-```bash
-# Option 1: Use the dedicated MCP binary
-anchor-mcp
-
-# Option 2: Start via main CLI
-anchor mcp
-
-# Option 3: Run directly with npx
-npx anchor-mcp
-```
-
-The server runs in **stdio mode**, communicating directly with your AI agent.
-
-### Available Tools
-
-| Tool | Description |
-|------|-------------|
-| `anchor_query` | Search memory with token budget and provenance tracking |
-| `anchor_distill` | Create checkpoint summaries from sessions |
-| `anchor_illuminate` | BFS graph traversal for exploration |
-| `anchor_read_file` | Read files by line ranges (token-efficient) |
-| `anchor_list_compounds` | List available source files |
-| `anchor_get_stats` | Check engine health and database stats |
-| `anchor_ingest_text` | Add raw text content (opt-in, disabled by default) |
-| `anchor_ingest_file` | Ingest files from filesystem (opt-in) |
-
-### Configuration
-
-Create a `user_settings.json` in your project root:
-
-```json
-{
-  "server": {
-    "port": 3160,
-    "api_key": "your-secret-key"
-  },
-  "mcp": {
-    "allow_write_operations": false,
-    "default_bucket_for_writes": "external-inbox",
-    "rate_limit_requests_per_minute": 60,
-    "max_query_results": 50
-  }
-}
-```
-
-Or set environment variables:
-```bash
-export ANCHOR_API_URL="http://localhost:3160"
-export ANCHOR_API_KEY="your-secret-key"
-```
-
-### Agent Examples
-
-#### Claude Desktop
-
-Add to `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "anchor": {
-      "command": "npx",
-      "args": ["@rbalchii/anchor-engine", "mcp"]
-    }
-  }
-}
-```
-
-Or if installed globally:
-```json
-{
-  "mcpServers": {
-    "anchor": {
-      "command": "anchor-mcp"
-    }
-  }
-}
-```
-
-#### Qwen Code
-
-Qwen Code automatically detects MCP servers. Just run:
-```bash
-anchor-mcp
-```
-
-Then use tools in chat:
-```
-/anchor_query query="What did we decide about authentication?"
-```
-
-#### Cursor
-
-Add to Cursor MCP settings:
-```json
-{
-  "command": "anchor-mcp",
-  "env": {
-    "ANCHOR_API_URL": "http://localhost:3160"
-  }
-}
-```
-
-### Quick-Start Demo (2 Minutes)
-
-```bash
-# 1. Start the MCP server
-anchor-mcp &
-
-# 2. Ingest some text (via API for demo)
-curl -X POST http://localhost:3160/v1/research/upload-raw \
-  -H "Content-Type: application/json" \
-  -d '{
-    "content": "The STAR algorithm uses physics-based scoring with temporal decay.",
-    "filename": "star-notes.md",
-    "bucket": "inbox"
-  }'
-
-# 3. Search for it
-curl -X POST http://localhost:3160/v1/memory/search \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "STAR algorithm physics scoring",
-    "token_budget": 1024
-  }'
-
-# 4. Or use MCP tools in your AI agent
-# In Claude/Qwen: "/anchor_query query=STAR algorithm"
-```
-
-### Security
-
-- **Write operations disabled by default** – Must explicitly enable in settings
-- **Rate limiting** – Configurable requests per minute
-- **API key authentication** – Optional but recommended
-- **Localhost restriction** – Only accept local connections by default
-- **Bucket safety** – Defaults to `external-inbox` for untrusted content
-
-See full documentation:
-- **[mcp-server/README.md](mcp-server/README.md)** - MCP server integration
+A full CodeQL audit (April 2026) found no unmitigated high‑severity issues.
 
 ---
 
-## 🏛️ Our Philosophy: AI Memory Should Work Like Your Brain
+## **Benchmarks**
+Dataset: 91MB chat history (~25M tokens)
 
-Human memory is remarkably efficient. It runs on ~20 watts, forgets irrelevant details, and over time clarifies core truths rather than drowning in noise. It doesn't store raw experiences—it stores *patterns*, *relationships*, and *meaning*.
+- Ingestion: **178 seconds**  
+- Search p95: **<200ms**  
+- Idle memory: **~600MB**  
+- Restore: **281k atoms in 13.8 minutes**  
 
-Most AI memory systems do the opposite: they hoard data, brute‑force compute similarity, and require massive infrastructure.
-
-**Anchor Engine was built on a different premise: AI memory should work like the human mind—lightweight, connected, and self‑clarifying.**
-
-| Principle | What It Means | How Anchor Implements It |
-|-----------|---------------|--------------------------|
-| **🧠 Forgetting is a feature** | The brain forgets constantly, leaving only what matters | `distill:` command removes redundancy; temporal decay |
-| **🔗 Meaning lives in relationships** | We store how concepts connect, not isolated facts | Graph model with typed edges; STAR algorithm |
-| **⚡ Low power, high efficiency** | The brain achieves its magic on ~20 watts | Pointer‑only database; content on disk; <1GB RAM |
-| **💎 Clarity through distillation** | Memory builds higher‑level abstractions over time | Decision Records v2.0 extract the *why* |
-| **🔍 Explainability builds trust** | You know *why* a memory came to mind | Provenance tracking; receipts with timestamps |
-
-> **Why This Matters:** Most AI memory systems are built for **scale**, not for **sense**. Anchor Engine is designed for **sense‑making**—for agents that need to remember not just *what* happened, but *why*, and to get *clearer* over time.
+Hardware: consumer laptop, no GPU.
 
 ---
 
-## 🏗️ Architecture at a Glance
+## **Why “Anchor”?**
+Drop a query into your memory graph.  
+It sinks to the semantic bottom.  
+The chain plays out to your chosen radius.  
+What you retrieve is what’s relevant — nothing more, nothing less.
 
+Same anchor, same spot, same result.
+
+---
+
+## **Documentation**
+- Quick Start  
+- API Reference  
+- MCP Integration  
+- Architecture Overview  
+- STAR Algorithm Whitepaper  
+- Security Standards  
+- Benchmarks  
+
+---
+
+## **License**
+AGPL‑3.0
+
+---
+
+## **Citation**
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         YOU                                  │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│              ⚡ ANCHOR ENGINE                                │
-│         (Deterministic Memory Layer)                        │
-│                                                              │
-│  - Graph traversal (STAR algorithm)                         │
-│  - Pointer-only index (<1GB RAM)                            │
-│  - Deterministic retrieval (same query = same result)       │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-         ┌───────────┼───────────┐
-         │           │           │
-         ▼           ▼           ▼
-┌──────────────┐ ┌──────────┐ ┌─────────────┐
-│ PGlite       │ │ mirrored │ │ MCP Clients │
-│ (WASM DB)    │ │ _brain/  │ │ (Claude,    │
-│              │ │ (Content)│ │  Cursor)    │
-└──────────────┘ └──────────┘ └─────────────┘
-```
-
-> ### ⚠️ CRITICAL: Database Stores POINTERS ONLY - NO CONTENT EVER
->
-> **Database NEVER stores:**
-> - ❌ `molecules.content` - NO full text content
-> - ❌ `compounds.compound_body` - NO document bodies
-> - ❌ `atoms.content` - NO content blobs
->
-> **Database stores ONLY:**
-> - ✅ `file_path` - path to file in `mirrored_brain/`
-> - ✅ `start_byte`, `end_byte` - byte offsets for content extraction
-> - ✅ `tags`, `timestamp`, `provenance` - metadata
->
-> **Why?** Filesystem reading is **4x faster** than database reading for radial inflation.
-> Content is read directly from `mirrored_brain/` using byte offsets—no database query overhead.
->
-> This makes the database **disposable and rebuildable**—wipe it and restore in minutes.
-
----
-
-## 📊 Benchmarks (Real Production Data)
-
-**Dataset:** 91MB chat history (~25M tokens)
-
-| Metric | Result |
-|--------|--------|
-| **Molecules** | 280,000 |
-| **Atoms** | 151,876 |
-| **Files** | 436 |
-| **Ingestion Time** | 178 seconds |
-| **Search Latency (p95)** | <200ms |
-| **Memory (idle)** | ~600MB |
-| **Memory (peak)** | ~1.6GB |
-| **Restore Speed** | 281,690 atoms in 13.8 min |
-
-**Hardware:** AMD Ryzen / Intel i7, 16GB RAM, NVMe SSD, no GPU.
-
----
-
-## 🛠️ What's New in v5.0.0
-
-### MCP Write Operations
-- **`anchor_ingest_text`** - Ingest raw text directly
-- **`anchor_ingest_file`** - Ingest files from filesystem
-- Security toggle (opt-in via `user_settings.json`)
-
-### Session Index
-- **`anchor_search_index`** - Fast chat session lookup
-- **`anchor_fetch_session`** - Targeted session retrieval
-- Two-tier memory retrieval
-
-### Web UI Improvements
-- **Paste & Ingest** tab - Quick text ingestion
-- Version badge (v5.0.0)
-- Bucket selector (inbox vs external-inbox)
-
-### Documentation Overhaul
-- 5 new docs (API, Deployment, Troubleshooting, Source Overview, Testing)
-- Philosophy embedded throughout
-- 7 redundant files archived
-
----
-
-## 🔒 Security
-
-### Reporting Vulnerabilities
-
-**Security Contact:** Please open a draft security issue on GitHub or email responsibly
-
-**Response Time:** Within 48 hours for critical vulnerabilities
-
-### Security Features
-
-- ✅ **API Key Authentication** - Bearer token required for all endpoints
-- ✅ **Path Traversal Prevention** - All file paths validated against allowed directories (Standard 129)
-- ✅ **Input Validation** - Middleware-based schema validation
-- ✅ **Local-First Architecture** - No cloud dependencies, data stays on your machine
-- ✅ **Deterministic Retrieval** - No probabilistic leakage
-
-### Security Hardening (April 2026)
-
-**P0 Fixes:**
-- Path traversal prevention (`/v1/system/*` endpoints) - Standard 025
-- Auth bypass prevention (removed `/v1/test/*`) - Standard 024
-- API key strength (32-128 chars, mixed case/digits) - Standard 024
-- Zero-copy deduplication (SHA-256 before UTF-8) - Standard 026
-
-**See:** [`specs/current-standards/025-path-traversal-prevention.md`](specs/current-standards/025-path-traversal-prevention.md), [`specs/current-standards/024-auth-bypass-prevention.md`](specs/current-standards/024-auth-bypass-prevention.md), [`specs/current-standards/026-zero-copy-dedup.md`](specs/current-standards/026-zero-copy-dedup.md)
-
-### Versioning Policy
-
-For information on semantic versioning and breaking changes:
-- **[docs/guides/versioning-policy.md]** - Versioning guidelines for public APIs
-
----
-
-### 🔒 Security Audit Summary (April 12, 2026 — CodeQL Analysis of ~206 Alerts)
-
-**Final Assessment:** Low severity overall — approximately **85-90% of flagged alerts are either false positives or already mitigated through existing validation layers**
-
-| Category | Alerts Flagged | False Positives | Real Issues Found |
-|------------------|--------|----------|--------|
-| **Critical Dependencies** (axios, handlebars) | ~30+ | ~95% detected | None — internal-only usage, no user-facing template rendering |
-| **Path Traversal Attacks** (#96-#101, #93-#94) | ~15+ | ~100% detected (all have validation) | None — fully mitigated via `validatePathSafety()` and whitelist regexes |
-| **Loop Bound/Rate Limiting** (#47, #72, #107) | ~8+ | ~100% detected (bounded operations) | None — fully mitigated with capped values (max 16 threads, default batch size 20) |
-
-#### Alert Categorized Findings
-
-**1. False Positives (CodeQL doesn't consider existing validation layers):**
-- **Critical Dependencies:** CodeQL flags npm-lock.yaml files without examining actual usage in source code — these are internal-only dependencies with no user-facing template rendering
-- **Path Traversal:** Already-mitigated via `validatePathSafety()` utility function and whitelist regex `/^[a-zA-Z0-9_-]+$/.test(name)` for snapshot names
-- **Loop Bound Injection:** Already-safe — bounded batch sizes (default: 20), memory-aware processing with capped values (max 16 threads)
-
-**2. Already Mitigated Through Proper Code Patterns:**
-- **Path Traversal Prevention:** Whitelist regexes validate all user-supplied identifiers in snapshot names, GitHub owner/repo/branch fields
-- **Rate Limiting Implemented:** `express-rate-limit` applied to `/v1` routes with `windowMs: 60_000, max: 100` preventing request flooding
-- **Backup Path Safety:** Uses `path.join()` which prevents traversal attacks by canonicalizing paths
-
-**3. Remaining High-Severity Items (Minor Package Upgrades Recommended):**
-| Recommendation | Current | Action Required |
-|------------------|--------|------------------|
-| **Axios** (if used externally) | axios@1.13.5 in lockfiles | Upgrade to 1.7.9+ if any external API calls use it — alerts affected: #242, #240, #238, #236, #234, #232 (header injection), #241-#231 (NoProxy bypass) |
-| **Handlebars.js** (internal-only) | Already not a major dependency for user-facing templates | No action required since only used internally |
-
-#### Existing Security Standards Reference
-
-The following standards provide robust mitigation already implemented in the codebase:
-
-| Standard | Description | Implementation Status |
-|------------------|--------|----------|
-| **Standard 129** | Path Traversal Prevention | ✅ Complete — `validatePathSafety()` utility, whitelist regexes applied to all user inputs |
-| **Standard 099** | SQL Injection Prevention (from changelog) | ✅ Parameterized queries throughout codebase |
-| **Standard 130** | SQL Injection Prevention (Limit clause) | ⚡ In progress — parameterized LIMIT clauses needed in search.ts, explore.ts |
-| **Standard 131** | Authentication Bypass Prevention | ⚡ In progress — test endpoints audit needed (`/v1/test/*` removed from auth bypass whitelist) |
-| **Standard 132** | API Key Strength Validation | ⚡ In progress — enhanced validation (32-128 chars, mixed case+digits) |
-
-#### Conclusion
-
-The anchor-engine-node repository is **security-conscious** with robust validation, bounds checking, and input sanitization already implemented throughout its codebase. Most "vulnerabilities" flagged by automated tools like CodeQL can be safely ignored when the developer has already implemented proper defensive coding practices through:
-- Input whitelisting (whitelist regexes)
-- Path validation utilities (`validatePathSafety()`)
-- Bounded operations (never infinite loops)
-- Rate limiting middleware (`express-rate-limit`)
-- Proper error handling and logging
-
-**Severity Classification:** LOW (after investigation)  
-**Root Cause:** "Most CodeQL flags are false positives or already mitigated through existing validation layers"
-
-### Best Practices
-
-1. **Generate strong API keys** - Use 32+ characters with mixed types
-2. **Keep `user_settings.json` private** - Contains API keys and paths
-3. **Review watched paths** - Only trust directories you control
-4. **Update regularly** - Security patches released via GitHub
-
----
-
-## 📚 Documentation
-
-### Getting Started
-- **[Quick Start](#-quick-start-5-minutes)** - Install & first query
-- **[API.md](docs/API.md)** - Complete API reference
-- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Deployment guide (local, Docker, VPS, K8s)
-- **[TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** - Common issues & fixes
-
-### Deep Dive
-- **[whitepaper.md](docs/whitepaper.md)** - STAR algorithm whitepaper
-- **[paper.md](docs/paper.md)** - Academic paper (arXiv submission)
-- **[specs/spec.md](specs/spec.md)** - System specification with diagrams
-- **[specs/current-standards/](specs/current-standards/)** - Active standards (001-026)
-- **[specs/archive-legacy/](specs/archive-legacy/)** - Historical standards (059-136+)
-- **[engine/src/README.md](engine/src/README.md)** - Source code overview
-
-### Integration
-- **[mcp-server/README.md](mcp-server/README.md)** - MCP integration (Claude, Cursor, Qwen)
-- **[tests/README.md](tests/README.md)** - Testing guide
-- **[benchmarks/README.md](benchmarks/README.md)** - Performance benchmarks
-
-### Additional Resources
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
-- **[FRICTIONLESS_SPEC.md](FRICTIONLESS_SPEC.md)** - Frictionless experience
-- **[STANDARDS.md](docs/STANDARDS.md)** - Active standards index
-
----
-
-## 🤝 Contributing
-
-We're building in the open and welcome your input!
-
-- **Star the repo** – Helps others find it
-- **Open an issue** – Bugs, features, questions
-- **Start a discussion** – Share use cases
-- **Contribute** – PRs welcome!
-
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
-
-**Community Health:**
-- [`CODEOWNERS`](.github/CODEOWNERS) - Automatic reviewer assignment
-- [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) - Community standards
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) - Contribution guide
-
----
-
-## 📜 License
-
-AGPL-3.0 – see [LICENSE](LICENSE).
-
----
-
-## 🙏 Acknowledgments
-
-Built with ❤️ by Robert Balch II and contributors.
-
-**Citation:**
-```bibtex
 @software{anchor_engine,
-  title = {STAR: Semantic Temporal Associative Retrieval},
-  author = {Balch II, R.S.},
-  version = {5.0.0},
-  date = {2026-03-18},
-  url = {https://github.com/RSBalchII/anchor-engine-node},
-  doi = {10.5281/zenodo.18841399}
+  title={STAR: Semantic Temporal Associative Retrieval},
+  author={Balch II, R.S.},
+  version={5.0.0},
+  year={2026},
+  url={https://github.com/RSBalchII/anchor-engine-node}
 }
 ```
-
----
-
-*Your AI's anchor to reality.* ⚓
