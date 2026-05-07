@@ -11,7 +11,11 @@ export default defineConfig({
       '**/dist/**',
       '**/.git/**',
       '**/coverage/**',
+      '.anchor/local-data/inbox/**',
     ],
+    unstubExports: {
+      'fs': {},
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
