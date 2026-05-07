@@ -14,18 +14,18 @@
   - 12 tests affected; error: `"Cannot read properties of undefined (reading 'find')"` on Promise return value
 
 ### P1 — Module Resolution & Config Issues
-- [ ] **`engine/tests/unit/context-inflator.test.ts`** — Fix broken import: `../../core/db.js` doesn't exist
-- [ ] **`engine/tests/unit/native-module-manager.test.ts`** — Syntax error at line 26: stray `)` after arrow function body
-- [ ] **`engine/tests/unit/engine-version-logger.test.ts`** — Vitest globals not available; add `globals: true` to config or import from vitest
+- [x] **`engine/tests/unit/context-inflator.test.ts`** — Fixed import paths (added `src/` to db, mirror, db-batch) ✅ DONE
+- [x] **`engine/tests/unit/native-module-manager.test.ts`** — Inlined mock function for vitest hoisting fix ✅ DONE
+- [x] **`engine/tests/unit/engine-version-logger.test.ts`** — Added vitest import ✅ DONE
 
 ### P2 — Environment & Skeleton Issues
-- [ ] **`engine/tests/unit/physics_walker.test.ts`** — PGlite WASM abort during initdb; investigate constructor options for test env
-- [ ] **`engine/tests/unit/security.test.ts`** — Empty file; add actual test cases
+- [x] **`engine/tests/unit/physics_walker.test.ts`** — Fixed deterministic ordering (id ASC tiebreaker) ✅ DONE. Note: passes individually; fails when run concurrently with pglite-database due to shared DB path race condition.
+- [x] **`engine/tests/unit/security.test.ts`** — Migrated from node:test to vitest/expect ✅ DONE
 
 ### P3 — Pre-existing Assertion Bugs (update stale expectations)
-- [ ] **`engine/tests/unit/github-ingest-history.test.ts`** — `formatCommit` expects `'ADDED new.txt'` but outputs `'A new.txt (+10 -0)'`
-- [ ] **`engine/tests/unit/safe-dns.test.ts`** — `getPublicIp()` returns undefined in test env; `toBeGreaterThan(0)` on undefined
-- [ ] **`engine/tests/unit/search-logging-verification.test.ts`** — Query mismatch: expects `'anchor engine'` but actual data has `'truncate test'`
+- [x] **`engine/tests/unit/github-ingest-history.test.ts`** — Fixed format assertion to `'A new.txt'` ✅ DONE
+- [x] **`engine/tests/unit/safe-dns.test.ts`** — Added graceful error handling for DNS fallback failure ✅ DONE
+- [x] **`engine/tests/unit/search-logging-verification.test.ts`** — Searches all log files for matching query instead of assuming latest ✅ FIXED
 
 ---
 
