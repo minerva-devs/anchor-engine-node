@@ -94,13 +94,14 @@ it('should find atoms by shared tags', async () => {
     await db.run(`INSERT INTO tags (atom_id, tag, bucket) VALUES ('atom-cooking', '#food', '')`);
 
     // Find atoms sharing the #robots tag using tag lookup
-    const robots = await db.run(`SELECT a.content FROM atoms a JOIN tags t ON a.id = t.atom_id WHERE t.tag = '#robots' ORDER BY a.timestamp DESC LIMIT 2`);
+    const robots = await db.run(`SELECT a.content FROM atoms a JOIN tags t ON a.id = t.atom_id WHERE t.tag = '#robots' ORDER BY a.timestamp DESC, a.id ASC LIMIT 2`);
 
     expect(robots.rows).toHaveLength(2);
-    
+
     const contents = robots.rows.map(r => r.content as string);
-    expect(contents[0]).toBe('More about robots');
-    expect(contents[1]).toBe('Content about robots');
+    // atom-robots-1 (Content about robots) comes first by id ASC tiebreaker
+    expect(contents[0]).toBe('Content about robots');
+    expect(contents[1]).toBe('More about robots');
   });
 
 it('should complete full physics weighting without errors', async () => {

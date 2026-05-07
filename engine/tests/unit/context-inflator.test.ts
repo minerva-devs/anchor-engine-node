@@ -44,7 +44,7 @@ vi.mock('../../utils/adaptive-concurrency.js', () => ({
   getOptimalBatchSize: vi.fn(() => 10),
 }));
 
-vi.mock('../../utils/db-batch.js', () => ({
+vi.mock('../../src/utils/db-batch.js', () => ({
   batchFetchCompounds: vi.fn(),
 }));
 
@@ -52,7 +52,7 @@ vi.mock('../../utils/db-batch.js', () => ({
 import { ContextInflator } from '../../src/services/search/context-inflator.js';
 import { db } from '../../src/core/db.js';
 import { getMirrorPath } from '../../src/services/mirror/mirror.js';
-import { batchFetchCompounds } from '../../utils/db-batch.js';
+import { batchFetchCompounds } from '../../src/utils/db-batch.js';
 import type { SearchResult } from '../../src/services/search/search.js';
 
 describe('ContextInflator', () => {

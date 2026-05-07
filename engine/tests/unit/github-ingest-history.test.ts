@@ -45,7 +45,8 @@ describe('GitHub Ingest History Service', () => {
         ] as any
       });
 
-      expect(result).toContain('Added new.txt');
+      // formatCommit uses f.status[0].toUpperCase() which produces "A new.txt (+10 -0)"
+      expect(result).toContain('A new.txt');
     });
 
     it('should omit files section when empty or undefined', () => {
