@@ -12,28 +12,28 @@
  * Coverage Goal: >80% for context-inflator.ts (744 lines)
  */
 
-import { describe, it, expect, beforeEach, jest } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 
 // Mock dependencies
-jest.mock('../../core/db.js', () => ({
+vi.mock('../../src/core/db.js', () => ({
   db: {
-    run: jest.fn(),
+    run: vi.fn(),
   },
 }));
 
-jest.mock('../mirror/mirror.js', () => ({
-  getMirrorPath: jest.fn(),
+vi.mock('../mirror/mirror.js', () => ({
+  getMirrorPath: vi.fn(),
   MIRRORED_BRAIN_PATH: '/mock/mirrored-brain',
 }));
 
-jest.mock('../../config/paths.js', () => ({
+vi.mock('../../config/paths.js', () => ({
   NOTEBOOK_DIR: '/mock/notebook',
 }));
 
-jest.mock('../../utils/adaptive-concurrency.js', () => ({
-  processWithAdaptiveConcurrency: jest.fn(async (items, processor) => {
+vi.mock('../../utils/adaptive-concurrency.js', () => ({
+  processWithAdaptiveConcurrency: vi.fn(async (items, processor) => {
     // Sequential processing for tests
     const results = [];
     for (let i = 0; i < items.length; i++) {
@@ -41,23 +41,23 @@ jest.mock('../../utils/adaptive-concurrency.js', () => ({
     }
     return results;
   }),
-  getOptimalBatchSize: jest.fn(() => 10),
+  getOptimalBatchSize: vi.fn(() => 10),
 }));
 
-jest.mock('../../utils/db-batch.js', () => ({
-  batchFetchCompounds: jest.fn(),
+vi.mock('../../utils/db-batch.js', () => ({
+  batchFetchCompounds: vi.fn(),
 }));
 
 // Import after mocks
 import { ContextInflator } from '../../src/services/search/context-inflator.js';
-import { db } from '../../core/db.js';
-import { getMirrorPath } from '../mirror/mirror.js';
+import { db } from '../../src/core/db.js';
+import { getMirrorPath } from '../../src/services/mirror/mirror.js';
 import { batchFetchCompounds } from '../../utils/db-batch.js';
 import type { SearchResult } from '../../src/services/search/search.js';
 
 describe('ContextInflator', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('inflate()', () => {
@@ -130,7 +130,7 @@ describe('ContextInflator', () => {
       ];
 
       // Mock compound fetch
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(
         new Map([
           [
             'compound-1',
@@ -144,16 +144,16 @@ describe('ContextInflator', () => {
       );
 
       // Mock mirror path
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
 
       // Mock file system
       const mockStats = { size: 1000 } as fs.Stats;
-      const accessSpy = jest.spyOn(fs.promises, 'access').mockResolvedValue(undefined);
-      const statSpy = jest.spyOn(fs.promises, 'stat').mockResolvedValue(mockStats);
-      const openSpy = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
+      const accessSpy = vi.spyOn(fs.promises, 'access').mockResolvedValue(undefined);
+      const statSpy = vi.spyOn(fs.promises, 'stat').mockResolvedValue(mockStats);
+      const openSpy = vi.spyOn(fs.promises, 'open').mockImplementation(async () => {
         return {
-          read: jest.fn().mockResolvedValue({ bytesRead: 100, buffer: Buffer.from('test content here') }),
-          close: jest.fn().mockResolvedValue(undefined),
+          read: vi.fn().mockResolvedValue({ bytesRead: 100, buffer: Buffer.from('test content here') }),
+          close: vi.fn().mockResolvedValue(undefined),
         } as any;
       });
 
@@ -187,7 +187,7 @@ describe('ContextInflator', () => {
       ];
 
       // Mock compound fetch
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(
         new Map([
           [
             'compound-1',
@@ -201,7 +201,7 @@ describe('ContextInflator', () => {
       );
 
       // Mock mirror path
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
 
       // Mock file not existing
       const accessSpy = jest
@@ -250,7 +250,7 @@ describe('ContextInflator', () => {
       ];
 
       // Mock compound fetch
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(new Map());
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(new Map());
 
       // Mock file not existing
       const accessSpy = jest
@@ -282,7 +282,7 @@ describe('ContextInflator', () => {
       }));
 
       // Mock compound fetch
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(new Map());
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(new Map());
 
       // Mock file not existing
       const accessSpy = jest
@@ -313,7 +313,7 @@ describe('ContextInflator', () => {
         end_byte: 50,
       }));
 
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(new Map());
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(new Map());
 
       const accessSpy = jest
         .spyOn(fs.promises, 'access')
@@ -345,7 +345,7 @@ describe('ContextInflator', () => {
         },
       ];
 
-      (batchFetchCompounds as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (batchFetchCompounds as vi.Mock).mockRejectedValue(new Error('DB error'));
 
       const accessSpy = jest
         .spyOn(fs.promises, 'access')
@@ -431,15 +431,15 @@ describe('ContextInflator', () => {
       };
 
       const mockStats = { size: 1000 } as fs.Stats;
-      const statSpy = jest.spyOn(fs.promises, 'stat').mockResolvedValue(mockStats);
-      const openSpy = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
+      const statSpy = vi.spyOn(fs.promises, 'stat').mockResolvedValue(mockStats);
+      const openSpy = vi.spyOn(fs.promises, 'open').mockImplementation(async () => {
         const content = 'x'.repeat(1000);
         return {
-          read: jest.fn().mockImplementation((buffer: Buffer, offset: number, length: number, position: number) => {
+          read: vi.fn().mockImplementation((buffer: Buffer, offset: number, length: number, position: number) => {
             Buffer.from(content).copy(buffer, offset, position, position + length);
             return { bytesRead: length, buffer };
           }),
-          close: jest.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
         } as any;
       });
 
@@ -500,7 +500,7 @@ describe('ContextInflator', () => {
       };
 
       const mockStats = { size: 1000 } as fs.Stats;
-      const statSpy = jest.spyOn(fs.promises, 'stat').mockResolvedValue(mockStats);
+      const statSpy = vi.spyOn(fs.promises, 'stat').mockResolvedValue(mockStats);
       const openSpy = jest
         .spyOn(fs.promises, 'open')
         .mockImplementation(async () => {
@@ -533,7 +533,7 @@ describe('ContextInflator', () => {
       };
 
       const mockStats = { size: 1000 } as fs.Stats;
-      const statSpy = jest.spyOn(fs.promises, 'stat').mockResolvedValue(mockStats);
+      const statSpy = vi.spyOn(fs.promises, 'stat').mockResolvedValue(mockStats);
 
       const pathInfo = { filePath: 'test.ts', provenance: 'internal' };
       const content = await (ContextInflator as any).inflateFromPath(mockResult, 100, pathInfo);
@@ -598,7 +598,7 @@ describe('ContextInflator', () => {
         end_byte: 50,
       };
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [{ compound_body: 'Database content here' }],
       });
 
@@ -627,7 +627,7 @@ describe('ContextInflator', () => {
         end_byte: 50,
       };
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [{ compound_body: null }],
       });
 
@@ -651,7 +651,7 @@ describe('ContextInflator', () => {
         end_byte: 50,
       };
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [],
       });
 
@@ -675,7 +675,7 @@ describe('ContextInflator', () => {
         end_byte: 50,
       };
 
-      (db.run as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (db.run as vi.Mock).mockRejectedValue(new Error('DB error'));
 
       const content = await (ContextInflator as any).inflateFromCompoundBody(mockResult, 100);
       expect(content).toBeNull();
@@ -765,7 +765,7 @@ describe('ContextInflator', () => {
 
   describe('getAtomLocations()', () => {
     it('finds atom locations by term', async () => {
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             compound_id: 'compound-1',
@@ -786,7 +786,7 @@ describe('ContextInflator', () => {
     });
 
     it('handles term with hash prefix', async () => {
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             compound_id: 'compound-1',
@@ -804,7 +804,7 @@ describe('ContextInflator', () => {
     });
 
     it('filters by provenance', async () => {
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             compound_id: 'compound-1',
@@ -825,7 +825,7 @@ describe('ContextInflator', () => {
     });
 
     it('filters by buckets', async () => {
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             compound_id: 'compound-1',
@@ -845,7 +845,7 @@ describe('ContextInflator', () => {
     });
 
     it('returns empty array on database error', async () => {
-      (db.run as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (db.run as vi.Mock).mockRejectedValue(new Error('DB error'));
 
       const locations = await ContextInflator.getAtomLocations('test');
 
@@ -853,7 +853,7 @@ describe('ContextInflator', () => {
     });
 
     it('returns empty array when no results found', async () => {
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [],
       });
 
@@ -865,7 +865,7 @@ describe('ContextInflator', () => {
 
   describe('inflateFromAtomPositions()', () => {
     it('radially inflates from atom positions', async () => {
-      (db.run as jest.Mock).mockImplementation((query: string) => {
+      (db.run as vi.Mock).mockImplementation((query: string) => {
         if (query.includes('atom_positions')) {
           return Promise.resolve({
             rows: [
@@ -882,16 +882,16 @@ describe('ContextInflator', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-      const statSpy = jest.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 1000 } as fs.Stats);
-      const openSpy = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
+      const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const statSpy = vi.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 1000 } as fs.Stats);
+      const openSpy = vi.spyOn(fs.promises, 'open').mockImplementation(async () => {
         const content = 'x'.repeat(1000);
         return {
-          read: jest.fn().mockImplementation((buffer: Buffer, offset: number, length: number, position: number) => {
+          read: vi.fn().mockImplementation((buffer: Buffer, offset: number, length: number, position: number) => {
             Buffer.from(content).copy(buffer, offset, position, position + length);
             return { bytesRead: length, buffer };
           }),
-          close: jest.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
         } as any;
       });
 
@@ -907,7 +907,7 @@ describe('ContextInflator', () => {
     });
 
     it('returns empty array when no atom positions found', async () => {
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [],
       });
 
@@ -917,7 +917,7 @@ describe('ContextInflator', () => {
     });
 
     it('merges overlapping windows', async () => {
-      (db.run as jest.Mock).mockImplementation((query: string) => {
+      (db.run as vi.Mock).mockImplementation((query: string) => {
         if (query.includes('atom_positions')) {
           return Promise.resolve({
             rows: [
@@ -941,16 +941,16 @@ describe('ContextInflator', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-      const statSpy = jest.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 1000 } as fs.Stats);
-      const openSpy = jest.spyOn(fs.promises, 'open').mockImplementation(async () => {
+      const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const statSpy = vi.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 1000 } as fs.Stats);
+      const openSpy = vi.spyOn(fs.promises, 'open').mockImplementation(async () => {
         const content = 'x'.repeat(1000);
         return {
-          read: jest.fn().mockImplementation((buffer: Buffer, offset: number, length: number, position: number) => {
+          read: vi.fn().mockImplementation((buffer: Buffer, offset: number, length: number, position: number) => {
             Buffer.from(content).copy(buffer, offset, position, position + length);
             return { bytesRead: length, buffer };
           }),
-          close: jest.fn().mockResolvedValue(undefined),
+          close: vi.fn().mockResolvedValue(undefined),
         } as any;
       });
 
@@ -965,7 +965,7 @@ describe('ContextInflator', () => {
     });
 
     it('respects maxResults limit', async () => {
-      (db.run as jest.Mock).mockImplementation((query: string) => {
+      (db.run as vi.Mock).mockImplementation((query: string) => {
         if (query.includes('atom_positions')) {
           return Promise.resolve({
             rows: Array.from({ length: 50 }, (_, i) => ({
@@ -980,7 +980,7 @@ describe('ContextInflator', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const results = await ContextInflator.inflateFromAtomPositions('test', 100, 10);
 
@@ -990,7 +990,7 @@ describe('ContextInflator', () => {
     });
 
     it('handles file read errors gracefully', async () => {
-      (db.run as jest.Mock).mockImplementation((query: string) => {
+      (db.run as vi.Mock).mockImplementation((query: string) => {
         if (query.includes('atom_positions')) {
           return Promise.resolve({
             rows: [
@@ -1007,8 +1007,8 @@ describe('ContextInflator', () => {
         return Promise.resolve({ rows: [] });
       });
 
-      const existsSyncSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-      const statSpy = jest.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 1000 } as fs.Stats);
+      const existsSyncSpy = vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const statSpy = vi.spyOn(fs.promises, 'stat').mockResolvedValue({ size: 1000 } as fs.Stats);
       const openSpy = jest
         .spyOn(fs.promises, 'open')
         .mockImplementation(async () => {
@@ -1025,7 +1025,7 @@ describe('ContextInflator', () => {
     });
 
     it('filters by provenance', async () => {
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             compound_id: 'compound-1',
@@ -1045,7 +1045,7 @@ describe('ContextInflator', () => {
     });
 
     it('filters by buckets', async () => {
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             compound_id: 'compound-1',
@@ -1081,7 +1081,7 @@ describe('ContextInflator', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             id: 'additional-1',
@@ -1134,7 +1134,7 @@ describe('ContextInflator', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [],
       });
 
@@ -1161,7 +1161,7 @@ describe('ContextInflator', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             id: 'additional-1',
@@ -1192,7 +1192,7 @@ describe('ContextInflator', () => {
     it('handles database errors gracefully', async () => {
       const baseResults: SearchResult[] = [];
 
-      (db.run as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (db.run as vi.Mock).mockRejectedValue(new Error('DB error'));
 
       const additional = await (ContextInflator as any).fetchAdditionalContext(
         baseResults,
@@ -1222,7 +1222,7 @@ describe('ContextInflator', () => {
         },
       ];
 
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(
         new Map([
           [
             'compound-1',
@@ -1265,7 +1265,7 @@ describe('ContextInflator', () => {
         },
       ];
 
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(new Map());
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(new Map());
 
       const accessSpy = jest
         .spyOn(fs.promises, 'access')
@@ -1297,7 +1297,7 @@ describe('ContextInflator', () => {
         },
       ];
 
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(new Map());
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(new Map());
 
       const accessSpy = jest
         .spyOn(fs.promises, 'access')
@@ -1329,7 +1329,7 @@ describe('ContextInflator', () => {
         end_byte: 50,
       }));
 
-      (batchFetchCompounds as jest.Mock).mockResolvedValue(new Map());
+      (batchFetchCompounds as vi.Mock).mockResolvedValue(new Map());
 
       const accessSpy = jest
         .spyOn(fs.promises, 'access')

@@ -4,34 +4,30 @@
  * Tests singleton pattern, module loading, and fallback implementations.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock helper for vitest (jest.fn equivalent)
+// Mock helper for vitest (vi.fn equivalent)
 const mockFn = () => {
   const fn: any = (...args: any[]) => fn.mock.calls.push(args);
   fn.mock = { calls: [] };
   return fn;
 };
 
-// Mock path-manager with vitest mock function pattern
-const mockGetNativePath = (binaryName: string) => {
-  // Return different paths based on binary name to trigger different behaviors
-  if (binaryName.includes('fail')) {
-    return '/path/to/fail.node';
-  }
-  if (binaryName.includes('success')) {
-    return '/path/to/success.node';
-  }
-  return '/path/to/' + binaryName;
-});
-jest.mock('../../src/utils/path-manager.js', () => ({
+// Mock path-manager with vitest mock function pattern (inlined to avoid hoisting issue)
+
+vi.mock('../../src/utils/path-manager.js', () => ({
   pathManager: {
-    getNativePath: mockGetNativePath,
+    getNativePath: (binaryName: string) => {
+      // Return different paths based on binary name to trigger different behaviors
+      if (binaryName.includes('fail')) return '/path/to/fail.node';
+      if (binaryName.includes('success')) return '/path/to/success.node';
+      return '/path/to/' + binaryName;
+    },
   },
 }));
 
 // Mock module/createRequire
-jest.mock('module', () => ({
+vi.mock('module', () => ({
   createRequire: () => {
     return (modulePath: string) => {
       // Throw error for paths containing 'fail' to test fallback behavior
@@ -83,7 +79,7 @@ describe('NativeModuleManager', () => {
     manager = NativeModuleManager.getInstance();
     
     // Reset mocks
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Singleton Pattern', () => {

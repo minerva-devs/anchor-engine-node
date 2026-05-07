@@ -6,3 +6,10 @@ packages:
   - packages/types
   - engine
   - mcp-server
+
+ignoredBuiltDependencies:
+  - esbuild
+  - msw
+  - tree-sitter
+  - tree-sitter-javascript
+  - tree-sitter-typescript

@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach } from 'vitest';
 import { logSearchResults, getLatestEntryForHash, clearAllLogsCache, listLogFiles } from '../../src/services/search/search-results-logger';
 import fs from 'fs';
 import path from 'path';
