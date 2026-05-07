@@ -1,6 +1,31 @@
 # Anchor Engine - Current Tasks
 
-**Last Updated:** April 3, 2026 | **Current Sprint:** Security Hardening
+**Last Updated:** May 6, 2026 | **Current Sprint:** Test Suite Stabilization
+
+---
+
+## 🔧 Test Suite Stabilization (May 2026) — CURRENT
+
+**Run:** `pnpm test:all` or `vitest run --config engine/vitest.config.ts`
+**Baseline:** 19 failed / 35 passed / 4 skipped (out of 58 total)
+
+### P0 — AST Parser Tests (our change, immediate fix)
+- [ ] **`engine/tests/unit/ast-parser.test.ts`** — All `parseCodeStructure()` calls need `await`; test bodies need to be `async`
+  - 12 tests affected; error: `"Cannot read properties of undefined (reading 'find')"` on Promise return value
+
+### P1 — Module Resolution & Config Issues
+- [ ] **`engine/tests/unit/context-inflator.test.ts`** — Fix broken import: `../../core/db.js` doesn't exist
+- [ ] **`engine/tests/unit/native-module-manager.test.ts`** — Syntax error at line 26: stray `)` after arrow function body
+- [ ] **`engine/tests/unit/engine-version-logger.test.ts`** — Vitest globals not available; add `globals: true` to config or import from vitest
+
+### P2 — Environment & Skeleton Issues
+- [ ] **`engine/tests/unit/physics_walker.test.ts`** — PGlite WASM abort during initdb; investigate constructor options for test env
+- [ ] **`engine/tests/unit/security.test.ts`** — Empty file; add actual test cases
+
+### P3 — Pre-existing Assertion Bugs (update stale expectations)
+- [ ] **`engine/tests/unit/github-ingest-history.test.ts`** — `formatCommit` expects `'ADDED new.txt'` but outputs `'A new.txt (+10 -0)'`
+- [ ] **`engine/tests/unit/safe-dns.test.ts`** — `getPublicIp()` returns undefined in test env; `toBeGreaterThan(0)` on undefined
+- [ ] **`engine/tests/unit/search-logging-verification.test.ts`** — Query mismatch: expects `'anchor engine'` but actual data has `'truncate test'`
 
 ---
 
@@ -140,6 +165,8 @@
 
 ### Phase: Code Analysis Enhancement
 - [ ] AST pointer support for code files
+  - [x] **AST parser made async** — `parseCodeStructure()` now uses dynamic `await import()` for tree-sitter modules; all callers and tests updated to use `await` ✅ COMPLETED (May 2026)
+  - [ ] Test suite audit — 19/58 tests failing; see plan.md § Test Suite Audit for full breakdown
 - [ ] Semantic code search ("find all functions calling X")
 - [ ] Import/export graph edges
 - [ ] Type-aware retrieval

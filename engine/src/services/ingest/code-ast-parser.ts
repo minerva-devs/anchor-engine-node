@@ -8,10 +8,6 @@
 
 import Parser from 'tree-sitter';
 
-// Dynamic require for CommonJS export = modules
-const tsLangModule: { typescript: unknown; tsx?: unknown } = require('tree-sitter-typescript/bindings/node');
-const jsLangModule: { language: unknown } = require('tree-sitter-javascript/bindings/node');
-
 // ── Public types ────────────────────────────────────────────────────────
 
 export interface CodeBlock {
@@ -30,21 +26,37 @@ export interface CodeStructure {
   blocks: CodeBlock[];
 }
 
+// ── Language modules loading (dynamic ES import to avoid require()/await conflict) ──
+
+let tsLangModule: { typescript: unknown; tsx?: unknown } | undefined;
+let jsLangModule: { language: unknown } | undefined;
+
+async function loadModules() {
+  if (tsLangModule && jsLangModule) return;
+  // @ts-ignore — tree-sitter-* bindings lack ES module type declarations but work at runtime
+  const tsMod = await import('tree-sitter-typescript/bindings/node');
+  // @ts-ignore
+  const jsMod = await import('tree-sitter-javascript/bindings/node');
+  tsLangModule = (tsMod as any).default ?? tsMod;
+  jsLangModule = (jsMod as any).default ?? jsMod;
+}
+
 // ── Language registry ───────────────────────────────────────────────────
 
 const LANGUAGES: Record<string, Parser.Language> = {};
 
-function getLanguage(key: string): Parser.Language {
+async function getLanguage(key: string): Promise<Parser.Language> {
   if (LANGUAGES[key]) return LANGUAGES[key];
-  const parser = new Parser();
+  await loadModules();
   let lang: Parser.Language | undefined;
 
-  if (key === 'typescript') lang = tsLangModule.typescript as unknown as Parser.Language;
-  else if (key === 'tsx') lang = (tsLangModule as any).tsx as unknown as Parser.Language;
-  else if (key === 'javascript') lang = jsLangModule.language as unknown as Parser.Language;
+  if (key === 'typescript') lang = tsLangModule!.typescript as unknown as Parser.Language;
+  else if (key === 'tsx') lang = (tsLangModule! as any).tsx as unknown as Parser.Language;
+  else if (key === 'javascript') lang = jsLangModule!.language as unknown as Parser.Language;
 
   if (!lang) throw new Error(`Unsupported language key: ${key}`);
 
+  const parser = new Parser();
   parser.setLanguage(lang);
   LANGUAGES[key] = lang!;
   return lang!;
@@ -176,12 +188,12 @@ function collectBlocks(code: string, rootNode: Parser.SyntaxNode): CodeBlock[] {
 /**
  * Parse source code and extract semantic atoms.
  */
-export function parseCodeStructure(
+export async function parseCodeStructure(
   code: string,
   language: 'typescript' | 'tsx' | 'javascript',
-): CodeStructure | null {
+): Promise<CodeStructure | null> {
   try {
-    const lang = getLanguage(language);
+    const lang = await getLanguage(language);
     const parser = new Parser();
     parser.setLanguage(lang);
     parser.setTimeoutMicros(5_000_000); // 5 s generous timeout

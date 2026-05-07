@@ -373,6 +373,32 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 - [ ] Production deployment at 3+ organizations
 - [ ] Conference presentations
 
+## 🧪 Test Suite Audit (May 2026)
+
+**Trigger:** AST parser made async (`parseCodeStructure` → `Promise<CodeStructure | null>`), plus pre-existing test bugs.
+**Run:** `pnpm test:all` or `vitest run --config engine/vitest.config.ts`
+**Result:** 19 failed / 35 passed / 4 skipped (out of 58 total)
+
+### Breakdown by Category
+
+| Category | Failures | Root Cause | Priority |
+|----------|----------|------------|----------|
+| AST parser tests (`ast-parser.test.ts`) | 12 | `parseCodeStructure()` is now async; all test calls missing `await` | P0 — our change |
+| Module resolution failures (3 files) | 3 | Broken imports: `../../core/db.js`, syntax error in setup, missing Vitest globals | P1 |
+| PGlite WASM init crash (`physics_walker.test.ts`) | 1 | PGlite WASM abort during initdb — likely missing test config flags | P2 |
+| Empty test suite (`security.test.ts`) | 1 | Skeleton file with no `describe`/`test` blocks | P2 |
+| Pre-existing assertion bugs (4 files) | 4 | Stale expectations, mock wire issues, query mismatches | P3 |
+
+### Files Requiring Fixes
+
+1. **`engine/tests/unit/ast-parser.test.ts`** — Add `await` to every `parseCodeStructure()` call; wrap test bodies in `async`
+2. **`engine/tests/unit/context-inflator.test.ts`** — Fix module path from `../../core/db.js` to actual DB module location
+3. **`engine/tests/unit/native-module-manager.test.ts`** — Syntax error: stray closing `)` after arrow function at line 26
+4. **`engine/tests/unit/engine-version-logger.test.ts`** — Add `globals: true` to Vitest config or import `{ describe, beforeEach }` from vitest
+5. **`engine/tests/unit/security.test.ts`** — Populate with actual test cases (currently empty)
+6. **`engine/tests/unit/physics_walker.test.ts`** — Investigate PGlite init failure; may need different constructor options in test env
+7. **Pre-existing bugs:** `github-ingest-history.test.ts`, `safe-dns.test.ts`, `search-logging-verification.test.ts` — update stale expectations / fix mocks
+
 ---
 
 ## Risk Management

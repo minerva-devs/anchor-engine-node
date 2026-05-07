@@ -9,6 +9,7 @@ import {
   isEntityTag as isEntityByModulation,
 } from '../../utils/tag-modulation.js';
 import { parseCodeStructure, extToLanguage, CODE_EXTENSIONS } from './code-ast-parser.js';
+import type { CodeBlock } from './code-ast-parser.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1301,11 +1302,11 @@ export class AtomizerService {
         const lang = extToLanguage(ext);
         if (!lang) return { blocks: [], imports: [] };
 
-        const result = parseCodeStructure(code, lang);
+        const result = await parseCodeStructure(code, lang);
         if (!result || result.blocks.length === 0) return { blocks: [], imports: [] };
 
         return {
-            blocks: result.blocks.map(b => ({ type: b.type, name: b.name, classContext: b.classContext, startLine: b.startLine, endLine: b.endLine })),
+            blocks: result.blocks.map((b: CodeBlock) => ({ type: b.type, name: b.name, classContext: b.classContext, startLine: b.startLine, endLine: b.endLine })),
             imports: result.blocks[0]?.imports ?? [], // all blocks share the same imports array
         };
     }
