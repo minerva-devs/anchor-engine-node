@@ -66,11 +66,11 @@ it('should apply correct temporal decay for recent atoms', async () => {
     await db.run(`INSERT INTO tags (atom_id, tag, bucket) VALUES ('atom-day-ago', '#test', '')`);
 
     // Use GREATEST/LEAST to clamp the exponential result safely
-    const result = await db.run(`SELECT id FROM atoms ORDER BY timestamp DESC LIMIT 2`);
-    
+    const result = await db.run(`SELECT id FROM atoms ORDER BY timestamp DESC, id ASC LIMIT 2`);
+
     expect(result.rows).toHaveLength(2);
-    expect(result.rows[0].id as string).toContain('hour');
-    expect(result.rows[1].id as string).toContain('day');
+    expect((result.rows[0].id as string)).toContain('hour');
+    expect((result.rows[1].id as string)).toContain('day');
   });
 
 it('should find atoms by shared tags', async () => {

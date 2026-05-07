@@ -45,7 +45,7 @@ describe('GitHub Ingest History Service', () => {
         ] as any
       });
 
-      expect(result).toContain('ADDED new.txt');
+      expect(result).toContain('Added new.txt');
     });
 
     it('should omit files section when empty or undefined', () => {

@@ -60,18 +60,30 @@ describe('Search Results Logging', () => {
     // Give it a moment to write to disk
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Verify log file was created
+    // Verify log file was created and contains our entry
     const files = fs.readdirSync(logsDir).filter(f => f.endsWith('.json'));
-    
+
     if (files.length > 0) {
-      // Read and verify the log content
-      const latestFile = path.join(logsDir, files[files.length - 1]);
-      const content = JSON.parse(fs.readFileSync(latestFile, 'utf-8'));
-      
-      expect(Array.isArray(content)).toBe(true);
-      expect(content.length).toBeGreaterThan(0);
-      expect(content[0].results.length).toBe(1);
-      expect(content[0].originalQuery).toBe('anchor engine');
+      // Read all log files and find the entry matching our query
+      let foundEntry: any = null;
+      for (const file of files) {
+        try {
+          const filePath = path.join(logsDir, file);
+          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (Array.isArray(data)) {
+            const entry = data.find((e: any) => e.originalQuery === 'anchor engine');
+            if (entry) {
+              foundEntry = entry;
+              break;
+            }
+          }
+        } catch { /* skip unreadable files */ }
+      }
+
+      expect(foundEntry).toBeDefined();
+      expect(Array.isArray(foundEntry?.results)).toBe(true);
+      expect(foundEntry.results.length).toBe(1);
+      expect(foundEntry.originalQuery).toBe('anchor engine');
     } else {
       // Log created but not yet visible (test still passes - we're testing the mechanism)
       console.log('[SearchLoggingTest] Log files may be created asynchronously');
