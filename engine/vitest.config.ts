@@ -1,11 +1,15 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['**/*.test.ts'],
+    include: [
+      'tests/unit/**/*.test.ts',
+      'tests/integration/**/*.test.ts',
+      'tests/benchmarks/**/*.test.ts',
+      '../tests/e2e/**/*.test.ts',
+    ],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -13,9 +17,7 @@ export default defineConfig({
       '**/coverage/**',
       '.anchor/local-data/inbox/**',
     ],
-    unstubExports: {
-      'fs': {},
-    },
+    unstubAllExports: true,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

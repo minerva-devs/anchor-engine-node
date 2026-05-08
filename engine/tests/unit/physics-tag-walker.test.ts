@@ -13,16 +13,17 @@
  * Coverage Goal: >80% for physics-tag-walker.ts (729 lines)
  */
 
-import { describe, it, expect, beforeEach, jest } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 
-// Mock dependencies
-jest.mock('../../core/db.js', () => ({
+// Mock dependencies (must be before any imports that use them)
+import { vi } from 'vitest';
+vi.mock('../../src/core/db.js', () => ({
   db: {
-    run: jest.fn(),
+    run: vi.fn(),
   },
 }));
 
-import { db } from '../../core/db.js';
+import { db } from '../../src/core/db.js';
 import { PhysicsTagWalker } from '../../src/services/search/physics-tag-walker.js';
 import type { SearchResult } from '../../src/services/search/search.js';
 
@@ -30,7 +31,7 @@ describe('PhysicsTagWalker', () => {
   let walker: PhysicsTagWalker;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     walker = new PhysicsTagWalker();
   });
 
@@ -112,7 +113,7 @@ describe('PhysicsTagWalker', () => {
     it('caps anchor IDs to MAX_ANCHOR_IDS', async () => {
       const manyAnchors = Array.from({ length: 50 }, (_, i) => `anchor-${i}`);
       
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [],
       });
 
@@ -144,7 +145,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const results = await walker.performRadialInflation(['anchor-1']);
 
@@ -193,7 +194,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const results = await walker.performRadialInflation(['anchor-1']);
 
@@ -223,7 +224,7 @@ describe('PhysicsTagWalker', () => {
         hop_distance: 1,
       }));
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const results = await walker.performRadialInflation(['anchor-1'], 1, 10);
 
@@ -251,7 +252,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const results = await walker.performRadialInflation(['anchor-1']);
 
@@ -260,14 +261,14 @@ describe('PhysicsTagWalker', () => {
     });
 
     it('handles database errors gracefully', async () => {
-      (db.run as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (db.run as vi.Mock).mockRejectedValue(new Error('DB error'));
 
       const results = await walker.performRadialInflation(['anchor-1']);
       expect(results).toEqual([]);
     });
 
     it('handles SQL timeout', async () => {
-      (db.run as jest.Mock).mockImplementation(
+      (db.run as vi.Mock).mockImplementation(
         () =>
           new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Query timeout')), 3000)
@@ -299,7 +300,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const results = await walker.performRadialInflation(
         ['anchor-1'],
@@ -333,7 +334,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const results = await walker.performRadialInflation(['anchor-1']);
 
@@ -362,7 +363,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const results = await walker.performRadialInflation(['anchor-1']);
 
@@ -398,7 +399,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const nodes = await (walker as any).getConnectedNodesWeighted(
         ['anchor-1'],
@@ -412,7 +413,7 @@ describe('PhysicsTagWalker', () => {
     it('caps anchor IDs to MAX_ANCHOR_IDS', async () => {
       const manyAnchors = Array.from({ length: 50 }, (_, i) => `anchor-${i}`);
       
-      (db.run as jest.Mock).mockResolvedValue({ rows: [] });
+      (db.run as vi.Mock).mockResolvedValue({ rows: [] });
 
       const nodes = await (walker as any).getConnectedNodesWeighted(
         manyAnchors,
@@ -424,7 +425,7 @@ describe('PhysicsTagWalker', () => {
     });
 
     it('uses SQL with timeout protection', async () => {
-      (db.run as jest.Mock).mockResolvedValue({ rows: [] });
+      (db.run as vi.Mock).mockResolvedValue({ rows: [] });
 
       await (walker as any).getConnectedNodesWeighted(['anchor-1'], 50, 0.1);
 
@@ -435,7 +436,7 @@ describe('PhysicsTagWalker', () => {
     });
 
     it('handles database errors gracefully', async () => {
-      (db.run as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (db.run as vi.Mock).mockRejectedValue(new Error('DB error'));
 
       const nodes = await (walker as any).getConnectedNodesWeighted(
         ['anchor-1'],
@@ -447,9 +448,9 @@ describe('PhysicsTagWalker', () => {
     });
 
     it('logs debug information for large queries', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
       
-      (db.run as jest.Mock).mockResolvedValue({ rows: [] });
+      (db.run as vi.Mock).mockResolvedValue({ rows: [] });
 
       const manyAnchors = Array.from({ length: 15 }, (_, i) => `anchor-${i}`);
       await (walker as any).getConnectedNodesWeighted(manyAnchors, 150, 0.1);
@@ -462,9 +463,9 @@ describe('PhysicsTagWalker', () => {
     });
 
     it('warns when query takes too long', async () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation();
       
-      (db.run as jest.Mock).mockImplementation(async () => {
+      (db.run as vi.Mock).mockImplementation(async () => {
         await new Promise(resolve => setTimeout(resolve, 100));
         return { rows: [] };
       });
@@ -475,9 +476,9 @@ describe('PhysicsTagWalker', () => {
     });
 
     it('warns when zero results returned', async () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation();
       
-      (db.run as jest.Mock).mockResolvedValue({ rows: [] });
+      (db.run as vi.Mock).mockResolvedValue({ rows: [] });
 
       await (walker as any).getConnectedNodesWeighted(['anchor-1'], 50, 0.1);
 
@@ -510,7 +511,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             atom_id: 'node-1',
@@ -553,9 +554,9 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation();
       
-      (db.run as jest.Mock).mockResolvedValue({ rows: [] });
+      (db.run as vi.Mock).mockResolvedValue({ rows: [] });
 
       await walker.applyPhysicsWeighting(anchorResults, 0.1, {}, 100000);
 
@@ -581,7 +582,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: [] });
+      (db.run as vi.Mock).mockResolvedValue({ rows: [] });
 
       const results = await walker.applyPhysicsWeighting(anchorResults);
 
@@ -603,7 +604,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             atom_id: 'node-1',
@@ -674,7 +675,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             atom_id: 'node-1',
@@ -726,7 +727,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             atom_id: 'node-1',
@@ -765,7 +766,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: Array.from({ length: 100 }, (_, i) => ({
           atom_id: `node-${i}`,
           shared_tag_count: 1,
@@ -806,7 +807,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             atom_id: 'node-1',
@@ -871,7 +872,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const nodes = await (walker as any).getConnectedNodesFromTags(
         ['#test'],
@@ -884,7 +885,7 @@ describe('PhysicsTagWalker', () => {
     });
 
     it('handles database errors gracefully', async () => {
-      (db.run as jest.Mock).mockRejectedValue(new Error('DB error'));
+      (db.run as vi.Mock).mockRejectedValue(new Error('DB error'));
 
       const nodes = await (walker as any).getConnectedNodesFromTags(
         ['#test'],
@@ -910,7 +911,7 @@ describe('PhysicsTagWalker', () => {
         end_byte: 100,
       }));
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const nodes = await (walker as any).getConnectedNodesFromTags(
         ['#test'],
@@ -937,7 +938,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             atom_id: 'node-1',
@@ -1007,7 +1008,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             atom_id: 'node-1',
@@ -1057,7 +1058,7 @@ describe('PhysicsTagWalker', () => {
         },
       ];
 
-      (db.run as jest.Mock).mockResolvedValue({ rows: mockRows });
+      (db.run as vi.Mock).mockResolvedValue({ rows: mockRows });
 
       const results = await walker.performRadialInflation(['anchor-1']);
 
@@ -1083,7 +1084,7 @@ describe('PhysicsTagWalker', () => {
       ];
 
       // Mock connected nodes
-      (db.run as jest.Mock).mockResolvedValue({
+      (db.run as vi.Mock).mockResolvedValue({
         rows: [
           {
             atom_id: 'related-1',

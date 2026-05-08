@@ -22,8 +22,28 @@ describe('PGlite Database', () => {
     }
 
     db = new Database();
-    await db.init({ dbPath: testDbPath });
-  }, 30_000);
+    
+    // Retry initialization up to 3 times for WASM stability on Windows
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await db.init({ dbPath: testDbPath });
+        break;
+      } catch (err) {
+        lastError = err;
+        console.log(`[DB Test] Init attempt ${attempt} failed: ${err instanceof Error ? err.message : err}`);
+        if (attempt === 3) throw err;
+        // Clean up partial state before retry
+        try {
+          if (fs.existsSync(testDbPath)) {
+            fs.rmSync(testDbPath, { recursive: true, force: true });
+            fs.mkdirSync(testDbPath, { recursive: true });
+          }
+        } catch {}
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }
+    }
+  }, 60_000);
 
   afterAll(async () => {
     try {

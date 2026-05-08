@@ -1,8 +1,8 @@
 /**
  * Configuration Module for Sovereign Context Engine
  *
- * This module manages all configuration for the context engine including
- * paths, model settings, and system parameters.
+ * All configuration is abstracted to ~/.anchor/user_settings.json.
+ * No config files live in the project root.
  */
 
 import * as fs from 'fs';
@@ -11,6 +11,7 @@ import { homedir } from 'os';
 import { fileURLToPath } from 'url';
 import yaml from 'js-yaml';
 import { z } from 'zod';
+import { PATHS } from './paths.js';
 
 // For __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -467,14 +468,11 @@ const DEFAULT_CONFIG: Config = {
 // Configuration loader
 function loadConfig(): Config {
   // Determine config file path
-  // Priority: user_settings.json > sovereign.yaml > .env > Defaults
-
+  // Priority: ~/.anchor/user_settings.json > ~/.anchor/sovereign.yaml > Defaults
   let loadedConfig = { ...DEFAULT_CONFIG };
 
   // 1. Try Loading sovereign.yaml (Legacy/System Config)
-  const configPath = process.env.SOVEREIGN_CONFIG_PATH ||
-    path.join(__dirname, '..', '..', 'sovereign.yaml') ||
-    path.join(__dirname, '..', 'config', 'default.yaml');
+  const configPath = process.env.SOVEREIGN_CONFIG_PATH || PATHS.CONFIG_FILE;
 
   if (fs.existsSync(configPath)) {
     try {
@@ -488,16 +486,12 @@ function loadConfig(): Config {
 
   // 2. Try Loading user_settings.json (Highest Priority for User Overrides)
   // Primary: ~/.anchor/user_settings.json (user's home directory)
-  // Fallback: ./user_settings.json (legacy / migration compatibility)
-  const anchorSettingsPath = path.join(homedir(), '.anchor', 'user_settings.json');
-  const userSettingsPath = path.join(process.cwd(), 'user_settings.json');
+  const anchorSettingsPath = PATHS.USER_SETTINGS;
 
-  const primaryPath = fs.existsSync(anchorSettingsPath) ? anchorSettingsPath : userSettingsPath;
-
-  if (fs.existsSync(primaryPath) && fs.statSync(primaryPath).isFile()) {
+  if (fs.existsSync(anchorSettingsPath) && fs.statSync(anchorSettingsPath).isFile()) {
     try {
-      const userSettings = JSON.parse(fs.readFileSync(primaryPath, 'utf8'));
-      console.log(`[Config] Loaded settings from ${primaryPath}`);
+      const userSettings = JSON.parse(fs.readFileSync(anchorSettingsPath, 'utf8'));
+      console.log(`[Config] Loaded settings from ${anchorSettingsPath}`);
 
       // Load LLM Settings (Provider + Model paths — single consolidated block)
       if (userSettings.llm) {

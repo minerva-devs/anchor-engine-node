@@ -1,10 +1,45 @@
 # Anchor Engine - Current Tasks
 
-**Last Updated:** May 6, 2026 | **Current Sprint:** Test Suite Stabilization
+**Last Updated:** May 7, 2026 | **Current Sprint:** Test Consolidation & Housekeeping
 
 ---
 
-## 🔧 Test Suite Stabilization (May 2026) — CURRENT
+## 🧹 Test Consolidation & Housekeeping (May 2026) — CURRENT
+
+### P0 — Test File Consolidation
+- [ ] **Move all tests under `engine/tests/`** — Consolidate `tests/` root directory into `engine/tests/`
+  - Convert all `.js`/`.mjs` test files to `.test.ts`
+  - Remove standalone test runners (`minimal-framework.mjs`, `minimal-pglite-test.ts`, `minimal/`)
+  - Remove duplicate test files in `tests/unit/` (legacy `.js`/`.ts` files with `.js.map` artifacts)
+- [ ] **Simplify `package.json` test scripts** — Reduce to:
+  - `pnpm test` — run all tests
+  - `pnpm test:unit` — unit tests only
+  - `pnpm test:integration` — integration tests only
+  - `pnpm test:bench` — benchmarks only
+  - Remove: `test:orchestrator:*`, `test:cross-route:*`, `test:github-ingestion`, `test:text-flow`, `test:validate-decision-records`, `test:compare`, `test:compare:pattern`
+- [ ] **Fix remaining 19 failing tests** — See `specs/plan.md` § Test Suite Audit for breakdown
+
+### P1 — Runtime Data Cleanup
+- [ ] **Verify `.anchor/` at project root is empty** — All paths should resolve to `~/.anchor/` via `user_settings.json`
+- [ ] **Clean up stale data from project root** — `notebook/`, `test_minimal_db/`, `backups/`
+- [ ] **Update `.gitignore`** — Add `.anchor/`, `agent.json`, `skill.json`
+
+### P2 — WASM Binary Packaging
+- [ ] **Audit WASM dependencies** — List all `@rbalchii/*-wasm` packages
+- [ ] **Evaluate direct `.wasm` loading** — Ship `.wasm` files, load via `fetch()` or `WebAssembly.instantiate()`
+- [ ] **Prototype one module** — Pick smallest WASM module, test direct loading
+- [ ] **Document tradeoffs** — npm registry vs direct loading
+
+### P2 — DB Schema Clarification
+- [ ] **Audit all SQL tables** — Document every table, column, index, and purpose
+- [ ] **Create `schema-migration.sql`** — Consolidate all `CREATE TABLE IF NOT EXISTS` statements
+- [ ] **Remove `ALTER TABLE` from `db.ts`** — Migrate `ADD COLUMN IF NOT EXISTS` into migration file
+- [ ] **Add schema version tracking** — Track schema version in a dedicated table
+- [ ] **Document schema** — Add to `docs/` or `specs/`
+
+---
+
+## 🔧 Test Suite Stabilization (May 2026) — PREVIOUS
 
 **Run:** `pnpm test:all` or `vitest run --config engine/vitest.config.ts`
 **Baseline:** 19 failed / 35 passed / 4 skipped (out of 58 total)

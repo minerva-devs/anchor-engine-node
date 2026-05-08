@@ -1,8 +1,10 @@
 /**
  * Path Configuration for Sovereign Context Engine
  *
- * Defines all the important paths used by the system.
- * Paths can be overridden in user_settings.json -> paths.*
+ * All paths are abstracted to ~/.anchor/user_settings.json.
+ * No config files or output directories live in the project root.
+ *
+ * Priority: Environment variables > user_settings.json > defaults
  */
 
 import * as path from 'path';
@@ -47,17 +49,17 @@ try {
 export const NOTEBOOK_DIR = path.resolve(
   process.env.NOTEBOOK_DIR ||
   userSettings.paths?.notebook ||
-  path.join(PROJECT_ROOT, 'notebook')
+  path.join(LOCAL_DATA_DIR, 'notebook')
 );
 
 export const CONTEXT_DIR = path.resolve(
   process.env.CONTEXT_DIR ||
   userSettings.paths?.context ||
-  path.join(PROJECT_ROOT, 'engine', 'context')
+  path.join(LOCAL_DATA_DIR, 'context')
 );
 
-export const MODELS_DIR = path.resolve(process.env.MODELS_DIR || path.join(PROJECT_ROOT, 'models'));
-export const DIST_DIR = path.resolve(process.env.DIST_DIR || path.join(PROJECT_ROOT, 'dist'));
+export const MODELS_DIR = path.resolve(process.env.MODELS_DIR || path.join(LOCAL_DATA_DIR, 'models'));
+export const DIST_DIR = path.resolve(process.env.DIST_DIR || path.join(LOCAL_DATA_DIR, 'dist'));
 export const BASE_PATH = PROJECT_ROOT;
 
 // Standard 110: Logs directory under .anchor/local-data for centralized logging
@@ -77,14 +79,14 @@ export const PATHS = {
   DIST_DIR,
   BACKUPS_DIR: path.resolve(process.env.BACKUPS_DIR || userSettings.paths?.backups || path.join(ANCHOR_ROOT, 'backups')),
   LOGS_DIR,
-  CONFIG_FILE: path.join(PROJECT_ROOT, 'sovereign.yaml'),
+  CONFIG_FILE: path.join(LOCAL_DATA_DIR, 'sovereign.yaml'),
   USER_SETTINGS: path.join(ANCHOR_ROOT, 'user_settings.json'),
   DATABASE_FILE: path.join(CONTEXT_DIR, 'context.db'),
   NOTEBOOK_DIR,
   // Standard 110: Centralized user data paths under local-data/
   INBOX_DIR: path.resolve(process.env.INBOX_DIR || userSettings.paths?.inbox || path.join(LOCAL_DATA_DIR, 'inbox')),
   EXTERNAL_INBOX_DIR: path.resolve(process.env.EXTERNAL_INBOX_DIR || userSettings.paths?.external_inbox || path.join(LOCAL_DATA_DIR, 'external-inbox')),
-  DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || NOTEBOOK_DIR),
+  DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || path.join(LOCAL_DATA_DIR, 'distills')),
   MIRRORED_BRAIN_DIR: path.resolve(process.env.MIRRORED_BRAIN_DIR || userSettings.paths?.mirrored_brain || path.join(LOCAL_DATA_DIR, 'mirrored_brain')),
   SESSIONS_DIR: path.resolve(process.env.SESSIONS_DIR || userSettings.paths?.sessions || path.join(LOCAL_DATA_DIR, 'sessions')),
   LIBRARIES_DIR: path.join(CONTEXT_DIR, 'libraries'),
@@ -92,7 +94,7 @@ export const PATHS = {
   ENGINE_BIN: path.join(PROJECT_ROOT, 'engine', 'bin'),
   ENGINE_SRC: path.join(PROJECT_ROOT, 'engine', 'src'),
   ENGINE_DIST: path.join(PROJECT_ROOT, 'engine', 'dist'),
-  ENGINE_CONTEXT: path.join(PROJECT_ROOT, 'engine', 'context'),
+  ENGINE_CONTEXT: path.join(LOCAL_DATA_DIR, 'engine-context'),
   ENGINE_PLUGINS: path.join(PROJECT_ROOT, 'engine', 'plugins'),
   DESKTOP_OVERLAY_SRC: path.join(PROJECT_ROOT, 'packages', 'desktop-overlay', 'src'),
   DESKTOP_OVERLAY_DIST: path.join(PROJECT_ROOT, 'packages', 'desktop-overlay', 'dist'),
@@ -103,20 +105,11 @@ try {
   fs.mkdirSync(ANCHOR_ROOT, { recursive: true });
 
   // Create subdirectories if they don't exist
-  const subdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs', 'backups'];
+  const subdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs', 'backups', 'notebook', 'context', 'models', 'dist'];
   for (const subdir of subdirs) {
-    const subdirPath = path.join(ANCHOR_ROOT, subdir);
+    const subdirPath = path.join(LOCAL_DATA_DIR, subdir);
     if (!fs.existsSync(subdirPath)) {
       fs.mkdirSync(subdirPath, { recursive: true });
-    }
-  }
-
-  // Create local-data subdirectories (Standard 110)
-  const localDataSubdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs'];
-  for (const subdir of localDataSubdirs) {
-    const localDataPath = path.join(LOCAL_DATA_DIR, subdir);
-    if (!fs.existsSync(localDataPath)) {
-      fs.mkdirSync(localDataPath, { recursive: true });
     }
   }
 

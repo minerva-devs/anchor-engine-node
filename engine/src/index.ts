@@ -138,24 +138,37 @@ app.use('/static', express.static(path.join(__dirname, '../dist'), {
   },
 }));
 
-// Serve UI from engine/public (single-file React app with full features)
-// Fallback to integrations/web-dashboard/dist for development
+// Serve UI from centralized dist directory (~/.anchor/local-data/dist)
+const internalFrontendDist = PATHS.DIST_DIR;
 
-// Use explicit path resolution that works in all environments
-const getProjectRoot = () => {
-  try {
-    const url = new URL('file://' + import.meta.url);
-    return path.join(url.pathname, '..').replace(/\\/g, '/'); // Go up two levels from engine/src/
-  } catch (e) {
-    return process.cwd();
-  }
-};
-
-// Fallback project root if paths.ts didn't load properly
-const PROJECT_ROOT = EngineProjectRoot || getProjectRoot();
-
-const internalFrontendDist = path.join(PROJECT_ROOT, 'engine/public');
-const externalFrontendDist = path.join(PROJECT_ROOT, 'integrations/web-dashboard/dist');
+if (existsSync(internalFrontendDist)) {
+  StructuredLogger.info('UI_SOURCE', { source: 'centralized', path: internalFrontendDist });
+  app.use(express.static(internalFrontendDist, {
+    setHeaders: (res, path) => {
+      StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'centralized' });
+      setUICacheHeaders(res, path);
+    },
+  }));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
+    setUICacheHeaders(res, 'index.html');
+    res.sendFile(path.join(internalFrontendDist, 'index.html'));
+  });
+} else {
+  StructuredLogger.info('UI_SOURCE', { source: 'fallback', path: path.join(EngineProjectRoot, 'engine/public') });
+  const fallbackFrontendDist = path.join(EngineProjectRoot, 'engine/public');
+  app.use(express.static(fallbackFrontendDist, {
+    setHeaders: (res, path) => {
+      StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'fallback' });
+      setUICacheHeaders(res, path);
+    },
+  }));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
+    setUICacheHeaders(res, 'index.html');
+    res.sendFile(path.join(fallbackFrontendDist, 'index.html'));
+  });
+}
 
 // Cache-busting middleware for HTML files (JS/CSS have content hashes)
 function setUICacheHeaders(res: express.Response, filePath: string) {
@@ -250,15 +263,9 @@ app.get('/v1/models', (req, res) => {
     // Use the robust path from configuration (imported statically)
     let modelPath = config.LLM_MODEL_DIR || MODELS_DIR;
 
-    // If config has a relative path, resolve it against project root
+    // If config has a relative path, resolve it against LOCAL_DATA_DIR
     if (config.LLM_MODEL_DIR && !path.isAbsolute(config.LLM_MODEL_DIR)) {
-      // If it starts with ./models, it might be relative to project root
-      // MODELS_DIR is already absolute path to project_root/models
-      if (config.LLM_MODEL_DIR === './models' || config.LLM_MODEL_DIR === 'models') {
-        modelPath = MODELS_DIR;
-      } else {
-        modelPath = path.resolve(PROJECT_ROOT, config.LLM_MODEL_DIR);
-      }
+      modelPath = path.join(PATHS.LOCAL_DATA_DIR, config.LLM_MODEL_DIR);
     }
 
     if (!existsSync(modelPath)) {
@@ -456,7 +463,7 @@ process.on('SIGINT', async () => {
     // 1. Wipe PGlite Database (index/cache) - controlled by database.wipe_on_shutdown
     const shouldWipeDb = config.DATABASE?.WIPE_ON_SHUTDOWN === true;
     if (shouldWipeDb) {
-      const dbPath = process.env.PGLITE_DB_PATH || pathManager.getDatabasePath();
+      const dbPath = process.env.PGLITE_DB_PATH || path.join(PATHS.LOCAL_DATA_DIR, 'context', 'context.db');
       if (existsSync(dbPath)) {
         console.log('[Shutdown] Wiping PGlite database (database.wipe_on_shutdown=true)...');
         try {
@@ -472,7 +479,7 @@ process.on('SIGINT', async () => {
     }
 
     // 2. Wipe SQLite3 context.db (anchor-core FFI database)
-    const contextDbPath = path.join(pathManager.getDatabaseDir(), 'context.db');
+    const contextDbPath = path.join(PATHS.LOCAL_DATA_DIR, 'context', 'context.db');
     if (existsSync(contextDbPath) && shouldWipeDb) {
       console.log('[Shutdown] Wiping SQLite3 context.db (anchor-core FFI)...');
       try {
@@ -503,7 +510,7 @@ process.on('SIGINT', async () => {
     }
 
     // 4. Clear Auto-Generated Synonym Rings (derived from data, regenerated on start)
-    const synonymPath = path.join(pathManager.getNotebookDir(), 'synonym-ring-auto.json');
+    const synonymPath = path.join(PATHS.LOCAL_DATA_DIR, 'notebook', 'synonym-ring-auto.json');
     if (existsSync(synonymPath)) {
       console.log('[Shutdown] Clearing auto-generated synonym rings...');
       try {
@@ -515,7 +522,7 @@ process.on('SIGINT', async () => {
     }
 
     // 5. Clear Tag Audit Cache (derived from tags, regenerated on demand)
-    const tagAuditPath = path.join(pathManager.getNotebookDir(), 'tag-audit-cache.json');
+    const tagAuditPath = path.join(PATHS.LOCAL_DATA_DIR, 'notebook', 'tag-audit-cache.json');
     if (existsSync(tagAuditPath)) {
       console.log('[Shutdown] Clearing tag audit cache...');
       try {

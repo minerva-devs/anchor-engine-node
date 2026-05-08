@@ -20,13 +20,15 @@ import { NOTEBOOK_DIR } from '../../config/paths.js';
  * Remove inline hashtag tokens from content (Standard 123).
  * Tags are stored separately in result.tags; they add noise when embedded in text.
  */
-function stripInlineTags(content: string): string {
+export function stripInlineTags(content: string): string {
   if (!content) return content;
   let s = content.replace(/\\?"#[^"\\]+\\?"/g, '');
-  s = s.replace(/##?[A-Za-z0-9_]+/g, '');
+  s = s.replace(/##?[A-Za-z0-9_\u0080-\uFFFF]+/g, '');
   // Only strip " - " list separators (space-hyphen-space), not bare hyphens
   // in kebab-case identifiers like p-6, text-xl, font-bold, etc.
-  s = s.replace(/[ \t]+-[ \t]+/g, ' ').trim();
+  s = s.replace(/[ \t]+-[ \t]+/g, ' ');
+  // Collapse any extra whitespace left after tag removal
+  s = s.replace(/\s+/g, ' ').trim();
   return s;
 }
 
@@ -36,7 +38,9 @@ function stripInlineTags(content: string): string {
  * footers appear (e.g., ##19864Residen ##1Okay ##3am ##ABQLo).
  * These are serialization artifacts, not content.
  */
-function stripTagFooters(content: string): string {
+export function stripTagFooters(content: string): string {
+  if (content === null) return null;
+  if (content === undefined) return undefined;
   if (!content) return content;
   const lines = content.split('\n');
   // Remove trailing lines that are predominantly tag tokens (##*)
@@ -119,14 +123,16 @@ export function getHammingDistance(hashA: string, hashB: string): number {
             return 64; // Max distance on error (assume different)
         }
 
-        // Ensure valid hex strings
-        if (!/^[0-9a-fA-F]+$/.test(hashA) || !/^[0-9a-fA-F]+$/.test(hashB)) {
+        // Ensure valid hex strings (strip 0x prefix if present)
+        const cleanA = hashA.replace(/^0x/i, '');
+        const cleanB = hashB.replace(/^0x/i, '');
+        if (!/^[0-9a-fA-F]+$/.test(cleanA) || !/^[0-9a-fA-F]+$/.test(cleanB)) {
             console.warn('[Search] Invalid hex string format for Hamming distance:', { hashA, hashB });
             return 64; // Max distance on error (assume different)
         }
 
-        const a = BigInt(`0x${hashA}`);
-        const b = BigInt(`0x${hashB}`);
+        const a = BigInt(`0x${cleanA}`);
+        const b = BigInt(`0x${cleanB}`);
 
         // Use WASM module for distance calculation (Standard 074 - WASM Edition)
         try {

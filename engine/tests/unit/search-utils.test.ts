@@ -12,11 +12,23 @@
  * Coverage Goal: >80% for search-utils.ts (572 lines)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import * as fs from 'fs';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Mock dependencies
-jest.mock('../../config/index.js', () => ({
+// Mock fs module for ESM compatibility (must be first)
+vi.mock('fs', () => ({
+  existsSync: vi.fn(),
+  statSync: vi.fn(),
+  openSync: vi.fn(),
+  readSync: vi.fn(),
+  closeSync: vi.fn(),
+  readdirSync: vi.fn(),
+  readFileSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  mkdirSync: vi.fn(),
+}));
+
+// Mock dependencies (must be before any imports that use them)
+vi.mock('../../src/config/index.js', () => ({
   config: {
     SEARCH: {
       hide_years_in_tags: false,
@@ -24,30 +36,31 @@ jest.mock('../../config/index.js', () => ({
   },
 }));
 
-jest.mock('../../core/inference/context_manager.js', () => ({
-  composeRollingContext: jest.fn(),
+vi.mock('../../src/core/inference/context_manager.js', () => ({
+  composeRollingContext: vi.fn(),
 }));
 
-jest.mock('../../utils/wasm-module-loader.js', () => ({
+vi.mock('../../src/utils/wasm-module-loader.js', () => ({
   wasmModuleLoader: {
-    distance: jest.fn(),
+    distance: vi.fn(),
   },
 }));
 
-jest.mock('./context-inflator.js', () => ({
+vi.mock('../../src/services/search/context-inflator.js', () => ({
   ContextInflator: {
-    inflate: jest.fn(),
+    inflate: vi.fn(),
   },
 }));
 
-jest.mock('../mirror/mirror.js', () => ({
-  getMirrorPath: jest.fn(),
-  MIRRORED_BRAIN_PATH: '/mock/mirrored-brain',
+vi.mock('../../src/services/mirror/mirror.js', () => ({
+  getMirrorPath: vi.fn(),
 }));
 
-jest.mock('../../config/paths.js', () => ({
+vi.mock('../../src/config/paths.js', () => ({
   NOTEBOOK_DIR: '/mock/notebook',
 }));
+
+import * as fs from 'fs';
 
 import {
   stripInlineTags,
@@ -58,13 +71,13 @@ import {
   formatResults,
   filterDisplayTags,
 } from '../../src/services/search/search-utils.js';
-import { wasmModuleLoader } from '../../utils/wasm-module-loader.js';
-import { getMirrorPath } from '../mirror/mirror.js';
+import { wasmModuleLoader } from '../../src/utils/wasm-module-loader.js';
+import { getMirrorPath } from '../../src/services/mirror/mirror.js';
 import type { SearchResult } from '../../src/services/search/search.js';
 
 describe('Search Utils', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('stripInlineTags()', () => {
@@ -179,7 +192,7 @@ describe('Search Utils', () => {
 
   describe('getHammingDistance()', () => {
     it('calculates Hamming distance between two hex strings', () => {
-      (wasmModuleLoader.distance as jest.Mock).mockReturnValue(5);
+      (wasmModuleLoader.distance as vi.Mock).mockReturnValue(5);
       
       const distance = getHammingDistance('abc123', 'abc127');
       expect(distance).toBe(5);
@@ -187,7 +200,7 @@ describe('Search Utils', () => {
     });
 
     it('uses JS fallback when WASM fails', () => {
-      (wasmModuleLoader.distance as jest.Mock).mockImplementation(() => {
+      (wasmModuleLoader.distance as vi.Mock).mockImplementation(() => {
         throw new Error('WASM error');
       });
       
@@ -217,21 +230,21 @@ describe('Search Utils', () => {
     });
 
     it('handles hex strings with 0x prefix', () => {
-      (wasmModuleLoader.distance as jest.Mock).mockReturnValue(3);
+      (wasmModuleLoader.distance as vi.Mock).mockReturnValue(3);
       
       const distance = getHammingDistance('0xabc123', '0xabc127');
       expect(distance).toBe(3);
     });
 
     it('calculates distance for identical hashes', () => {
-      (wasmModuleLoader.distance as jest.Mock).mockReturnValue(0);
+      (wasmModuleLoader.distance as vi.Mock).mockReturnValue(0);
       
       const distance = getHammingDistance('abc123', 'abc123');
       expect(distance).toBe(0);
     });
 
     it('handles large hex values', () => {
-      (wasmModuleLoader.distance as jest.Mock).mockReturnValue(32);
+      (wasmModuleLoader.distance as vi.Mock).mockReturnValue(32);
       
       const distance = getHammingDistance(
         'ffffffffffffffff',
@@ -241,7 +254,7 @@ describe('Search Utils', () => {
     });
 
     it('handles errors gracefully', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
       
       // Force an error in the try-catch
       const originalBigInt = global.BigInt;
@@ -316,8 +329,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const results = await coalesceByProximity(mockResults);
       expect(results.length).toBeGreaterThanOrEqual(1);
@@ -355,8 +368,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const results = await coalesceByProximity(mockResults, 500);
       
@@ -396,8 +409,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const results = await coalesceByProximity(mockResults, 500);
       
@@ -459,8 +472,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const results = await coalesceByProximity(mockResults);
       
@@ -485,8 +498,8 @@ describe('Search Utils', () => {
         end_byte: 50,
       }));
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const results = await coalesceByProximity(mockResults, 500, 10);
       expect(results.length).toBeLessThanOrEqual(10);
@@ -524,8 +537,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const results = await coalesceByProximity(mockResults);
       
@@ -554,9 +567,9 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
       const results = await coalesceByProximity(mockResults);
       
@@ -582,12 +595,12 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(true);
-      jest.spyOn(fs, 'statSync').mockReturnValue({ size: 1000 } as fs.Stats);
-      jest.spyOn(fs, 'openSync').mockReturnValue(1 as any);
-      jest.spyOn(fs, 'readSync').mockReturnValue(100);
-      jest.spyOn(fs, 'closeSync').mockImplementation();
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(true);
+      vi.spyOn(fs, 'statSync').mockReturnValue({ size: 1000 } as fs.Stats);
+      vi.spyOn(fs, 'openSync').mockReturnValue(1 as any);
+      vi.spyOn(fs, 'readSync').mockReturnValue(100);
+      vi.spyOn(fs, 'closeSync').mockImplementation();
 
       const results = await coalesceByProximity(mockResults);
       
@@ -622,8 +635,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       
@@ -650,8 +663,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       
@@ -693,8 +706,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       
@@ -720,8 +733,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       
@@ -747,8 +760,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       
@@ -757,7 +770,7 @@ describe('Search Utils', () => {
 
     it('handles errors gracefully', async () => {
       // Force an error
-      (getMirrorPath as jest.Mock).mockImplementation(() => {
+      (getMirrorPath as vi.Mock).mockImplementation(() => {
         throw new Error('Test error');
       });
 
@@ -784,8 +797,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       
@@ -811,8 +824,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       
@@ -863,8 +876,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000, {
         proximityThreshold: 1000,
@@ -905,8 +918,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       
@@ -923,7 +936,7 @@ describe('Search Utils', () => {
 
     it('removes 4-digit year tags when hide_years is true', () => {
       // Temporarily enable hide_years
-      jest.mock('../../config/index.js', () => ({
+      vi.doMock('../../src/config/index.js', () => ({
         config: {
           SEARCH: {
             hide_years_in_tags: true,
@@ -980,8 +993,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 2000);
       
@@ -1011,8 +1024,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 10000);
       
@@ -1037,8 +1050,8 @@ describe('Search Utils', () => {
         },
       ];
 
-      (getMirrorPath as jest.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
-      jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+      (getMirrorPath as vi.Mock).mockReturnValue('/mock/mirrored-brain/test.ts');
+      vi.spyOn(fs, 'existsSync').mockReturnValue(false);
 
       const formatted = await formatResults(mockResults, 1000);
       

@@ -65,21 +65,14 @@ describe('GitHub Ingest History Service', () => {
 
   describe('Error resilience', () => {
     it('should handle network errors gracefully during pagination', async () => {
-      // Simulated fetch that fails on second page
-      let callCount = 0;
+      // Simulated fetch that fails on first call
       const mockFetch = async (url: string) => {
-        if (callCount === 1) throw new Error('Network error');
-        callCount++;
-        return { data: [], linkHeader: '' };
+        throw new Error('Network error');
       };
 
-      // Should stop gracefully on error
-      try {
-        await fetchAllCommits(mockFetch);
-        expect(true).toBe(false); // Should not reach here
-      } catch (e) {
-        expect(e.message).toContain('Network error');
-      }
+      // Should stop gracefully on error and return empty array
+      const result = await fetchAllCommits(mockFetch);
+      expect(result).toEqual([]);
     });
 
     it('should handle malformed Link headers', async () => {

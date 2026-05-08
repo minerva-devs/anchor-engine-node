@@ -267,9 +267,6 @@ export class PhysicsTagWalker {
 
     const startTime = Date.now();
 
-    // Cap PostgreSQL sort/hash memory per query node to prevent WASM heap spikes
-    await db.run("SET work_mem = '32MB'");
-
     // 1. Prepare Anchor Params
     // We pass the anchor IDs as a single array as the first parameter.
     // Physics constants and query params follow
@@ -484,6 +481,9 @@ export class PhysicsTagWalker {
     ];
 
     try {
+      // Cap PostgreSQL sort/hash memory per query node to prevent WASM heap spikes
+      await db.run("SET work_mem = '32MB'");
+
       // Debug logging for high-budget queries
       if (anchorIds.length > 10 || safeLimit > 100) {
         console.log(`[PhysicsWalker] SQL params: anchorIds=${cappedIds.length}, threshold=${threshold}, limit=${safeLimit}`);
@@ -525,7 +525,7 @@ export class PhysicsTagWalker {
         endByte: (row.end_byte !== null && row.end_byte !== undefined) ? row.end_byte : undefined,
         gravityScore: parseFloat(row.gravity_score),
         bestAnchorId: row.best_anchor_id,
-        hopDistance: row.hop_distance !== undefined ? parseInt(row.hop_distance) : undefined,
+        hopDistance: (row.hop_distance !== null && row.hop_distance !== undefined) ? parseInt(row.hop_distance) : undefined,
       }));
     } catch (e) {
       console.error(`[PhysicsWalker] SQL Weighting failed after ${Date.now() - startTime} ms: `, e);
@@ -647,7 +647,8 @@ export class PhysicsTagWalker {
 
     try {
       const result = await sqlWithTimeout<any>(query, [anchorTags, limit], QUERY_TIMEOUT_MS);
-      return result.rows.map((row: any) => ({
+      const rows = result.rows?.slice(0, limit) || [];
+      return rows.map((row: any) => ({
         atomId: row.atom_id,
         sharedTags: parseInt(row.shared_tag_count),
         timestamp: parseFloat(row.timestamp),

@@ -23,11 +23,6 @@ logs/heartbeat.md.tmp # Temporary file for heartbeat checks
 .idea/
 .cline/
 
-# QwenPaw agent files
-.qwenpaw/
-.qwenpaw/*
-!qwen-mcp-config.json # Keep MCP config for dev
-
 # Reme agent store
 .reme_store_v1
 
@@ -97,11 +92,27 @@ $null
 filename.endsWith(ext)))
 
 # ============================================
+# Agent/IDE config files
+# ============================================
+agent.json
+skill.json
+.qwenpaw/
+.qwenpaw/*
+!qwen-mcp-config.json # Keep MCP config for dev
+
+# ============================================
+# .anchor runtime data (all paths configured via user_settings.json)
+# ============================================
+.anchor/
+
+# ============================================
 # Docker config (KEEP - needed for docker users)
 # ============================================
 user_settings.docker.json # Keep for Docker setup
 
+# ============================================
 # Source code directories (KEEP)
+# ============================================
 engine/
 packages/
 mcp-server/

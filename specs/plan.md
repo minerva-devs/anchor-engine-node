@@ -379,6 +379,53 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 **Run:** `pnpm test:all` or `vitest run --config engine/vitest.config.ts`
 **Result:** 19 failed / 35 passed / 4 skipped (out of 58 total)
 
+### May 2026 — Test Consolidation & Housekeeping
+
+**Goal:** Clean up test chaos, consolidate into a single orchestration point, reduce file count.
+
+- [ ] **Consolidate test files** — Move all tests under `engine/tests/` as `.test.ts` files; remove root `tests/` directory
+  - Merge `engine/tests/unit/` and `tests/` into a single flat structure under `engine/tests/`
+  - Convert all `.js`/`.mjs` test files to `.test.ts`
+  - Remove standalone test runners (`minimal-framework.mjs`, `minimal-pglite-test.ts`, etc.)
+  - Keep `run-tests-with-logger.js` as the single entry point for `pnpm test`
+- [ ] **Simplify `package.json` test scripts** — Reduce to:
+  - `pnpm test` — run all tests (via `run-tests-with-logger.js`)
+  - `pnpm test:unit` — unit tests only
+  - `pnpm test:integration` — integration tests only
+  - `pnpm test:bench` — benchmarks only
+  - Remove all `test:orchestrator:*`, `test:cross-route:*`, `test:github-ingestion`, `test:text-flow` etc.
+- [ ] **Fix remaining failing tests** — Address the 19 failures from the audit
+- [ ] **Add test coverage reporting** — Enable coverage by default in CI
+
+### May 2026 — Runtime Data Cleanup
+
+**Goal:** Ensure all runtime data lives in `~/.anchor/`, keep project directory clean.
+
+- [ ] **Verify `.anchor/` at project root is empty** — All paths should resolve to `~/.anchor/` via `user_settings.json`
+- [ ] **Update `.gitignore`** — Add `.anchor/` to ignore project-local runtime data
+- [ ] **Clean up duplicate path references** — Ensure `paths.ts` and `config/index.ts` both default to `~/.anchor/`
+- [ ] **Remove stale data from project root** — Delete `notebook/`, `test_minimal_db/`, `backups/` if they exist
+
+### May 2026 — WASM Binary Packaging Plan
+
+**Goal:** Evaluate packaging personal WASM modules as prebuilt binaries to cut npm out of the loop.
+
+- [ ] **Audit WASM dependencies** — List all `@rbalchii/*-wasm` packages, assess build complexity
+- [ ] **Evaluate direct `.wasm` loading** — Can we ship `.wasm` files in `node_modules` and load them via `fetch()` or `WebAssembly.instantiate()`?
+- [ ] **Evaluate `node-addon-api` + `.node` binaries** — For C++ modules, ship precompiled binaries per platform
+- [ ] **Document tradeoffs** — npm registry vs direct loading: versioning, caching, CI, size
+- [ ] **Prototype one module** — Pick the smallest WASM module and test direct loading
+
+### May 2026 — DB Schema Clarification
+
+**Goal:** Formalize the database schema now that the development wave has settled.
+
+- [ ] **Audit all SQL tables** — Document every table, column, index, and their purpose
+- [ ] **Create schema migration file** — `engine/src/core/schema-migration.sql` with all `CREATE TABLE IF NOT EXISTS` statements
+- [ ] **Remove redundant ALTER TABLE** — Migrate any `ADD COLUMN IF NOT EXISTS` from `db.ts` into the migration file
+- [ ] **Add schema version tracking** — Track schema version in a `schema_version` table or similar
+- [ ] **Document schema** — Add to `docs/` or `specs/` as a reference
+
 ### Breakdown by Category
 
 | Category | Failures | Root Cause | Priority |
