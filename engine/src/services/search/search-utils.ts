@@ -39,9 +39,7 @@ export function stripInlineTags(content: string): string {
  * These are serialization artifacts, not content.
  */
 export function stripTagFooters(content: string): string {
-  if (content === null) return null;
-  if (content === undefined) return undefined;
-  if (!content) return content;
+  if (!content) return '';
   const lines = content.split('\n');
   // Remove trailing lines that are predominantly tag tokens (##*)
   while (lines.length > 0) {

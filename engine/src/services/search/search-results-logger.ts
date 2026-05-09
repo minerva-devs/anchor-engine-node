@@ -28,10 +28,10 @@
 
 import fs from 'fs';
 import path from 'path';
+import { PATHS } from '../../config/paths.js';
 
-// Root directory for Anchor artefacts – e.g. C:\Users\<user>\.anchor
-const ANCHOR_ROOT = path.resolve(process.cwd(), '..', '..'); // aen → project root
-const LOGS_DIR = path.join(ANCHOR_ROOT, '.anchor', 'logs');
+// Log directory for search results – uses PATHS.LOGS_DIR (~/.anchor/logs)
+const LOGS_DIR = PATHS.LOGS_DIR;
 
 /** Maximum number of entries we keep per unique query hash. */
 const MAX_ENTRIES_PER_HASH = 50;

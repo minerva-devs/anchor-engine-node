@@ -6,15 +6,14 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Database } from '../../src/core/db.js';
 import fs from 'fs';
 import path from 'path';
+import { PATHS } from '../../src/config/paths.js';
 
 describe('PGlite Database', () => {
   let db: Database;
   let testDbPath: string;
 
   beforeAll(async () => {
-    const baseDir = process.cwd();
-    
-    testDbPath = path.join(baseDir, 'engine', 'tests', 'pglite-test-db-' + Date.now());
+    testDbPath = path.join(PATHS.TEST_DBS_DIR, 'pglite-test-db-' + Date.now());
 
     console.log(`[DB Test] Using DB path: ${testDbPath}`);
     if (!fs.existsSync(testDbPath)) {

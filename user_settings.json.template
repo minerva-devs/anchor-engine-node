@@ -34,6 +34,8 @@
       "sessions": "${anchor_root}/sessions",
       "logs": "${anchor_root}/logs",
       "backups": "${anchor_root}/backups",
+      "context_data": "${anchor_root}/context_data",
+      "test_dbs": "${anchor_root}/test-dbs",
       "context": "engine/context",
       "models": "models",
       "dist": "dist",
@@ -48,7 +50,7 @@
       "inbox_dir": "${anchor_root}/inbox",
       "external_inbox_dir": "${anchor_root}/external-inbox",
       "mirrored_brain_dir": "${anchor_root}/mirrored_brain",
-      "context_data_dir": "engine/context_data",
+      "context_data_dir": "${anchor_root}/context_data",
       "distilled_output_dir": "${anchor_root}/distills"
     },
     "encryption": {
@@ -145,6 +147,6 @@
       "level": "info",
       "structured": true,
       "log_to_file": true,
-      "log_dir": "./logs"
+      "log_dir": "${anchor_root}/logs"
     }
   }

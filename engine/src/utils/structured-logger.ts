@@ -11,13 +11,19 @@ import fs from 'fs';
 import { createHash } from 'crypto';
 import { format } from 'winston';
 import { fileURLToPath } from 'url';
+import { PATHS } from '../config/paths.js';
 
 // Get absolute path to project root (anchor-os directory)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 
-// Define log levels with numerical values
+// Create logs directory at .anchor/logs
+const LOGS_DIR = PATHS.LOGS_DIR;
+if (!fs.existsSync(LOGS_DIR)) {
+  fs.mkdirSync(LOGS_DIR, { recursive: true });
+}
+
 const logLevels = {
   error: 0,
   warn: 1,
@@ -26,12 +32,6 @@ const logLevels = {
   debug: 4,
   silly: 5,
 };
-
-// Create logs directory at project root
-const LOGS_DIR = path.join(PROJECT_ROOT, 'logs');
-if (!fs.existsSync(LOGS_DIR)) {
-  fs.mkdirSync(LOGS_DIR, { recursive: true });
-}
 
 /**
  * Truncate log files to last N lines to prevent unbounded growth

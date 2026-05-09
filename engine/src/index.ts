@@ -140,6 +140,7 @@ app.use('/static', express.static(path.join(__dirname, '../dist'), {
 
 // Serve UI from centralized dist directory (~/.anchor/local-data/dist)
 const internalFrontendDist = PATHS.DIST_DIR;
+  const externalFrontendDist = path.resolve(process.env.DIST_DIR || path.join(__dirname, '..', '..', 'packages', 'anchor-ui', 'dist'));
 
 if (existsSync(internalFrontendDist)) {
   StructuredLogger.info('UI_SOURCE', { source: 'centralized', path: internalFrontendDist });
@@ -510,7 +511,7 @@ process.on('SIGINT', async () => {
     }
 
     // 4. Clear Auto-Generated Synonym Rings (derived from data, regenerated on start)
-    const synonymPath = path.join(PATHS.LOCAL_DATA_DIR, 'notebook', 'synonym-ring-auto.json');
+    const synonymPath = path.join(PATHS.NOTEBOOK_DIR, 'synonym-ring-auto.json');
     if (existsSync(synonymPath)) {
       console.log('[Shutdown] Clearing auto-generated synonym rings...');
       try {

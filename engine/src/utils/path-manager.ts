@@ -8,6 +8,7 @@
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { createRequire } from 'module';
+import { PATHS } from '../config/paths.js';
 
 const __filename = fileURLToPath(import.meta.url);
 // const __dirname = path.dirname(__filename); // Not used, commented out to avoid TS error
@@ -102,7 +103,7 @@ export class PathManager {
    * Get database path (PGlite directory)
    */
   public getDatabasePath(): string {
-    return path.resolve(this.basePath, 'context_data');
+    return PATHS.CONTEXT_DATA_DIR;
   }
 
   /**
@@ -116,10 +117,7 @@ export class PathManager {
    * Get notebook directory path
    */
   public getNotebookDir(): string {
-    // Current: basePath = .../AEN/engine
-    // Desired: .../AEN/notebook
-    // So we need to go up ONE level from engine to AEN, then to notebook
-    return path.resolve(this.basePath, '..', 'notebook');
+    return PATHS.NOTEBOOK_DIR;
   }
 
   /**

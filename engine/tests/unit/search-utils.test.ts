@@ -165,8 +165,8 @@ describe('Search Utils', () => {
     });
 
     it('handles null/undefined', () => {
-      expect(stripTagFooters(null as any)).toBeNull();
-      expect(stripTagFooters(undefined as any)).toBeUndefined();
+      expect(stripTagFooters(null as any)).toBe('');
+      expect(stripTagFooters(undefined as any)).toBe('');
     });
 
     it('preserves content with partial tag patterns', () => {

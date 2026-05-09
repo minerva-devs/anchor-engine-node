@@ -62,11 +62,25 @@ export const MODELS_DIR = path.resolve(process.env.MODELS_DIR || path.join(LOCAL
 export const DIST_DIR = path.resolve(process.env.DIST_DIR || path.join(LOCAL_DATA_DIR, 'dist'));
 export const BASE_PATH = PROJECT_ROOT;
 
-// Standard 110: Logs directory under .anchor/local-data for centralized logging
+// Standard 110: Logs directory under .anchor for centralized logging
 export const LOGS_DIR = path.resolve(
   process.env.LOGS_DIR ||
   userSettings.paths?.logs ||
-  path.join(LOCAL_DATA_DIR, 'logs')
+  path.join(ANCHOR_ROOT, 'logs')
+);
+
+// Context data directory under .anchor for database storage
+export const CONTEXT_DATA_DIR = path.resolve(
+  process.env.CONTEXT_DATA_DIR ||
+  userSettings.paths?.context_data ||
+  path.join(ANCHOR_ROOT, 'context_data')
+);
+
+// Test database directory under .anchor for test artifacts
+export const TEST_DBS_DIR = path.resolve(
+  process.env.TEST_DBS_DIR ||
+  userSettings.paths?.test_dbs ||
+  path.join(ANCHOR_ROOT, 'test-dbs')
 );
 
 // Define specific paths
@@ -79,6 +93,8 @@ export const PATHS = {
   DIST_DIR,
   BACKUPS_DIR: path.resolve(process.env.BACKUPS_DIR || userSettings.paths?.backups || path.join(ANCHOR_ROOT, 'backups')),
   LOGS_DIR,
+  CONTEXT_DATA_DIR,
+  TEST_DBS_DIR,
   CONFIG_FILE: path.join(LOCAL_DATA_DIR, 'sovereign.yaml'),
   USER_SETTINGS: path.join(ANCHOR_ROOT, 'user_settings.json'),
   DATABASE_FILE: path.join(CONTEXT_DIR, 'context.db'),
@@ -105,9 +121,18 @@ try {
   fs.mkdirSync(ANCHOR_ROOT, { recursive: true });
 
   // Create subdirectories if they don't exist
-  const subdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs', 'backups', 'notebook', 'context', 'models', 'dist'];
+  const subdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs', 'backups', 'notebook', 'context', 'models', 'dist', 'context_data', 'test-dbs'];
   for (const subdir of subdirs) {
     const subdirPath = path.join(LOCAL_DATA_DIR, subdir);
+    if (!fs.existsSync(subdirPath)) {
+      fs.mkdirSync(subdirPath, { recursive: true });
+    }
+  }
+
+  // Create directories directly under ANCHOR_ROOT
+  const anchorSubdirs = ['context_data', 'test-dbs'];
+  for (const subdir of anchorSubdirs) {
+    const subdirPath = path.join(ANCHOR_ROOT, subdir);
     if (!fs.existsSync(subdirPath)) {
       fs.mkdirSync(subdirPath, { recursive: true });
     }

@@ -65,14 +65,14 @@ let configText = readFileSync(
 console.log(`📄 Reading template: user_settings.json.template`);
 
 // Replace <ANCHOR_ROOT> placeholder (literal syntax in JSON)
-configText = configText.replace(/<ANCHOR_ROOT>/g, USER_HOME);
+configText = configText.replace(/<ANCHOR_ROOT>/g, ANCHOR_ROOT);
 
 // Extract anchor_root variable value for ${...} replacements
-const ANCHOR_VAR = `"anchor_root": "${USER_HOME}"`;
+const ANCHOR_VAR = `"anchor_root": "${ANCHOR_ROOT}"`;
 
 console.log(`🔄 Expanding variables...`);
 configText = configText.replace(/\$\{([^}]+)\}/g, (_, key) => {
-  if (key === "anchor_root") return USER_HOME;
+  if (key === "anchor_root") return ANCHOR_ROOT;
   return ""; // Handle other vars if needed
 });
 
@@ -130,6 +130,8 @@ const SUBDIRS = [
   "mirrored_brain",
   "sessions",
   "logs",
+  "context_data",
+  "test-dbs",
 ];
 
 console.log(
@@ -151,13 +153,7 @@ SUBDIRS.forEach((dir) => {
   }
 });
 
-// 7. Create logs subdirectory if needed in root (for engine logs)
-if (!existsSync(join(PROJECT_ROOT, "logs"))) {
-  mkdirSync(join(PROJECT_ROOT, "logs"), { recursive: true });
-  console.log(`📁 Created project logs directory`);
-}
-
-// 8. Print summary
+// 7. Print summary
 console.log("=".repeat(50));
 console.log("✅ Configuration setup complete!");
 console.log(`   Anchor Root: ${ANCHOR_ROOT}`);
