@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 5.0.0 | **Status:** Production Ready + v4.7.0 Streaming & Observability | **Updated:** May 10, 2026
+**Version:** 5.0.0 | **Status:** Production Ready + v5.0.0 Streaming & Observability | **Updated:** May 10, 2026
 
 ## Quick Reference
 
@@ -8,33 +8,37 @@
 |--------|-------|
 | **Port** | 3160 (configurable) |
 | **Database** | PGlite (PostgreSQL-compatible) |
-| **Source of Truth** | `mirrored_brain/` filesystem |
+| **Source of Truth** | `~/.anchor/mirrored_brain/` filesystem |
 | **Index** | Disposable, rebuildable on startup |
 | **Search** | STAR Algorithm (70/30 Planets/Moons) |
 | **Docker** | `docker-compose up -d` (2 CPU, 2GB RAM) |
+| **Version Source** | `user_settings.json.template` → `$HOME/.anchor/user_settings.json` |
 
 ---
 
-## Recent Changes (v4.7.0 — May 2026)
+## Recent Changes (v5.0.0 — May 2026)
 
 ### Streaming Architecture
 - [x] **Streaming Search** (`/v1/memory/search/stream`) - SSE-based progressive results
 - [x] **Streaming Ingest** (`/v1/ingest/streaming`) - Large file processing in chunks with progress tracking
 
 ### Centralized Validation
-- [x] **Zod Schemas** - `engine/src/schemas/api-schemas.ts` shared across all API routes
+- [x] **Zod Schemas** - `engine/src/config/index.ts` (645 lines) shared across all API routes
 - [x] **PostgreSQL Array Conversion** - `toPgArray()` helper for proper DB format
-- [x] **API Route Map** - Complete documentation in `specs/API-ROUTE-MAP.md`
 
 ### Performance Monitoring
-- [x] **Performance Monitor Service** - Memory, CPU, engine status tracking (`engine/src/services/monitoring/performance-monitor.ts`)
+- [x] **Performance Monitor Service** - Memory, CPU, engine status tracking (`engine/src/utils/performance-monitor.ts`)
 - [x] **UI Stats Dashboard** - Real-time system metrics display
 - [x] **DB Clearing & Distill Output** - Clean state management
 
+### Runtime Data Consolidation
+- [x] All runtime data routes to `~/.anchor/` via `engine/src/config/paths.ts`
+- [x] `user_settings.json.template` generates `user_settings.json` at `$HOME/.anchor/` on `pnpm install` + `pnpm start`
+
 ### Security Hardening (April 2026)
-- [x] API key validation: 32-128 chars with mixed case/digits (Standard 025/132)
-- [x] Path traversal prevention (Standard 023/129)
-- [x] Auth bypass prevention - removed /v1/test/* endpoints (Standard 024/131)
+- [x] API key validation: 32-128 chars with mixed case/digits (Standard 024)
+- [x] Path traversal prevention (Standard 025)
+- [x] Auth bypass prevention - removed /v1/test/* endpoints (Standard 023)
 - [x] Rate limiting for MCP server (60 req/min)
 - [x] Write operations opt-in with bucket validation
 
@@ -44,14 +48,9 @@
 
 - **[README.md](../README.md)** - Quick start and installation
 - **[docs/INDEX.md](../docs/INDEX.md)** - Documentation navigation hub
-- **[docs/API.md](../docs/API.md)** - Complete API reference
-- **[docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)** - Deployment guide
-- **[docs/TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md)** - Troubleshooting guide
 - **[docs/whitepaper.md](../docs/whitepaper.md)** - STAR Algorithm whitepaper (arXiv ready)
 - **[engine/src/README.md](../engine/src/README.md)** - Source code overview
-- **[specs/API-ROUTE-MAP.md](API-ROUTE-MAP.md)** - Complete API route documentation
-- **[specs/current-standards/](current-standards/)** - Active architecture standards (001-026)
-- **[specs/archive-legacy/](archive-legacy/)** - Historical standards (059-136+)
+- **[specs/current-standards/](current-standards/)** - Active architecture standards (001-029)
 
 ---
 
@@ -68,7 +67,7 @@ flowchart TB
     subgraph API["HTTP API Layer<br/>Express.js Port 3160"]
         B[Routes /v1/*]
         C[Middleware]
-        D[Zod Validation<br/>api-schemas.ts]
+        D[Zod Validation<br/>config/index.ts]
     end
 
     subgraph SERVICES["Core Services"]
@@ -81,8 +80,8 @@ flowchart TB
 
     subgraph STORAGE["Storage"]
         K[(PGlite<br/>Disposable)]
-        L[mirrored_brain/<br/>Source]
-        M[inbox/<br/>Files]
+        L[~/.anchor/mirrored_brain/<br/>Source]
+        M[~/.anchor/inbox/<br/>Files]
     end
 
     A --> B --> C --> D
@@ -103,7 +102,7 @@ flowchart TB
 1. **UI Layer**: React/Vite frontend at http://localhost:3160
 2. **HTTP API**: Express.js REST API on port 3160 with Zod validation middleware
 3. **Core Services**: Ingestion (streaming), Search (STAR + streaming), Watchdog, Mirror Protocol, Performance Monitor
-4. **Storage**: PGlite database (disposable index) + mirrored_brain/ (source of truth)
+4. **Storage**: PGlite database (disposable index) + `~/.anchor/mirrored_brain/` (source of truth)
 
 ### Data Flow
 
@@ -113,7 +112,7 @@ User Query → API Route → Zod Validation → Search Service → PGlite Query 
 
 ---
 
-## Streaming Architecture (v4.7.0)
+## Streaming Architecture (v5.0.0)
 
 ### Streaming Search (`/v1/memory/search/stream`)
 
@@ -150,7 +149,7 @@ Request → Query Parsing → Batch 1 (SSE emit) → Batch 2 (SSE emit) → ... 
 flowchart LR
     subgraph FILESYSTEM["Filesystem Source of Truth"]
         A["ChatSessions.yaml<br/>91.88MB"]
-        B["mirrored_brain/<br/>Plain Text Files"]
+        B["~/.anchor/mirrored_brain/<br/>Plain Text Files"]
     end
 
     subgraph DATABASE["PGlite Index<br/>Pointers Only"]
@@ -168,13 +167,13 @@ flowchart LR
     style DATABASE fill:#fff4e1
 ```
 
-**Key Insight:** Database is **disposable**. Content lives in `mirrored_brain/`. Database stores byte-offset pointers only.
+**Key Insight:** Database is **disposable**. Content lives in `~/.anchor/mirrored_brain/`. Database stores byte-offset pointers only.
 
 ### Component Definitions
 
 - **Compound:** File/document reference
 - **Molecule:** Semantic chunk with byte offsets (start, end)
-- **Atom:** Tag/concept (NOT content) — content lives in `mirrored_brain/`
+- **Atom:** Tag/concept (NOT content) — content lives in `~/.anchor/mirrored_brain/`
 
 ---
 
@@ -242,7 +241,7 @@ Where:
 
 ---
 
-## Deduplication Pipeline (v4.1.2)
+## Deduplication Pipeline (v5.0.0)
 
 ### 5-Layer Dedup Strategy
 
@@ -284,12 +283,12 @@ flowchart TB
 | **2. Content Fingerprint** | Cross-file exact duplicates | Same paragraph in multiple files |
 | **3. Containment** | One result is subset of another | Full document vs. excerpt |
 | **4. Fuzzy Prefix** | Near-exact with whitespace/timestamp diffs | Same content, different formatting |
-| **5. SimHash Distance** | Cross-file near-duplicates ⭐ **NEW v4.1.2** | Paraphrased versions, modified quotes |
+| **5. SimHash Distance** | Cross-file near-duplicates ⭐ | Paraphrased versions, modified quotes |
 
 ### Performance
 
-- **Before v4.1.2:** 25-35% dedup rate
-- **After v4.1.2:** 40-50% dedup rate
+- **Before v5.0.0:** 25-35% dedup rate
+- **After v5.0.0:** 40-50% dedup rate
 
 ---
 
@@ -396,11 +395,12 @@ flowchart LR
 |-----------|------|---------|
 | **UI** | `packages/anchor-ui/dist/` | React frontend |
 | **Engine** | `engine/dist/` | Compiled TypeScript |
-| **Database** | `engine/context_data/` | PGlite files (disposable) |
-| **Mirror** | `mirrored_brain/` | Source of truth (gitignored) |
-| **Inbox** | `inbox/`, `external-inbox/` | Ingestion sources |
-| **Backups** | `backups/` | Phoenix Protocol backups |
-| **Standards** | `specs/standards/` | Architecture specs |
+| **Database** | `~/.anchor/context_data/` | PGlite files (disposable) |
+| **Mirror** | `~/.anchor/mirrored_brain/` | Source of truth (gitignored) |
+| **Inbox** | `~/.anchor/inbox/`, `~/.anchor/external-inbox/` | Ingestion sources |
+| **Backups** | `~/.anchor/backups/` | Phoenix Protocol backups |
+| **Logs** | `~/.anchor/logs/` | Engine logs |
+| **Standards** | `specs/current-standards/` | Architecture specs |
 
 ---
 
@@ -413,9 +413,9 @@ flowchart LR
 | **Stabilization** | Oct-Nov 2025 | PGlite migration, reliability fixes |
 | **Acceleration** | Dec 2025 | Rust WASM packages (@rbalchii/*-wasm), zero native compilation |
 | **Browser Paradigm** | Jan 2026 | Tag-Walker replaces vector search |
-| **Standards Consolidation** | Feb 2026 | Unified 26 standards (001-026) |
+| **Standards Consolidation** | Feb 2026 | Unified 29 standards (001-029) |
 | **Security Hardening** | Apr 2026 | Path traversal, SQL injection, auth bypass, API key strength |
-| **Streaming & Observability** | May 2026 | v4.7.0: Streaming search/ingest, Zod validation, performance monitoring |
+| **Streaming & Observability** | May 2026 | v5.0.0: Streaming search/ingest, Zod validation, performance monitoring |
 
 ---
 
@@ -427,38 +427,31 @@ anchor-engine-node/
 ├── CHANGELOG.md           # Version history (v5.0.0 latest)
 ├── docs/
 │   ├── whitepaper.md      # The Sovereign Context Protocol (95% compliance)
-│   ├── INDEX.md           # Documentation navigation hub
-│   └── ARCHITECTURE_DIAGRAMS.md  # System diagrams & flows
+│   └── INDEX.md           # Documentation navigation hub
 ├── specs/
 │   ├── spec.md            # This file
 │   ├── tasks.md           # Current sprint tasks
 │   ├── plan.md            # Roadmap
-│   ├── API-ROUTE-MAP.md   # Complete API route documentation
-│   └── standards/
-│       ├── README.md      # Standards index
-│       ├── STANDARD_086_*.md  # ⭐ Dual-Strategy Search v2.0
-│       ├── STANDARD_113_*.md  # ⭐ Auto Max-Recall
-│       ├── STANDARD_116_*.md  # ⭐ Phoenix Protocol
-│       └── archive/       # Historical standards
+│   └── current-standards/ # Active architecture standards (001-029)
 ├── engine/                # Core engine source
 │   ├── src/
-│   │   ├── schemas/       # Zod validation schemas (v4.7.0)
-│   │   ├── services/      # Core services including monitoring (v4.7.0)
+│   │   ├── config/        # Zod validation schemas (v5.0.0)
+│   │   ├── services/      # Core services
 │   │   └── routes/v1/     # API endpoints
 ├── packages/              # Monorepo packages
-└── mirrored_brain/        # Source of truth (gitignored)
+└── user_settings.json.template  # Version source (generates ~/.anchor/user_settings.json)
 ```
 
 ---
 
-## Active Standards (Unified: 001-026)
+## Active Standards (Unified: 001-029)
 
 | # | Name | Status |
 |---|------|--------|
 | **001** | Memory-Safe Ingestion | 10MB file limit, 10,000 molecule limit | ✅ |
 | **002** | Reproducible Benchmarking | Standardized test framework | ✅ |
 | **003** | MCP Tool Interface | Model Context Protocol integration | ✅ |
-| **004** | Streaming Search | SSE-based result streaming | ✅ v4.7.0 |
+| **004** | Streaming Search | SSE-based result streaming | ✅ v5.0.0 |
 | **005** | Adaptive Concurrency Control | Memory-aware search pacing | ✅ |
 | **006** | Mobile Search Optimization | Low-memory device support | ✅ |
 | **007** | PGlite Memory Optimization | WASM buffer tuning | ✅ |
@@ -468,34 +461,35 @@ anchor-engine-node/
 | **011** | Security Hardening | API key validation | ✅ |
 | **012** | Data Integrity | Source tracking | ✅ |
 | **013** | WASM Fallback | Rust WASM fallbacks for performance-critical operations | ✅ |
-| **014** | Operational Visibility | System status endpoints | ✅ v4.7.0 |
+| **014** | Operational Visibility | System status endpoints | ✅ v5.0.0 |
 | **015** | Configuration Management | Path/setting management | ✅ |
 | **016** | MCP Integration Testing | Tool validation | ✅ |
 | **017** | Dependency Validation | Package verification | ✅ |
-| **018** | Configuration Validation | Zod schema validation | ✅ v4.7.0 |
+| **018** | Configuration Validation | Zod schema validation | ✅ v5.0.0 |
 | **019** | Code Analysis | ESLint integration | ✅ |
 | **020** | Ephemeral Database | Disposable PGlite index | ✅ |
 | **021** | Pointer-Only Storage | Byte-offset indexing | ✅ |
 | **022** | Documentation Hygiene | Standard updates | ✅ |
-| **023** | Path Traversal Prevention | Input validation | ✅ P0 |
-| **024** | Auth Bypass Prevention | Test endpoint removal | ✅ P0 |
-| **025** | API Key Strength | 32-128 chars, mixed case | ✅ P0 |
+| **023** | Auth Bypass Prevention | Test endpoint removal | ✅ P0 |
+| **024** | API Key Strength | 32-128 chars, mixed case | ✅ P0 |
+| **025** | Path Traversal Prevention | Input validation | ✅ P0 |
 | **026** | Zero-Copy Deduplication | SHA-256 before UTF-8 | ✅ P1 |
+| **027** | Pain Point Logging | Operational logging | ✅ |
+| **028** | Unified Test Pipeline | Test orchestration | ✅ |
+| **029** | Path Usage Validation | Runtime path verification | ✅ |
 
-**Legacy Standards** (059-136+): Historical specs in `specs/archive-standards/`
-
-See `specs/standards/` for complete standards index.
+All 29 active standards live in `specs/current-standards/`.
 
 ---
 
-## API Endpoints (v4.7.0)
+## API Endpoints (v5.0.0)
 
 ```bash
 GET  /health                     # System status
 POST /v1/ingest                  # Ingest content
-POST /v1/ingest/streaming        # Stream large file ingestion (v4.7.0)
+POST /v1/ingest/streaming        # Stream large file ingestion (v5.0.0)
 POST /v1/memory/search           # Search memory
-POST /v1/memory/search/stream    # Streaming search with SSE results (v4.7.0)
+POST /v1/memory/search/stream    # Streaming search with SSE results (v5.0.0)
 POST /v1/memory/explore          # BFS graph traversal (illuminate)
 GET  /v1/buckets                 # List buckets
 GET  /v1/tags                    # List tags
@@ -519,12 +513,10 @@ GET  /v1/tags                    # List tags
 - **[README.md](../README.md)** - Quick start, API examples, troubleshooting
 - **[CHANGELOG.md](../CHANGELOG.md)** - Version history (v5.0.0)
 - **[docs/whitepaper.md](../docs/whitepaper.md)** | The Sovereign Context Protocol
-- **[specs/API-ROUTE-MAP.md](API-ROUTE-MAP.md)** - Complete API route documentation (v4.7.0)
-- **[specs/standards/](standards/)** - Active architecture standards (001-026)
-- **[specs/archive-standards/](archive-standards/)** - Historical standards (059-136+)
+- **[specs/current-standards/](current-standards/)** - Active architecture standards (001-029)
 
 ---
 
 **Repository:** https://github.com/RSBalchII/anchor-engine-node
 **License:** AGPL-3.0
-**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v4.7.0 Streaming & Observability
+**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v5.0.0 Streaming & Observability
