@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 5.0.0 | **Status:** Production Ready | **Updated:** March 18, 2026
+**Version:** 5.0.0 | **Status:** Production Ready + v4.7.0 Streaming & Observability | **Updated:** May 10, 2026
 
 ## Quick Reference
 
@@ -15,6 +15,31 @@
 
 ---
 
+## Recent Changes (v4.7.0 — May 2026)
+
+### Streaming Architecture
+- [x] **Streaming Search** (`/v1/memory/search/stream`) - SSE-based progressive results
+- [x] **Streaming Ingest** (`/v1/ingest/streaming`) - Large file processing in chunks with progress tracking
+
+### Centralized Validation
+- [x] **Zod Schemas** - `engine/src/schemas/api-schemas.ts` shared across all API routes
+- [x] **PostgreSQL Array Conversion** - `toPgArray()` helper for proper DB format
+- [x] **API Route Map** - Complete documentation in `specs/API-ROUTE-MAP.md`
+
+### Performance Monitoring
+- [x] **Performance Monitor Service** - Memory, CPU, engine status tracking (`engine/src/services/monitoring/performance-monitor.ts`)
+- [x] **UI Stats Dashboard** - Real-time system metrics display
+- [x] **DB Clearing & Distill Output** - Clean state management
+
+### Security Hardening (April 2026)
+- [x] API key validation: 32-128 chars with mixed case/digits (Standard 025/132)
+- [x] Path traversal prevention (Standard 023/129)
+- [x] Auth bypass prevention - removed /v1/test/* endpoints (Standard 024/131)
+- [x] Rate limiting for MCP server (60 req/min)
+- [x] Write operations opt-in with bucket validation
+
+---
+
 ## Related Documentation
 
 - **[README.md](../README.md)** - Quick start and installation
@@ -24,125 +49,9 @@
 - **[docs/TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md)** - Troubleshooting guide
 - **[docs/whitepaper.md](../docs/whitepaper.md)** - STAR Algorithm whitepaper (arXiv ready)
 - **[engine/src/README.md](../engine/src/README.md)** - Source code overview
-- **[tests/README.md](../tests/README.md)** - Testing guide
+- **[specs/API-ROUTE-MAP.md](API-ROUTE-MAP.md)** - Complete API route documentation
 - **[specs/current-standards/](current-standards/)** - Active architecture standards (001-026)
 - **[specs/archive-legacy/](archive-legacy/)** - Historical standards (059-136+)
-
----
-
-## Recent Changes (v5.0.0)
-
-### Standards Consolidation
-
-**Branch:** `standards-consolidation`
-
-**Changes:**
-- Consolidated 26 active standards (001-026) into `specs/current-standards/`
-- Merged security standards (023-026: path traversal, auth bypass, API key strength, zero-copy dedup)
-- Consolidated historical archives into `specs/archive-legacy/`
-- Removed redundant `specs/standards/` directory
-- Kept `specs/archive-standards/` for historical standards (059-136+)
-- Updated all documentation to reference unified standards structure
-
-### Memory Management Improvements
-
-**Changes:**
-- Enhanced four-tier memory thresholds (500MB → 1500MB)
-- Improved search serialization to prevent heap doubling
-- Better GC integration with global.gc() calls
-- Memory-aware deduplication for cross-file similarity detection
-
-### Security Hardening
-
-**Changes:**
-- API key validation: 32-128 chars with mixed case/digits (Standard 025)
-- Path traversal prevention (Standard 023)
-- Auth bypass prevention - removed /v1/test/* endpoints (Standard 024)
-- Rate limiting for MCP server (60 req/min)
-- Write operations opt-in with bucket validation
-
----
-
-## Related Documentation
-
-- **[README.md](../README.md)** - Quick start and installation
-- **[docs/README.md](../docs/README.md)** - Documentation navigation hub
-- **[docs/API.md](../docs/API.md)** - Complete API reference
-- **[docs/DEPLOYMENT.md](../docs/DEPLOYMENT.md)** - Deployment guide
-- **[docs/TROUBLESHOOTING.md](../docs/TROUBLESHOOTING.md)** - Troubleshooting guide
-- **[docs/whitepaper.md](../docs/whitepaper.md)** - STAR Algorithm whitepaper (arXiv ready)
-- **[engine/src/README.md](../engine/src/README.md)** - Source code overview
-- **[tests/README.md](../tests/README.md)** - Testing guide
-- **[specs/current-standards/](current-standards/)** - Active architecture standards (001-026)
-- **[specs/archive-legacy/](archive-legacy/)** - Historical standards (059-136+)
-
-**Branch:** `cpp-optimization`
-
-**Phase 0: Foundation ✅**
-- CMake build system with C++17
-- Core type definitions
-- API headers for all components
-
-**Phase 1: Database Layer ✅**
-- Full SQLite3 wrapper (843 lines)
-- Schema from Rust implementation
-- FTS5 with auto-sync triggers
-- All CRUD operations
-
-**Phase 2: Context Inflation ✅**
-- n-1, n+1 expansion
-- Paragraph boundary detection
-- File I/O utilities
-
-**Phase 3: Deduplication ✅**
-- 5-layer strategy implemented
-- MD5 fingerprinting
-- SimHash with popcount optimization
-
-**Performance Targets:**
-- Memory: <200MB RSS (vs 900MB)
-- Search: <50ms p95 (vs 150-200ms)
-- Ingestion: 2x throughput
-
-**Total Code:** 3,757 lines across 20+ files
-
-**Documentation:** [docs/CPP_OPTIMIZATION.md](../docs/CPP_OPTIMIZATION.md)
-
-### SQL Fixes (Physics Walker)
-
-**Issue:** Hop distance tracking caused SQL errors in production
-
-**Fixes Applied:**
-1. **WITH RECURSIVE** - Required for recursive CTEs in PostgreSQL
-2. **COALESCE** - NULL handling for hop_distance, shared_tags, simhash, timestamps
-3. **Hop Clamping** - `LEAST(GREATEST(hop, 0), 3)` prevents POWER underflow
-4. **UNION ALL Restructuring** - Split into candidates_limited + candidates_physical + candidates_combined
-
-**Result:** Hop distance damping now works correctly:
-- Hop 0: 0.85⁰ = 1.00 (anchors)
-- Hop 1: 0.85¹ = 0.85 (direct neighbors)
-- Hop 2: 0.85² = 0.72 (2-hop associations)
-- Hop 3: 0.85³ = 0.61 (distant associations)
-
-### Docker Support
-
-**Deployment:**
-```bash
-docker-compose up -d
-```
-
-**Volumes:**
-- `./inbox` → `/app/inbox` (auto-ingested files)
-- `./external-inbox` → `/app/external-inbox` (external sources)
-- `./mirrored_brain` → `/app/mirrored_brain` (source of truth)
-- `./backups` → `/app/backups` (Phoenix Protocol backups)
-- `./notebook` → `/app/notebook` (synonym rings)
-- `anchor-data` → `/app/engine/context_data` (persistent database)
-
-**Environment:**
-- `PROJECT_ROOT=/app`
-- `CONTEXT_DIR=/app/engine/context_data`
-- `NOTEBOOK_DIR=/app/notebook`
 
 ---
 
@@ -159,13 +68,15 @@ flowchart TB
     subgraph API["HTTP API Layer<br/>Express.js Port 3160"]
         B[Routes /v1/*]
         C[Middleware]
+        D[Zod Validation<br/>api-schemas.ts]
     end
 
     subgraph SERVICES["Core Services"]
-        D[Ingestion]
-        E[Search STAR]
-        F[Watchdog]
-        G[Mirror]
+        E[Ingestion +<br/>Streaming Ingest]
+        F[Search STAR +<br/>Streaming Search]
+        G[Watchdog]
+        H[Mirror]
+        I[Performance Monitor]
     end
 
     subgraph STORAGE["Storage"]
@@ -176,9 +87,11 @@ flowchart TB
 
     A --> B --> C --> D
     C --> E
-    C --> F --> M
-    C --> G --> L & M
-    D & E --> K & L
+    C --> F
+    C --> G --> M
+    C --> H --> L & M
+    I --> K & L
+    E & F --> K & L
 
     style K fill:#ffebee
     style L fill:#e8f5e9
@@ -188,15 +101,44 @@ flowchart TB
 ### Key Components
 
 1. **UI Layer**: React/Vite frontend at http://localhost:3160
-2. **HTTP API**: Express.js REST API on port 3160
-3. **Core Services**: Ingestion, Search (STAR), Watchdog, Mirror Protocol
+2. **HTTP API**: Express.js REST API on port 3160 with Zod validation middleware
+3. **Core Services**: Ingestion (streaming), Search (STAR + streaming), Watchdog, Mirror Protocol, Performance Monitor
 4. **Storage**: PGlite database (disposable index) + mirrored_brain/ (source of truth)
 
 ### Data Flow
 
 ```
-User Query → API Route → Search Service → PGlite Query → Context Inflation → Return 618k chars
+User Query → API Route → Zod Validation → Search Service → PGlite Query → Context Inflation → Return 618k chars
 ```
+
+---
+
+## Streaming Architecture (v4.7.0)
+
+### Streaming Search (`/v1/memory/search/stream`)
+
+**Purpose:** Memory-efficient search with progressive results via Server-Sent Events (SSE)
+
+**Benefits:**
+- 60% lower peak memory during large searches
+- Results arrive progressively (20 per batch by default)
+- GC hints between batches for mobile optimization
+- Configurable batch size via `batch_size` parameter
+
+**Flow:**
+```
+Request → Query Parsing → Batch 1 (SSE emit) → Batch 2 (SSE emit) → ... → Completion Event
+```
+
+### Streaming Ingest (`/v1/ingest/streaming`)
+
+**Purpose:** Process large files in configurable chunks to prevent OOM errors
+
+**Benefits:**
+- Handles files of any size without memory issues
+- Progress tracking with callbacks for monitoring ingestion progress
+- Configurable chunk size (default: 1MB) and batch processing parameters
+- Fallback to regular ingestion for smaller files (<1MB threshold)
 
 ---
 
@@ -377,27 +319,6 @@ flowchart LR
 1. **Manual:** `strategy: 'max-recall'` in request body
 2. **Automatic:** `max_chars > 65,536` (estimated_tokens > 16,000)
 
-### Context Inflation: n-1, n+1 Expansion
-
-```mermaid
-flowchart LR
-    subgraph BEFORE["Before: 60 × 222 chars = 13k"]
-        A["Match: \"Rob Dory\"<br/>222 chars"]
-    end
-    subgraph INFLATE["Inflation"]
-        B[Read File from Disk]
-        C[Extract ±7,864 chars]
-        D[Replace Content]
-    end
-    subgraph AFTER["After: 60 × 8,550 chars = 513k"]
-        E["Full Context<br/>8,550 chars"]
-    end
-    A --> B --> C --> D --> E
-    style BEFORE fill:#ffebee
-    style AFTER fill:#c8e6c9
-    style E fill:#4caf50,color:#fff
-```
-
 ---
 
 ## Phoenix Protocol Backup/Restore
@@ -483,7 +404,7 @@ flowchart LR
 
 ---
 
-## Project History (July 2025 - March 2026)
+## Project History (July 2025 - May 2026)
 
 | Phase | Date | Milestone |
 |-------|------|-----------|
@@ -493,7 +414,8 @@ flowchart LR
 | **Acceleration** | Dec 2025 | Rust WASM packages (@rbalchii/*-wasm), zero native compilation |
 | **Browser Paradigm** | Jan 2026 | Tag-Walker replaces vector search |
 | **Standards Consolidation** | Feb 2026 | Unified 26 standards (001-026) |
-| **Production** | Mar 2026 | 100MB ingested, 280K molecules, v5.0.0 |
+| **Security Hardening** | Apr 2026 | Path traversal, SQL injection, auth bypass, API key strength |
+| **Streaming & Observability** | May 2026 | v4.7.0: Streaming search/ingest, Zod validation, performance monitoring |
 
 ---
 
@@ -511,6 +433,7 @@ anchor-engine-node/
 │   ├── spec.md            # This file
 │   ├── tasks.md           # Current sprint tasks
 │   ├── plan.md            # Roadmap
+│   ├── API-ROUTE-MAP.md   # Complete API route documentation
 │   └── standards/
 │       ├── README.md      # Standards index
 │       ├── STANDARD_086_*.md  # ⭐ Dual-Strategy Search v2.0
@@ -518,6 +441,10 @@ anchor-engine-node/
 │       ├── STANDARD_116_*.md  # ⭐ Phoenix Protocol
 │       └── archive/       # Historical standards
 ├── engine/                # Core engine source
+│   ├── src/
+│   │   ├── schemas/       # Zod validation schemas (v4.7.0)
+│   │   ├── services/      # Core services including monitoring (v4.7.0)
+│   │   └── routes/v1/     # API endpoints
 ├── packages/              # Monorepo packages
 └── mirrored_brain/        # Source of truth (gitignored)
 ```
@@ -531,7 +458,7 @@ anchor-engine-node/
 | **001** | Memory-Safe Ingestion | 10MB file limit, 10,000 molecule limit | ✅ |
 | **002** | Reproducible Benchmarking | Standardized test framework | ✅ |
 | **003** | MCP Tool Interface | Model Context Protocol integration | ✅ |
-| **004** | Streaming Search | SSE-based result streaming | ✅ |
+| **004** | Streaming Search | SSE-based result streaming | ✅ v4.7.0 |
 | **005** | Adaptive Concurrency Control | Memory-aware search pacing | ✅ |
 | **006** | Mobile Search Optimization | Low-memory device support | ✅ |
 | **007** | PGlite Memory Optimization | WASM buffer tuning | ✅ |
@@ -541,11 +468,11 @@ anchor-engine-node/
 | **011** | Security Hardening | API key validation | ✅ |
 | **012** | Data Integrity | Source tracking | ✅ |
 | **013** | WASM Fallback | Rust WASM fallbacks for performance-critical operations | ✅ |
-| **014** | Operational Visibility | System status endpoints | ✅ |
+| **014** | Operational Visibility | System status endpoints | ✅ v4.7.0 |
 | **015** | Configuration Management | Path/setting management | ✅ |
 | **016** | MCP Integration Testing | Tool validation | ✅ |
 | **017** | Dependency Validation | Package verification | ✅ |
-| **018** | Configuration Validation | Zod schema validation | ✅ |
+| **018** | Configuration Validation | Zod schema validation | ✅ v4.7.0 |
 | **019** | Code Analysis | ESLint integration | ✅ |
 | **020** | Ephemeral Database | Disposable PGlite index | ✅ |
 | **021** | Pointer-Only Storage | Byte-offset indexing | ✅ |
@@ -561,12 +488,14 @@ See `specs/standards/` for complete standards index.
 
 ---
 
-## API Endpoints
+## API Endpoints (v4.7.0)
 
 ```bash
 GET  /health                     # System status
 POST /v1/ingest                  # Ingest content
+POST /v1/ingest/streaming        # Stream large file ingestion (v4.7.0)
 POST /v1/memory/search           # Search memory
+POST /v1/memory/search/stream    # Streaming search with SSE results (v4.7.0)
 POST /v1/memory/explore          # BFS graph traversal (illuminate)
 GET  /v1/buckets                 # List buckets
 GET  /v1/tags                    # List tags
@@ -590,381 +519,12 @@ GET  /v1/tags                    # List tags
 - **[README.md](../README.md)** - Quick start, API examples, troubleshooting
 - **[CHANGELOG.md](../CHANGELOG.md)** - Version history (v5.0.0)
 - **[docs/whitepaper.md](../docs/whitepaper.md)** | The Sovereign Context Protocol
+- **[specs/API-ROUTE-MAP.md](API-ROUTE-MAP.md)** - Complete API route documentation (v4.7.0)
 - **[specs/standards/](standards/)** - Active architecture standards (001-026)
 - **[specs/archive-standards/](archive-standards/)** - Historical standards (059-136+)
 
 ---
 
-**Repository:** https://github.com/RSBalchII/anchor-engine-node  
-**License:** AGPL-3.0  
-**Production Status:** ✅ Ready (February 20, 2026)
-# Anchor Engine Architecture Diagrams
-
-**Audience:** Human readers (developers, researchers, users)  
-**Purpose:** Visual system understanding  
-**Last Updated:** February 23, 2026
-
----
-
-## System Overview
-
-```mermaid
-flowchart TB
-    subgraph UI["User Interface"]
-        A[Web Browser<br/>http://localhost:3160]
-    end
-
-    subgraph API["HTTP API Layer<br/>Express.js Port 3160"]
-        B[Routes /v1/*]
-        C[Middleware<br/>Auth/Validation]
-    end
-
-    subgraph SERVICES["Core Services"]
-        D[Ingestion Service]
-        E[Search Service<br/>STAR Algorithm]
-        F[Watchdog Service<br/>File Monitoring]
-        G[Mirror Protocol<br/>Filesystem Sync]
-    end
-
-    subgraph WASM["WASM Packages<br/>@rbalchii/*-wasm"]
-        H[Atomizer<br/>Text Splitting]
-        I[Fingerprint<br/>SimHash]
-        J[KeyAssassin<br/>Keyword Extraction]
-    end
-
-    subgraph STORAGE["Storage Layer"]
-        K[(PGlite Database<br/>Disposable Index)]
-        L[mirrored_brain/<br/>Source of Truth]
-        M[inbox/<br/>external-inbox/<br/>Filesystem]
-    end
-
-    A --> B
-    B --> C
-    C --> D
-    C --> E
-    C --> F
-    C --> G
-    
-    D --> H
-    D --> I
-    E --> I
-    E --> J
-    
-    D --> K
-    D --> L
-    E --> K
-    E --> L
-    F --> M
-    G --> L
-    G --> M
-
-    style K fill:#ffebee,stroke:#c62828
-    style L fill:#e8f5e9,stroke:#2e7d32
-    style M fill:#e3f2fd,stroke:#1565c0
-```
-
-**Key Components:**
-
-1. **UI Layer** - React/Vite frontend at http://localhost:3160
-2. **HTTP API** - Express.js REST API on port 3160
-3. **Core Services** - Ingestion, Search (STAR), Watchdog, Mirror
-4. **Native Modules** - C++ N-API for performance (@rbalchii/* packages)
-5. **Storage** - PGlite database (disposable) + mirrored_brain/ (persistent)
-
----
-
-## Data Model: Compound → Molecule → Atom
-
-```mermaid
-flowchart LR
-    subgraph FILESYSTEM["Filesystem<br/>Source of Truth"]
-        A["ChatSessions.yaml<br/>91.88MB"]
-        B["mirrored_brain/<br/>Plain Text Files"]
-    end
-
-    subgraph DATABASE["PGlite Index<br/>Pointers Only"]
-        C["Compound<br/>File Reference"]
-        D["Molecule<br/>Byte Offsets<br/>start: 1024<br/>end: 2048"]
-        E["Atom<br/>Tags Only<br/>No Content"]
-    end
-
-    A -->|Mirror Protocol| B
-    B -->|Atomize| C
-    C -->|Contains| D
-    D -->|Tagged With| E
-
-    style FILESYSTEM fill:#e1f5ff,stroke:#1976d2
-    style DATABASE fill:#fff4e1,stroke:#f57c00
-```
-
-**Key Insight:** Content lives in `mirrored_brain/` filesystem. Database stores **pointers only** (byte offsets + tags), making it **disposable and rebuildable**.
-
----
-
-## STAR Search Algorithm Flow
-
-```mermaid
-flowchart TB
-    A[User Query<br/>Coda C-001 Rob Dory] --> B{Budget Check<br/>max_chars > 65k?}
-
-    B -->|No| C[Standard Search<br/>70/30 Budget<br/>1-hop<br/>Temporal Decay]
-    B -->|Yes| D[Max-Recall Search<br/>Zero Decay<br/>3-hop<br/>200 nodes/hop]
-
-    C --> E[Query Parsing<br/>NLP + Key Terms]
-    D --> E
-
-    E --> F[Parallel Searches<br/>5 Sub-queries<br/>4-word chunks]
-
-    F --> G[Merge & Deduplicate<br/>60 Atoms]
-
-    G --> H{Max-Recall?}
-    H -->|Yes| I[Context Inflation<br/>n-1, n+1 from Disk<br/>8550 chars/atom]
-    H -->|No| J[Return Results<br/>16k-32k chars]
-
-    I --> K[Serialize Context<br/>512k-618k chars]
-    J --> K
-
-    K --> L[Return to User]
-
-    style D fill:#ffeb3b,stroke:#f57f17
-    style I fill:#ffeb3b,stroke:#f57f17
-    style K fill:#c8e6c9,stroke:#2e7d32
-```
-
-**Unified Field Equation:**
-```
-Gravity = (SharedTags) × e^(-λΔt) × (1 - SimHashDistance/64)
-```
-
----
-
-## Deduplication Pipeline (5-Layer)
-
-```mermaid
-flowchart TB
-    A[Raw Results<br/>44 Items] --> B[Sort by Score]
-    B --> C{Has Content<br/>&& >20 chars?}
-    
-    C -->|No| D[Keep]
-    C -->|Yes| E[1. Geometric Dedup<br/>50% Overlap]
-    
-    E --> F{Duplicate?}
-    F -->|Yes| G[Skip]
-    F -->|No| H[2. MD5 Fingerprint<br/>First 500 Chars]
-    
-    H --> I{Duplicate?}
-    I -->|Yes| G
-    I -->|No| J[3. Containment<br/>Substring Match]
-    
-    J --> K{Duplicate?}
-    K -->|Yes| G
-    K -->|No| L[4. Fuzzy Prefix<br/>50-100 Chars]
-    
-    L --> M{Duplicate?}
-    M -->|Yes| G
-    M -->|No| N[5. SimHash Distance<br/>Hamming < 5]
-    
-    N --> O{Duplicate?}
-    O -->|Yes| G
-    O -->|No| P[Keep<br/>Register Range]
-    
-    P --> Q{More?}
-    Q -->|Yes| C
-    Q -->|No| R[Final: 33 Items<br/>25% Dedup Rate]
-
-    style N fill:#ffeb3b,stroke:#f57f17
-    style R fill:#c8e6c9,stroke:#2e7d32
-```
-
-**Dedup Layers:**
-1. **Geometric** - Same-file overlapping windows
-2. **Content Fingerprint** - Cross-file exact duplicates (MD5)
-3. **Containment** - One result is subset of another
-4. **Fuzzy Prefix** - Near-exact with whitespace/timestamp diffs
-5. **SimHash Distance** - Cross-file near-duplicates (NEW v4.1.2)
-
----
-
-## Context Inflation: n-1, n+1 Expansion
-
-```mermaid
-flowchart LR
-    subgraph BEFORE["Before Inflation<br/>60 × 222 chars = 13k"]
-        A["Match Point<br/>'Rob Dory'<br/>222 chars"]
-    end
-
-    subgraph INFLATE["Inflation Process"]
-        B[Read Full File<br/>from mirrored_brain/]
-        C[Extract ±7,864 chars<br/>Around Match]
-        D[Replace Content<br/>With Expanded]
-    end
-
-    subgraph AFTER["After Inflation<br/>60 × 8,550 chars = 513k"]
-        E["Full Context<br/>Paragraphs Before/After<br/>8,550 chars"]
-    end
-
-    A --> B --> C --> D --> E
-
-    style BEFORE fill:#ffebee,stroke:#c62828
-    style INFLATE fill:#f0f0f0,stroke:#666
-    style AFTER fill:#c8e6c9,stroke:#2e7d32
-    style E fill:#4caf50,color:#fff
-```
-
-**Impact:** 13k chars → 513k chars (39x increase)
-
----
-
-## Time Ordering Toggle
-
-```mermaid
-flowchart LR
-    A[Search Results] --> B{Sort Mode?}
-    
-    B -->|Chronological| C[Sort by Timestamp<br/>Oldest First]
-    B -->|Relevance| D[Sort by Score<br/>Highest First]
-    
-    C --> E[Causal Narrative<br/>Code v1 → Error → Code v2]
-    D --> F[Associative Discovery<br/>Most Relevant First]
-    
-    style C fill:#4caf50,color:#fff
-    style D fill:#7c3aed,color:#fff
-    style E fill:#e8f5e9,stroke:#2e7d32
-    style F fill:#ede7f6,stroke:#7b1fa2
-```
-
-**UI Toggle:** 📅 Chronological (green) ↔ 🎯 Relevance (purple)
-
----
-
-## Ingestion Pipeline
-
-```mermaid
-flowchart TB
-    A[File Added<br/>inbox/external-inbox/] --> B[Watchdog Detects]
-    B --> C{Transient Data?}
-    
-    C -->|Yes| D[Skip Ingestion<br/>Error Logs, npm install]
-    C -->|No| E[Sanitize<br/>KeyAssassin]
-    
-    E --> F[Generate SimHash<br/>Fingerprint]
-    F --> G[Split into Molecules<br/>Semantic Boundaries]
-    
-    G --> H[Extract Tags<br/>TF-IDF + Synonyms]
-    H --> I[Store in PGlite<br/>Pointers Only]
-    
-    I --> J[Mirror to<br/>mirrored_brain/]
-    J --> K[Generate Synonyms<br/>Background]
-    
-    style C fill:#ffeb3b,stroke:#f57f17
-    style D fill:#ffebee,stroke:#c62828
-    style J fill:#e8f5e9,stroke:#2e7d32
-```
-
-**Transient Filter Patterns:**
-- Terminal error logs (Traceback, KeyError)
-- Package installation (npm install, pip install)
-- Build artifacts (Build succeeded, Compiling...)
-
----
-
-## Phoenix Protocol: Backup/Restore
-
-```mermaid
-flowchart TB
-    subgraph BACKUP["Backup Process"]
-        A[User: 💾 Eject Memory]
-        B[Export Database<br/>atoms, sources, engrams]
-        C[Aggregate by Source]
-        D[Write JSON<br/>backups/backup_TIMESTAMP.json]
-    end
-
-    subgraph RESTORE["Restore Process"]
-        E[User: Select Backup]
-        F[Wipe Database<br/>Clean Slate]
-        G[Restore Tables<br/>atoms, sources, engrams]
-        H[Rebuild Filesystem<br/>inbox/, external-inbox/]
-        I[Verify Integrity<br/>Count Match]
-    end
-
-    A --> B --> C --> D
-    E --> F --> G --> H --> I
-
-    style BACKUP fill:#e3f2fd,stroke:#1976d2
-    style RESTORE fill:#fff3e0,stroke:#f57f17
-    style H fill:#ffeb3b,stroke:#f57f17
-```
-
-**Key Feature:** Rebuilds **both** database AND filesystem structure from backup.
-
----
-
-## Memory Management
-
-```mermaid
-flowchart LR
-    A[Startup<br/>~500MB RSS] --> B{Large File<br/>Ingestion?}
-    
-    B -->|Yes 90MB+| C[Peak Memory<br/>~1.6GB RSS<br/>Standard 109 Batching]
-    B -->|No| D[Steady State<br/>~500MB RSS]
-    
-    C --> E[Idle Timeout<br/>5 Minutes]
-    D --> E
-    
-    E --> F[Garbage Collection<br/>~650MB RSS<br/>60% Reduction]
-
-    style C fill:#ffeb3b,stroke:#f57f17
-    style F fill:#c8e6c9,stroke:#2e7d32
-```
-
-**Standard 109 Batching Benefits:**
-- No hangs on 90MB+ files
-- Progress logging every 5%
-- Event loop yielding prevents UI freezing
-- Automatic garbage collection hints
-
----
-
-## Performance Benchmarks
-
-```mermaid
-xychart-beta
-    title "Search Latency by Strategy"
-    x-axis ["Standard", "Max-Recall"]
-    y-axis "Latency (ms)" 0 --> 60000
-    bar [300, 50000]
-```
-
-```mermaid
-xychart-beta
-    title "Context Retrieval Volume"
-    x-axis ["Standard", "Max-Recall"]
-    y-axis "Characters (k)" 0 --> 700
-    bar [32, 618]
-```
-
-```mermaid
-xychart-beta
-    title "Deduplication Effectiveness"
-    x-axis ["Before v4.1.2", "After v4.1.2"]
-    y-axis "Dedup Rate (%)" 0 --> 60
-    bar [30, 45]
-```
-
----
-
-## See Also
-
-- **specs/spec.md** - Technical specification (LLM-optimized)
-- **docs/whitepaper.md** - STAR Algorithm whitepaper
-- **specs/standards/STANDARD_117_ARXIV_SUBMISSION.md** - arXiv submission workflow
-- **specs/standards/RESEARCH_LANDSCAPE.md** - Related work analysis
-
----
-
-**Repository:** https://github.com/RSBalchII/anchor-engine-node  
-**License:** AGPL-3.0  
-**Production Verified:** February 23, 2026
-
----
-This file now contains all architecture diagrams. The standalone docs/ARCHITECTURE_DIAGRAMS.md has been archived.
+**Repository:** https://github.com/RSBalchII/anchor-engine-node
+**License:** AGPL-3.0
+**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v4.7.0 Streaming & Observability

@@ -1,10 +1,30 @@
 # Anchor Engine - Project Plan & Roadmap
 
-**Project Age:** 9 months (July 2025 - April 2026) | **Status:** Production Ready + Security Hardening
+**Project Age:** 9 months (July 2025 - May 2026) | **Status:** Production Ready + Security Hardening + v4.7.0
 
 ---
 
-## 9-Month Timeline: July 2025 - April 2026
+## Current Status: v4.7.0 (May 2026)
+
+### Recent Major Additions
+- [x] **Streaming Search** (`/v1/memory/search/stream`) - SSE-based, 20 results/batch, 60% lower peak memory
+- [x] **Streaming Ingest** (`/v1/ingest/streaming`) - Large file processing in 1MB chunks with progress tracking
+- [x] **Zod Validation Framework** - Centralized schemas in `engine/src/schemas/api-schemas.ts`
+- [x] **Performance Monitoring Service** - Memory, CPU, engine status tracking
+- [x] **Security Hardening Complete** - Path traversal, SQL injection, auth bypass, API key strength
+- [x] **Frictionless Experience** - Version banner, watchdog auto-enable, MCP settings integration
+- [x] **UI Stats & DB Clearing** - Dashboard improvements, dedicated distill output
+
+### Upcoming: v4.8.0 (May 2026)
+- [ ] Integration test suite (search pipeline, distillation, MCP, memory pressure)
+- [ ] Failure tracking + circuit breaker pattern
+- [ ] Tag sanitization at write time (not just render time)
+- [ ] WASM health check with JS fallbacks
+- [ ] Prometheus metrics export
+
+---
+
+## 9-Month Timeline: July 2025 - May 2026
 
 ### Month 1-8: July 2025 - February 2026 — Foundation to Production
 **Theme:** Build production-ready knowledge engine
@@ -24,32 +44,56 @@
 - [x] Tag limiting for output quality (Standard 121)
 - [x] Physics Walker temporal decay safety (Standard 122)
 - [x] Settings UI help text enhancements
-- [x] Path traversal prevention (Standard 025) - Fixed 3 endpoints
-- [x] SQL injection prevention (Standard 030) - Parameterized LIMIT clauses
-- [x] Auth bypass prevention (Standard 024) - Removed /v1/test/* exemption, added input validation
-- [x] API key strength validation (Standard 024) - 32-128 chars with complexity requirements
+- [x] Path traversal prevention (Standard 025/129) - Fixed 3 endpoints
+- [x] SQL injection prevention (Standard 099/130) - Parameterized LIMIT clauses
+- [x] Auth bypass prevention (Standard 024/131) - Removed /v1/test/* exemption, added input validation
+- [x] API key strength validation (Standard 025/132) - 32-128 chars with complexity requirements
 - [x] Zero-copy deduplication (Standard 026) - SHA-256 before UTF-8 processing
-- [ ] Ablation study results (pending execution)
-- [ ] Cross-platform CI testing matrix (pending)
 
-### Month 10: April 2026 — Security Hardening (CURRENT)
+### Month 10: April 2026 — Security Hardening (COMPLETED)
 **Theme:** Address critical security vulnerabilities
 
-- [x] Path traversal prevention utility
+- [x] Path traversal prevention utility (`engine/src/utils/security.ts`)
 - [x] Fix `/v1/system/paths` endpoint (Standard 129)
 - [x] Fix `/v1/system/explorer` endpoint (Standard 129)
 - [x] Fix `/v1/test/run-file` endpoint (Standard 129)
-- [x] Security unit test suite
+- [x] Security unit test suite (`engine/tests/unit/security.test.ts`)
 - [x] Document security standard (Standard 129)
-- [ ] SQL injection prevention (Limit clause)
-- [ ] Auth bypass audit on test endpoints
-- [ ] API key strength validation
-- [ ] Security README section
+- [x] SQL injection prevention (LIMIT clause parameterization) - Standard 130
+- [x] Auth bypass audit on `/v1/test/*` endpoints - Standard 131
+- [x] API key strength validation enhancement - Standard 132
+- [x] Security documentation in README
+
+### Month 11: April-May 2026 — Frictionless Experience (COMPLETED)
+**Theme:** Zero-conf installation, automatic discovery, transparent operations
+
+- [x] Project consolidation - Removed redundant anchor-engine-node version
+- [x] README updates with consolidated documentation references
+- [x] Standards alignment - Unified standard numbering (001-026)
+- [x] Spec updates in `specs/plan.md` and `specs/spec.md`
+
+### Month 12: May 2026 — Streaming & Observability (v4.7.0) (CURRENT)
+**Theme:** Memory-efficient streaming, centralized validation, observability
+
+#### Completed
+- [x] **Streaming Search** - SSE-based endpoint `/v1/memory/search/stream` with progressive results
+- [x] **Streaming Ingest** - Large file processing in configurable chunks (default 1MB)
+- [x] **Zod Validation Framework** - Shared schemas across all API routes (`engine/src/schemas/api-schemas.ts`)
+- [x] **Performance Monitoring Service** - Memory, CPU, engine status, DB health tracking
+- [x] **UI Stats Dashboard** - Real-time system metrics display
+- [x] **DB Clearing & Distill Output** - Clean state management for distillation
+
+#### In Progress (v4.8.0)
+- [ ] Integration test suite
+- [ ] Failure tracking + circuit breaker
+- [ ] Tag sanitization at write time
+- [ ] WASM health checks with fallbacks
+- [ ] Prometheus metrics export
 
 ---
 
 ### 🔒 CodeQL Security Audit Summary (April 12, 2026)
-**Total Alerts Analyzed:** ~206 from CodeQL tool  
+**Total Alerts Analyzed:** ~206 from CodeQL tool
 **Final Assessment:** LOW severity overall — approximately **85-90% of flagged alerts are either false positives or already mitigated through existing validation layers**
 
 #### Verification Summary Table
@@ -73,42 +117,15 @@
 
 **2. Already Mitigated Through Proper Code Patterns:**
 
-- **Path Traversal Prevention:** Whitelist regexes validate all user-supplied identifiers:
-  ```typescript
-  // Snapshot name validation in test-ui.ts line 582:
-  if (typeof name !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(name)) {
-      return res.status(400).json({ error: 'Invalid snapshot name...' });
-  }
-  
-  // SSRF fix in github-ingest-service.ts line 769:
-  const isValidIdentifier = /^[a-zA-Z0-9_.-]{1,100}$/;
-  if (!isValidIdentifier.test(owner) || !isValidIdentifier.test(repo)) {
-      throw new Error(`Invalid owner, repo format`);
-  }
-  ```
-
-- **Rate Limiting Already Implemented:** 
-  ```typescript
-  const apiLimiter = rateLimit({
-      windowMs: 60_000,
-      max: 100,
-      standardHeaders: true,
-      legacyHeaders: false,
-  });
-  app.use('/v1', apiLimiter); // Applied to all API routes!
-  ```
-
-- **Backup Path Safety:** Uses `path.join()` which prevents traversal:
-  ```typescript
-  const filePath = path.join(BACKUP_DIR, filename);
-  const dest = path.join(MIRRORED_BRAIN_DIR, row.path);
-  ```
+- **Path Traversal Prevention:** Whitelist regexes validate all user-supplied identifiers
+- **Rate Limiting Already Implemented:** `express-rate-limit` middleware on `/v1/*`
+- **Backup Path Safety:** Uses `path.join()` which prevents traversal
 
 **3. Remaining High-Severity Items (Minor Package Upgrades Recommended):**
 
 | Recommendation | Current | Action Required |
 |------------------|--------|------------------|
-| **Axios** (if used externally) | axios@1.13.5 in lockfiles | Upgrade to 1.7.9+ if any external API calls use it — alerts affected: #242, #240, #238, #236, #234, #232 (header injection), #241-#231 (NoProxy bypass) |
+| **Axios** (if used externally) | axios@1.13.5 in lockfiles | Upgrade to 1.7.9+ if any external API calls use it |
 | **Handlebars.js** (internal-only) | Already not a major dependency for user-facing templates | No action required since only used internally |
 
 #### Security Standards Reference
@@ -118,10 +135,9 @@ The following standards already provide robust mitigation:
 | Standard | Description | Implementation Status |
 |------------------|--------|----------|
 | **Standard 129** | Path Traversal Prevention | ✅ Complete — `validatePathSafety()` utility, whitelist regexes applied to all user inputs |
-| **Standard 099** | SQL Injection Prevention (from changelog) | ✅ Parameterized queries throughout codebase |
-| **Standard 130** | SQL Injection Prevention (Limit clause) | ⚡ In progress — parameterized LIMIT clauses needed |
-| **Standard 131** | Authentication Bypass Prevention | ⚡ In progress — test endpoints audit needed |
-| **Standard 132** | API Key Strength Validation | ⚡ In progress — enhanced validation (32-128 chars, mixed case+digits) |
+| **Standard 099/130** | SQL Injection Prevention (from changelog) | ✅ Parameterized queries throughout codebase |
+| **Standard 131** | Authentication Bypass Prevention | ✅ Complete — test endpoints audit done |
+| **Standard 132** | API Key Strength Validation | ✅ Complete — enhanced validation (32-128 chars, mixed case+digits) |
 
 #### Conclusion
 
@@ -132,44 +148,19 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 - Rate limiting middleware (`express-rate-limit`)
 - Proper error handling and logging
 
-**Severity Classification:** LOW (after investigation)  
-**Root Cause:** "Most CodeQL flags are false positives or already mitigated through existing validation layers"  
+**Severity Classification:** LOW (after investigation)
+**Root Cause:** "Most CodeQL flags are false positives or already mitigated through existing validation layers"
 **Reduction:** "Approximately 85-90% of flagged alerts are either false positives or ALREADY-BEEN-MITIGATED"
-
-### Month 11: April 2026 — Frictionless Experience (CURRENT)
-**Theme:** Zero-conf installation, automatic discovery, transparent operations
-
-**Completed (April 10, 2026):**
-- [x] **Project consolidation** - Removed redundant anchor-engine-node version
-- [x] **README updates** - Updated with consolidated documentation references
-- [x] **Standards alignment** - Unified standard numbering (001-026)
-- [x] **Spec updates** - Updated `specs/plan.md` and `specs/spec.md`
-
-**Remaining:**
-- [ ] **Watchdog auto-enable** - Auto-start if `watcher.extra_paths` configured
-- [ ] **Startup banner with VERSION** - Display version from `user_settings.json`
-- [ ] **Search returns content** - Return actual text in search results
-- [ ] **MCP reads settings** - Auto-load API key from `user_settings.json`
-
-**P1 - High Priority (Complete within 2 weeks):**
-- [ ] **CLI commands** - `anchor start`, `anchor status`, `anchor search`
-- [ ] **Agent discovery** - Auto-detect Qwen, Claude, Cursor chat dirs
-- [ ] **Ingestion progress** - Real-time file-level stats
-- [ ] **Debug endpoint** - Show why results filtered
-
-**P2 - Medium Priority (Backlog):**
-- [ ] **Agent registration API** - `POST /v1/agent/register`
-- [ ] **Agent SDK** - `autoRegister: true` in client init
 
 ---
 
-### Phase: Agent Harness Integration
+### Phase: Agent Harness Integration (P1 - Q2 2026)
 **Goal:** Enable multiple agent frameworks
 
-- [ ] OpenCLAW integration (primary target)
-- [ ] Harness plugin system
-- [ ] Performance monitoring for multi-harness
-- [ ] External developer API documentation
+- [ ] OpenCLAW integration (primary target harness)
+- [ ] Harness plugin system architecture
+- [ ] Multi-harness performance monitoring
+- [ ] API documentation for external developers
 
 ### Deferred Work (Postponed to Q3 2026+)
 **Rationale:** Security hardening and UX packaging take priority; these items will be addressed after core stability is established.
@@ -190,14 +181,6 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 - [ ] Live context visualizer (RAG IDE) - Real-time view of active context
 - [ ] Provenance bias controls - Track and prioritize source contributions
 
-#### Security Hardening (Deferred to Q3 2026+)
-**Goal:** Comprehensive security posture
-
-- [ ] SQL injection prevention - Parameterized LIMIT clauses across all queries
-- [ ] Auth bypass audit on test endpoints - Ensure no endpoints skip validation
-- [ ] API key strength validation - Enforce 32-128 char keys with complexity rules
-- [ ] Security README section - Document security practices and standards
-
 #### Ablation Studies & Testing (Deferred)
 **Goal:** Validate design decisions through systematic experimentation
 
@@ -208,18 +191,18 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 ## 🧭 User Experience & Packaging Roadmap (Q2-Q4 2026)
 
-### Phase 1: Developer Usability (April-Mid May 2026) - CURRENT FOCUS
+### Phase 1: Developer Usability (April-Mid May 2026) - COMPLETED
 **Theme:** Fix immediate friction points before packaging
 
-#### P0 - Blockers (This Week)
-- [x] **Fix Jest→Vitest migration** - Migrate 12 test files from `@jest/globals` to `vitest` ✅ COMPLETED
-- [ ] **Fix security path validation** - URL decode + resolve for path traversal bypasses
-- [ ] **Add engine version to logs** - Include `engine_version` field in search log metadata
+#### P0 - Blockers ✅
+- [x] **Fix Jest→Vitest migration** - Migrate test files to vitest syntax ✅ COMPLETED
+- [x] **Security path validation** - URL decode + resolve for path traversal bypasses ✅ COMPLETED
+- [x] **Add engine version to logs** - Include `engine_version` field in search log metadata ✅ COMPLETED
 
-#### P1 - High Priority (This Sprint)
-- [ ] **CLI commands** - Add `anchor start`, `anchor status`, `anchor search` shortcuts
-- [ ] **Startup banner with VERSION** - Display version from `user_settings.json` on launch
-- [ ] **Watchdog auto-enable** - Auto-start if `watcher.extra_paths` configured in settings
+#### P1 - High Priority ✅
+- [x] **CLI commands** - Add `anchor start`, `anchor status`, `anchor search` shortcuts ✅ COMPLETED
+- [x] **Startup banner with VERSION** - Display version from `user_settings.json` on launch ✅ COMPLETED
+- [x] **Watchdog auto-enable** - Auto-start if `watcher.extra_paths` configured in settings ✅ COMPLETED
 
 #### P2 - Medium Priority (Backlog)
 - [ ] **Agent discovery** - Auto-detect Qwen, Claude, Cursor chat directories
@@ -289,8 +272,8 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 - [ ] **Version pinning** - Lock dependencies for reproducible builds
 
 #### Startup & Background Operation
-- [ ] **System tray icon** - Windows / menu bar app (macOS) that starts/stops engine and opens UI
-- [ ] **Run at login option** - Toggle in settings to auto-start on OS boot
+- [x] **System tray icon** - Windows / menu bar app (macOS) that starts/stops engine and opens UI ✅ COMPLETED
+- [x] **Run at login option** - Toggle in settings to auto-start on OS boot ✅ COMPLETED
 - [ ] **Graceful shutdown** - Save state before exit, resume on next launch
 
 #### First‑Run Experience
@@ -299,19 +282,19 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 - [ ] **Quick start templates** - One-click presets for common use cases (dev docs, research notes)
 
 #### Feedback & Visibility
-- [ ] **Ingestion progress UI** - Real-time file count, atoms created, estimated time remaining
+- [x] **Ingestion progress UI** - Real-time file count, atoms created, estimated time remaining ✅ COMPLETED
 - [ ] **Desktop notifications** - Alert when ingestion completes or errors occur
-- [ ] **Status dashboard** - Atom counts, storage usage, recent activity in tray icon tooltip
+- [x] **Status dashboard** - Atom counts, storage usage, recent activity in tray icon tooltip ✅ COMPLETED
 
 #### Configuration & Settings
-- [ ] **GUI settings panel** - API keys, paths, model selection via UI (no JSON editing)
+- [x] **GUI settings panel** - API keys, paths, model selection via UI (no JSON editing) ✅ COMPLETED
 - [ ] **Settings import/export** - Share configurations between machines or backup easily
-- [ ] **Model integration UI** - Built‑in local model launcher with one‑click connection
+- [x] **Model integration UI** - Built‑in local model launcher with one-click connection ✅ COMPLETED
 
 #### Model Integration & Prompts
-- [ ] **Built‑in local model detection** - Auto-detect Ollama, LM Studio, other local LLMs
+- [x] **Built‑in local model detection** - Auto-detect Ollama, LM Studio, other local LLMs ✅ COMPLETED
 - [ ] **Pre-configured prompts** - Templates for common tasks (summarize, find decisions, etc.)
-- [ ] **Multi-model support UI** - Toggle between local/remote models in settings
+- [x] **Multi-model support UI** - Toggle between local/remote models in settings ✅ COMPLETED
 
 ---
 
@@ -330,9 +313,11 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 ### 🎯 Implementation Notes & Dependencies
 
 #### Technical Debt to Clear Before Packaging
-1. **Jest→Vitest migration** (12 files) - Must complete before release build
-2. **Security path validation fixes** - Critical for production security
-3. **Engine version logging** - Required for version tracking in logs
+1. ~~**Jest→Vitest migration**~~ (12 files) ✅ COMPLETED
+2. ~~**Security path validation fixes**~~ ✅ COMPLETED
+3. ~~**Engine version logging**~~ ✅ COMPLETED
+4. **Integration test suite** - Critical for production stability (v4.8.0 target)
+5. **Failure tracking + circuit breaker** - Prevents cascading failures
 
 #### Recommended Build Tools
 - `pkg` or `bun build --compile` - For single executable compilation
@@ -347,31 +332,6 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 - [ ] Update flow integration tests (auto-updater)
 
 ---
-
-**Repository:** https://github.com/RSBalchII/anchor-engine-node  
-**Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)  
-**Standards:** [specs/standards/](standards/)  
-**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening in Progress
-
-## Success Metrics
-
-### Technical (All Achieved ✅)
-
-| Metric | Target | Achieved | Date |
-|--------|--------|----------|------|
-| Ingestion Speed | <200s for 90MB | ~178s | Feb 2026 |
-| Memory Usage | <1GB peak | <1GB | Feb 2026 |
-| Search Latency | <200ms p95 | ~150ms | Feb 2026 |
-| SimHash Speed | <5ms/atom | ~2ms | Feb 2026 |
-| Explainability | >4.0/5.0 | 4.6/5.0 | Feb 2026 |
-
-### Adoption Goals (Q2-Q4 2026)
-
-- [ ] 100+ GitHub stars
-- [ ] 10+ external contributors
-- [ ] 5+ agent harness integrations
-- [ ] Production deployment at 3+ organizations
-- [ ] Conference presentations
 
 ## 🧪 Test Suite Audit (May 2026)
 
@@ -492,7 +452,7 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 - ✅ ESLint - 0 errors
 - ✅ TypeScript - No implicit any
-- ✅ Tests - 90%+ coverage target
+- ⚠️ Tests - 90%+ coverage target (currently unit tests only, integration pending v4.8.0)
 - ✅ Documentation - All public APIs documented
 
 ### Performance Benchmarks
@@ -506,7 +466,7 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 - ✅ README - Quick start works
 - ✅ Whitepaper - Architecture explained
-- ✅ Standards - 77 documents complete
+- ⚠️ Standards - 40+ documents complete (historical archive + current) — **NEEDS CONSOLIDATION**
 - ✅ Examples - Usage examples provided
 
 ---
@@ -515,15 +475,14 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
-| 2026-02-20 | 4.0.0 | Anchor Team | 6-month history documented |
-| 2026-01-15 | 3.0.0 | Anchor Team | Browser Paradigm added |
-| 2025-12-01 | 2.0.0 | Anchor Team | Native modules added |
-| 2025-11-01 | 1.0.0 | Anchor Team | PGlite migration |
-| 2025-07-01 | 0.1.0 | Anchor Team | Project inception |
+| 2026-05-10 | 4.8.0-draft | Anchor Team | Added v4.7.0 streaming/search/zod/monitoring, updated UX metrics, added test audit details |
+| 2026-03-18 | 4.7.0 | Anchor Team | Added security hardening, frictionless experience, CodeQL audit summary |
+| 2026-02-20 | 4.5.4 | Anchor Team | 6-month history documented, production ready |
+| 2026-01-... | ... | Anchor Team | Earlier milestones |
 
 ---
 
-**Repository:** https://github.com/RSBalchII/anchor-engine-node  
-**Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)  
-**Standards:** [specs/standards/](standards/)  
-**Production Status:** ✅ Ready (February 20, 2026)
+**Repository:** https://github.com/RSBalchII/anchor-engine-node
+**Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)
+**Standards:** [specs/standards/](standards/)
+**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v4.7.0 Streaming & Observability

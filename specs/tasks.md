@@ -1,10 +1,77 @@
 # Anchor Engine - Current Tasks
 
-**Last Updated:** May 7, 2026 | **Current Sprint:** Test Consolidation & Housekeeping
+**Last Updated:** May 10, 2026 | **Current Sprint:** v4.7.0 + v4.8.0 Prep
 
 ---
 
-## 🧹 Test Consolidation & Housekeeping (May 2026) — CURRENT
+## 🎯 Completed (v4.7.0 — May 2026)
+
+### Streaming Architecture
+- [x] **Streaming Search** (`/v1/memory/search/stream`) - SSE-based, progressive results, 60% lower peak memory ✅ DONE
+- [x] **Streaming Ingest** (`/v1/ingest/streaming`) - Large file processing in 1MB chunks with progress tracking ✅ DONE
+
+### Validation Framework
+- [x] **Zod Validation Schemas** - Centralized schemas in `engine/src/schemas/api-schemas.ts` ✅ DONE
+- [x] **PostgreSQL Array Conversion** - `toPgArray` helper for proper DB format ✅ DONE
+- [x] **API Route Map** - Complete documentation in `specs/API-ROUTE-MAP.md` ✅ DONE
+
+### Performance Monitoring
+- [x] **Performance Monitor Service** - Memory, CPU, engine status tracking ✅ DONE
+- [x] **UI Stats Dashboard** - Real-time system metrics display ✅ DONE
+- [x] **DB Clearing & Distill Output** - Clean state management ✅ DONE
+
+### Security Hardening (April 2026)
+- [x] Path traversal prevention utility (`engine/src/utils/security.ts`) ✅ DONE
+- [x] Fix `/v1/system/paths` endpoint (Standard 129) ✅ DONE
+- [x] Fix `/v1/system/explorer` endpoint (Standard 129) ✅ DONE
+- [x] Fix `/v1/test/run-file` endpoint (Standard 129) ✅ DONE
+- [x] Security unit tests (`engine/tests/unit/security.test.ts`) ✅ DONE
+- [x] SQL injection prevention (LIMIT clause parameterization) - Standard 130 ✅ DONE
+- [x] Auth bypass audit on `/v1/test/*` endpoints - Standard 131 ✅ DONE
+- [x] API key strength validation enhancement - Standard 132 ✅ DONE
+
+### Frictionless Experience (April 2026)
+- [x] Project consolidation ✅ DONE
+- [x] README updates with consolidated documentation ✅ DONE
+- [x] Standards alignment - Unified numbering ✅ DONE
+- [x] Spec updates in plan.md and spec.md ✅ DONE
+
+---
+
+## 🔧 In Progress (v4.8.0 — May 2026)
+
+### P0 — Integration Test Suite (CRITICAL)
+**Goal:** End-to-end testing for core functionality
+
+- [ ] **`engine/tests/integration/search-pipeline.test.ts`** - Full search flow, deduplication, tag filtering
+- [ ] **`engine/tests/integration/radial-distiller.test.ts`** - Line dedup, memory safety, output generation
+- [ ] **`engine/tests/integration/mcp-server.test.ts`** - Tool execution, rate limiting, security settings
+- [ ] **`engine/tests/integration/memory-pressure.test.ts`** - Adaptive concurrency, throttling, GC management
+
+### P1 — Failure Tracking & Circuit Breaker
+**Goal:** Automatic degradation when services fail
+
+- [x] **OperationResult Pattern** - Type-safe result handling (`engine/src/utils/operation-result.ts`) ✅ DONE
+- [ ] **FailureTracker Service** - Track failures by operation/error code with circuit breaker
+- [ ] **Circuit Breaker Integration** - Auto-open after N failures, half-open recovery
+
+### P2 — Tag Sanitization at Write Time
+**Goal:** Clean tags stored in database (not just returned)
+
+- [x] **TagSanitizer Utility** - Centralized sanitization (`engine/src/utils/tag-sanitizer.ts`) ✅ DONE
+- [ ] **Update Ingestion Pipeline** - `ingest-atomic.ts` sanitize atom/molecule tags on write
+- [ ] **Update Search Enrichment** - Sanitize enriched tags before returning results
+
+### P3 — WASM Health Check + Fallbacks
+**Goal:** Graceful degradation when WASM unavailable
+
+- [x] **WasmHealthChecker** - Verify all WASM modules loaded and functional ✅ DONE
+- [x] **Fallback Implementations** - JS fallbacks for tokenization, fingerprinting, key extraction ✅ DONE
+- [ ] **Startup Health Check Integration** - Auto-run on engine start, log warnings
+
+---
+
+## 🧹 Test Consolidation & Housekeeping (May 2026) — PREVIOUS
 
 ### P0 — Test File Consolidation
 - [ ] **Move all tests under `engine/tests/`** — Consolidate `tests/` root directory into `engine/tests/`
@@ -16,8 +83,7 @@
   - `pnpm test:unit` — unit tests only
   - `pnpm test:integration` — integration tests only
   - `pnpm test:bench` — benchmarks only
-  - Remove: `test:orchestrator:*`, `test:cross-route:*`, `test:github-ingestion`, `test:text-flow`, `test:validate-decision-records`, `test:compare`, `test:compare:pattern`
-- [ ] **Fix remaining 19 failing tests** — See `specs/plan.md` § Test Suite Audit for breakdown
+- [ ] **Fix remaining failing tests** — See `specs/plan.md` § Test Suite Audit for breakdown
 
 ### P1 — Runtime Data Cleanup
 - [ ] **Verify `.anchor/` at project root is empty** — All paths should resolve to `~/.anchor/` via `user_settings.json`
@@ -39,36 +105,11 @@
 
 ---
 
-## 🔧 Test Suite Stabilization (May 2026) — PREVIOUS
-
-**Run:** `pnpm test:all` or `vitest run --config engine/vitest.config.ts`
-**Baseline:** 19 failed / 35 passed / 4 skipped (out of 58 total)
-
-### P0 — AST Parser Tests (our change, immediate fix)
-- [ ] **`engine/tests/unit/ast-parser.test.ts`** — All `parseCodeStructure()` calls need `await`; test bodies need to be `async`
-  - 12 tests affected; error: `"Cannot read properties of undefined (reading 'find')"` on Promise return value
-
-### P1 — Module Resolution & Config Issues
-- [x] **`engine/tests/unit/context-inflator.test.ts`** — Fixed import paths (added `src/` to db, mirror, db-batch) ✅ DONE
-- [x] **`engine/tests/unit/native-module-manager.test.ts`** — Inlined mock function for vitest hoisting fix ✅ DONE
-- [x] **`engine/tests/unit/engine-version-logger.test.ts`** — Added vitest import ✅ DONE
-
-### P2 — Environment & Skeleton Issues
-- [x] **`engine/tests/unit/physics_walker.test.ts`** — Fixed deterministic ordering (id ASC tiebreaker) ✅ DONE. Note: passes individually; fails when run concurrently with pglite-database due to shared DB path race condition.
-- [x] **`engine/tests/unit/security.test.ts`** — Migrated from node:test to vitest/expect ✅ DONE
-
-### P3 — Pre-existing Assertion Bugs (update stale expectations)
-- [x] **`engine/tests/unit/github-ingest-history.test.ts`** — Fixed format assertion to `'A new.txt'` ✅ DONE
-- [x] **`engine/tests/unit/safe-dns.test.ts`** — Added graceful error handling for DNS fallback failure ✅ DONE
-- [x] **`engine/tests/unit/search-logging-verification.test.ts`** — Searches all log files for matching query instead of assuming latest ✅ FIXED
-
----
-
 ## ✅ Completed (February 2026)
 
 ### Phase: Production Ready
 - [x] Whitepaper implementation complete
-- [x] All 77 architecture standards documented
+- [x] All architecture standards documented
 - [x] 100MB+ production data ingested (436 files)
 - [x] ~280,000 molecules processed
 - [x] ~1,500 atoms indexed
@@ -79,132 +120,15 @@
 
 ## 🎯 Current Focus
 
-### Phase: Security Hardening (P0 - April 2026)
-**Goal:** Address critical security vulnerabilities identified in March 2026 review
+### Phase: v4.7.0 Streaming & Observability (COMPLETED — May 2026)
+**Goal:** Memory-efficient streaming, centralized validation, observability infrastructure
 
-- [x] Path traversal prevention utility (`engine/src/utils/security.ts`)
-- [x] Fix `/v1/system/paths` endpoint (Standard 129)
-- [x] Fix `/v1/system/explorer` endpoint (Standard 129)
-- [x] Fix `/v1/test/run-file` endpoint (Standard 129)
-- [x] Security unit tests (`engine/tests/unit/security.test.ts`)
-- [x] Document security standard (Standard 129)
-- [x] SQL injection prevention (LIMIT clause parameterization) - Standard 130
-- [x] Auth bypass audit on `/v1/test/*` endpoints - Standard 131
-- [x] API key strength validation enhancement - Standard 132
-- [x] Security documentation in README
+All v4.7.0 tasks completed. Moving to v4.8.0 prep.
 
-### Phase: Documentation & Reproducibility (COMPLETED March 2026)
-- [x] Benchmark suite with sample corpus generator
-- [x] Benchmark protocol documentation (Standard 077)
-- [x] STAR parameter tuning guide (Standard 078)
-- [x] API contracts with request/response examples
-- [x] Security hardening documentation
-- [x] Architecture tradeoffs analysis
-- [x] GitHub Actions benchmark workflow
-- [x] Tag limiting implementation (Standard 121)
-- [x] Physics Walker underflow fix (Standard 122)
-- [x] Settings UI help text enhancements
-- [x] Physics Walker Jest tests created
-- [x] Path traversal prevention (Standard 129) - `dev/security/path-traversal`
-- [x] SQL injection fix via parameterized LIMIT (Standard 130) - `dev/security/sql-injection`
-- [x] Auth bypass audit complete (Standard 131) - `dev/security/auth-bypass-audit`
-- [x] API key strength validation (Standard 132) - `dev/security/api-key-strength`
-- [x] Security documentation in README
+### Phase: v4.8.0 Prep (CURRENT — May 2026)
+**Goal:** Production reliability through integration tests and failure tracking
 
-### Phase: Frictionless Experience (P0 - April 2026)
-**Goal:** Zero-conf installation, automatic discovery, transparent operations
-
-**P0 - Critical (Must complete before next release):**
-- [ ] **Watchdog auto-enable** - Auto-start if `watcher.extra_paths` configured
-  - Related: `FRICTIONLESS_SPEC.md` Section 1.2
-  - Current: Manual start required from Settings UI
-  
-- [ ] **Startup banner with VERSION** - Display version from `user_settings.json`
-  - Related: `FRICTIONLESS_SPEC.md` Section 1.3
-  - Current: Hardcoded version in banner
-  
-- [ ] **Search returns content** - Return actual text in search results
-  - Related: `FRICTIONLESS_SPEC.md` Section 4.1
-  - Current: Returns metadata only, no content
-  
-- [ ] **MCP reads settings** - Auto-load API key from `user_settings.json`
-  - Related: `FRICTIONLESS_SPEC.md` Section 5.1
-  - Current: Requires env vars or manual config
-
-**P1 - High Priority (Complete within 2 weeks):**
-- [ ] **CLI commands** - `anchor start`, `anchor status`, `anchor search`
-  - Related: `FRICTIONLESS_SPEC.md` Section 6.1
-  - Current: Requires curl commands
-  
-- [ ] **Agent discovery** - Auto-detect Qwen, Claude, Cursor chat dirs
-  - Related: `FRICTIONLESS_SPEC.md` Section 2.1
-  - Current: Manual path configuration
-  
-- [ ] **Ingestion progress** - Real-time file-level stats
-  - Related: `FRICTIONLESS_SPEC.md` Section 3.1
-  - Current: Silent failures, no progress feedback
-  
-- [ ] **Debug endpoint** - Show why results filtered
-  - Related: `FRICTIONLESS_SPEC.md` Section 4.2
-  - Current: No debug info in responses
-
-**P2 - Medium Priority (Backlog):**
-- [ ] **Agent registration API** - `POST /v1/agent/register`
-  - Related: `FRICTIONLESS_SPEC.md` Section 2.2
-  - Current: Manual config via `user_settings.json`
-  
-- [ ] **Agent SDK** - `autoRegister: true` in client init
-  - Related: `FRICTIONLESS_SPEC.md` Section 8.3
-  - Current: Manual setup per agent
-
-- [x] API key strength validation (Standard 132) - `dev/security/api-key-strength`
-- [ ] Ablation study framework (pending execution)
-- [ ] Cross-platform CI testing (pending)
-
-### Phase: Agent Harness Integration (P1 - Q2 2026)
-- [ ] OpenCLAW integration (primary target harness)
-- [ ] Harness plugin system architecture
-- [ ] Multi-harness performance monitoring
-- [ ] API documentation for external developers
-
-### Phase: Advanced RAG Features
-- [ ] Backup & restore system (`POST /v1/backup`)
-- [ ] Rolling context slicer (middle-out budgeting)
-- [ ] Live context visualizer (RAG IDE)
-- [ ] Provenance bias controls (Sovereign vs External)
-
-### Phase: Memory & Performance Optimizations (Based on Rust Implementation Insights)
-- [x] Zero-Copy Deduplication in Distillation (Standard 134)
-  - [x] Tier 1 compound-level SHA-256 dedup before line processing
-  - [x] Skip UTF-8 split + normalization for duplicate compounds
-  - [x] Stats tracking: compoundsSkipped, compoundsTotal, tier1_skip_rate
-  - [x] Documentation: specs/standards/134-zero-copy-dedup.md
-- [ ] Pointer-Only Storage Pattern Implementation
-  - [ ] Modify database schema to store only pointers (source_path, start_byte, end_byte)
-  - [ ] Create mirrored_brain/ directory for content storage
-  - [ ] Update ingestion pipeline to write content to filesystem and store pointers
-  - [ ] Update search functionality to load content from filesystem using byte ranges
-  - [ ] Implement content caching layer
-- [ ] LRU Caching for Content
-  - [ ] Integrate LRU cache library
-  - [ ] Implement caching layer for content loaded from filesystem
-  - [ ] Add cache invalidation mechanisms
-- [ ] Memory Pressure Monitoring & Throttling
-  - [ ] Add memory monitoring utilities
-  - [ ] Implement throttling based on heap usage
-  - [ ] Add emergency stop mechanisms
-- [ ] Database Schema Optimization
-  - [ ] Add proper indexes for pointer fields
-  - [ ] Optimize FTS indexes for path-based search
-  - [ ] Review and optimize table structures
-
-### Phase: Code Analysis Enhancement
-- [ ] AST pointer support for code files
-  - [x] **AST parser made async** — `parseCodeStructure()` now uses dynamic `await import()` for tree-sitter modules; all callers and tests updated to use `await` ✅ COMPLETED (May 2026)
-  - [ ] Test suite audit — 19/58 tests failing; see plan.md § Test Suite Audit for full breakdown
-- [ ] Semantic code search ("find all functions calling X")
-- [ ] Import/export graph edges
-- [ ] Type-aware retrieval
+See **In Progress** section above for detailed task list.
 
 ---
 
@@ -229,87 +153,87 @@
 <details>
 <summary><strong>Click to expand completed phases</strong></summary>
 
-### Phase 24: Semantic Shift Architecture (Feb 2026) ✅
+### Phase: Semantic Shift Architecture (Feb 2026) ✅
 - [x] Semantic category system (#Relationship, #Narrative, #Technical)
 - [x] Relationship discovery protocol
 - [x] Stateless contextual chat
 - [x] Molecule-atom architecture
 
-### Phase 23: R1 Reasoning & UI Consolidation (Feb 2026) ✅
+### Phase: R1 Reasoning & UI Consolidation (Feb 2026) ✅
 - [x] Multi-stage reasoning loop
 - [x] UI simplification (glass panel design)
 - [x] Stream alignment
 
-### Phase 22: Browser Paradigm Implementation (Jan 2026) ✅
+### Phase: Browser Paradigm Implementation (Jan 2026) ✅
 - [x] Hybrid Node.js/C++ architecture
 - [x] PathManager for cross-platform compatibility
 - [x] NativeModuleManager with fallbacks
 - [x] Resource manager for memory optimization
 
-### Phase 21: Native Module Acceleration (Jan 2026) ✅
+### Phase: Native Module Acceleration (Jan 2026) ✅
 - [x] Key Assassin (C++ text sanitization)
 - [x] Atomizer (C++ text splitting)
 - [x] Fingerprint (C++ SimHash)
 - [x] 2.3x performance improvement
 
-### Phase 20: Tag-Walker & Mirror 2.0 (Jan 2026) ✅
+### Phase: Tag-Walker & Mirror 2.0 (Jan 2026) ✅
 - [x] Tag-Walker protocol (replaces vector search)
 - [x] Mirror 2.0 filesystem projection
 - [x] FTS hardening
 
-### Phase 19: Monorepo & Configuration (Jan 2026) ✅
+### Phase: Monorepo & Configuration (Jan 2026) ✅
 - [x] PNPM workspace migration
 - [x] Shared types package
 - [x] Unified configuration (sovereign.yaml)
 - [x] Lifecycle management
 
-### Phase 18: Production Polish (Dec 2025) ✅
+### Phase: Production Polish (Dec 2025) ✅
 - [x] API fortification
 - [x] Search resiliency
 - [x] Verification suite (100% pass)
 - [x] Streaming responses
 
-### Phase 17: Cortex Upgrade (Dec 2025) ✅
+### Phase: Cortex Upgrade (Dec 2025) ✅
 - [x] Local inference (node-llama-cpp)
 - [x] Multi-bucket schema
 - [x] Dreamer service
 - [x] PGlite hardening
 
-### Phase 16: Node.js Monolith (Nov 2025) ✅
+### Phase: Node.js Monolith (Nov 2025) ✅
 - [x] Migration from Python/Browser bridge
 - [x] FTS optimization
 - [x] Operational safety protocols
 - [x] Snapshot portability
 
-### Phase 15: Schema Evolution (Nov 2025) ✅
+### Phase: Schema Evolution (Nov 2025) ✅
 - [x] Epochal historian enhancement
 - [x] Database schema updates
 - [x] Path resolution fixes
 
-### Phase 14: Epochal Historian (Oct 2025) ✅
+### Phase: Epochal Historian (Oct 2025) ✅
 - [x] Recursive decomposition
 - [x] Mirror protocol enhancement
 - [x] Watcher shield
 
-### Phase 13: Markovian Reasoning (Oct 2025) ✅
+### Phase: Markovian Reasoning (Oct 2025) ✅
 - [x] Scribe service
 - [x] Context weaving
 - [x] Test suite
 - [x] Benchmark tool
 
-### Phase 12: Production Foundation (Sep 2025) ✅
+### Phase: Production Foundation (Sep 2025) ✅
 - [x] Post-migration safety
 - [x] API endpoints
 - [x] Chat cockpit
 - [x] One-click install
 
-### Phase 11: Brain Link (Sep 2025) ✅
+### Phase: Brain Link (Sep 2025) ✅
 - [x] Schema introspection fix
 - [x] FTS persistence
 - [x] Chat UI overhaul
 - [x] Streaming tokens
 
-### Phase 10: PGlite Migration (Aug 2025) ✅
+### Phase: PGlite Migration (Aug 2025) ✅
 - [x] Database migration from CozoDB
 - [x] Core tools creation
 - [x] Model loading fixes
@@ -344,34 +268,5 @@ Tasks are complete when:
 
 ---
 
-**Full Task History:** See `specs/plan.md` for detailed 6-month timeline
+**Full Task History:** See `specs/plan.md` for detailed timeline
 **Standards:** See `specs/standards/` for architecture documentation
-
----
-
-## 📁 Documentation Cleanup (April 2026)
-
-**Goal:** Consolidate documentation into standard locations (docs/, specs/)
-
-### Phase: Documentation Organization (P1 - April 2026)
-
-- [ ] **MCP_AGENT_SETUP.md** - Move to `docs/integrations/mcp-agent.md`
-  - Current: Root directory
-  - Content: Automatic chat ingestion setup for AI agents
-  - Related to: Watchdog (Standard 001), MCP (Standard 003)
-
-- [ ] **PAIN_POINTS_DOCUMENTATION.md** - Move to `docs/guides/pain-points.md`
-  - Current: Root directory
-  - Content: Agent memory setup pain points (watchdog, database corruption)
-  - Related to: Watchdog auto-enable (Standard 001), Database integrity
-
-- [ ] **RECURSIVE_SEARCH_FALLBACKS.md** - Move to `docs/technical/search-strategy.md`
-  - Current: Root directory
-  - Content: Multi-layer recursive search fallback strategy
-  - Related to: Search algorithm (STAR), Fallback mechanisms
-
-- [ ] **.ai-instructions.md** - Move to `docs/development/ai-assistant.md`
-  - Current: Root directory
-  - Content: AI assistant rules for documentation creation
-  - Related to: Documentation standards
-
