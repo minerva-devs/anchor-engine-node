@@ -1,7 +1,8 @@
 /**
  * Structured Logger for Anchor Engine
  *
- * Implements standardized, structured logging with metrics collection
+ * Implements standardized, structured logging with metrics collection.
+ * Integrates with unified test logger for consolidated .log output.
  */
 
 import winston from 'winston';
@@ -20,6 +21,9 @@ const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 
 // Create logs directory at .anchor/logs
 const LOGS_DIR = PATHS.LOGS_DIR;
+
+// Import MAX_LINES_PER_FILE from unified test logger (default 500)
+import { MAX_LINES_PER_FILE } from '../services/unified-test-logger.js';
 if (!fs.existsSync(LOGS_DIR)) {
   fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
@@ -34,10 +38,10 @@ const logLevels = {
 };
 
 /**
- * Truncate log files to last N lines to prevent unbounded growth
- * Runs at startup to clean up existing logs
+ * Truncate log files to last N lines to prevent unbounded growth.
+ * Runs at startup and on each new test run.
  */
-function truncateLogFiles(maxLines: number = 10000): void {
+function truncateLogFiles(maxLines: number = MAX_LINES_PER_FILE): void {
   try {
     const files = fs.readdirSync(LOGS_DIR);
     let totalTruncated = 0;
@@ -48,10 +52,10 @@ function truncateLogFiles(maxLines: number = 10000): void {
       const filePath = path.join(LOGS_DIR, file);
       const stats = fs.statSync(filePath);
 
-      // Skip if file is small (< 1MB)
+      // Skip small files (< 1MB)
       if (stats.size < 1024 * 1024) continue;
 
-      // Read file and truncate to last N lines
+      // Read and truncate to last N lines
       const content = fs.readFileSync(filePath, 'utf-8');
       const lines = content.split('\n');
 
@@ -66,13 +70,13 @@ function truncateLogFiles(maxLines: number = 10000): void {
     if (totalTruncated > 0) {
       console.log(`[Logger] Truncated ${totalTruncated} log files to ${maxLines} lines max`);
     }
-  } catch (e) {
-    console.error('[Logger] Failed to truncate logs:', e);
+  } catch (e: any) {
+    console.error('[Logger] Failed to truncate logs:', e.message);
   }
 }
 
-// Truncate logs at startup
-truncateLogFiles(10000);
+// Truncate all existing logs at startup to MAX_LINES_PER_FILE (500)
+truncateLogFiles(MAX_LINES_PER_FILE);
 
 // Custom format for structured logging
 const structuredFormat = winston.format.combine(
@@ -389,6 +393,9 @@ export function getFormattedMetrics(): string {
   const metrics = metricsTracker.getAllMetrics();
   return JSON.stringify(metrics, null, 2);
 }
+
+// Export the MAX_LINES_PER_FILE constant so other modules can use it
+export { MAX_LINES_PER_FILE };
 
 // Export alias for backward compatibility
 export const StructuredLogger = logWithContext;

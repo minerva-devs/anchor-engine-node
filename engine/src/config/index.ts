@@ -643,3 +643,6 @@ function loadConfig(): Config {
 export const config = loadConfig();
 
 export default config;
+
+// Export PATHS for modules that need it
+export { PATHS } from './paths.js';
