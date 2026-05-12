@@ -113,7 +113,7 @@ user_settings.docker.json # Keep for Docker setup
 # ============================================
 # Source code directories (KEEP)
 # ============================================
-engine/
+
 packages/
 mcp-server/
 tests/

@@ -138,39 +138,6 @@ app.use('/static', express.static(path.join(__dirname, '../dist'), {
   },
 }));
 
-// Serve UI from centralized dist directory (~/.anchor/local-data/dist)
-const internalFrontendDist = PATHS.DIST_DIR;
-  const externalFrontendDist = path.resolve(process.env.DIST_DIR || path.join(__dirname, '..', '..', 'packages', 'anchor-ui', 'dist'));
-
-if (existsSync(internalFrontendDist)) {
-  StructuredLogger.info('UI_SOURCE', { source: 'centralized', path: internalFrontendDist });
-  app.use(express.static(internalFrontendDist, {
-    setHeaders: (res, path) => {
-      StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'centralized' });
-      setUICacheHeaders(res, path);
-    },
-  }));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
-    setUICacheHeaders(res, 'index.html');
-    res.sendFile(path.join(internalFrontendDist, 'index.html'));
-  });
-} else {
-  StructuredLogger.info('UI_SOURCE', { source: 'fallback', path: path.join(EngineProjectRoot, 'engine/public') });
-  const fallbackFrontendDist = path.join(EngineProjectRoot, 'engine/public');
-  app.use(express.static(fallbackFrontendDist, {
-    setHeaders: (res, path) => {
-      StructuredLogger.silly('UI_FILE_SERVED', { path, source: 'fallback' });
-      setUICacheHeaders(res, path);
-    },
-  }));
-  app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
-    setUICacheHeaders(res, 'index.html');
-    res.sendFile(path.join(fallbackFrontendDist, 'index.html'));
-  });
-}
-
 // Cache-busting middleware for HTML files (JS/CSS have content hashes)
 function setUICacheHeaders(res: express.Response, filePath: string) {
   if (filePath.endsWith('.html')) {
@@ -183,6 +150,14 @@ function setUICacheHeaders(res: express.Response, filePath: string) {
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
   }
 }
+
+// Serve UI with fallback chain:
+// 1. Centralized dist (~/.anchor/local-data/dist) if built externally
+// 2. engine/public (single-file React app)
+// 3. integrations/web-dashboard/dist (development dashboard)
+const centralizedDist = PATHS.DIST_DIR;
+const internalFrontendDist = path.join(EngineProjectRoot, 'engine/public');
+const externalFrontendDist = path.join(EngineProjectRoot, 'integrations/web-dashboard/dist');
 
 if (existsSync(internalFrontendDist)) {
   StructuredLogger.info('UI_SOURCE', { source: 'internal', path: internalFrontendDist });
@@ -197,7 +172,7 @@ if (existsSync(internalFrontendDist)) {
     setUICacheHeaders(res, 'index.html');
     res.sendFile(path.join(internalFrontendDist, 'index.html'));
   });
-} else {
+} else if (existsSync(externalFrontendDist)) {
   StructuredLogger.info('UI_SOURCE', { source: 'external', path: externalFrontendDist });
   app.use(express.static(externalFrontendDist, {
     setHeaders: (res, path) => {
@@ -210,6 +185,8 @@ if (existsSync(internalFrontendDist)) {
     setUICacheHeaders(res, 'index.html');
     res.sendFile(path.join(externalFrontendDist, 'index.html'));
   });
+} else {
+  StructuredLogger.info('UI_SOURCE', { source: 'none', path: 'no UI found' });
 }
 
 // Add explicit /chat route logging
