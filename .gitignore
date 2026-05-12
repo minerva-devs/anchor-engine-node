@@ -123,3 +123,8 @@ specs/
 shared/
 skills/
 integrations/
+
+# Engine build artifacts (source is tracked)
+engine/node_modules/
+engine/build/
+engine/dist/
