@@ -1,8 +1,20 @@
 {
   "mcpServers": {
-    "anchor": {
-      "command": "/data/data/com.termux/files/home/projects/anchor-engine-node/anchor-mcp-wrapper.sh",
-      "env": {}
+    "anchor_memory": {
+      "name": "anchor_memory_mcp",
+      "description": "Anchor Engine MCP server - provides deterministic semantic memory search using STAR algorithm (no embeddings)",
+      "enabled": true,
+      "transport": "stdio",
+      "command": "node",
+      "args": [
+        "--expose-gc",
+        "C:/Users/rsbii/Projects/anchor-engine-node/mcp-server/dist/index.js"
+      ],
+      "env": {
+        "ANCHOR_API_URL": "http://localhost:3160",
+        "ANCHOR_API_KEY": "<your-api-key>"
+      },
+      "cwd": "C:/Users/rsbii/Projects/anchor-engine-node/mcp-server"
     }
   }
 }

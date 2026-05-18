@@ -116,7 +116,9 @@ export function setupMemoryRoutes(app: Application) {
       }
 
       // Standard mode: Single JSON response (v2 with tag-based + decision records support)
-      const result = await radialDistill(body);
+      const bodyWithDefaults = { ...body, auto_save: true }; // Enable auto-save for all distillation requests
+      
+      const result = await radialDistill(bodyWithDefaults);
       const duration = Date.now() - startTime;
 
       StructuredLogger.info('RADIAL_DISTILL_COMPLETE', {

@@ -1,12 +1,18 @@
 /**
  * Code AST Parser – semantic atomization of TypeScript / JavaScript files.
  *
- * Parses source code with tree-sitter, walks the syntax tree and extracts
+ * Parses source code with web-tree-sitter, walks the syntax tree and extracts
  * structural atoms (functions, classes, methods) together with
  * metadata such as function name, class context, imports, etc.
  */
 
-import Parser from 'tree-sitter';
+import { Parser, Language } from 'web-tree-sitter';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ── Public types ────────────────────────────────────────────────────────
 
@@ -26,45 +32,121 @@ export interface CodeStructure {
   blocks: CodeBlock[];
 }
 
-// ── Language modules loading (dynamic ES import to avoid require()/await conflict) ──
+// ── WASM initialization state ───────────────────────────────────────────
 
-let tsLangModule: { typescript: unknown; tsx?: unknown } | undefined;
-let jsLangModule: { language: unknown } | undefined;
+let _webAssemblyInitialized = false;
 
-async function loadModules() {
-  if (tsLangModule && jsLangModule) return;
-  // @ts-ignore — tree-sitter-* bindings lack ES module type declarations but work at runtime
-  const tsMod = await import('tree-sitter-typescript/bindings/node');
-  // @ts-ignore
-  const jsMod = await import('tree-sitter-javascript/bindings/node');
-  tsLangModule = (tsMod as any).default ?? tsMod;
-  jsLangModule = (jsMod as any).default ?? jsMod;
+/** Resolve the directory containing web-tree-sitter's .wasm files absolutely */
+function getWasmDir(): string {
+  // Get the absolute path from import.meta.url (ES modules) or __dirname (CommonJS)
+  let currentDir: string;
+  if (import.meta.url) {
+    currentDir = new URL(import.meta.url).pathname;
+  } else {
+    currentDir = __dirname || process.cwd();
+  }
+
+  // Walk up from the current directory to find node_modules/web-tree-sitter
+  while (currentDir !== dirname(currentDir)) {
+    const candidate = join(dirname(currentDir), 'node_modules', 'web-tree-sitter');
+    try {
+      require('fs').accessSync(join(candidate, 'web-tree-sitter.wasm'));
+      return candidate;
+    } catch {
+      currentDir = dirname(currentDir);
+    }
+  }
+
+  // Fallback: check project root node_modules
+  const cwd = process.cwd();
+  const rootWasm = join(cwd, 'node_modules', 'web-tree-sitter');
+  try {
+    require('fs').accessSync(join(rootWasm, 'web-tree-sitter.wasm'));
+    return rootWasm;
+  } catch {
+    throw new Error('Could not locate web-tree-sitter WASM files');
+  }
+}
+
+async function initWebAssembly() {
+  if (_webAssemblyInitialized) return;
+
+  const wasmPath = getWasmDir();
+
+  // Initialize parser - this loads the main web-tree-sitter.wasm
+  await Parser.init({
+    locateFile: (filename: string) => {
+      // The filename from web-tree-sitter includes the .wasm extension
+      // e.g., "tree-sitter-typescript.wasm" or "web-tree-sitter.wasm"
+      const fullPath = join(wasmPath, filename);
+
+      // Verify the file exists before returning it
+      import('fs').then(fs => {
+        if (!fs.existsSync(fullPath)) {
+          throw new Error(`WASM file not found: ${fullPath}`);
+        }
+      }).catch(() => {
+        // fs might not be available in browser environment
+      });
+
+      return fullPath;
+    },
+  });
+
+  _webAssemblyInitialized = true;
 }
 
 // ── Language registry ───────────────────────────────────────────────────
 
-const LANGUAGES: Record<string, Parser.Language> = {};
+const LANGUAGES_CACHE: Record<string, Language> = {};
 
-async function getLanguage(key: string): Promise<Parser.Language> {
-  if (LANGUAGES[key]) return LANGUAGES[key];
-  await loadModules();
-  let lang: Parser.Language | undefined;
+/** Map our language key to the tree-sitter WASM filename */
+function getWasmFileName(langKey: string): string {
+  switch (langKey) {
+    case 'typescript': return 'tree-sitter-typescript.wasm';
+    case 'tsx': return 'tree-sitter-tsx.wasm';
+    case 'javascript': return 'tree-sitter-javascript.wasm';
+    default: throw new Error(`Unsupported language key: ${langKey}`);
+  }
+}
 
-  if (key === 'typescript') lang = tsLangModule!.typescript as unknown as Parser.Language;
-  else if (key === 'tsx') lang = (tsLangModule! as any).tsx as unknown as Parser.Language;
-  else if (key === 'javascript') lang = jsLangModule!.language as unknown as Parser.Language;
+async function getLanguage(key: string): Promise<Language> {
+  if (LANGUAGES_CACHE[key]) return LANGUAGES_CACHE[key];
 
-  if (!lang) throw new Error(`Unsupported language key: ${key}`);
+  await initWebAssembly();
 
-  const parser = new Parser();
-  parser.setLanguage(lang);
-  LANGUAGES[key] = lang!;
-  return lang!;
+  const wasmFile = getWasmFileName(key);
+  
+  // Try multiple locations for the WASM file
+  const possiblePaths = [
+    join(getWasmDir(), wasmFile),
+    join(process.cwd(), 'node_modules', wasmFile.replace(/\.wasm$/, '')),
+    join(process.cwd(), 'node_modules', 'web-tree-sitter', wasmFile),
+  ];
+
+  let fullPath: string | undefined;
+  for (const path of possiblePaths) {
+    try {
+      require('fs').accessSync(path);
+      fullPath = path;
+      break;
+    } catch {
+      // Try next path
+    }
+  }
+
+  if (!fullPath || !require('fs').existsSync(fullPath)) {
+    throw new Error(`WASM file not found: ${wasmFile}`);
+  }
+
+  const language = await Language.load(fullPath);
+  LANGUAGES_CACHE[key] = language;
+  return language;
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
-function extractNodeName(node: Parser.SyntaxNode): string | null {
+function extractNodeName(node: import('web-tree-sitter').Node): string | null {
   // field name 'name' is the canonical way in tree-sitter v0.25
   const nameChild = node.childForFieldName('name');
   if (nameChild && nameChild.text.trim()) return nameChild.text.trim();
@@ -79,7 +161,7 @@ function extractNodeName(node: Parser.SyntaxNode): string | null {
   return null;
 }
 
-function extractNameFromExpression(node: Parser.SyntaxNode): string | null {
+function extractNameFromExpression(node: import('web-tree-sitter').Node): string | null {
   switch (node.type) {
     case 'identifier':
       return node.text;
@@ -94,9 +176,10 @@ function extractNameFromExpression(node: Parser.SyntaxNode): string | null {
   return id ? id.text : null;
 }
 
-function gatherImports(rootNode: Parser.SyntaxNode): string[] {
+function gatherImports(rootNode: import('web-tree-sitter').Node): string[] {
   const imports: string[] = [];
-  function walk(node: Parser.SyntaxNode) {
+  
+  function walk(node: import('web-tree-sitter').Node) {
     if (node.type === 'import_statement' || node.type === 'import_clause') {
       const mod = node.childForFieldName('source');
       if (mod) {
@@ -106,14 +189,15 @@ function gatherImports(rootNode: Parser.SyntaxNode): string[] {
     }
     for (const child of node.namedChildren) walk(child);
   }
+  
   walk(rootNode);
   return imports;
 }
 
-function collectBlocks(code: string, rootNode: Parser.SyntaxNode): CodeBlock[] {
+function collectBlocks(code: string, rootNode: import('web-tree-sitter').Node): CodeBlock[] {
   const blocks: CodeBlock[] = [];
 
-  function visit(node: Parser.SyntaxNode) {
+  function visit(node: import('web-tree-sitter').Node) {
     let blockType: CodeBlock['type'] | null = null;
     let name: string | null = null;
     let classContext: string | null = null;
@@ -193,22 +277,23 @@ export async function parseCodeStructure(
   language: 'typescript' | 'tsx' | 'javascript',
 ): Promise<CodeStructure | null> {
   try {
-    const lang = await getLanguage(language);
+    let langKey: 'typescript' | 'javascript' = language === 'tsx' ? 'typescript' : language;
+    const lang = await getLanguage(langKey);
     const parser = new Parser();
     parser.setLanguage(lang);
-    parser.setTimeoutMicros(5_000_000); // 5 s generous timeout
 
     const tree = parser.parse(code);
 
     if (!tree || !tree.rootNode) return null;
-    if ((tree.rootNode as any).hasError) {
-      // some builds have hasError() method, others use a field
-      const errFn = (tree.rootNode as any).hasError;
-      if (typeof errFn === 'function' && errFn()) return null;
+
+    // Check for parse errors using the ParseState approach
+    const rootNode = tree.rootNode;
+    if (rootNode.isError) {
+      return null;
     }
 
-    const blocks = collectBlocks(code, tree.rootNode);
-    const imports = gatherImports(tree.rootNode);
+    const blocks = collectBlocks(code, rootNode);
+    const imports = gatherImports(rootNode);
 
     for (const block of blocks) {
       block.imports = [...imports];

@@ -1,7 +1,10 @@
 # .gitignore
 
-# Dependencies
+# Dependencies - ignore all node_modules directories (including subdirs)
 /node_modules/
+mcp-server/node_modules/
+scripts/node_modules/
+engine/node_modules/
 
 # Logs and build artifacts
 /dist/
@@ -9,19 +12,42 @@
 npm-debug.log*
 yarn-error.log*
 
-# Environment variables and secrets
-.env
-.localrc
+# Test outputs (always ignore)
+test-output.txt
+tests/vitest-setup.ts
+engine-build-output.txt
+engine-direct-tests.txt
+engine-error.txt
+npx-vitest-results.txt
+vitest-from-root.txt
+pnpm-start-tests.bat
+test-results.txt
+vite-aliases.txt
+start_output.txt
 
-# Agent specific caches and temporary files
-.cache/
-temp/
-logs/heartbeat.md.tmp # Temporary file for heartbeat checks
+# Temp files (common patterns)
+temp_*.txt
+temp_*.ts
+temp_*.js
+tmp_*.json
+*.tmp
 
 # Development tools - NOT project data (keep out of repo)
 .vscode/
 .idea/
 .cline/
+
+# QwenPaw agent configuration (sensitive - never commit)
+agent.json
+.qwenpaw/
+.qwenpaw/*
+!qwen-mcp-config.json # Keep MCP config for dev
+
+# Agent memory files (local use only)
+memory/*.md
+
+# Skills - QwenPaw plugins (local use only, not for commit)
+skills/
 
 # Reme agent store
 .reme_store_v1
@@ -96,6 +122,16 @@ filename.endsWith(ext)))
 # ============================================
 agent.json
 skill.json
+
+# Mission directories (development/testing artifacts)
+missions/
+
+# QwenPaw agent configuration (sensitive - never commit)
+BOOTSTRAP.md
+MEMORY.md
+PROFILE.md
+SOUL.md
+AGENTS.md
 .qwenpaw/
 .qwenpaw/*
 !qwen-mcp-config.json # Keep MCP config for dev
@@ -114,17 +150,13 @@ user_settings.docker.json # Keep for Docker setup
 # Source code directories (KEEP)
 # ============================================
 
-packages/
-mcp-server/
-tests/
-docs/
-scripts/
-specs/
-shared/
-skills/
-integrations/
+
 
 # Engine build artifacts (source is tracked)
 engine/node_modules/
 engine/build/
 engine/dist/
+engine/src/native/
+
+# Native module dependencies (Rust WASM instead of C++)
+engine/src/native/node_modules/

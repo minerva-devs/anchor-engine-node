@@ -575,15 +575,29 @@ async function handleQuery(args: any): Promise<string> {
 async function handleDistill(args: any): Promise<string> {
   const { seed = '', radius = 3, max_nodes = 500, output_format = 'json', similarity_threshold, dry_run } = args;
 
-  const result = await callAnchorAPI('/v1/memory/distill', 'POST', {
-    seed: seed ? { query: seed } : { global: true },
-    radius,
-    max_nodes,
-    output_format,
-    mode: 'tag-based',
-    similarity_threshold,
-    dry_run: dry_run || false,
-  });
+  // Build the request body correctly
+  const requestBody: any = {};
+  
+  if (seed) {
+    requestBody.seed = { query: seed };
+  } else {
+    requestBody.seed = {}; // Empty object means "all compounds" - no provenance filtering!
+  }
+  
+  requestBody.radius = radius;
+  requestBody.max_nodes = max_nodes;
+  requestBody.output_format = output_format;
+  if (similarity_threshold !== undefined) {
+    requestBody.similarity_threshold = similarity_threshold;
+  }
+  if (dry_run === true) {
+    requestBody.dry_run = dry_run;
+  }
+  
+  // Use standard mode by default - it reads from database directly without needing file system access
+  requestBody.mode = 'standard';
+
+  const result = await callAnchorAPI('/v1/memory/distill', 'POST', requestBody);
 
   if (result.status === 'success' || result.output) {
     const stats = result.stats || {};

@@ -2,6 +2,12 @@
     "_description": "Anchor Engine Configuration - Single Source of Truth",
     "_version": "5.0.0",
     "VERSION": "5.0.0",
+    
+    // ============================================
+    // Path Variables (can be overridden)
+    // ============================================
+    "project_root": "${workspace_dir}",
+    
     "server": {
       "host": "0.0.0.0",
       "port": 3160,
@@ -116,6 +122,7 @@
       "ingestion_profile": "chat"
     },
     "mcp": {
+      "_description": "Model Context Protocol server for AI agent memory",
       "enabled": true,
       "description": "Model Context Protocol server for AI agent memory",
       "security_note": "Only enable when needed. MCP exposes your knowledge graph to connected AI clients.",
@@ -124,6 +131,8 @@
       "rate_limit_requests_per_minute": 120,
       "max_query_results": 100,
       "restrict_to_localhost": true,
+      "server_path": "${project_root}",
+      "mcp_server_binary": "${project_root}/mcp-server/dist/index.js",
       "allowed_operations": [
         "query",
         "read_file",

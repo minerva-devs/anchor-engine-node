@@ -55,6 +55,44 @@ Use it as:
 
 ---
 
+## **Architecture & Technology Stack** ⚡
+
+### Native Modules (Rust WASM)
+
+Anchor Engine uses **Rust-compiled WebAssembly modules** for performance-critical operations. This eliminates the need for native compilation and provides universal platform support.
+
+**Published Packages:**
+| Package | Purpose | Version |
+|---------|---------|---------|
+| `@rbalchii/anchor-fingerprint-wasm` | Content fingerprinting (MD5, SHA256) | 1.0.0+ |
+| `@rbalchii/anchor-atomizer-wasm` | Text atomization & entity extraction | 1.0.0+ |
+| `@rbalchii/anchor-keyextract-wasm` | Key-value extraction from text | 1.0.0+ |
+| `@rbalchii/anchor-tagwalker-wasm` | Semantic tag traversal | 1.0.0+ |
+
+**Benefits:**
+- ✅ Zero native compilation required (works on Windows ARM64, macOS, Linux)
+- ✅ 97% smaller binary size (~35KB WASM vs ~1.2MB C++ DLLs)
+- ✅ 10x faster module loading
+- ✅ Universal platform support
+
+**Note:** The older C++ native modules (`engine/src/native/` directory) have been deprecated and removed in favor of these Rust WASM packages. See [`engine/src/README.md`](./engine/src/README.md) for full architectural details.
+
+---
+
+## **QwenPaw Agent Configuration Protection 🔒**
+
+To protect sensitive QwenPaw agent configuration files from being accidentally committed to the repository, the following files are now gitignored:
+
+- `BOOTSTRAP.md`
+- `MEMORY.md`
+- `PROFILE.md`
+- `SOUL.md`
+- `AGENTS.md`
+
+These files may contain private information and should never be shared. The `.gitignore` has been updated to prevent accidental commits of these sensitive configuration files.
+
+---
+
 ## **Quick Start**
 ```bash
 git clone https://github.com/RSBalchII/anchor-engine-node

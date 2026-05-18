@@ -12,13 +12,16 @@
 import { db } from '../../core/db.js';
 import { ContextInflator } from '../search/context-inflator.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
-import { getMirrorPath } from '../mirror/mirror.js';
-import { PATHS, DEFAULT_PROVENANCE } from '../../config/paths.js';
+import { getMirrorPath, MIRRORED_BRAIN_PATH } from '../mirror/mirror.js';
+import { PATHS, DEFAULT_PROVENANCE, NOTEBOOK_DIR } from '../../config/paths.js';
 import { recordDistill } from './distill-manager.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+
+// Import batch fetch for compounds
+import { batchFetchCompounds } from '../../utils/db-batch.js';
 
 export interface RadialDistillRequest {
   seed?: {
@@ -117,62 +120,113 @@ async function* collectCompounds(
   const effectiveRadius = Math.min(radius, maxRadius);
 
   let conditions: string[] = [];
-  let queryBase = 'SELECT DISTINCT id, path, timestamp, provenance FROM compounds c';
+  
+  // Query both compounds AND molecules to get full content coverage
+  queryBase = `
+    SELECT DISTINCT 
+      c.id as compound_id,
+      m.id as molecule_id,
+      c.path as source_path,
+      c.timestamp,
+      c.provenance,
+      m.start_byte,
+      m.end_byte,
+      m.content as content_preview
+    FROM compounds c
+    LEFT JOIN molecules m ON c.id = m.compound_id
+  `;
   
   const params: any[] = [DEFAULT_PROVENANCE];
 
+  // Remove DEFAULT_PROVENANCE from params when no seed is provided - return ALL compounds
+  const effectiveParams = request.seed ? [...params] : [];
+
   if (request.seed?.compound_ids?.length) {
-    conditions.push(`id = ANY($${params.length + 1})`);
-    params.push(request.seed.compound_ids);
+    conditions.push(`id = ANY($${effectiveParams.length + 1})`);
+    effectiveParams.push(request.seed.compound_ids);
   }
 
   if (request.seed?.buckets?.length) {
-    queryBase += ` JOIN atoms a ON a.compound_id = c.id WHERE EXISTS(SELECT 1 FROM unnest(a.buckets) as bucket WHERE bucket = ANY($${params.length + 1})`;
-    params.push(request.seed.buckets);
+    queryBase += ` JOIN atoms a ON a.compound_id = c.id WHERE EXISTS(SELECT 1 FROM unnest(a.buckets) as bucket WHERE bucket = ANY($${effectiveParams.length + 1})`;
+    effectiveParams.push(request.seed.buckets);
   } else if (request.seed?.query) {
     const tsQuery = request.seed.query.split(/\s+/).filter(t => t.length > 0).join(' | ');
-    queryBase += ` JOIN atoms a ON a.compound_id = c.id WHERE to_tsvector('simple', a.content) @@ to_tsquery('simple', $${params.length + 1})`;
-    params.push(tsQuery);
-  } else {
-    queryBase += ` WHERE EXISTS (SELECT 1 FROM unnest(c.provenance) as prov WHERE prov = ANY($${params.length + 1}))`;
+    queryBase += ` JOIN atoms a ON a.compound_id = c.id WHERE to_tsvector('simple', a.content) @@ to_tsquery('simple', $${effectiveParams.length + 1})`;
+    effectiveParams.push(tsQuery);
   }
 
   if (conditions.length > 0) {
     queryBase += ' AND (' + conditions.join(' OR ') + ')';
   }
 
-  queryBase += ' ORDER BY timestamp DESC';
+  queryBase += ' ORDER BY timestamp DESC, m.start_byte ASC';
 
-  const result = await db.run(queryBase, params);
-  const compounds = result.rows as any[];
+  const result = await db.run(queryBase, effectiveParams); // Fixed: use effectiveParams instead of params
+  const rows = result.rows as any[];
 
-  for (let i = 0; i < compounds.length; i++) {
-    const compound = compounds[i];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    
     try {
-      const searchResult = {
-        id: compound.id,
-        content: '',
-        source: compound.path,
-        timestamp: compound.timestamp,
-        buckets: [],
-        tags: [],
-        epochs: '',
-        provenance: compound.provenance || 'internal',
-        score: 1.0,
-        compound_id: compound.id,
-        start_byte: 0,
-        end_byte: 0,
-        is_inflated: false,
-      };
+      let content = '';
+      let source: string;
+      let timestamp: number;
+      
+      if (row.molecule_id !== null && row.start_byte !== undefined) {
+        // Use molecule coordinates - we have the actual byte range!
+        content = row.content_preview || '';
+        source = row.source_path;
+        timestamp = row.timestamp || Date.now();
+        
+        StructuredLogger.info('[Distill] Processing molecule', { 
+          id: row.molecule_id, 
+          start_byte: row.start_byte, 
+          end_byte: row.end_byte 
+        });
+      } else if (row.compound_id && row.source_path) {
+        // Compound-level - try to inflate using ContextInflator
+        const searchResult = {
+          id: row.compound_id,
+          content: '',
+          source: row.source_path,
+          timestamp: row.timestamp || Date.now(),
+          buckets: [],
+          tags: [],
+          epochs: '',
+          provenance: row.provenance || 'internal',
+          score: 1.0,
+          compound_id: row.compound_id,
+          start_byte: 0,
+          end_byte: 0,
+          is_inflated: false,
+        };
 
-      const inflated = await ContextInflator.inflate([searchResult], effectiveRadius * 2, effectiveRadius);
+        const inflated = await ContextInflator.inflate([searchResult], effectiveRadius * 2, effectiveRadius);
 
-      if (inflated.length > 0 && inflated[0].content) {
+        if (inflated.length > 0 && inflated[0].content) {
+          content = inflated[0].content;
+          source = inflated[0].source;
+          timestamp = row.timestamp || Date.now();
+        } else {
+          // Fallback: try reading from disk directly using getMirrorPath
+          const mirrorPath = getMirrorPath(row.source_path, row.provenance);
+          if (mirrorPath && fs.existsSync(mirrorPath)) {
+            content = fs.readFileSync(mirrorPath, 'utf-8');
+            source = row.source_path;
+            timestamp = row.timestamp || Date.now();
+          } else {
+            StructuredLogger.warn('[Distill] Cannot find file for compound', { path: row.source_path });
+            continue; // Skip this compound if file not found
+          }
+        }
+      }
+
+      if (content) {
         yield {
-          compoundId: compound.id,
-          content: inflated[0].content,
-          source: compound.path,
-          timestamp: compound.timestamp,
+          compoundId: row.compound_id || 'unknown',
+          content,
+          source,
+          timestamp,
         };
       }
 
@@ -180,7 +234,8 @@ async function* collectCompounds(
         global.gc();
       }
     } catch (e) {
-      // Silently skip failed compounds
+      StructuredLogger.error('[Distill] Error processing row', e);
+      continue; // Skip failed rows but keep going
     }
   }
 }
@@ -340,8 +395,7 @@ export async function radialDistill(
     const compoundGenerator = collectCompounds(request);
     const { uniqueLines, stats: dedupStats } = await deduplicateLines(compoundGenerator, request);
     const { outputPath, sizeBytes, compoundsCreated } = await reassembleCompounds(uniqueLines, request);
-
-    const duration = Date.now() - startTime;
+  const duration = Date.now() - startTime;
     const memAfter = process.memoryUsage();
     const memPeak = Math.max(memAfter.heapUsed, memBefore.heapUsed);
 

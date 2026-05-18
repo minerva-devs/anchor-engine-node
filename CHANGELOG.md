@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [Unreleased] - In Progress
+
+### 🔒 Security Improvements
+
+#### QwenPaw Agent Configuration Protection
+- Added `.gitignore` entries to prevent accidental commit of sensitive QwenPaw agent configuration files:
+  - `BOOTSTRAP.md`, `MEMORY.md`, `PROFILE.md`, `SOUL.md`, `AGENTS.md`
+- These files may contain private information and should never be committed to the repository
+
+#### Deprecated C++ Native Modules Removal
+- Removed `engine/src/native/` directory containing deprecated C++ code
+- Replaced with Rust WASM modules (`@rbalchii/*-wasm`) for better cross-platform compatibility
+- Added `engine/src/native/node_modules/` and `engine/build/` to `.gitignore`
+
+---
+
 ## [5.2.0] - 2026-04-25 — Simplified Start Scripts & Path Resolution Fix
 
 ### 🛠️ Breaking Changes

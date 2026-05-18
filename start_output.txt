@@ -1,0 +1,7 @@
+Starting Anchor Engine...
+Scope: all 3 workspace projects
+Already up to date
+Done in 4.1s using pnpm v11.1.1
+$ pnpm build:all
+$ pnpm --filter anchor-engine build
+$ node -e "require('fs').rmSync('dist', {recursive:true, force:true})" && tsc

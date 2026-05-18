@@ -204,6 +204,15 @@ export interface RadialDistillResult {
   session_index?: SessionIndexEntry[];
   // Inflated content for tag-based mode (full atom content)
   inflated_content?: { content: string; source: string; tags: string[]; timestamp: number; }[];
+  // Distillation metrics tracking (NEW)
+  metrics?: {
+    total_atoms: number;
+    successful_reads: number;
+    provenance_mismatches: number;
+    fallback_reads: number;
+    failed_reads: number;
+    skipped_by_content: number;
+  };
 }
 
 /**
@@ -1016,7 +1025,7 @@ export async function fetchAtomsByTag(tag: string): Promise<any[]> {
 
     // Fetch atoms with their content - use 'buckets' (plural) not 'bucket'
     const atomsResult = await db.run(
-      'SELECT id, content, source_path, tags, buckets FROM atoms WHERE id = ANY($1)',
+      'SELECT id, content, source_path, tags, buckets, provenance FROM atoms WHERE id = ANY($1)',
       [Array.from(atomIds)]
     );
 
@@ -1025,6 +1034,18 @@ export async function fetchAtomsByTag(tag: string): Promise<any[]> {
     console.error(`[fetchAtomsByTag] Error for tag ${tag}:`, error);
     return [];
   }
+}
+
+/**
+ * Distillation metrics tracking
+ */
+interface DistillationMetrics {
+  totalAtoms: number;
+  successfulReads: number;
+  provenanceMismatches: number;
+  fallbackReads: number;
+  failedReads: number;
+  skippedByContent: number;
 }
 
 /**
@@ -1037,12 +1058,23 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
   digitalObjects: DigitalObjectMetadata[];
   compoundsProcessed: number;
   inflatedContent: { content: string; source: string; tags: string[]; timestamp: number; }[];
+  metrics: DistillationMetrics;
 }> {
   const allBlocks: SemanticBlock[] = [];
   const digitalObjects: DigitalObjectMetadata[] = [];
   const inflatedContent: { content: string; source: string; tags: string[]; timestamp: number; }[] = [];
   let compoundsProcessed = 0;
   const ingestedAt = new Date().toISOString();
+
+  // Initialize metrics tracking
+  const metrics: DistillationMetrics = {
+    totalAtoms: 0,
+    successfulReads: 0,
+    provenanceMismatches: 0,
+    fallbackReads: 0,
+    failedReads: 0,
+    skippedByContent: 0,
+  };
 
   // Get tags to process (all tags or specified subset)
   let tagsToProcess = request.seed?.tags;
@@ -1069,6 +1101,8 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
       }
       processedAtomIds.add(atom.id);
 
+      metrics.totalAtoms++;
+
       // Skip distillation outputs
       if (isDistillationOutput(atom.source_path)) {
         continue;
@@ -1080,11 +1114,26 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
       // This is the v5.0.0 approach that works reliably
       let content = '';
 
-      // Normalize provenance for getMirrorPath
-      let prov = atom.provenance || 'external';
-      if (prov.includes('external')) prov = 'external';
-      else if (prov.includes('quarantine')) prov = 'quarantine';
-      else prov = 'internal';
+      // Normalize provenance for getMirrorPath - prefer provenance field over bucket
+      let prov: 'internal' | 'external' | 'quarantine' = 'internal';
+      if (atom.provenance) {
+        const provStr = String(atom.provenance).toLowerCase();
+        if (provStr === 'internal' || provStr.includes('internal')) {
+          prov = 'internal';
+        } else if (provStr === 'quarantine') {
+          prov = 'quarantine';
+        } else if (provStr === 'external' || !provStr) {
+          prov = 'external';
+        }
+      } else {
+        // Fallback to bucket if provenance not available
+        const bucketStr = String(atom.bucket || '').toLowerCase();
+        if (bucketStr === 'quarantine') {
+          prov = 'quarantine';
+        } else if (bucketStr === 'external' || !bucketStr) {
+          prov = 'external';
+        }
+      }
 
       const sourcePath = atom.source_path || '';
 
@@ -1092,33 +1141,82 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
       // These are URLs, not filesystem paths - skip them for local distillation
       if (sourcePath.startsWith('github:')) {
         console.warn(`[TagBasedDistill] Skipping GitHub URL: ${sourcePath}`);
+        metrics.failedReads++;
         continue;
       }
 
-      const mirrorPath = getMirrorPath(sourcePath, prov);
+      // Build fallback attempts list with provenance tracking
+      const attempts: Array<{ name: string; path: string; isFallback: boolean }> = [
+        { name: `Mirrored (${prov})`, path: getMirrorPath(sourcePath, prov), isFallback: false },
+      ];
 
-      // Try mirrored_brain first (works for standard relative paths)
-      if (mirrorPath && fs.existsSync(mirrorPath)) {
-        content = fs.readFileSync(mirrorPath, 'utf-8');
-      } else {
-        // Try source_path directly if it's a valid filesystem path
-        if (path.isAbsolute(sourcePath) && fs.existsSync(sourcePath)) {
-          content = fs.readFileSync(sourcePath, 'utf-8');
-        } else {
-          // Fallback: try notebook directory with relative path
-          const notebookDir = pathManager.getNotebookDir();
-          const localPath = path.join(notebookDir, sourcePath);
-          if (fs.existsSync(localPath)) {
-            content = fs.readFileSync(localPath, 'utf-8');
+      // Add fallback attempts for other provenance types
+      if (prov !== 'internal') {
+        attempts.push({ name: 'Mirrored (internal)', path: getMirrorPath(sourcePath, 'internal'), isFallback: true });
+      }
+      if (prov !== 'external') {
+        attempts.push({ name: 'Mirrored (external)', path: getMirrorPath(sourcePath, 'external'), isFallback: true });
+      }
+      if (prov !== 'quarantine') {
+        attempts.push({ name: 'Mirrored (quarantine)', path: getMirrorPath(sourcePath, 'quarantine'), isFallback: true });
+      }
+
+      // Try original source_path if it's a valid filesystem path
+      if (path.isAbsolute(sourcePath) || sourcePath.includes('\\') || sourcePath.includes('/')) {
+        attempts.push({ name: 'Original path', path: sourcePath, isFallback: true });
+      }
+
+      // Try notebook directory with relative path
+      const notebookDir = pathManager.getNotebookDir();
+      const localPath = path.join(notebookDir, sourcePath);
+      attempts.push({ name: 'Notebook path', path: localPath, isFallback: true });
+
+      // Attempt to read content from each location
+      let foundAtPath = '';
+      let usedFallback = false;
+
+      for (const attempt of attempts) {
+        if (fs.existsSync(attempt.path)) {
+          try {
+            content = fs.readFileSync(attempt.path, 'utf-8');
+            foundAtPath = attempt.name;
+            usedFallback = attempt.isFallback;
+            
+            if (attempt.isFallback) {
+              metrics.fallbackReads++;
+              StructuredLogger.info('[TagBasedDistill] Using fallback path', {
+                atomId: atom.id,
+                tag: tag,
+                expected: prov,
+                found: attempt.name,
+              });
+            }
+            break;
+          } catch (err: any) {
+            console.warn(`[TagBasedDistill] Failed to read ${attempt.name}: ${err.message}`);
           }
         }
       }
 
+      // Track provenance mismatch if fallback was used
+      if (usedFallback && foundAtPath !== `Mirrored (${prov})`) {
+        metrics.provenanceMismatches++;
+        StructuredLogger.warn('[TagBasedDistill] Provenance mismatch detected', {
+          atomId: atom.id,
+          tag: tag,
+          expected: prov,
+          found: foundAtPath,
+        });
+      }
+
       // Skip if no content found
-      if (!content) {
+      if (!content || content.trim() === '') {
         console.warn(`[TagBasedDistill] No content found for atom ${atom.id} at ${sourcePath}`);
+        metrics.failedReads++;
         continue;
       }
+
+      metrics.successfulReads++;
 
       // Add to inflated content
       inflatedContent.push({
@@ -1157,6 +1255,7 @@ async function tagBasedDistill(request: RadialDistillRequest): Promise<{
     digitalObjects,
     compoundsProcessed,
     inflatedContent,
+    metrics,
   };
 }
 
@@ -1172,6 +1271,7 @@ async function finalizeDistillation(
   startTime: number,
   ingestedAt: string,
   inflatedContent?: { content: string; source: string; tags: string[]; timestamp: number; }[],
+  distillationMetrics?: DistillationMetrics,
 ): Promise<RadialDistillResult> {
   // Build session index from chat sessions
   const sessionIndex = buildSessionIndex(chatSessions);
@@ -1221,6 +1321,7 @@ async function finalizeDistillation(
       session_index: sessionIndex,
       inflated_content: inflatedContent || [],
       enriched_records: enrichedRecords,
+      metrics: distillationMetrics,
     };
   }
 
@@ -1424,8 +1525,18 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
     if (request.mode === 'tag-based' || (request.seed?.tags && request.seed.tags.length > 0)) {
       const tagResult = await tagBasedDistill(request);
 
+      // Log distillation metrics
+      StructuredLogger.info('[Distillation] Metrics', {
+        totalAtoms: tagResult.metrics.totalAtoms,
+        successfulReads: tagResult.metrics.successfulReads,
+        provenanceMismatches: tagResult.metrics.provenanceMismatches,
+        fallbackReads: tagResult.metrics.fallbackReads,
+        failedReads: tagResult.metrics.failedReads,
+        skippedByContent: tagResult.metrics.skippedByContent,
+      });
+
       // Continue with standard pipeline using tag-based results
-      return finalizeDistillation(request, tagResult.blocks, tagResult.digitalObjects, [], tagResult.compoundsProcessed, startTime, ingestedAt, tagResult.inflatedContent);
+      return finalizeDistillation(request, tagResult.blocks, tagResult.digitalObjects, [], tagResult.compoundsProcessed, startTime, ingestedAt, tagResult.inflatedContent, tagResult.metrics);
     }
 
     // Phase 1: COLLECT - Extract semantic blocks and metadata (standard mode)
@@ -1439,14 +1550,33 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
     const params: any[] = [];
 
     if (request.seed?.compound_ids && request.seed.compound_ids.length > 0) {
-      compoundQuery += ' WHERE id IN (' + request.seed.compound_ids.map(() => '?').join(',') + ')';
-      params.push(...request.seed.compound_ids);
+      compoundQuery += ' WHERE id = ANY($1)';
+      params.push(request.seed.compound_ids);
     } else if (request.seed?.buckets && request.seed.buckets.length > 0) {
-      compoundQuery += ' WHERE provenance IN (' + request.seed.buckets.map(() => '?').join(',') + ')';
-      params.push(...request.seed.buckets);
+      // Join with atoms to filter by buckets (matches working old distiller)
+      compoundQuery = `
+        SELECT DISTINCT c.id, c.path, c.provenance
+        FROM compounds c
+        JOIN atoms a ON a.compound_id = c.id
+        WHERE EXISTS(
+          SELECT 1 FROM unnest(a.buckets) as bucket
+          WHERE bucket = ANY($1)
+        )
+      `;
+      params.push(request.seed.buckets);
     }
 
     const compounds = (await db.run(compoundQuery, params)).rows || [];
+
+    // Track metrics for standard mode (after query so we have compound count)
+    const standardMetrics: DistillationMetrics = {
+      totalAtoms: compounds.length,
+      successfulReads: 0,
+      provenanceMismatches: 0,
+      fallbackReads: 0,
+      failedReads: 0,
+      skippedByContent: 0,
+    };
 
     for (const compound of compounds) {
       // Skip distillation outputs (prevent self-contamination)
@@ -1455,6 +1585,7 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       }
 
       compoundsProcessed++;
+      standardMetrics.totalAtoms++;
 
       // Get content from filesystem using compound.path (Standard 051 - Pointer Only)
       // compound.path is relative to NOTEBOOK_DIR (e.g., "external-inbox/github/owner/repo/file.md")
@@ -1463,10 +1594,18 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       const localPath = path.join(notebookDir, compound.path);
 
       if (fs.existsSync(localPath)) {
-        content = fs.readFileSync(localPath, 'utf-8');
+        try {
+          content = fs.readFileSync(localPath, 'utf-8');
+          standardMetrics.successfulReads++;
+        } catch (err: any) {
+          console.warn(`[RadialDistiller] Failed to read ${localPath}: ${err.message}`);
+          standardMetrics.failedReads++;
+          continue;
+        }
       } else {
         // File not found - skip this compound
         console.warn(`[RadialDistiller] Skipping compound ${compound.id}: file not found at ${localPath}`);
+        standardMetrics.failedReads++;
         continue;
       }
 
@@ -1492,7 +1631,16 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       }
     }
 
-    return finalizeDistillation(request, allBlocks, digitalObjects, chatSessions, compoundsProcessed, startTime, ingestedAt);
+    // Log metrics for standard mode
+    if (standardMetrics.failedReads > 0) {
+      StructuredLogger.warn('[Distillation] Standard mode metrics', {
+        total: standardMetrics.totalAtoms,
+        successful: standardMetrics.successfulReads,
+        failed: standardMetrics.failedReads,
+      });
+    }
+
+    return finalizeDistillation(request, allBlocks, digitalObjects, chatSessions, compoundsProcessed, startTime, ingestedAt, undefined, standardMetrics);
 
   } catch (error: any) {
     StructuredLogger.error('RADIAL_DISTILL_V2_ERROR', error);

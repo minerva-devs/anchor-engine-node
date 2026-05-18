@@ -7,9 +7,11 @@ packages:
   - engine
   - mcp-server
 
+allowBuilds:
+  esbuild: set this to true or false
+  msw: set this to true or false
+  sharp: set this to true or false
+
 ignoredBuiltDependencies:
   - esbuild
   - msw
-  - tree-sitter
-  - tree-sitter-javascript
-  - tree-sitter-typescript

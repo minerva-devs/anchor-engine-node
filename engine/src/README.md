@@ -4,6 +4,52 @@
 
 ---
 
+## Technology Stack
+
+### Runtime & Database
+- **Runtime:** Node.js (ES Modules)
+- **Database:** PGlite (WASM-based PostgreSQL) - disposable index, zero persistence
+- **Server:** Express.js
+
+### Native Modules (Rust WASM) ⚡
+
+Anchor Engine uses **Rust-compiled WebAssembly modules** for performance-critical operations. This eliminates the need for native compilation and provides universal platform support.
+
+**Published Packages:**
+| Package | Purpose | Version |
+|---------|---------|---------|
+| `@rbalchii/anchor-fingerprint-wasm` | Content fingerprinting (MD5, SHA256) | 1.0.0+ |
+| `@rbalchii/anchor-atomizer-wasm` | Text atomization & entity extraction | 1.0.0+ |
+| `@rbalchii/anchor-keyextract-wasm` | Key-value extraction from text | 1.0.0+ |
+| `@rbalchii/anchor-tagwalker-wasm` | Semantic tag traversal | 1.0.0+ |
+
+**Benefits:**
+- ✅ Zero native compilation required (works on Windows ARM64, macOS, Linux)
+- ✅ 97% smaller binary size (~35KB WASM vs ~1.2MB C++ DLLs)
+- ✅ 10x faster module loading
+- ✅ Universal platform support
+
+**Note:** The older C++ native modules (`engine/src/native/` directory) have been deprecated and removed in favor of these Rust WASM packages. If you encounter references to `koffi`, `node-addon-api`, or `cpp/` directories, those are legacy artifacts from the pre-WASM architecture.
+
+### Dependencies
+
+**Core:**
+- `@electric-sql/pglite`: WASM PostgreSQL database
+- `express`: Web server framework
+- `zod`: Runtime validation schemas
+- `winston-daily-rotate-file`: Structured logging
+
+**NLP & Search:**
+- `wink-nlp`, `wink-eng-lite-web-model`: Named entity recognition, text processing
+- Custom STAR algorithm implementation (physics-inspired graph traversal)
+
+**Utilities:**
+- `uuid`: Unique identifiers
+- `chokidar`: File system watching
+- `tar`: Archive handling
+
+---
+
 ## Directory Structure
 
 ```

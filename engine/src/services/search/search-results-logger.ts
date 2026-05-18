@@ -209,19 +209,40 @@ export function listLogFiles(): string[] {
 }
 
 /** Retrieve the most recent {@link SearchLogEntry} for a given query hash.
- * The function walks the log directory, finds the file whose name
- * contains `_search_${hash}.json` and returns the last stored entry.
+ * The function walks the log directory, finds files with _search_ in their name
  */
 export function getLatestEntryForHash(hash: string): SearchLogEntry | null {
   ensureLogDir();
   const candidates = fs.readdirSync(LOGS_DIR)
-    .filter(f => f.endsWith('.json') && f.includes(`_search_${hash}.json`))
+    .filter(f => f.endsWith('.log') && f.includes('_search_'))
     .sort((a, b) => a.localeCompare(b));
   if (!candidates.length) return null;
+
+  // Use the most recent file (last one alphabetically will be highest timestamp)
   const latestFile = candidates[candidates.length - 1];
-  const content = fs.readFileSync(path.join(LOGS_DIR, latestFile), 'utf-8');
-  const entries: SearchLogEntry[] = JSON.parse(content);
-  return entries.length ? entries[entries.length - 1] : null;
+
+  try {
+    const content = fs.readFileSync(path.join(LOGS_DIR, latestFile), 'utf-8');
+    const lines = content.split('\n').filter(line => line.trim() !== '');
+
+    // Find the entry matching our hash (if any)
+    for (const line of lines) {
+      try {
+        const entry: SearchLogEntry = JSON.parse(line);
+        if (entry.queryHash === hash) {
+          return entry;
+        }
+      } catch {
+        // Skip malformed lines
+      }
+    }
+
+    // If not found, return null
+    return null;
+  } catch (e) {
+    console.error('[SearchLogger] Failed to read log file:', e);
+    return null;
+  }
 }
 
 /** Clear the in‑memory cache – useful for isolated test runs. */

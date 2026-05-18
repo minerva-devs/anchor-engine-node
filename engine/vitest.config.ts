@@ -1,6 +1,13 @@
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      // Ensure tree-sitter-wasms resolves correctly in vitest
+      'tree-sitter-wasms': path.resolve(__dirname, 'node_modules/tree-sitter-wasms/out'),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',
