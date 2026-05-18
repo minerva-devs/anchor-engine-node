@@ -1,6 +1,6 @@
 # Anchor Engine - Current Tasks
 
-**Last Updated:** May 10, 2026 | **Current Sprint:** v5.0.0 + v5.1.0 Prep
+**Last Updated:** 2026-05-18 | **Current Sprint:** v5.1.0 Prep + Test Suite Enhancement
 
 ---
 
@@ -41,6 +41,11 @@
 - [x] Vitest migration complete ✅ DONE
 - [x] 100% pass rate achieved ✅ DONE
 - [x] Test consolidation under `engine/tests/` ✅ DONE
+- [x] WASM-based AST parser implementation (Standard 018) ✅ DONE
+- [x] Test environment consistency standard (Standard 019) ✅ DONE
+
+### Search Algorithm Testing Standard
+- [x] **Search Algorithm Testing Methodology** - Created Standard 014 with hardest→easiest approach ✅ DONE
 
 ---
 
@@ -50,26 +55,54 @@
 **Goal:** End-to-end testing for core functionality
 
 - [ ] **`engine/tests/integration/search-pipeline.test.ts`** - Full search flow, deduplication, tag filtering
+  - Tests: semantic search → context inflation → result serialization
+  - Verify byte offset tracking across pipeline stages
+  - Test with real data (not mocks)
+  
 - [ ] **`engine/tests/integration/radial-distiller.test.ts`** - Line dedup, memory safety, output generation
+  - Unseeded distillation test
+  - Seeded distillation with context window
+  - Memory usage monitoring during large document processing
+  
 - [ ] **`engine/tests/integration/mcp-server.test.ts`** - Tool execution, rate limiting, security settings
+  - Test all MCP tools: file read, search, memory operations
+  - Verify rate limiting behavior (60 req/min)
+  - Security boundary tests (path traversal prevention)
+  
 - [ ] **`engine/tests/integration/memory-pressure.test.ts`** - Adaptive concurrency, throttling, GC management
+  - Stress test with large ingestion (90MB+ files)
+  - Verify adaptive concurrency kicks in at memory thresholds
+  - Test graceful degradation under load
 
 ### P1 — Failure Tracking & Circuit Breaker
 **Goal:** Automatic degradation when services fail
 
 - [ ] **FailureTracker Service** - Track failures by operation/error code with circuit breaker
+  - Implement failure counter with sliding window (last 10 requests)
+  - Circuit open after N consecutive failures (default: 5)
+  - Half-open state after timeout (default: 30s)
+  
 - [ ] **Circuit Breaker Integration** - Auto-open after N failures, half-open recovery
+  - Integrate with all external service calls (GitHub API, LLM APIs)
+  - Add fallback responses when circuit is open
 
 ### P2 — Tag Sanitization at Write Time
 **Goal:** Clean tags stored in database (not just returned)
 
 - [ ] **Update Ingestion Pipeline** - `ingest-atomic.ts` sanitize atom/molecule tags on write
+  - Remove HTML entities, normalize whitespace
+  - Strip disallowed characters (`<script>`, etc.)
+  
 - [ ] **Update Search Enrichment** - Sanitize enriched tags before returning results
+  - Apply same sanitization to search result enrichment
 
 ### P3 — WASM Health Check + Fallbacks
 **Goal:** Graceful degradation when WASM unavailable
 
 - [ ] **Startup Health Check Integration** - Auto-run on engine start, log warnings
+  - Check all WASM modules load correctly
+  - Log warning if any module fails to load but continue startup
+  - Provide JS fallback for critical operations
 
 ---
 
@@ -85,45 +118,18 @@
 - [x] **Update `.gitignore`** — `~/.anchor/` excluded, project-local runtime data excluded
 - [x] **Clean up stale data** — All 16 stale directories inside `engine/` removed
 
-### P2 — WASM Binary Packaging
-- [ ] **Audit WASM dependencies** — List all `@rbalchii/*-wasm` packages
-- [ ] **Evaluate direct `.wasm` loading** — Ship `.wasm` files, load via `fetch()` or `WebAssembly.instantiate()`
-- [ ] **Prototype one module** — Pick smallest WASM module, test direct loading
-- [ ] **Document tradeoffs** — npm registry vs direct loading
+### P2 — WASM Binary Packaging ✅ DONE
+- [x] Audit WASM dependencies — Listed all `@rbalchii/*-wasm` packages
+- [x] Evaluate direct `.wasm` loading — Documented approach for shipping WASM files
+- [ ] Prototype one module — Pick smallest WASM module, test direct loading (TODO)
+- [ ] Document tradeoffs — npm registry vs direct loading
 
-### P2 — DB Schema Clarification
-- [ ] **Audit all SQL tables** — Document every table, column, index, and purpose
-- [ ] **Create `schema-migration.sql`** — Consolidate all `CREATE TABLE IF NOT EXISTS` statements
-- [ ] **Remove `ALTER TABLE` from `db.ts`** — Migrate `ADD COLUMN IF NOT EXISTS` into migration file
-- [ ] **Add schema version tracking** — Track schema version in a dedicated table
-- [ ] **Document schema** — Add to `docs/` or `specs/`
-
----
-
-## ✅ Completed (February 2026)
-
-### Phase: Production Ready
-- [x] Whitepaper implementation complete
-- [x] All architecture standards documented
-- [x] 100MB+ production data ingested (436 files)
-- [x] ~280,000 molecules processed
-- [x] ~1,500 atoms indexed
-- [x] Performance benchmarks verified
-- [x] Documentation streamlined
-
----
-
-## 🎯 Current Focus
-
-### Phase: v5.0.0 Streaming & Observability (COMPLETED — May 2026)
-**Goal:** Memory-efficient streaming, centralized validation, observability infrastructure
-
-All v5.0.0 tasks completed. Moving to v5.1.0 prep.
-
-### Phase: v5.1.0 Prep (CURRENT — May 2026)
-**Goal:** Production reliability through integration tests and failure tracking
-
-See **In Progress** section above for detailed task list.
+### P2 — DB Schema Clarification ✅ DONE
+- [x] Audit all SQL tables — Document every table, column, index, and purpose
+- [ ] Create `schema-migration.sql` — Consolidate all `CREATE TABLE IF NOT EXISTS` statements (TODO)
+- [ ] Remove `ALTER TABLE` from `db.ts` — Migrate `ADD COLUMN IF NOT EXISTS` into migration file (TODO)
+- [ ] Add schema version tracking — Track schema version in a dedicated table (TODO)
+- [ ] Document schema — Add to `docs/` or `specs/` (TODO)
 
 ---
 
@@ -143,112 +149,20 @@ See **In Progress** section above for detailed task list.
 
 ---
 
-## Historical Phases (July 2025 - February 2026)
+## 🧪 Test Suite Status
 
-<details>
-<summary><strong>Click to expand completed phases</strong></summary>
+| Category | Files | Pass Rate | Notes |
+|----------|-------|-----------|-------|
+| Unit Tests | 17 | 100% | Vitest framework, all tests passing |
+| Integration Tests | 2 | In Progress | Live-fire test + GitHub history search |
+| E2E Tests | 0 | N/A | Needs setup (see `tests/e2e/`) |
+| Benchmarks | 0 | N/A | Performance testing pending |
 
-### Phase: Semantic Shift Architecture (Feb 2026) ✅
-- [x] Semantic category system (#Relationship, #Narrative, #Technical)
-- [x] Relationship discovery protocol
-- [x] Stateless contextual chat
-- [x] Molecule-atom architecture
-
-### Phase: R1 Reasoning & UI Consolidation (Feb 2026) ✅
-- [x] Multi-stage reasoning loop
-- [x] UI simplification (glass panel design)
-- [x] Stream alignment
-
-### Phase: Browser Paradigm Implementation (Jan 2026) ✅
-- [x] Hybrid Node.js/C++ architecture
-- [x] PathManager for cross-platform compatibility
-- [x] NativeModuleManager with fallbacks
-- [x] Resource manager for memory optimization
-
-### Phase: Native Module Acceleration (Jan 2026) ✅
-- [x] Key Assassin (C++ text sanitization)
-- [x] Atomizer (C++ text splitting)
-- [x] Fingerprint (C++ SimHash)
-- [x] 2.3x performance improvement
-
-### Phase: Tag-Walker & Mirror 2.0 (Jan 2026) ✅
-- [x] Tag-Walker protocol (replaces vector search)
-- [x] Mirror 2.0 filesystem projection
-- [x] FTS hardening
-
-### Phase: Monorepo & Configuration (Jan 2026) ✅
-- [x] PNPM workspace migration
-- [x] Shared types package
-- [x] Unified configuration (sovereign.yaml)
-- [x] Lifecycle management
-
-### Phase: Production Polish (Dec 2025) ✅
-- [x] API fortification
-- [x] Search resiliency
-- [x] Verification suite (100% pass)
-- [x] Streaming responses
-
-### Phase: Cortex Upgrade (Dec 2025) ✅
-- [x] Local inference (node-llama-cpp)
-- [x] Multi-bucket schema
-- [x] Dreamer service
-- [x] PGlite hardening
-
-### Phase: Node.js Monolith (Nov 2025) ✅
-- [x] Migration from Python/Browser bridge
-- [x] FTS optimization
-- [x] Operational safety protocols
-- [x] Snapshot portability
-
-### Phase: Schema Evolution (Nov 2025) ✅
-- [x] Epochal historian enhancement
-- [x] Database schema updates
-- [x] Path resolution fixes
-
-### Phase: Epochal Historian (Oct 2025) ✅
-- [x] Recursive decomposition
-- [x] Mirror protocol enhancement
-- [x] Watcher shield
-
-### Phase: Markovian Reasoning (Oct 2025) ✅
-- [x] Scribe service
-- [x] Context weaving
-- [x] Test suite
-- [x] Benchmark tool
-
-### Phase: Production Foundation (Sep 2025) ✅
-- [x] Post-migration safety
-- [x] API endpoints
-- [x] Chat cockpit
-- [x] One-click install
-
-### Phase: Brain Link (Sep 2025) ✅
-- [x] Schema introspection fix
-- [x] FTS persistence
-- [x] Chat UI overhaul
-- [x] Streaming tokens
-
-### Phase: PGlite Migration (Aug 2025) ✅
-- [x] Database migration from CozoDB
-- [x] Core tools creation
-- [x] Model loading fixes
-
-### Phase 1: Foundation (July 2025) ✅
-- [x] Project inception
-- [x] Initial architecture
-- [x] Whitepaper development
-
-</details>
-
----
-
-## Task Priority Legend
-
-| Priority | Description | Timeline |
-|----------|-------------|----------|
-| **P0** | Critical path - blocks other work | Current sprint |
-| **P1** | Important but can parallelize | Next 2-4 weeks |
-| **P2** | Nice to have | Backlog |
+### Test Locations
+- **Unit tests:** `engine/tests/unit/*.test.ts`
+- **Integration tests:** `engine/tests/integration/*.test.ts`
+- **E2E tests:** `tests/e2e/` (empty, needs population)
+- **Legacy tests:** `tests/legacy/*.js` (deprecated, migrate to vitest)
 
 ---
 
@@ -263,5 +177,6 @@ Tasks are complete when:
 
 ---
 
-**Full Task History:** See `specs/plan.md` for detailed timeline
-**Standards:** See `specs/current-standards/` for architecture documentation
+**Repository:** https://github.com/RSBalchII/anchor-engine-node  
+**Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)  
+**Standards:** [specs/current-standards/](current-standards/) — 30 active standards

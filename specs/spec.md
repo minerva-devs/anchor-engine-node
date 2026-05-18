@@ -444,7 +444,133 @@ anchor-engine-node/
 
 ---
 
-## Active Standards (Unified: 001-029)
+## Test Framework Architecture
+
+### Test Suite Structure
+
+The test suite is organized into four categories, following a unified pipeline approach:
+
+```
+tests/
+├── unit/              # Unit tests for individual components (*.test.ts)
+│   ├── ast-parser.test.ts
+│   ├── search-utils.test.ts
+│   └── ...
+├── integration/       # Integration tests for component interactions
+│   ├── search-pipeline.test.ts
+│   ├── radial-distiller.test.ts
+│   └── live-fire.test.ts  # End-to-end smoke test
+├── e2e/              # End-to-end tests (full workflow)
+│   └── (populated from legacy/)
+├── legacy/           # Deprecated Jest-based tests (migrating to vitest)
+└── benchmarks/       # Performance benchmark tests
+```
+
+### Test Framework Decision Matrix
+
+| Use Case | Framework | Rationale |
+|----------|-----------|-----------|
+| WASM/ASM integration points | Vitest | ESM/WASM support required |
+| PGlite database operations | Vitest | Native async/await support |
+| Critical path verification (<5 min) | Native (P0 smoke) | Fast execution, simple setup |
+| Legacy tests (migration zone) | Jest → Vitest | Gradual migration in progress |
+
+### Test Pipeline Phases
+
+**Phase 1: P0 Smoke Tests** - Critical path verification, must complete in <5 minutes. If failed, abort entire pipeline.
+
+**Phase 2: Vitest Engine Tests** - Comprehensive coverage of all engine components including WASM integration and PGlite operations.
+
+**Phase 3: Integration Tests** - Cross-component workflows (ingestion → search → distillation).
+
+**Phase 4: Legacy Jest Tests** - Deprecated tests marked for migration to vitest. Results logged separately.
+
+### Test Result Logging
+
+All test results are saved to `.anchor/logs/` for human review:
+
+```
+.anchor/logs/search-tests/
+├── P0-semantic-search-complex-2026-05-18T12-00-00.json
+├── P1-tag-search-multi-filter-2026-05-18T12-00-30.json
+└── ...
+
+.anchor/logs/distillation-tests/
+├── unseeded-2026-05-18T12-01-00.json
+└── seeded-context-2026-05-18T12-01-30.json
+```
+
+---
+
+## Search Algorithm Testing Methodology
+
+### Test Order: Hardest → Easiest
+
+Tests are ordered from most challenging to simplest queries. This approach stress-tests the system first and reveals edge cases early.
+
+| Priority | Category | Example Query | Purpose |
+|----------|----------|---------------|---------|
+| **P0** | Semantic/Complex | "authentication and authorization in Node.js best practices" | Multi-concept, requires understanding relationships |
+| **P1** | Tag-based Advanced | `#test #api #node` with filters | Tests tag intersection logic |
+| **P2** | Byte Offset Search | "function findAnchors" with offset tracking | Verifies content boundary handling |
+| **P3** | FTS Basic | "workspace" or "atom" | Standard full-text search |
+| **P4** | Empty/All Results | "" (empty query) | Returns all indexed content |
+
+### Distillation Testing
+
+Tests cover both unseeded and seeded distillation scenarios:
+
+- **Unseeded**: No prior context, tests basic compression
+- **Seeded**: With context window, tests knowledge retention
+
+---
+
+## API Endpoints (v5.0.0)
+
+```bash
+GET  /health                     # System status
+POST /v1/ingest                  # Ingest content
+POST /v1/ingest/streaming        # Stream large file ingestion (v5.0.0)
+POST /v1/memory/search           # Search memory
+POST /v1/memory/search/stream    # Streaming search with SSE results (v5.0.0)
+POST /v1/memory/explore          # BFS graph traversal (illuminate)
+GET  /v1/buckets                 # List buckets
+GET  /v1/tags                    # List tags
+```
+
+---
+
+## Performance Benchmarks (v5.0.0)
+
+---
+
+## API Endpoints (v5.0.0)
+
+```bash
+GET  /health                     # System status
+POST /v1/ingest                  # Ingest content
+POST /v1/ingest/streaming        # Stream large file ingestion (v5.0.0)
+POST /v1/memory/search           # Search memory
+POST /v1/memory/search/stream    # Streaming search with SSE results (v5.0.0)
+POST /v1/memory/explore          # BFS graph traversal (illuminate)
+GET  /v1/buckets                 # List buckets
+GET  /v1/tags                    # List tags
+```
+
+---
+
+## Performance Benchmarks (v5.0.0)
+
+| Metric | Result | Target | Status |
+|--------|--------|--------|--------|
+| **90MB Ingestion** | ~178s | <200s | ✅ |
+| **Memory Peak** | ~1.6GB | <2GB | ✅ |
+| **Search Latency (p95)** | ~150ms | <200ms | ✅ |
+| **SimHash Speed** | ~2ms/atom | <5ms | ✅ |
+
+---
+
+## Active Standards (Unified: 001-030)
 
 | # | Name | Status |
 |---|------|--------|
@@ -477,34 +603,9 @@ anchor-engine-node/
 | **027** | Pain Point Logging | Operational logging | ✅ |
 | **028** | Unified Test Pipeline | Test orchestration | ✅ |
 | **029** | Path Usage Validation | Runtime path verification | ✅ |
+| **030** | Search Algorithm Testing | Hardest→easiest methodology | ✅ New 2026-05-18 |
 
-All 29 active standards live in `specs/current-standards/`.
-
----
-
-## API Endpoints (v5.0.0)
-
-```bash
-GET  /health                     # System status
-POST /v1/ingest                  # Ingest content
-POST /v1/ingest/streaming        # Stream large file ingestion (v5.0.0)
-POST /v1/memory/search           # Search memory
-POST /v1/memory/search/stream    # Streaming search with SSE results (v5.0.0)
-POST /v1/memory/explore          # BFS graph traversal (illuminate)
-GET  /v1/buckets                 # List buckets
-GET  /v1/tags                    # List tags
-```
-
----
-
-## Performance Benchmarks (v5.0.0)
-
-| Metric | Result | Target | Status |
-|--------|--------|--------|--------|
-| **90MB Ingestion** | ~178s | <200s | ✅ |
-| **Memory Peak** | ~1.6GB | <2GB | ✅ |
-| **Search Latency (p95)** | ~150ms | <200ms | ✅ |
-| **SimHash Speed** | ~2ms/atom | <5ms | ✅ |
+All active standards live in `specs/current-standards/`.
 
 ---
 
