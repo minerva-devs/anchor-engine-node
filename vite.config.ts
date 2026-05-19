@@ -27,6 +27,8 @@ export default defineConfig({
       __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
       __TEST__: JSON.stringify(true),
     },
+    // Provide globals that Emscripten-based WASM modules expect
+    setupFiles: ['./tests/vitest-setup.ts'],
   },
 });
 

@@ -186,7 +186,7 @@ export function logSearchResults(
 
   // Append new line – but truncate at MAX_LINES_PER_FILE first
   const maxLines = MAX_LINES_PER_FILE;
-  
+
   // Remove oldest lines to make room for new entry
   while (existingLines.length >= maxLines) {
     existingLines.shift(); // remove oldest line
@@ -197,7 +197,7 @@ export function logSearchResults(
 
   // Write back to file – compact format, one JSON object per line
   fs.writeFileSync(filePath, existingLines.join('\n'), 'utf-8');
-  
+
   // Update cache so subsequent lookups for the same hash reuse the path.
   logFileCache.set(queryHash, { path: filePath, lastWrite: Date.now() });
 }
@@ -213,13 +213,23 @@ export function listLogFiles(): string[] {
  */
 export function getLatestEntryForHash(hash: string): SearchLogEntry | null {
   ensureLogDir();
-  const candidates = fs.readdirSync(LOGS_DIR)
-    .filter(f => f.endsWith('.log') && f.includes('_search_'))
-    .sort((a, b) => a.localeCompare(b));
-  if (!candidates.length) return null;
+  const allFiles = fs.readdirSync(LOGS_DIR);
+  
+  // Get all .log files and sort by modification time (newest first)
+  const logFiles = allFiles
+    .filter(f => f.endsWith('.log'))
+    .map(f => {
+      const stat = fs.statSync(path.join(LOGS_DIR, f));
+      return { name: f, mtime: stat.mtime, mtimeMs: stat.mtimeMs };
+    })
+    .sort((a, b) => b.mtimeMs - a.mtimeMs); // newest first
+  
+  if (logFiles.length === 0) {
+    return null;
+  }
 
-  // Use the most recent file (last one alphabetically will be highest timestamp)
-  const latestFile = candidates[candidates.length - 1];
+  // Use the most recent file
+  const latestFile = logFiles[0].name;
 
   try {
     const content = fs.readFileSync(path.join(LOGS_DIR, latestFile), 'utf-8');

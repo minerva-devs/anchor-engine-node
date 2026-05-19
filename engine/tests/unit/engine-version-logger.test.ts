@@ -6,11 +6,21 @@ import path from 'path';
 /** Load JSON content of the newest log file for a given hash. */
 function loadNewestLog(hash: string): any {
   const files = listLogFiles();
-  const candidate = files.find(f => f.includes(`_search_${hash}.json`));
+  // Files are named like 20260518T222633_search.log, need to extract hash from filename
+  const candidate = files.find(f => f.includes('_search_'));
   if (!candidate) return null;
   const fullPath = path.join(process.cwd(), '..', '..', '.anchor', 'logs', candidate);
   const content = fs.readFileSync(fullPath, 'utf-8');
-  return JSON.parse(content);
+  const lines = content.split('\n').filter(l => l.trim());
+  for (const line of lines) {
+    try {
+      const entry = JSON.parse(line);
+      if (entry.queryHash === hash) {
+        return entry;
+      }
+    } catch {}
+  }
+  return null;
 }
 
 describe('Engine Version Liking', () => {

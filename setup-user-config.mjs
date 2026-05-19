@@ -100,13 +100,15 @@ if (existsSync(USER_SETTINGS_PATH)) {
   } catch {}
 }
 
-if (!apiKey || apiKey.length < 32) {
+if (!apiKey || apiKey.length < 64) {
+  // Generate a new 64-char hex key (32 bytes)
   apiKey = randomBytes(32).toString("hex");
 }
 
-// Replace existing api_key with our generated hex key (matches the ONLY server.api_key in template)
+// Replace existing api_key with our generated hex key
+// Matches: "anchor-engine-default-key" OR empty string ""
 configText = configText.replace(
-  /"api_key":\s*"anchor-engine-default-key"/g,
+  /"api_key":\s*"(anchor-engine-default-key|")/g,
   `"api_key": "${apiKey}"`,
 );
 

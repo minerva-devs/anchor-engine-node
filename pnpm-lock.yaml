@@ -80,6 +80,9 @@ importers:
       uuid:
         specifier: ^14.0.0
         version: 14.0.0
+      web-tree-sitter:
+        specifier: ^0.26.8
+        version: 0.26.8
       wink-eng-lite-web-model:
         specifier: ^1.8.1
         version: 1.8.1

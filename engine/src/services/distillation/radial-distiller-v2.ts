@@ -206,12 +206,12 @@ export interface RadialDistillResult {
   inflated_content?: { content: string; source: string; tags: string[]; timestamp: number; }[];
   // Distillation metrics tracking (NEW)
   metrics?: {
-    total_atoms: number;
-    successful_reads: number;
-    provenance_mismatches: number;
-    fallback_reads: number;
-    failed_reads: number;
-    skipped_by_content: number;
+    totalAtoms: number;
+    successfulReads: number;
+    provenanceMismatches: number;
+    fallbackReads: number;
+    failedReads: number;
+    skippedByContent: number;
   };
 }
 
@@ -1321,7 +1321,7 @@ async function finalizeDistillation(
       session_index: sessionIndex,
       inflated_content: inflatedContent || [],
       enriched_records: enrichedRecords,
-      metrics: distillationMetrics,
+      metrics: distillationMetrics || { totalAtoms: 0, successfulReads: 0, provenanceMismatches: 0, fallbackReads: 0, failedReads: 0, skippedByContent: 0 },
     };
   }
 

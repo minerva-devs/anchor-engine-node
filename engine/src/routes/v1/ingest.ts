@@ -4,6 +4,7 @@ import { validate, schemas } from '../../middleware/validate.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { AtomizerService } from '../../services/ingest/atomizer-service.js';
 import { AtomicIngestService } from '../../services/ingest/ingest-atomic.js';
+import { writeContentToMirror } from '../../services/mirror/write-content-to-mirror.js';
 
 // Rate limiter for ingest endpoints
 // Mobile-friendly defaults: 10 requests per minute for ingest, 30 for general API
@@ -90,9 +91,29 @@ export function setupIngestRoutes(app: Application) {
 
       const { compound, molecules, atoms } = atomizeResult;
 
-      // Ingest result
+      // Ingest result - store compound in database first
       const targetBuckets = buckets.length > 0 ? buckets : [bucket || 'notebook'];
+      
       await atomicIngest.ingestResult(compound, molecules, atoms, targetBuckets);
+
+      // Write content to mirror after successful DB storage
+      if (compound.path && content) {
+        try {
+          await writeContentToMirror(compound.path, content);
+          StructuredLogger.info('MIRROR_WRITE', {
+            path: compound.path,
+            content_length: content.length,
+            provenance: compound.provenance || 'internal',
+          });
+        } catch (mirrorError) {
+          // Log but don't fail ingestion if mirror write fails
+          const error = mirrorError as Error;
+          StructuredLogger.warn('MIRROR_WRITE_FAILED', {
+            path: compound.path,
+            error: error.message,
+          });
+        }
+      }
 
       const duration = Date.now() - startTime;
 

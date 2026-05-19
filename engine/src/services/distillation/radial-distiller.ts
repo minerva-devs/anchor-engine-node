@@ -120,10 +120,11 @@ async function* collectCompounds(
   const effectiveRadius = Math.min(radius, maxRadius);
 
   let conditions: string[] = [];
-  
+  let queryBase = ``;
+
   // Query both compounds AND molecules to get full content coverage
-  queryBase = `
-    SELECT DISTINCT 
+  queryBase += `
+    SELECT DISTINCT
       c.id as compound_id,
       m.id as molecule_id,
       c.path as source_path,
@@ -169,8 +170,8 @@ async function* collectCompounds(
     
     try {
       let content = '';
-      let source: string;
-      let timestamp: number;
+      let source: string = 'unknown';
+      let timestamp: number = Date.now();
       
       if (row.molecule_id !== null && row.start_byte !== undefined) {
         // Use molecule coordinates - we have the actual byte range!
@@ -234,7 +235,8 @@ async function* collectCompounds(
         global.gc();
       }
     } catch (e) {
-      StructuredLogger.error('[Distill] Error processing row', e);
+      const error = e as Error;
+      StructuredLogger.error('[Distill] Error processing row', error);
       continue; // Skip failed rows but keep going
     }
   }

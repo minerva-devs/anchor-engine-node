@@ -1,6 +1,6 @@
 /**
  * Version Utility
- * 
+ *
  * Centralized version management that reads from user_settings.json
  * This ensures all version references are consistent across the project.
  */
@@ -43,4 +43,41 @@ export async function loadVersion(): Promise<string> {
   }
 }
 
-export const VERSION = await loadVersion();
+let _version: string | undefined;
+
+/** Get the current engine version (cached after first call) */
+export async function getVersion(): Promise<string> {
+  if (!_version) {
+    try {
+      const v = await loadVersion();
+      _version = v || '5.0.0';
+    } catch {
+      _version = '5.0.0';
+    }
+  }
+  return _version;
+}
+
+/** Initialize version and set environment variable for logger services */
+export async function initVersion(): Promise<void> {
+  const version = await loadVersion();
+
+  // Set environment variable for use by search logger and other modules
+  if (typeof process.env.ENGINE_VERSION === 'undefined') {
+    process.env.ENGINE_VERSION = version;
+    console.log(`[Version] Engine version set to ${version} in process.env.ENGINE_VERSION`);
+  } else {
+    console.log(`[Version] ENGINE_VERSION already set to ${process.env.ENGINE_VERSION}`);
+  }
+  
+  _version = version;
+}
+
+// Initialize immediately when this module is loaded
+initVersion().catch((err) => {
+  // Log error but don't crash - version loading is not critical
+  console.error('[Version] Failed to initialize version system:', err);
+});
+
+/** Export VERSION as a string (for compatibility with code that expects it) */
+export const VERSION = getVersion();
