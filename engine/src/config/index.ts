@@ -83,6 +83,17 @@ const MemorySettingsSchema = z.object({
   enable_streaming_results: z.boolean().optional(),
 });
 
+// Low Resource Mode Schema (Standard 136)
+const LowResourceSchema = z.object({
+  enabled: z.boolean().optional(),
+  max_recall_low: z.number().int().min(1).optional(),
+  max_recall_high: z.number().int().min(1).optional(),
+  max_concurrency: z.number().int().min(1).optional(),
+  search_batch_size: z.number().int().min(1).optional(),
+  ingest_batch_size: z.number().int().min(1).optional(),
+  vector_ingest_batch: z.number().int().min(1).optional(),
+});
+
 // Limits Schema
 const LimitsSchema = z.object({
   max_file_size_bytes: z.number().int().positive().optional(),
@@ -100,6 +111,7 @@ const _UserSettingsSchema = z.object({
   search: SearchSettingsSchema.optional(),
   database: DatabaseSettingsSchema.optional(),
   memory: MemorySettingsSchema.optional(),
+  low_resource: LowResourceSchema.optional(),
   limits: LimitsSchema.optional(),
   // Allow additional properties for backward compatibility
 }).passthrough();
@@ -137,6 +149,17 @@ interface Config {
   MONITORING_INTERVAL_MS: number;
   CACHE_TTL_MS: number;
   MAX_CACHE_SIZE: number;
+
+  // Low-Resource Mode (Standard 136)
+  LOW_RESOURCE: {
+    ENABLED: boolean;
+    MAX_RECALL_LOW: number;
+    MAX_RECALL_HIGH: number;
+    MAX_CONCURRENCY: number;
+    SEARCH_BATCH_SIZE: number;
+    INGEST_BATCH_SIZE: number;
+    VECTOR_INGEST_BATCH: number;
+  };
 
   // Distiller Configuration (v2.1)
   DISTILLER: {
@@ -306,7 +329,7 @@ const DEFAULT_CONFIG: Config = {
   MAX_ATOMS_IN_MEMORY: 2000,
   MONITORING_INTERVAL_MS: 30000, // 30 seconds
   CACHE_TTL_MS: 60000, // 60 seconds (1 minute)
-  MAX_CACHE_SIZE: 100,
+  MAX_CACHE_SIZE: 500, // Increased from 100 to 500
 
   // Distiller Configuration (v2.1)
   DISTILLER: {
@@ -452,6 +475,25 @@ const DEFAULT_CONFIG: Config = {
     SEARCH_RESULTS_BATCH_SIZE: parseInt(process.env['ANCHOR_SEARCH_RESULTS_BATCH_SIZE'] || '20', 10),
     // Enable streaming results for memory efficiency (default: false)
     ENABLE_STREAMING_RESULTS: process.env['ANCHOR_ENABLE_STREAMING_RESULTS'] === 'true',
+  },
+
+  // Low-Resource Mode (Standard 136)
+  // Optimizations for devices with limited memory/CPU
+  LOW_RESOURCE: {
+    // Enable low-resource mode (default: false)
+    ENABLED: process.env['ANCHOR_LOW_RESOURCE_MODE'] === 'true',
+    // Reduce max recall at low memory (default: 5)
+    MAX_RECALL_LOW: parseInt(process.env['ANCHOR_MAX_RECALL_LOW'] || '5', 10),
+    // Reduce max recall at high memory (default: 20)
+    MAX_RECALL_HIGH: parseInt(process.env['ANCHOR_MAX_RECALL_HIGH'] || '20', 10),
+    // Reduce concurrent operations (default: 1)
+    MAX_CONCURRENCY: parseInt(process.env['ANCHOR_MAX_CONCURRENCY'] || '1', 10),
+    // Reduce search result batch size (default: 10)
+    SEARCH_BATCH_SIZE: parseInt(process.env['ANCHOR_SEARCH_BATCH_SIZE'] || '10', 10),
+    // Reduce ingestion batch size (default: 5)
+    INGEST_BATCH_SIZE: parseInt(process.env['ANCHOR_INGEST_BATCH_SIZE'] || '5', 10),
+    // Reduce vector ingest batch (default: 10)
+    VECTOR_INGEST_BATCH: parseInt(process.env['ANCHOR_VECTOR_INGEST_BATCH'] || '10', 10),
   },
 
   // Ingestion Configuration (Agent-Controlled)
@@ -600,6 +642,17 @@ function loadConfig(): Config {
         if (userSettings.memory.emergency_stop_mb !== undefined) loadedConfig.MEMORY.EMERGENCY_STOP_MB = userSettings.memory.emergency_stop_mb;
         if (userSettings.memory.search_results_batch_size !== undefined) loadedConfig.MEMORY.SEARCH_RESULTS_BATCH_SIZE = userSettings.memory.search_results_batch_size;
         if (userSettings.memory.enable_streaming_results !== undefined) loadedConfig.MEMORY.ENABLE_STREAMING_RESULTS = userSettings.memory.enable_streaming_results;
+      }
+
+      // Load Low-Resource Mode Settings (Standard 136)
+      if (userSettings.low_resource) {
+        if (userSettings.low_resource.enabled !== undefined) loadedConfig.LOW_RESOURCE.ENABLED = userSettings.low_resource.enabled;
+        if (userSettings.low_resource.max_recall_low !== undefined) loadedConfig.LOW_RESOURCE.MAX_RECALL_LOW = userSettings.low_resource.max_recall_low;
+        if (userSettings.low_resource.max_recall_high !== undefined) loadedConfig.LOW_RESOURCE.MAX_RECALL_HIGH = userSettings.low_resource.max_recall_high;
+        if (userSettings.low_resource.max_concurrency !== undefined) loadedConfig.LOW_RESOURCE.MAX_CONCURRENCY = userSettings.low_resource.max_concurrency;
+        if (userSettings.low_resource.search_batch_size !== undefined) loadedConfig.LOW_RESOURCE.SEARCH_BATCH_SIZE = userSettings.low_resource.search_batch_size;
+        if (userSettings.low_resource.ingest_batch_size !== undefined) loadedConfig.LOW_RESOURCE.INGEST_BATCH_SIZE = userSettings.low_resource.ingest_batch_size;
+        if (userSettings.low_resource.vector_ingest_batch !== undefined) loadedConfig.LOW_RESOURCE.VECTOR_INGEST_BATCH = userSettings.low_resource.vector_ingest_batch;
       }
 
       // Load Ingestion Configuration (Agent-Controlled)

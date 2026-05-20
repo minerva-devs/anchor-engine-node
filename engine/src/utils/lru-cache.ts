@@ -435,8 +435,8 @@ export const searchResultCache = createLRUCache<string, any>({
   maxEntries: config.MAX_CACHE_SIZE || 100,
   ttlMs: config.CACHE_TTL_MS || 60000,
   enableMemoryPressureEviction: true,
-  memoryPressureThreshold: 88,
-  criticalMemoryThreshold: 95,
+  memoryPressureThreshold: 90, // Increased from 88
+  criticalMemoryThreshold: 96, // Increased from 95
 });
 
 /**
@@ -447,8 +447,8 @@ export const queryParseCache = createLRUCache<string, any>({
   maxEntries: 500,
   ttlMs: 300000, // 5 minutes
   enableMemoryPressureEviction: true,
-  memoryPressureThreshold: 88,
-  criticalMemoryThreshold: 95,
+  memoryPressureThreshold: 90, // Increased from 88
+  criticalMemoryThreshold: 96, // Increased from 95
 });
 
 /**
@@ -459,8 +459,8 @@ export const semanticExpansionCache = createLRUCache<string, string[]>({
   maxEntries: 1000,
   ttlMs: 600000, // 10 minutes
   enableMemoryPressureEviction: true,
-  memoryPressureThreshold: 88,
-  criticalMemoryThreshold: 95,
+  memoryPressureThreshold: 90, // Increased from 88
+  criticalMemoryThreshold: 96, // Increased from 95
 });
 
 /**
@@ -471,6 +471,6 @@ export const engramCache = createLRUCache<string, any>({
   maxEntries: 200,
   ttlMs: 120000, // 2 minutes
   enableMemoryPressureEviction: true,
-  memoryPressureThreshold: 88,
-  criticalMemoryThreshold: 95,
+  memoryPressureThreshold: 90, // Increased from 88
+  criticalMemoryThreshold: 96, // Increased from 95
 });

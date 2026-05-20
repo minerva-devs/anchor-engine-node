@@ -136,6 +136,9 @@ AGENTS.md
 .qwenpaw/*
 !qwen-mcp-config.json # Keep MCP config for dev
 
+# Qwen Code session data (local use only, not for commit)
+.qwen/
+
 # ============================================
 # .anchor runtime data (all paths configured via user_settings.json)
 # ============================================

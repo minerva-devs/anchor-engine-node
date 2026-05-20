@@ -222,12 +222,18 @@ export interface RadialDistillResult {
 function extractSemanticBlocks(content: string, sourcePath: string, mtime: number): SemanticBlock[] {
   const blocks: SemanticBlock[] = [];
   const lines = content.split('\n');
-  
+
+  // DEBUG: Log first few lines for debugging
+  console.log(`[DEBUG] extractSemanticBlocks: source=${sourcePath}, lines=${lines.length}`);
+  if (lines.length > 0) {
+    console.log(`[DEBUG] First line: ${JSON.stringify(lines[0])}`);
+  }
+
   let currentBlock: string[] = [];
   let currentType: SemanticBlock['type'] = 'content';
   let currentLevel = 0;
   let currentHeading = '';
-  
+
   const headingPattern = /^(#{1,6})\s+(.+)$/;
   const typeKeywords: Record<string, SemanticBlock['type']> = {
     'problem': 'problem',
@@ -1593,10 +1599,13 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       const notebookDir = pathManager.getNotebookDir();
       const localPath = path.join(notebookDir, compound.path);
 
+      console.log(`[DEBUG] RadialDistiller: reading file at ${localPath}`);
+      
       if (fs.existsSync(localPath)) {
         try {
           content = fs.readFileSync(localPath, 'utf-8');
           standardMetrics.successfulReads++;
+          console.log(`[DEBUG] Read ${content.length} bytes from ${localPath}`);
         } catch (err: any) {
           console.warn(`[RadialDistiller] Failed to read ${localPath}: ${err.message}`);
           standardMetrics.failedReads++;
@@ -1617,7 +1626,9 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       }
 
       // Extract semantic blocks
+      console.log(`[DEBUG] About to extract blocks from ${compound.path}`);
       const blocks = extractSemanticBlocks(content, compound.path, mtime);
+      console.log(`[DEBUG] Extracted ${blocks.length} blocks from ${compound.path}`);
       allBlocks.push(...blocks);
 
       // Extract digital object metadata (NEW)

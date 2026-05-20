@@ -1,0 +1,5 @@
+{
+  "content": "# Pointer-Only Architecture Test\n\nThis document verifies that the pointer-only database architecture is working correctly.\n\n## Verification Steps\n1. Content should be written to mirrored_brain/\n2. Database stores only pointers (IDs, timestamps, tags)\n3. Distillation can find and read content from mirror filesystem",
+  "type": "text",
+  "buckets": ["test-pointer-architecture"]
+}

@@ -1,16 +1,12 @@
 /**
- * Test Setup File for Vitest v4+ - Root level
+ * Root Vitest Configuration
  */
 
-import { beforeEach } from 'vitest';
-const vi = await import('vitest'); // Load vitest in a way that avoids /@id/ path issues
+import { defineConfig } from 'vitest/config';
 
-// Global test environment variables (will be set in engine tests)
-process.env.NODE_ENV = process.env.NODE_ENV || 'test';
-process.env.TS_NODE_TRANSPILE_ONLY = 'true';
-
-beforeEach(() => {
-  vi.useFakeTimers();
+export default defineConfig({
+  test: {
+    // vitest v4 requires explicit imports - we'll handle this in the setup file
+    setupFiles: ['engine/vitest/globalSetup.ts'],
+  },
 });
-
-export {}; // Mark as ES module export

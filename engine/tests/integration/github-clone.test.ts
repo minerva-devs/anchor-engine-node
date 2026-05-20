@@ -45,7 +45,7 @@ describe('GitHub Clone Integration Tests', () => {
     // Check if server is already running
     try {
       const { spawn } = await import('child_process');
-      const server = spawn('node', ['engine/dist/index.js'], {
+      const server = spawn('node', ['dist/index.js'], {
         cwd: PROJECT_ROOT,
         stdio: 'pipe',
         env: {

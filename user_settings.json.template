@@ -102,12 +102,21 @@
       "work_mem_mb": 16
     },
     "memory": {
-      "heap_pressure_mb": 2000,
-      "throttle_start_mb": 1500,
-      "throttle_max_mb": 2500,
-      "emergency_stop_mb": 3500,
+      "heap_pressure_mb": 3000,
+      "throttle_start_mb": 2000,
+      "throttle_max_mb": 3500,
+      "emergency_stop_mb": 5000,
       "search_results_batch_size": 20,
       "enable_streaming_results": true
+    },
+    "low_resource": {
+      "enabled": false,
+      "max_recall_low": 5,
+      "max_recall_high": 20,
+      "max_concurrency": 1,
+      "search_batch_size": 10,
+      "ingest_batch_size": 5,
+      "vector_ingest_batch": 10
     },
     "ingestion": {
       "concept_density": "high",

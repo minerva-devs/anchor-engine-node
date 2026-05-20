@@ -1,1 +1,0 @@
-This is a test document about GitHub and search functionality. README files are important for documentation.

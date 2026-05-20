@@ -1,6 +1,6 @@
 # Anchor Engine - Documentation Index
 
-**Version:** 5.0.0 | **Updated:** April 10, 2026 | **Status:** ✅ Production Ready
+**Version:** 5.0.0 | **Updated:** May 20, 2026 | **Status:** ✅ Production Ready
 
 ---
 
@@ -9,15 +9,15 @@
 ### Getting Started
 - **[README.md](../README.md)** - Quick start, installation, usage guide
 - **[CHANGELOG.md](../CHANGELOG.md)** - Version history (latest: v5.0.0)
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute
+- **[CONTRIBUTING.md](integrations/CONTRIBUTING.md)** - How to contribute
 
 ### Core Documentation
 - **[whitepaper.md](whitepaper.md)** - STAR Algorithm whitepaper
 - **[paper.md](paper.md)** - Academic paper
-- **[STANDARDS.md](STANDARDS.md)** - Active standards index
+- **[STANDARDS.md](../specs/current-standards/INDEX.md)** - Active standards index
 - **[FRICTIONLESS_SPEC.md](FRICTIONLESS_SPEC.md)** - Frictionless specification
 - **[code-patterns.md](code-patterns.md)** - Code patterns
-- **[CONFIGURATION_SINGLE_SOURCE_OF_TRUTH.md](CONFIGURATION_SINGLE_SOURCE_OF_TRUTH.md)** - Configuration
+- **[-settings-configs.md](-settings-configs.md)** - Consolidated settings and configurations
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Deployment guide
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Troubleshooting guide
 
@@ -76,7 +76,7 @@
 → Read **[specs/current-standards/010-radial-distillation-v2.md](../specs/current-standards/010-radial-distillation-v2.md)**
 
 ### "I want to contribute code"
-→ Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** and **[refactoring-guide.md](refactoring-guide.md)**
+→ Start with **[CONTRIBUTING.md](integrations/CONTRIBUTING.md)** and **[refactoring-guide.md](refactoring-guide.md)**
 
 ### "I want to connect via MCP"
 → See **[mcp-agent.md](mcp-agent.md)** and **[qwen-code.md](qwen-code.md)** - MCP integration
@@ -92,7 +92,7 @@
 ## 📊 Key Metrics (v5.0.0)
 
 | Metric | Value | Status |
-|--------|-------|--------|
+|--------|-------|-------|
 | **Context Retrieval** | 618k chars | ✅ +18% vs whitepaper |
 | **Memory Peak** | 510MB | ✅ -70% vs whitepaper |
 | **Search Latency** | <200ms (p95) | ✅ Optimized |
@@ -102,7 +102,7 @@
 | **MCP Write Ops** | NEW in v4.8.0 | ✅ Opt-in ingest |
 | **Active Standards** | 26 (001-026) | ✅ Consolidated |
 | **Historical Standards** | 45 (059-136+) | ✅ Merged |
-| **Documentation Files** | 48 | ✅ Flattened structure |
+| **Documentation Files** | ~20 .md files | ✅ Flattened structure |
 
 ---
 
@@ -116,7 +116,7 @@ anchor-engine-node/
 ├── LICENSE                        # AGPL-3.0 license
 ├── user_settings.json             # Configuration source of truth
 │
-├── docs/                          # Flattened documentation (no subdirs)
+├── docs/                          # Flattened documentation (~20 .md files)
 │   ├── whitepaper.md              # STAR algorithm whitepaper
 │   ├── paper.md                   # Academic paper (arXiv)
 │   ├── BIBLIOGRAPHY.bib           # Academic bibliography
@@ -135,10 +135,6 @@ anchor-engine-node/
 │   ├── STANDARDS.md               # Active standards index
 │   ├── FRICTIONLESS_SPEC.md       # Frictionless specification
 │   ├── code-patterns.md           # Code patterns
-│   ├── CONFIGURATION_SINGLE_SOURCE_OF_TRUTH.md # Configuration
-│   ├── MD_FILES_INVENTORY.md      # Documentation inventory
-│   ├── SPRINT-4-SUMMARY.md        # Sprint summary
-│   ├── PROJECT_STATE_ASSESSMENT.md # Project assessment
 │   │
 │   ├── ai-assistant.md            # AI assistant guide
 │   ├── refactoring-guide.md       # Refactoring guidelines
@@ -166,6 +162,10 @@ anchor-engine-node/
 │   ├── AGENT_CONTROLLED_ENGINE.md # Agent-controlled engine
 │   ├── code-review-v4.8.1-decision-record.md # Code review
 │   └── TODAY_SUMMARY.md             # Daily summary
+│
+├── docs/integrations/             # Integration guidelines
+│   ├── CODE_OF_CONDUCT.md         # Community conduct rules
+│   └── CONTRIBUTING.md            # Contribution guidelines
 │
 ├── specs/
 │   ├── spec.md                    # System specification
@@ -212,17 +212,20 @@ anchor-engine-node/
 4. **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment
 
 ### Contributor (Writing Code)
-1. **[CONTRIBUTING.md](CONTRIBUTING.md)** - Contribution guidelines
+1. **[CONTRIBUTING.md](integrations/CONTRIBUTING.md)** - Contribution guidelines
 2. **[refactoring-guide.md](refactoring-guide.md)** - Source structure
 3. **[TESTING.md](TESTING.md)** - Testing requirements
 4. **[specs/current-standards/](../specs/current-standards/)** - Architecture standards
 
 ---
 
-## 🔬 Recent Updates (v5.0.0 - April 10, 2026)
+## 🔬 Recent Updates (v5.0.0 - May 20, 2026)
 
-### Documentation Consolidation
-- **Flattened Structure:** Removed all subdirectories, consolidated 48 files in `docs/`
+### Documentation Consolidation & Cleanup
+- **Settings Consolidation:** Merged 5 separate settings files into `docs/-settings-configs.md` for unified configuration reference
+- **Moved Integration Docs:** CODE_OF_CONDUCT.md and CONTRIBUTING.md relocated to `docs/integrations/` directory
+- **Removed Temporary Files:** Deleted `doc_review_report.md` and `github-ingestion-testing.md` (temporary review artifacts)
+- **Flattened Structure:** Removed all subdirectories, consolidated ~20 .md files in `docs/`
 - **Updated Standards:** Merged 26 active standards (001-026) into `specs/current-standards/`
 - **Historical Archive:** Consolidated 45 historical standards (059-136+) into `specs/archive-legacy/`
 - **Updated References:** All documentation links now point to consolidated locations
@@ -294,13 +297,13 @@ anchor-engine-node/
 - Read **[CHANGELOG.md](../CHANGELOG.md)** for recent fixes
 
 ### Contributing
-1. Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines
+1. Read **[CONTRIBUTING.md](integrations/CONTRIBUTING.md)** for guidelines
 2. Review **[refactoring-guide.md](refactoring-guide.md)** for source structure
 3. Follow **[specs/current-standards/](../specs/current-standards/)** for architecture
 4. Run **[TESTING.md](TESTING.md)** test suite before submitting
 
 ---
 
-**Last Updated:** April 10, 2026
+**Last Updated:** May 20, 2026
 **Version:** 5.0.0
 **Status:** ✅ Production Ready

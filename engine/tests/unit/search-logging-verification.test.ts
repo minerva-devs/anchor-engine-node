@@ -7,7 +7,7 @@
  * Run with: npm run test:vitest tests/unit/search-logging-verification.test.ts
  */
 
-import { describe, it, expect } from 'vitest';
+import { test, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 

@@ -4,7 +4,7 @@
  * Tests for API key strength validation (Standard 132)
  */
 
-import { describe, it, expect } from 'vitest';
+import { test, expect } from 'vitest';
 import { z } from 'zod';
 
 // Import the schema from config

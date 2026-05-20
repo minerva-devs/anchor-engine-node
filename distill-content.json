@@ -1,0 +1,27 @@
+\$content : The term '\$content' is not recognized as the name of a cmdlet, function, script file, or 
+operable program. Check the spelling of the name, or if a path was included, verify that the path is 
+correct and try again.
+At line:1 char:1
++ \$content = Get-Content '.anchor\inbox\distill-test.md' -Raw; \$json  ...
++ ~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (\$content:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+\$content : The term '\$content' is not recognized as the name of a cmdlet, function, script file, or 
+operable program. Check the spelling of the name, or if a path was included, verify that the path is 
+correct and try again.
+At line:1 char:85
++ ... \inbox\distill-test.md' -Raw; \$json = @{ content = \$content; source ...
++                                                         ~~~~~~~~~
+    + CategoryInfo          : ObjectNotFound: (\$content:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+\$json : The term '\$json' is not recognized as the name of a cmdlet, function, script file, or operable 
+program. Check the spelling of the name, or if a path was included, verify that the path is correct and 
+try again.
+At line:1 char:172
++ ... t'; type = 'text'; buckets = @('test-v5.1-release') }; \$json | Conve ...
++                                                            ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (\$json:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 

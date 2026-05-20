@@ -1,0 +1,7 @@
+{
+  "query": "deep:architecture",
+  "mode": "max-recall",
+  "buckets": [
+    "test-v5.1-release"
+  ]
+}

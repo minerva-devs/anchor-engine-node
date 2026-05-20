@@ -5,7 +5,7 @@
  * into structural atoms (functions, classes, methods) with accurate metadata.
  */
 
-import { describe, it, expect } from 'vitest';
+import { test, expect } from 'vitest';
 import { parseCodeStructure, extToLanguage, CODE_EXTENSIONS } from '../../src/services/ingest/code-ast-parser.js';
 
 // ── Helpers ────────────────────────────────────────────────────────────────

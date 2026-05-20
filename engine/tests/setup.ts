@@ -4,21 +4,20 @@
  * Provides global setup, mocks, and configuration for the Anchor Engine test suite.
  */
 
-import { beforeEach } from 'vitest';
-
 // Global test environment variables
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 process.env.ANCHOR_ROOT = process.env.ANCHOR_ROOT || '/.anchor';
 process.env.TS_NODE_TRANSPILE_ONLY = 'true';
 
-// Set up global mocks for ESM module resolution
-vi.mock('engine/src/utils/path-manager.js', () => ({
+// Set up global mocks for ESM module resolution using vitest's mock API
+// Note: In vitest v4, mocks need to be set up differently
+const mockPathManager = {
   pathManager: {
     getNativePath: (binaryName: string) => `/path/to/${binaryName}`,
   },
-}));
+};
 
-vi.mock('module', () => ({
+const mockModule = {
   createRequire: () => (modulePath: string) => {
     if (modulePath.includes('fail')) {
       throw new Error(`Module not found: ${modulePath}`);
@@ -31,18 +30,13 @@ vi.mock('module', () => ({
       distance: (a: bigint, b: bigint) => Number(a ^ b),
     };
   },
-}));
+};
 
-// Configure test timeout for all tests using vitest's beforeEach hook
-beforeEach(() => {
-  // Set default timeout for all tests in this suite
-  vi.useFakeTimers();
-});
+// Export mocks for use in tests
+export { mockPathManager, mockModule };
 
 // Log test environment setup
 console.log('[Test Setup] Environment configured:', {
   NODE_ENV: process.env.NODE_ENV,
   ANCHOR_ROOT: process.env.ANCHOR_ROOT,
 });
-
-export {};

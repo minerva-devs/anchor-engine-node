@@ -7,7 +7,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { fetch } from 'undici';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { mkdirSync, writeFileSync, existsSync, rmSync, readFileSync } from 'fs';
 

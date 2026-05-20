@@ -5,6 +5,7 @@ import { StructuredLogger } from '../../utils/structured-logger.js';
 import { AtomizerService } from '../../services/ingest/atomizer-service.js';
 import { AtomicIngestService } from '../../services/ingest/ingest-atomic.js';
 import { writeContentToMirror } from '../../services/mirror/write-content-to-mirror.js';
+import { writeMirroredFile } from '../../services/mirror/mirror.js';
 
 // Rate limiter for ingest endpoints
 // Mobile-friendly defaults: 10 requests per minute for ingest, 30 for general API
@@ -93,15 +94,25 @@ export function setupIngestRoutes(app: Application) {
 
       // Ingest result - store compound in database first
       const targetBuckets = buckets.length > 0 ? buckets : [bucket || 'notebook'];
-      
+
       await atomicIngest.ingestResult(compound, molecules, atoms, targetBuckets);
 
-      // Write content to mirror after successful DB storage
+      // Write content to mirror after successful DB storage (Pointer-Only Architecture)
       if (compound.path && content) {
         try {
-          await writeContentToMirror(compound.path, content);
+          // Generate a proper relative path for the mirror (not absolute-style @inbox/...)
+          const ext = '.md'; // Default extension for text uploads
+          const safeId = compound.id.replace(/[^a-zA-Z0-9]/g, '-');
+          const mirrorPath = `inbox/${Date.now()}_${safeId}.${ext}`;
+
+          // Write raw content to mirrored brain filesystem using writeContentToMirror helper
+          await writeContentToMirror(mirrorPath, content);
+
+          // Update compound path to point to the mirror location
+          compound.path = mirrorPath;
+
           StructuredLogger.info('MIRROR_WRITE', {
-            path: compound.path,
+            path: mirrorPath,
             content_length: content.length,
             provenance: compound.provenance || 'internal',
           });

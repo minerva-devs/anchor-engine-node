@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
-export default defineConfig({
+const config = defineConfig({
   resolve: {
     alias: {
       // Ensure tree-sitter-wasms resolves correctly in vitest
@@ -12,10 +12,9 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: [
-      'tests/unit/**/*.test.ts',
-      'tests/integration/**/*.test.ts',
-      'tests/benchmarks/**/*.test.ts',
-      '../tests/e2e/**/*.test.ts',
+      'engine/tests/unit/**/*.test.ts',
+      'engine/tests/integration/**/*.test.ts',
+      'engine/tests/benchmarks/**/*.test.ts',
     ],
     exclude: [
       '**/node_modules/**',
@@ -28,7 +27,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['src/**/*.ts', 'tests/**/*.test.ts'],
+      include: ['src/**/*.ts', 'engine/tests/**/*.test.ts'],
       exclude: [
         'src/types/**/*.ts',
         'src/index.ts',
@@ -42,7 +41,10 @@ export default defineConfig({
       __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
       __TEST__: JSON.stringify(true),
     },
+    setupFiles: ['engine/tests/setup.ts'],
   },
 });
+
+export default config;
 
 // Engine setup file (separate)

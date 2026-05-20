@@ -1,2 +1,0 @@
-{"uuid":"test-123","timestamp":"2026-03-22T18:00:00Z","role":"user","parts":[{"text":"Hello, this is a test message about code analysis"}]}
-{"uuid":"test-456","timestamp":"2026-03-22T18:01:00Z","role":"assistant","parts":[{"text":"I can help you with code analysis. Let me explain how ESLint works."}]}

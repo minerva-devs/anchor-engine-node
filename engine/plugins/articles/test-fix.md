@@ -1,1 +1,0 @@
-Testing GitHub search functionality with content column fix.

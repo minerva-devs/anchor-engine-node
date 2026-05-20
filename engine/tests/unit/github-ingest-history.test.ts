@@ -2,7 +2,7 @@
  * GitHub Ingest History Tests - Vitest version
  */
 
-import { describe, it, expect } from 'vitest';
+import { test, expect } from 'vitest';
 
 // ---- Test fixtures for commit formatting ----
 interface MockCommit {

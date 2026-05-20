@@ -36,7 +36,7 @@ const execSync = (cmd: string, options?: any) => {
 };
 
 // Test configuration - increased timeouts with safety margins
-const GITHUB_REPO = 'rsbii/anchor-engine-node';
+const GITHUB_REPO = 'RSBalchII/anchor-engine-node';
 const SERVER_PORT = 3160;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 const CLONE_TIMEOUT_MS = 300_000; // 5 minutes for git clone (increased from 3min)
@@ -253,7 +253,7 @@ describe('Live Fire Results Integration Tests', () => {
 
     // Start the engine server
     console.log('📦 Starting server process...');
-    serverProcess = spawn('node', ['engine/dist/index.js'], {
+    serverProcess = spawn('node', ['dist/index.js'], {
       cwd: PROJECT_ROOT,
       stdio: 'pipe',
       env: { ...process.env, PORT: String(SERVER_PORT) },

@@ -546,13 +546,68 @@ export function setupSystemRoutes(app: Application) {
     }
   });
 
-  app.post('/v1/watchdog/start', async (_req: Request, res: Response) => {
+  app.post('/v1/watchdog/start', async (req: Request, res: Response) => {
     try {
+      const { paths = [], recursive = true } = req.body;
+
+      // Pre-flight validation: Check target directory exists and is not empty
+      if (paths.length > 0 && paths[0]) {
+        const fs = await import('fs');
+        const pathModule = await import('path');
+
+        const targetPath = pathModule.resolve(paths[0]);
+
+        try {
+          // Check if directory exists
+          const stats = await fs.promises.stat(targetPath);
+          if (!stats.isDirectory()) {
+            return res.status(400).json({
+              status: 'error',
+              message: 'Target directory does not exist or is not a valid directory',
+              path: targetPath,
+              hint: `Please ensure the directory exists and is accessible.`,
+            });
+          }
+
+          // Check if directory is empty (has at least some files)
+          const entries = await fs.promises.readdir(targetPath);
+          if (entries.length === 0) {
+            return res.status(400).json({
+              status: 'error',
+              message: 'Target directory exists but is empty',
+              path: targetPath,
+              hint: `Please clone the repository first using: git clone https://github.com/RSBalchII/anchor-engine-node "${targetPath}"`,
+            });
+          }
+
+          console.log(`[Watchdog] Pre-flight validation passed for: ${targetPath} (${entries.length} items)`);
+        } catch (e: any) {
+          if (e.code === 'ENOENT') {
+            return res.status(404).json({
+              status: 'error',
+              message: 'Target directory does not exist',
+              path: targetPath,
+              hint: `Please clone the repository first using: git clone https://github.com/RSBalchII/anchor-engine-node "${targetPath}"`,
+            });
+          }
+          throw e; // Re-throw other errors for watchdog to handle
+        }
+      }
+
       const { startWatchdog } = await import('../../services/ingest/watchdog.js');
-      await startWatchdog();
+      // Pass validated paths to startWatchdog (fixes the bug where custom paths weren't being used)
+      if (paths.length > 0 && paths[0]) {
+        await startWatchdog(paths);
+      } else {
+        await startWatchdog();
+      }
       res.status(200).json({ status: 'success', message: 'Watchdog started' });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error('[Watchdog API] Start error:', error.message);
+      res.status(500).json({ 
+        status: 'error', 
+        message: `Failed to start watchdog: ${error.message}` 
+      });
     }
   });
 

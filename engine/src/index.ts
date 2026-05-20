@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
-import { existsSync, rmSync } from 'fs';
+import { existsSync, rmSync, readdirSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 // Fix module load error by using explicit relative path
@@ -487,7 +487,44 @@ process.on('SIGINT', async () => {
       console.log('[Shutdown] Skipping mirrored_brain wipe (set watcher.wipe_mirrored_brain_on_shutdown=true to enable)');
     }
 
-    // 4. Clear Auto-Generated Synonym Rings (derived from data, regenerated on start)
+    // 4. Clear GitHub Mirror Directory (cloned repos, derived from ingestion)
+    const githubMirrorDir = path.join(PATHS.EXTERNAL_INBOX_DIR, 'github');
+    if (existsSync(githubMirrorDir)) {
+      console.log('[Shutdown] Clearing GitHub mirror directory...');
+      try {
+        rmSync(githubMirrorDir, { recursive: true, force: true });
+        console.log('[Shutdown] ✓ GitHub mirror directory cleared.');
+      } catch (e: any) {
+        console.warn(`[Shutdown] ⚠ Could not clear GitHub mirror: ${e.message}`);
+      }
+    }
+
+    // 5. Clean up orphaned files in external-inbox (not under github/)
+    const externalInboxDir = PATHS.EXTERNAL_INBOX_DIR;
+    if (existsSync(externalInboxDir)) {
+      const entries = readdirSync(externalInboxDir);
+      for (const entry of entries) {
+        const entryPath = path.join(externalInboxDir, entry);
+        // Check if it's a directory by checking if it ends with /
+        const stat = statSync(entryPath);
+        if (stat.isDirectory()) {
+          // Keep only the 'github' directory
+          if (path.basename(entry) === 'github') {
+            continue;
+          }
+          // Remove other directories
+          console.log(`[Shutdown] Removing orphaned directory: ${entry}`);
+          rmSync(entryPath, { recursive: true, force: true });
+        } else {
+          // Remove orphaned files
+          console.log(`[Shutdown] Removing orphaned file: ${entry}`);
+          rmSync(entryPath, { force: true });
+        }
+      }
+      console.log('[Shutdown] ✓ Orphaned files in external-inbox cleaned.');
+    }
+
+    // 6. Clear Auto-Generated Synonym Rings (derived from data, regenerated on start)
     const synonymPath = path.join(PATHS.NOTEBOOK_DIR, 'synonym-ring-auto.json');
     if (existsSync(synonymPath)) {
       console.log('[Shutdown] Clearing auto-generated synonym rings...');
@@ -499,7 +536,7 @@ process.on('SIGINT', async () => {
       }
     }
 
-    // 5. Clear Tag Audit Cache (derived from tags, regenerated on demand)
+    // 6. Clear Tag Audit Cache (derived from tags, regenerated on demand)
     const tagAuditPath = path.join(PATHS.LOCAL_DATA_DIR, 'notebook', 'tag-audit-cache.json');
     if (existsSync(tagAuditPath)) {
       console.log('[Shutdown] Clearing tag audit cache...');
@@ -514,6 +551,7 @@ process.on('SIGINT', async () => {
     console.log('[Shutdown] ✓ Cleanup complete.');
     console.log('[Shutdown] Source of truth preserved: inbox/ + external-inbox/');
     console.log('[Shutdown] On restart: mirror + index + synonyms regenerated from inbox/');
+    console.log('[Shutdown] GitHub mirror directory cleared to prevent duplicate repos');
 
     process.exit(0);
   } catch (e) {

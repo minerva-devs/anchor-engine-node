@@ -1,7 +1,7 @@
 {
   "id": "AEN-0",
-  "name": "Anchor-Engine-Node-Dev",
-  "description": "",
+  "name": "Aen-0",
+  "description": "AEN-0 agent",
   "workspace_dir": "C:\\Users\\rsbii\\Projects\\anchor-engine-node",
   "channels": {
     "imessage": {
@@ -287,38 +287,15 @@
     }
   },
   "mcp": {
-    "clients": {
-      "tavily_search": {
-        "name": "tavily_mcp",
-        "description": "",
-        "enabled": false,
-        "transport": "stdio",
-        "url": "",
-        "headers": {},
-        "command": "npx",
-        "args": [
-          "-y",
-          "tavily-mcp@latest"
-        ],
-        "env": {
-          "TAVILY_API_KEY": ""
-        },
-        "cwd": ""
-      }
-    }
-  },
-  "heartbeat": {
-    "enabled": false,
-    "every": "6h",
-    "target": "main"
+    "clients": {}
   },
   "last_dispatch": {
     "channel": "console",
     "user_id": "default",
-    "session_id": "1779132379224"
+    "session_id": "1779215882089"
   },
   "running": {
-    "max_iters": 100,
+    "max_iters": 50,
     "auto_continue_on_text_only": false,
     "llm_retry_enabled": true,
     "llm_max_retries": 3,
@@ -331,7 +308,7 @@
     "llm_acquire_timeout": 300.0,
     "shell_command_timeout": 60.0,
     "shell_command_executable": "",
-    "max_input_length": 260000,
+    "max_input_length": 130000,
     "history_max_length": 10000,
     "context_manager_backend": "light",
     "light_context_config": {
@@ -339,7 +316,7 @@
       "token_count_estimate_divisor": 4.0,
       "context_compact_config": {
         "enabled": true,
-        "compact_threshold_ratio": 0.49,
+        "compact_threshold_ratio": 0.8,
         "reserve_threshold_ratio": 0.1,
         "compact_with_thinking_block": true
       },
@@ -386,7 +363,8 @@
       "rebuild_memory_index_on_start": false,
       "recursive_file_watcher": false
     },
-    "daily_memory_dir": "memory"
+    "daily_memory_dir": "memory",
+    "approval_level": "OFF"
   },
   "llm_routing": {
     "enabled": false,
@@ -395,6 +373,10 @@
       "provider_id": "",
       "model": ""
     }
+  },
+  "active_model": {
+    "provider_id": "lmstudio",
+    "model": "qwen3.5-9b@q4_k_xl"
   },
   "language": "en",
   "approval_level": "OFF",
@@ -408,7 +390,7 @@
       "execute_shell_command": {
         "name": "execute_shell_command",
         "enabled": true,
-        "description": "Execute shell commands",
+        "description": "",
         "display_to_user": true,
         "async_execution": false,
         "icon": "💻",
@@ -417,7 +399,7 @@
       "read_file": {
         "name": "read_file",
         "enabled": true,
-        "description": "Read file contents",
+        "description": "",
         "display_to_user": true,
         "async_execution": false,
         "icon": "📄",
@@ -426,7 +408,7 @@
       "write_file": {
         "name": "write_file",
         "enabled": true,
-        "description": "Write content to file",
+        "description": "",
         "display_to_user": true,
         "async_execution": false,
         "icon": "✍️",
@@ -533,7 +515,7 @@
       },
       "delegate_external_agent": {
         "name": "delegate_external_agent",
-        "enabled": false,
+        "enabled": true,
         "description": "Delegate work to an external ACP agent runner",
         "display_to_user": true,
         "async_execution": false,
@@ -575,6 +557,87 @@
         "async_execution": false,
         "icon": "⏳",
         "config": {}
+      }
+    }
+  },
+  "security": {
+    "tool_guard": {
+      "enabled": true,
+      "denied_tools": [],
+      "auto_denied_rules": [],
+      "custom_rules": [],
+      "disabled_rules": [],
+      "shell_evasion_checks": {
+        "command_substitution": false,
+        "obfuscated_flags": false,
+        "backslash_escaped_whitespace": false,
+        "backslash_escaped_operators": false,
+        "newlines": false,
+        "comment_quote_desync": false,
+        "quoted_newline": false
+      }
+    },
+    "file_guard": {
+      "enabled": true,
+      "sensitive_files": []
+    },
+    "skill_scanner": {
+      "mode": "warn",
+      "timeout": 30,
+      "whitelist": []
+    },
+    "allow_no_auth_hosts": [
+      "127.0.0.1",
+      "::1"
+    ]
+  },
+  "acp": {
+    "agents": {
+      "opencode": {
+        "enabled": true,
+        "command": "opencode",
+        "args": [
+          "acp"
+        ],
+        "env": {},
+        "trusted": true,
+        "tool_parse_mode": "update_detail",
+        "stdio_buffer_limit_bytes": 52428800
+      },
+      "qwen_code": {
+        "enabled": true,
+        "command": "qwen",
+        "args": [
+          "--acp"
+        ],
+        "env": {},
+        "trusted": true,
+        "tool_parse_mode": "call_detail",
+        "stdio_buffer_limit_bytes": 52428800
+      },
+      "claude_code": {
+        "enabled": true,
+        "command": "npx",
+        "args": [
+          "-y",
+          "@zed-industries/claude-agent-acp"
+        ],
+        "env": {},
+        "trusted": true,
+        "tool_parse_mode": "update_detail",
+        "stdio_buffer_limit_bytes": 52428800
+      },
+      "codex": {
+        "enabled": true,
+        "command": "npx",
+        "args": [
+          "-y",
+          "@zed-industries/codex-acp"
+        ],
+        "env": {},
+        "trusted": true,
+        "tool_parse_mode": "call_detail",
+        "stdio_buffer_limit_bytes": 52428800
       }
     }
   },

@@ -54,49 +54,64 @@ async function triggerPostIngestionSynonyms() {
     }, INGESTION_DEBOUNCE_MS);
 }
 
-export async function startWatchdog() {
+export async function startWatchdog(customPaths?: string[]): Promise<void> {
     if (watcher) return;
+
+    // If custom paths provided, use them instead of default inbox/external-inbox
+    const pathsToUse = customPaths && customPaths.length > 0 ? customPaths : [];
 
     if (!fs.existsSync(NOTEBOOK_DIR)) {
         console.warn(`[Watchdog] Notebook directory not found: ${NOTEBOOK_DIR}. Skipping watch.`);
         return;
     }
 
-    const inbox = PATHS.INBOX_DIR;
-    const externalInbox = PATHS.EXTERNAL_INBOX_DIR;
+    // If no paths provided, use defaults (inbox and external-inbox)
+    if (pathsToUse.length === 0) {
+        const inbox = PATHS.INBOX_DIR;
+        const externalInbox = PATHS.EXTERNAL_INBOX_DIR;
 
-    // Auto-create inbox directories if missing (Standard 051: Ephemeral Index)
-    // These are gitignored and should be created on-demand
-    if (!fs.existsSync(inbox)) {
-        fs.mkdirSync(inbox, { recursive: true });
-        console.log(`[Watchdog] Created inbox directory: ${inbox}`);
-    }
-    if (!fs.existsSync(externalInbox)) {
-        fs.mkdirSync(externalInbox, { recursive: true });
-        console.log(`[Watchdog] Created external-inbox directory: ${externalInbox}`);
-    }
+        // Auto-create inbox directories if missing (Standard 051: Ephemeral Index)
+        // These are gitignored and should be created on-demand
+        if (!fs.existsSync(inbox)) {
+            fs.mkdirSync(inbox, { recursive: true });
+            console.log(`[Watchdog] Created inbox directory: ${inbox}`);
+        }
+        if (!fs.existsSync(externalInbox)) {
+            fs.mkdirSync(externalInbox, { recursive: true });
+            console.log(`[Watchdog] Created external-inbox directory: ${externalInbox}`);
+        }
 
-    // P0 Critical Fix: Auto-enable watchdog when extra_paths is configured
-    const extraPaths = config.WATCHER_EXTRA_PATHS || [];
-    if (extraPaths.length > 0) {
-        console.log(`🔍 Watchdog auto-enabled: watching ${extraPaths.length} extra path(s)`);
-        extraPaths.forEach((p: string) => {
-            console.log(`   • ${p}`);
+        // P0 Critical Fix: Auto-enable watchdog when extra_paths is configured
+        const extraPaths = config.WATCHER_EXTRA_PATHS || [];
+        if (extraPaths.length > 0) {
+            console.log(`🔍 Watchdog auto-enabled: watching ${extraPaths.length} extra path(s)`);
+            extraPaths.forEach((p: string) => {
+                console.log(`   • ${p}`);
+            });
+        }
+
+        console.log(`[Watchdog] Starting watch on: ${inbox} and ${externalInbox}`);
+
+        // Validate extra paths (already logged above if configured)
+        const validExtraPaths = extraPaths.filter((p: string) => {
+            if (fs.existsSync(p)) return true;
+            console.warn(`[Watchdog] Extra path not found: ${p}`);
+            return false;
         });
+
+        pathsToUse.push(inbox, externalInbox, ...validExtraPaths);
+    } else {
+        // Custom paths provided - validate they exist
+        for (const p of pathsToUse) {
+            if (!fs.existsSync(p)) {
+                console.warn(`[Watchdog] Path does not exist: ${p}`);
+            } else {
+                console.log(`[Watchdog] Watching custom path: ${p}`);
+            }
+        }
     }
 
-    console.log(`[Watchdog] Starting watch on: ${inbox} and ${externalInbox}`);
-
-    // Validate extra paths (already logged above if configured)
-    const validExtraPaths = extraPaths.filter((p: string) => {
-        if (fs.existsSync(p)) return true;
-        console.warn(`[Watchdog] Extra path not found: ${p}`);
-        return false;
-    });
-
-    const pathsToWatch = [inbox, externalInbox, ...validExtraPaths];
-
-    watcher = chokidar.watch(pathsToWatch, {
+    watcher = chokidar.watch(pathsToUse, {
         ignored: IGNORE_PATTERNS,
         persistent: true,
         ignoreInitial: false, // Force scan on start to ingest existing files
@@ -329,9 +344,20 @@ export async function triggerManualIngest(): Promise<{ status: string; message: 
             filesIngested,
         };
     } catch (error: any) {
-        return {
+      // Return user-friendly error message instead of raw error object
+      let errorMessage = `Manual ingest failed: ${error.message}`;
+      
+      if (error.code === 'ENOENT') {
+        errorMessage += '. No files found to process.';
+      } else if (error.code === 'EACCES') {
+        errorMessage += '. Permission denied. Please check directory permissions.';
+      }
+
+      console.error('[Watchdog] Manual ingest error:', errorMessage);
+
+      return {
             status: 'error',
-            message: `Manual ingest failed: ${error.message}`,
+            message: errorMessage,
         };
     }
 }
@@ -532,9 +558,22 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
         return { ingested: true };
 
     } catch (error: any) {
-        console.error(`[Watchdog] Error processing ${filePath}:`, error.message);
-        systemStatus.setState('idle');
-        systemStatus.clearProgress();
-        throw error;
+      // Return user-friendly error message instead of raw error object
+      let errorMessage = `Failed to process ${filePath}: ${error.message}`;
+      
+      // Provide specific guidance for common errors
+      if (error.code === 'ENOENT') {
+        errorMessage += '. File not found.';
+      } else if (error.code === 'EACCES') {
+        errorMessage += '. Permission denied. Please check file permissions.';
+      } else if (error.message.includes('token')) {
+        errorMessage += '. Token limit exceeded - content may be too large for ingestion.';
+      }
+
+      console.error(`[Watchdog] ${errorMessage}`);
+      systemStatus.setState('idle');
+      systemStatus.clearProgress();
+
+      return { ingested: false, reason: 'processing_error' };
     }
 }

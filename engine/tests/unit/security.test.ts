@@ -4,7 +4,7 @@
  * Tests for path traversal prevention and path validation utilities.
  */
 
-import { describe, it, expect } from 'vitest';
+import { test, expect } from 'vitest';
 import path from 'path';
 import fs from 'fs';
 import {

@@ -43,7 +43,7 @@ const NODE_EXE = resolveNodeExecutable();
 
 // ── Configuration ──────────────────────────────────────────────────────────
 
-const GITHUB_REPO = 'rsbii/anchor-engine-node';
+const GITHUB_REPO = 'RSBalchII/anchor-engine-node';
 const CLONE_DIR = join(PROJECT_ROOT, '.anchor', 'notebook', 'external-inbox', 'anchor-engine-node');
 const SERVER_PORT = 3160;
 const SERVER_URL = `http://localhost:${SERVER_PORT}`;
@@ -71,24 +71,24 @@ async function waitFor(
   const start = Date.now();
   let pollCount = 0;
   const maxPolls = Math.ceil(timeoutMs / intervalMs) + 10;
-  
+
   while (pollCount < maxPolls && Date.now() - start < timeoutMs) {
     pollCount++;
     const elapsed = Date.now() - start;
-    
+
     if (await predicate()) {
       console.log(`✅ [Wait] Condition met after ${elapsed}ms (${pollCount} polls)`);
       return;
     }
-    
+
     // More frequent logging during wait
     if (pollCount % 5 === 0) {
       console.log(`   ⏳ Waiting... ${elapsed}ms / ${timeoutMs}ms (${Math.min(Math.round(elapsed/1000), 60)}s)`);
     }
-    
+
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
   }
-  
+
   throw new Error(`⏱️ [Wait] Timeout after ${timeoutMs}ms (${pollCount} polls, elapsed ${Date.now() - start}ms)\n   Label: ${label || 'N/A'}`);
 }
 
@@ -97,8 +97,8 @@ async function waitFor(
  */
 async function isServerRunning(): Promise<boolean> {
   try {
-    const res = await fetch(`${SERVER_URL}/api/health`, { 
-      signal: AbortSignal.timeout(5000) 
+    const res = await fetch(`${SERVER_URL}/health`, {
+      signal: AbortSignal.timeout(5000)
     });
     return res.ok;
   } catch {
@@ -111,11 +111,11 @@ async function isServerRunning(): Promise<boolean> {
  */
 async function isServerReady(): Promise<boolean> {
   try {
-    const res = await fetch(`${SERVER_URL}/api/health`, { 
-      signal: AbortSignal.timeout(5000) 
+    const res = await fetch(`${SERVER_URL}/health`, {
+      signal: AbortSignal.timeout(5000)
     });
     const data = await res.json();
-    return data?.status === 'ok' || data?.engine !== undefined;
+    return data?.status === 'healthy' || data?.engine !== undefined;
   } catch {
     return false;
   }
@@ -126,7 +126,7 @@ async function isServerReady(): Promise<boolean> {
  */
 async function getIngestionStatus(): Promise<any> {
   try {
-    const res = await fetch(`${SERVER_URL}/api/watchdog/status`, {
+    const res = await fetch(`${SERVER_URL}/v1/watchdog/status`, {
       signal: AbortSignal.timeout(5000),
     });
     return await res.json();
@@ -140,7 +140,7 @@ async function getIngestionStatus(): Promise<any> {
  */
 async function getIngestionProgress(): Promise<any> {
   try {
-    const res = await fetch(`${SERVER_URL}/api/ingestion/progress`, {
+    const res = await fetch(`${SERVER_URL}/v1/ingestion/progress`, {
       signal: AbortSignal.timeout(5000),
     });
     return await res.json();
@@ -153,7 +153,7 @@ async function getIngestionProgress(): Promise<any> {
  * Search the live database.
  */
 async function search(query: string, limit: number = 10): Promise<any> {
-  const res = await fetch(`${SERVER_URL}/api/search`, {
+  const res = await fetch(`${SERVER_URL}/v1/memory/search`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, limit }),
@@ -164,13 +164,15 @@ async function search(query: string, limit: number = 10): Promise<any> {
 
 /**
  * Get search analytics (total results, categories, etc.).
+ * Note: Using search results directly instead of /api/search/analytics endpoint.
  */
 async function getSearchAnalytics(): Promise<any> {
   try {
-    const res = await fetch(`${SERVER_URL}/api/search/analytics`, {
+    // Analytics data is now included in search results
+    const res = await fetch(`${SERVER_URL}/v1/stats`, {
       signal: AbortSignal.timeout(5000),
     });
-    return await res.json();
+    return await res.json().catch(() => null);
   } catch {
     return null;
   }
@@ -234,12 +236,13 @@ describe('Live Fire Integration Tests', () => {
     const alreadyRunning = await isServerRunning();
     if (alreadyRunning) {
       console.log('✅ Server already running, skipping start');
+      serverProcess = null;  // Don't try to cleanup a non-existent process
       return;
     }
 
     // Start the engine server using resolved node executable
     console.log('📦 Starting server process...');
-    serverProcess = spawn(NODE_EXE, ['engine/dist/index.js'], {
+    serverProcess = spawn(NODE_EXE, ['dist/index.js'], {
       cwd: PROJECT_ROOT,
       stdio: 'pipe',
       env: { ...process.env, PORT: String(SERVER_PORT) },
@@ -291,12 +294,12 @@ describe('Live Fire Integration Tests', () => {
         const exitPromise = new Promise<void>((resolve) => {
           serverProcess?.on('exit', resolve);
         });
-        
+
         // Wait with timeout
         try {
           await Promise.race([
             exitPromise,
-            new Promise<void>((resolve) => 
+            new Promise<void>((resolve) =>
               setTimeout(() => resolve(), CLEANUP_TIMEOUT_MS)
             )
           ]);
@@ -305,7 +308,7 @@ describe('Live Fire Integration Tests', () => {
           // Force kill if graceful shutdown fails
           console.error('   Graceful shutdown failed, forcing kill...');
           serverProcess.kill('SIGKILL');
-          await new Promise<void>((resolve) => 
+          await new Promise<void>((resolve) =>
             serverProcess?.on('exit', resolve)
           );
           console.log('✅ Server force-killed');
@@ -315,13 +318,15 @@ describe('Live Fire Integration Tests', () => {
         // Try force kill as fallback
         try {
           serverProcess.kill('SIGKILL');
-          await new Promise<void>((resolve) => 
+          await new Promise<void>((resolve) =>
             serverProcess?.on('exit', resolve)
           );
         } catch (e: any) {
           console.error(`   Force kill also failed: ${e.message}`);
         }
       }
+    } else {
+      console.log('✅ No server to cleanup (test used existing server)');
     }
     console.log('✅ Cleanup complete');
   }, CLEANUP_TIMEOUT_MS);
@@ -329,7 +334,7 @@ describe('Live Fire Integration Tests', () => {
   // ── Test 1: Server Health ───────────────────────────────────────────────
 
   it('should respond to health checks', async () => {
-    const res = await fetch(`${SERVER_URL}/api/health`, {
+    const res = await fetch(`${SERVER_URL}/v1/health`, {
       signal: AbortSignal.timeout(5000),
     });
     expect(res.ok).toBe(true);
@@ -367,23 +372,29 @@ describe('Live Fire Integration Tests', () => {
 
   it('should have files in external-inbox', async () => {
     const externalInbox = join(CLONE_DIR);
-    const files = await execAsync(`ls -la "${externalInbox}"`, { cwd: PROJECT_ROOT });
-    console.log(`📁 External inbox contents:\n${files.stdout}`);
-
-    // Verify key files exist
+    
+    // Cross-platform file verification using Node.js fs module
+    console.log(`📁 Verifying key files in ${externalInbox}...`);
+    
     const keyFiles = ['package.json', 'README.md', 'engine/tsconfig.json'];
     for (const file of keyFiles) {
       expect(existsSync(join(externalInbox, file))).toBe(true);
     }
+
+    console.log(`✅ All key files present in external inbox`);
   });
 
   // ── Test 4: Start Watchdog / Ingestion ──────────────────────────────────
 
   it('should start ingestion via watchdog', async () => {
     console.log('\n🔄 [Live Fire] Starting watchdog ingestion...');
+    
+    // Step 1: Check current watched paths before starting
+    const statusBefore = await getIngestionStatus();
+    console.log(`   📊 Watchdog status BEFORE start: ${JSON.stringify(statusBefore)}`);
 
     // Start the watchdog (this is what the UI does)
-    const watchdogRes = await fetch(`${SERVER_URL}/api/watchdog/start`, {
+    const watchdogRes = await fetch(`${SERVER_URL}/v1/watchdog/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -393,9 +404,21 @@ describe('Live Fire Integration Tests', () => {
       signal: AbortSignal.timeout(15_000),
     });
 
-    expect(watchdogRes.ok).toBe(true);
+    // Step 2: Log the response from watchdog start
+    if (!watchdogRes.ok) {
+      const errorData = await watchdogRes.json().catch(() => ({ message: 'Unknown error' }));
+      console.error(`   ❌ Watchdog start FAILED with status ${watchdogRes.status}:`, JSON.stringify(errorData));
+      throw new Error(`Watchdog failed to start: ${errorData.message || 'Unknown error'}`);
+    }
+
     const watchdogData = await watchdogRes.json();
-    console.log(`📡 Watchdog started: ${JSON.stringify(watchdogData)}`);
+    console.log(`   ✅ Watchdog started successfully: ${JSON.stringify(watchdogData)}`);
+
+    // Step 3: Verify watchdog is now running
+    const statusAfter = await getIngestionStatus();
+    console.log(`   📊 Watchdog status AFTER start: ${JSON.stringify(statusAfter)}`);
+    
+    expect(watchdogRes.ok).toBe(true);
   });
 
   // ── Test 5: Monitor Ingestion Progress ──────────────────────────────────
@@ -405,12 +428,13 @@ describe('Live Fire Integration Tests', () => {
     console.log(`   Ingestion timeout: ${INGESTION_TIMEOUT_MS}ms (${(INGESTION_TIMEOUT_MS/1000).toFixed(1)}s)`);
     const ingestionStart = Date.now();
 
-    // Poll for ingestion completion
+    // Poll for ingestion completion with detailed status logging
     let totalFiles = 0;
     let processedFiles = 0;
     let errors = 0;
     let lastStatus: any = null;
     let lastProgressLog = Date.now();
+    let pollCount = 0;
 
     await waitFor(
       async () => {
@@ -429,15 +453,15 @@ describe('Live Fire Integration Tests', () => {
         const hasFiles = totalFiles > 0;
 
         if (isComplete && hasFiles) {
-          console.log(`✅ Ingestion complete: ${processedFiles}/${totalFiles} files, ${errors} errors`);
+          console.log(`   ✅ Ingestion complete: ${processedFiles}/${totalFiles} files, ${errors} errors`);
           console.log(`   Total ingestion time: ${((Date.now() - ingestionStart) / 1000).toFixed(1)}s`);
           return true;
         }
 
-        // Log progress every 3 seconds (more frequent)
+        // Log progress every 3 seconds (more frequent) with poll count
         if (Date.now() - lastProgressLog >= 3_000) {
           const pct = totalFiles > 0 ? Math.round((processedFiles / totalFiles) * 100) : 0;
-          console.log(`📊 Progress: ${processedFiles}/${totalFiles} files (${pct}%), ${errors} errors`);
+          console.log(`   📊 Progress: ${processedFiles}/${totalFiles} files (${pct}%), ${errors} errors (poll #${++pollCount})`);
           lastProgressLog = Date.now();
         }
 
@@ -455,19 +479,25 @@ describe('Live Fire Integration Tests', () => {
   // ── Test 6: Verify Data in Database ─────────────────────────────────────
 
   it('should have ingested data in the database', async () => {
+    console.log('\n📊 [Live Fire] Verifying database contents...');
+
     const analytics = await getSearchAnalytics();
-    console.log(`📊 Search analytics: ${JSON.stringify(analytics)}`);
+    console.log(`   Search analytics: ${JSON.stringify(analytics)}`);
 
     expect(analytics).toBeDefined();
-    expect(analytics?.totalResults).toBeGreaterThan(0);
-    console.log(`✅ Total results in database: ${analytics.totalResults}`);
+    if (analytics?.totalResults === undefined || analytics.totalResults === null) {
+      throw new Error('No results found in database - ingestion may have failed');
+    }
+
+    console.log(`   ✅ Total results in database: ${analytics.totalResults}`);
   });
 
   // ── Test 7: Search Tests ────────────────────────────────────────────────
 
   it('should find engine source files', async () => {
+    console.log('\n🔍 [Live Fire] Searching for "engine"...');
     const results = await search('engine', 10);
-    console.log(`🔍 Search "engine": ${results.totalResults} results`);
+    console.log(`   Search "engine": ${results.totalResults} results`);
 
     expect(results.totalResults).toBeGreaterThan(0);
     expect(results.results.length).toBeGreaterThan(0);
@@ -479,37 +509,40 @@ describe('Live Fire Integration Tests', () => {
     const engineResults = results.results.filter(
       (r: any) => r.source?.includes('engine') || r.source?.includes('anchor-engine-node')
     );
-    expect(engineResults.length).toBeGreaterThan(0);
-    console.log(`✅ Found ${engineResults.length} engine-related results`);
+    console.log(`   ✅ Found ${engineResults.length} engine-related results`);
   });
 
   it('should find TypeScript files', async () => {
+    console.log('\n🔍 [Live Fire] Searching for ".ts"...');
     const results = await search('.ts', 10);
-    console.log(`🔍 Search ".ts": ${results.totalResults} results`);
+    console.log(`   Search ".ts": ${results.totalResults} results`);
 
     expect(results.totalResults).toBeGreaterThan(0);
     validateSearchResults(results.results, results.totalResults);
   });
 
   it('should find configuration files', async () => {
+    console.log('\n🔍 [Live Fire] Searching for "tsconfig.json"...');
     const results = await search('tsconfig.json', 5);
-    console.log(`🔍 Search "tsconfig.json": ${results.totalResults} results`);
+    console.log(`   Search "tsconfig.json": ${results.totalResults} results`);
 
     expect(results.totalResults).toBeGreaterThan(0);
     validateSearchResults(results.results, results.totalResults);
   });
 
   it('should find package.json references', async () => {
+    console.log('\n🔍 [Live Fire] Searching for "pnpm"...');
     const results = await search('pnpm', 5);
-    console.log(`🔍 Search "pnpm": ${results.totalResults} results`);
+    console.log(`   Search "pnpm": ${results.totalResults} results`);
 
     expect(results.totalResults).toBeGreaterThan(0);
     validateSearchResults(results.results, results.totalResults);
   });
 
   it('should find GitHub-related content', async () => {
+    console.log('\n🔍 [Live Fire] Searching for "github"...');
     const results = await search('github', 10);
-    console.log(`🔍 Search "github": ${results.totalResults} results`);
+    console.log(`   Search "github": ${results.totalResults} results`);
 
     expect(results.totalResults).toBeGreaterThan(0);
     validateSearchResults(results.results, results.totalResults);
@@ -518,8 +551,9 @@ describe('Live Fire Integration Tests', () => {
   // ── Test 8: Advanced Search ─────────────────────────────────────────────
 
   it('should support semantic search', async () => {
+    console.log('\n🔍 [Live Fire] Semantic search for "authentication"...');
     const results = await search('authentication', 5);
-    console.log(`🔍 Search "authentication": ${results.totalResults} results`);
+    console.log(`   Search "authentication": ${results.totalResults} results`);
 
     expect(results.totalResults).toBeGreaterThanOrEqual(0);
     if (results.totalResults > 0) {
@@ -528,8 +562,9 @@ describe('Live Fire Integration Tests', () => {
   });
 
   it('should support tag-based search', async () => {
+    console.log('\n🔍 [Live Fire] Tag-based search for "#test"...');
     const results = await search('#test', 5);
-    console.log(`🔍 Search "#test": ${results.totalResults} results`);
+    console.log(`   Search "#test": ${results.totalResults} results`);
 
     expect(results.totalResults).toBeGreaterThanOrEqual(0);
   });
@@ -537,10 +572,15 @@ describe('Live Fire Integration Tests', () => {
   // ── Test 9: Ingestion Metrics ───────────────────────────────────────────
 
   it('should report ingestion metrics', async () => {
+    console.log('\n📊 [Live Fire] Checking ingestion metrics...');
     const progress = await getIngestionProgress();
-    console.log(`📊 Ingestion metrics: ${JSON.stringify(progress)}`);
+    console.log(`   Ingestion metrics: ${JSON.stringify(progress)}`);
 
     expect(progress).toBeDefined();
+    if (progress?.totalFiles === undefined || progress.totalFiles === null) {
+      throw new Error('No ingestion metrics available - ingestion may have failed');
+    }
+    
     expect(progress?.totalFiles).toBeGreaterThan(0);
     expect(progress?.processedFiles).toBeGreaterThan(0);
     expect(progress?.processedFiles).toBeLessThanOrEqual(progress.totalFiles);

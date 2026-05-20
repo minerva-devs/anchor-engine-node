@@ -2,7 +2,7 @@
  * Safe DNS Tests - Vitest version
  */
 
-import { describe, it, expect } from 'vitest';
+import { test, expect } from 'vitest';
 import dns from 'node:dns';
 
 // ---- Test helper: Determine if an IP address is private ----

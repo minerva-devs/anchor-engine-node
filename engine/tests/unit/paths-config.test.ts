@@ -7,7 +7,7 @@
  * All tests are logged with full execution flow for deep debugging.
  */
 
-import { describe, it, expect } from 'vitest';
+import { test, expect } from 'vitest';
 import { PATHS, PROJECT_ROOT } from '../../src/config/paths.js';
 import * as path from 'path';
 
@@ -71,7 +71,7 @@ function normalizePath(pathStr: string): string {
   return normalized;
 }
 
-describe.skip('PATHS Configuration', () => {
+describe('PATHS Configuration', () => {
   describe('PROJECT_ROOT', () => {
     it('should be an absolute path', () => {
       expect(path.isAbsolute(PROJECT_ROOT)).toBe(true);

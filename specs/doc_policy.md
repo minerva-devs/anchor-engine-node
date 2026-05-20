@@ -24,7 +24,6 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `LICENSE` | License file (AGPL-3.0) |
 | `.gitignore` | Git ignore patterns |
 | `package.json` | Package configuration |
-| `user_settings.json` | Runtime configuration |
 
 **PROHIBITED in Root:**
 - Phase completion reports
@@ -126,6 +125,25 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 
 ---
 
+## 5. Runtime Object Storage
+
+**⚠️ CRITICAL: All runtime objects are stored in `$home/.anchor`**
+
+This includes:
+- **Logs:** `.anchor/logs/` (search logs, distillation logs, engine logs)
+- **Database:** `.anchor/context_data/` (PGlite database)
+- **Distillation outputs:** `.anchor/notebook/distills/` (YAML/JSON summaries)
+- **Test outputs:** `.anchor/test-output/` (test result files)
+- **Audit files:** `.anchor/logs/.<hash>-audit.json`
+- **Session data:** `.anchor/sessions/`
+- **Inbox files:** `.anchor/inbox/`, `.anchor/external-inbox/`
+- **Mirrored brain:** `.anchor/mirrored_brain/`
+- **User settings:** `.anchor/user_settings.json` (runtime configuration - NEVER in project root)
+
+**Never assume files are in the project root or `engine/` directory.** Always check `.anchor/` first for runtime data.
+
+---
+
 ## 5. Maintenance Guidelines
 
 ### 5.1 Before Merging PR
@@ -134,6 +152,7 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 - [ ] Ensure all new features documented in README or CHANGELOG
 - [ ] Update relevant standards in `specs/current-standards/`
 - [ ] Remove temporary documentation files after integration
+- [ ] **Verify user_settings.json is NOT in project root** (should be in `.anchor/user_settings.json`)
 
 ### 5.2 Automated Checks (Future CI/CD)
 

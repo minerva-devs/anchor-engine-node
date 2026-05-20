@@ -82,8 +82,8 @@ if (grepPattern) {
 }
 console.log('='.repeat(80) + '\n');
 
-// Build vitest command - use full path to avoid npx issues on Windows
-const vitestConfigPath = path.join(ROOT, 'engine', 'vitest.config.ts');
+// Build vitest command - use root config file (not engine-specific)
+const vitestConfigPath = path.join(ROOT, 'root-vitest-config.ts');
 const cmdArgs = ['run'];
 
 // Add config path using --config flag
