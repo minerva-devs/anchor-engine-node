@@ -1,6 +1,6 @@
 # Anchor Engine Standards Index
 
-This directory contains **29 active architecture standards** for Anchor Engine, organized by category.
+This directory contains **33 active architecture standards** for Anchor Engine, organized by category.
 
 ---
 
@@ -11,8 +11,8 @@ This directory contains **29 active architecture standards** for Anchor Engine, 
 | **Database & Memory** | 5 | Data architecture, ephemeral database, pointer-only storage |
 | **Security** | 4 | Security hardening, auth bypass, path traversal, API key validation |
 | **Configuration & Paths** | 3 | Configuration management, path validation, path usage |
-| **Search & Retrieval** | 4 | MCP tools, streaming search, mobile optimization, illumination |
-| **Distillation** | 3 | Radial distillation, zero-copy deduplication |
+| **Search & Retrieval** | 5 | MCP tools, streaming search, mobile optimization, illumination, algorithm reference |
+| **Distillation** | 6 | Radial distillation, zero-copy deduplication, output storage, self-contamination prevention, tag-based mode |
 | **Operations & Logging** | 2 | Operational visibility, pain point logging |
 | **Performance** | 1 | Adaptive concurrency control |
 | **Robustness** | 1 | WASM fallback |
@@ -66,6 +66,7 @@ This directory contains **29 active architecture standards** for Anchor Engine, 
 | **004** | Streaming Search | [search-retrieval/004-streaming-search.md](search-retrieval/004-streaming-search.md) |
 | **006** | Mobile Search Optimization | [search-retrieval/006-mobile-search-optimization.md](search-retrieval/006-mobile-search-optimization.md) |
 | **009** | Illuminate BFS Traversal | [search-retrieval/009-illuminate-bfs-traversal.md](search-retrieval/009-illuminate-bfs-traversal.md) |
+| **031** | Search Algorithms Comprehensive Reference | [search-retrieval/031-search-algorithms-comprehensive.md](search-retrieval/031-search-algorithms-comprehensive.md) |
 
 ### Distillation
 
@@ -74,6 +75,9 @@ This directory contains **29 active architecture standards** for Anchor Engine, 
 | **008** | Radial Distillation | [distillation/008-radial-distillation.md](distillation/008-radial-distillation.md) |
 | **010** | Radial Distillation v2 | [distillation/010-radial-distillation-v2.md](distillation/010-radial-distillation-v2.md) |
 | **026** | Zero-Copy Deduplication | [distillation/026-zero-copy-dedup.md](distillation/026-zero-copy-dedup.md) |
+| **027** | Distillation Output Storage | [distillation/027-distillation-output-storage.md](distillation/027-distillation-output-storage.md) |
+| **028** | Self-Contamination Prevention | [distillation/028-self-contamination-prevention.md](distillation/028-self-contamination-prevention.md) |
+| **029** | Tag-Based Distillation Mode | [distillation/029-tag-based-distillation.md](distillation/029-tag-based-distillation.md) |
 
 ### Operations & Logging
 
@@ -127,5 +131,5 @@ Each standard follows this structure:
 
 ---
 
-**Last Updated:** May 4, 2026  
-**Total Standards:** 29
+**Last Updated:** May 19, 2026
+**Total Standards:** 33
