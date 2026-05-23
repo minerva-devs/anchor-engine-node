@@ -7,6 +7,9 @@ import { AtomicIngestService } from '../../services/ingest/ingest-atomic.js';
 import { writeContentToMirror } from '../../services/mirror/write-content-to-mirror.js';
 import { writeMirroredFile } from '../../services/mirror/mirror.js';
 
+// Counter for ingest requests
+let ingestCounter = 0;
+
 // Rate limiter for ingest endpoints
 // Mobile-friendly defaults: 10 requests per minute for ingest, 30 for general API
 const ingestLimiter = rateLimit({
@@ -51,6 +54,8 @@ export function setupIngestRoutes(app: Application) {
 
   // Ingestion endpoint (Atomic Architecture)
   app.post('/v1/ingest', validate(schemas.ingest), async (req: Request, res: Response) => {
+    // Increment ingest counter
+    ingestCounter++;
     const startTime = Date.now();
     try {
       const { content, source, type, bucket, buckets = [], tags = [] } = req.body;

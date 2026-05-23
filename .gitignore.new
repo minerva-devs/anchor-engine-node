@@ -1,31 +1,11 @@
-# .gitignore - Anchor Engine Project
 # ============================================
-# 1. Dependencies & Build Artifacts
-# ============================================
-
-# All node_modules directories
-/node_modules/
-/engine/node_modules/
-/scripts/node_modules/
-mcp-server/node_modules/
-
-# Build artifacts
-/dist/
-/dist-win/
-/dist-android/
-/*.log
-npm-debug.log*
-yarn-error.log*
-
-# Native modules (tracked via package.json)
-engine/src/native/node_modules/
-
-# ============================================
-# 2. Test Outputs (always ignore)
+# 2. Test Outputs (always ignore) - UPDATED
 # ============================================
 
-# Test result files
-test-output.txt
+# All test output files (generated during test runs)
+test-*.txt
+*.output.txt
+build-output.txt
 engine-build-output.txt
 engine-direct-tests.txt
 engine-error.txt
@@ -37,18 +17,27 @@ npx-vitest-results.txt
 pnpm-start-tests.bat
 test-results.txt
 vite-aliases.txt
-start_output.txt
-integration-test-output.txt
 live-fire-output.txt
-unit-test-output.txt
-unit-test-results.txt
-unit-results.txt
-unit-results-full.txt
+integration-test-output.txt
+mjs-output.txt
+server-output.txt
+start_output.txt
+ts-sources.txt
+{
 
 # Vitest configs (not in repo)
 tests/vitest-setup.ts
 vitest-root.config.ts
 root-vitest-config.ts
+
+# Full test result files
+unit-test-output.txt
+unit-test-results.txt
+unit-results.txt
+unit-results-full.txt
+
+# Additional test artifacts
+test-wasm/*.txt
 
 # ============================================
 # 3. QwenPaw & Agent Configuration (NEVER COMMIT)
@@ -87,6 +76,12 @@ missions/
 # QwenPaw tooling directories
 .jules/
 .tooling/
+
+# Agent instruction files (cleanup - never commit)
+TASK_*.md
+TASKS_REMAINING.md
+MIGRATION_CLEANUP.md
+MIGRATION_DEAD_CODE.md
 
 # ============================================
 # 4. Runtime Data - ALL NOW IN .anchor/
@@ -143,6 +138,8 @@ star-search-nostream.json
 atoms.json
 chats.json
 jobs.json
+github_repos.json
+memory-list.json
 
 # ============================================
 # 6. Temporary & Debug Files
@@ -157,32 +154,52 @@ tmp_*.json
 .DS_Store
 Thumbs.db
 
-# Migration artifacts (old, no longer needed)
-MIGRATION_ANALYSIS.md
-MIGRATION_AUDIT_REPORT.md
-MIGRATION_COMPLETE.md
-MIGRATION_COMPLETION_PLAN.md
-MIGRATION_PLAN.md
-MIGRATION_SUMMARY.md
-TEST_ASSESSMENT.md
-
-# ============================================
-# 7. Development Tools (IDE, NOT PROJECT DATA)
-# ============================================
-
-# IDE directories
+# Agent framework data (never commit)
+.qwen/
+.cline/
 .vscode/
 .idea/
 
-# QwenPaw skills (local use only)
-skills/
+# Skill lock files (development only)
 .skill.json.lock
+
+# Skill files (local use only)
+skills/
 
 # Docker config (only for Docker users - not committed)
 user_settings.docker.json
 
 # ============================================
-# 8. Project Root (ONLY THESE FILES ALLOWED)
+# 7. Loose Test Logs Directories
+# ============================================
+
+# Full test log directories (never commit)
+.anchor/logs/
+.anchor/*/*.json
+
+# ============================================
+# 8. Build Artifacts (generated during development)
+# ============================================
+
+# Build output files
+*.bat
+*.sh
+*.ps1
+
+# ============================================
+# 9. Agent Instruction Files (cleanup)
+# ============================================
+
+# Individual agent task instructions (never commit)
+TASK_*.md
+INSTRUCTION_*.md
+HANDOFF_*.md
+
+# Task breakdown files (only keep master task list if needed)
+TASKS_REMAINING.md
+
+# ============================================
+# 10. Project Root - ONLY THESE FILES ALLOWED
 # ============================================
 
 # Project root - ONLY these files should exist here
@@ -206,10 +223,6 @@ paper.bib
 CITATION.cff
 zenodo.json
 
-# ============================================
-# 9. Directories to KEEP in Project Root
-# ============================================
-
 # Engine source and build
 engine/
 
@@ -225,8 +238,6 @@ docs/
 
 # Source code
 src/
-
-# Shared code
 shared/
 
 # MCP Server

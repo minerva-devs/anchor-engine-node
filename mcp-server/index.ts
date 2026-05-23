@@ -324,18 +324,18 @@ const TOOLS: Tool[] = [
     },
   },
   {
-    name: 'anchor_list_compounds',
-    description: 'List available compounds (source files) in the Anchor database with metadata.',
+    name: 'anchor_list_sources',
+    description: 'List distinct source paths from the molecules table with ingestion metadata. Returns { source_path, compound_count, last_ingest_time } records. If the molecules table is empty, returns { message: "No sources ingested yet" }.',
     inputSchema: {
       type: 'object',
       properties: {
         filter: {
           type: 'string',
-          description: 'Optional filter string for compound names',
+          description: 'Optional filter string for source paths',
         },
         limit: {
           type: 'number',
-          description: 'Maximum compounds to return (default: 50)',
+          description: 'Maximum sources to return (default: 50)',
         },
       },
     },
@@ -482,6 +482,12 @@ const RESOURCES: Resource[] = [
     uri: 'anchor://compounds',
     name: 'Available Compounds',
     description: 'List of all compounds (source files) in the database',
+    mimeType: 'application/json',
+  },
+  {
+    uri: 'anchor://sources',
+    name: 'Source Paths from Molecules',
+    description: 'Distinct source paths from the molecules table with compound counts and last ingest times. Returns { source_path, compound_count, last_ingest_time } records.',
     mimeType: 'application/json',
   },
 ];
@@ -712,6 +718,71 @@ async function handleReadFile(args: any): Promise<string> {
   }
 }
 
+async function handleListSources(args: any): Promise<string> {
+  const { filter = '', limit = 50 } = args;
+
+  // Connect to the database
+  const db = await getDB();
+  const moleculesTable = await db.getCollection('molecules');
+
+  // Query the molecules table for distinct source paths
+  let sources = await moleculesTable.aggregate([
+    // Group by source_path to get distinct sources
+    {
+      $group: {
+        _id: '$source_path',
+        source_path: {
+          $first: '$source_path',
+        },
+        compound_count: {
+          $sum: 1,
+        },
+        last_ingest_time: {
+          $max: '$ingested_at',
+        },
+      },
+    },
+    // Add source_path back to _id for cleaner output
+    {
+      $project: {
+        _id: 0,
+        source_path: 1,
+        compound_count: 1,
+        last_ingest_time: 1,
+      },
+    },
+  ]).toArray();
+
+  // Handle empty or error case
+  if (!sources || sources.length === 0) {
+    return JSON.stringify({ message: 'No sources ingested yet' });
+  }
+
+  // Apply filter if provided
+  if (filter) {
+    sources = sources.filter((s: any) =>
+      s.source_path?.toLowerCase().includes(filter.toLowerCase()),
+    );
+  }
+
+  // Apply limit
+  sources = sources.slice(0, limit);
+
+  // Format output
+  let output = `📂 Distinct Source Paths from Molecules Table\n
+`;
+
+  sources.forEach((s: any) => {
+    const formattedTime = new Date(s.last_ingest_time).toLocaleString();
+    output += `- ${s.source_path}\n`;
+    output += `  📌 Compound count: ${s.compound_count}\n`;
+    output += `  🕐 Last ingest: ${formattedTime}\n\n`;
+  });
+
+  return output;
+}
+
+// Also implement the original handleListCompounds for backward compatibility
 async function handleListCompounds(args: any): Promise<string> {
   const { filter = '', limit = 50 } = args;
 
@@ -1079,6 +1150,48 @@ async function handleResourceCompounds(): Promise<string> {
   return JSON.stringify(result.compounds || [], null, 2);
 }
 
+async function handleResourceSources(): Promise<string> {
+  // Connect to the database
+  const db = await getDB();
+  const moleculesTable = await db.getCollection('molecules');
+
+  // Query the molecules table for distinct source paths
+  let sources = await moleculesTable.aggregate([
+    // Group by source_path to get distinct sources
+    {
+      $group: {
+        _id: '$source_path',
+        source_path: {
+          $first: '$source_path',
+        },
+        compound_count: {
+          $sum: 1,
+        },
+        last_ingest_time: {
+          $max: '$ingested_at',
+        },
+      },
+    },
+    // Add source_path back to _id for cleaner output
+    {
+      $project: {
+        _id: 0,
+        source_path: 1,
+        compound_count: 1,
+        last_ingest_time: 1,
+      },
+    },
+  ]).toArray();
+
+  // Handle empty or error case
+  if (!sources || sources.length === 0) {
+    return JSON.stringify({ message: 'No sources ingested yet' }, null, 2);
+  }
+
+  // Format output as JSON array
+  return JSON.stringify(sources, null, 2);
+}
+
 // Main server setup
 const server = new Server(
   {
@@ -1189,8 +1302,8 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
       case 'anchor_read_file':
         result = await handleReadFile(args);
         break;
-      case 'anchor_list_compounds':
-        result = await handleListCompounds(args);
+      case 'anchor_list_sources':
+        result = await handleListSources(args);
         break;
       case 'anchor_get_stats':
         result = await handleGetStats(args);
@@ -1254,6 +1367,9 @@ server.setRequestHandler(ReadResourceRequestSchema, async request => {
         break;
       case 'anchor://compounds':
         content = await handleResourceCompounds();
+        break;
+      case 'anchor://sources':
+        content = await handleResourceSources();
         break;
       default:
         throw new Error(`Unknown resource: ${uri}`);

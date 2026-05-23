@@ -269,19 +269,7 @@ for (let i = 0; i < results.length; i += BATCH_SIZE) {
 
 ---
 
-#### File: `engine/src/services/search/bright-nodes.ts` (Line 65-90)
-```typescript
-for (let i = 0; i < brightNodes.length; i++) {
-    const currentNode = brightNodes[i];
-
-    for (let j = 0; j < brightNodes.length; j++) {
-        if (i === j) continue;
-        // Calculate relationship strength between nodes
-    }
-}
-```
-
-**Assessment:** ✅ **Correct usage** - O(n²) relationship discovery requires nested loops.
+> **Note:** The `engine/src/services/search/bright-nodes.ts` file referenced above was removed as part of the architecture cleanup. This pattern example has been deprecated in favor of the current adaptive concurrency strategy (see Section 5.1).
 
 ---
 

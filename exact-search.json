@@ -1,6 +1,0 @@
-{
-  "query": "exact:architecture",
-  "buckets": [
-    "test-v5.1-release"
-  ]
-}

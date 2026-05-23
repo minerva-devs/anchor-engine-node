@@ -5,11 +5,16 @@ import { smartChatSearch, executeMoleculeSearch } from '../../services/search/se
 import type { SearchRequest } from '../../types/api.js';
 import { executeStreamingSearch, formatSSE } from '../../services/search/streaming-search.js';
 
+// Counter for search requests
+let searchCounter = 0;
+
 export function setupSearchRoutes(app: Application) {
   // POST Search endpoint (Standard 136: Streaming Search)
   // Memory-efficient streaming search with Server-Sent Events
   // Supports both streaming (default) and non-streaming modes via query param
   app.post('/v1/memory/search', validate(schemas.memorySearch), async (req: Request, res: Response) => {
+    // Increment search counter
+    searchCounter++;
     const startTime = Date.now();
 
     try {

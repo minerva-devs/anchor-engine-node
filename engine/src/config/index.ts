@@ -267,6 +267,7 @@ interface Config {
     EFFECTIVE_CACHE_SIZE_MB: number;
     WORK_MEM_MB: number;
     MAINTENANCE_WORK_MEM_MB: number;
+    START_TIME: number; // Server start time for uptime calculation
   };
 
   // Adaptive Concurrency (Standard 132)
@@ -307,6 +308,7 @@ const DEFAULT_CONFIG: Config = {
   HOST: '0.0.0.0',
   API_KEY: '', // REQUIRED
   VERSION: '4.8.2', // Engine version - can be overridden in user_settings.json
+  START_TIME: Date.now(), // Server start time for uptime calculation
   GITHUB_TOKEN: '', // Optional: GitHub PAT for repo ingestion: Must be set in user_settings.json -> server.api_key
   LOG_LEVEL: 'INFO',
   OVERLAY_PORT: 3002,
