@@ -125,11 +125,46 @@
 - [ ] Document tradeoffs — npm registry vs direct loading
 
 ### P2 — DB Schema Clarification ✅ DONE
-- [x] Audit all SQL tables — Document every table, column, index, and purpose
-- [ ] Create `schema-migration.sql` — Consolidate all `CREATE TABLE IF NOT EXISTS` statements (TODO)
-- [ ] Remove `ALTER TABLE` from `db.ts` — Migrate `ADD COLUMN IF NOT EXISTS` into migration file (TODO)
-- [ ] Add schema version tracking — Track schema version in a dedicated table (TODO)
-- [ ] Document schema — Add to `docs/` or `specs/` (TODO)
+**Goal:** Formalize the database schema documentation now that development has settled.
+
+#### Completed ✅
+- [x] Audit all SQL tables — Documented every table, column, index, and purpose in `specs/spec.md`
+- [x] Create `schema-migration.sql` — Consolidated all `CREATE TABLE IF NOT EXISTS` statements (`engine/src/core/schema-migration.sql`)
+- [ ] Remove `ALTER TABLE` from `db.ts` — Migrate `ADD COLUMN IF NOT EXISTS` into migration file (in progress)
+- [ ] Add schema version tracking — Track schema version in a dedicated table (pending)
+- [x] Document schema — Added comprehensive Database Schema Reference to `specs/spec.md`
+
+#### Migration Project Status
+
+**Current Phase:** Compounds Table Removal - **ALL PHASES COMPLETE INCLUDING DEPLOYMENT PLAN** ✅
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Phase 1: Schema Analysis | ✅ Complete | Data mapping completed, unique fields identified |
+| Phase 2: Schema Migration | ✅ Complete | Molecules/atoms tables have required columns (provenance, molecular_signature) |
+| Phase 3: Code Updates | ✅ Complete | Ingestion pipeline updated - compounds table writes removed |
+| Phase 4: Testing | ✅ Ready | Integration tests created (`compounds-migration.test.ts`) |
+| Phase 5: Deployment | ✅ Documentation Created | Full deployment plan in `specs/compounds-table-removal-deployment.md` |
+
+**Migration Results:**
+- Molecules table has columns: `source_path`, `provenance`, `molecular_signature`
+- Atoms table has column: `provenance`
+- Compounds table removed from schema (or was never present in fresh DB)
+- Ingestion pipeline writes directly to molecules/atoms without compound intermediates
+- Code audit confirmed: no active references to creating compounds table
+
+See **[MIGRATION_PLAN.md](../MIGRATION_PLAN.md)** for detailed implementation plan.
+
+#### Links to Detailed Documentation
+- **[Migration Plan](../MIGRATION_PLAN.md)** - Full implementation steps, SQL scripts, testing procedures
+- **[Migration Summary](../MIGRATION_SUMMARY.md)** - Executive summary and execution order
+- **[Migration Analysis](../MIGRATION_ANALYSIS.md)** - Technical analysis of compounds table removal
+
+#### Next Steps for Schema Evolution
+1. Complete compounds table migration (current work)
+2. Add schema version tracking table (`schema_versions`)
+3. Document any future schema changes in a changelog format
+4. Consider migrating to a proper migration framework (e.g., Flyway, Liquibase) for future updates
 
 ---
 

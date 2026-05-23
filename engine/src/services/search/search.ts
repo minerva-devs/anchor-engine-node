@@ -428,14 +428,13 @@ export async function findAnchors(
 
     // B. Molecule Search (Full-Text with BM25-style ranking)
     let moleculeQuery = `
-        SELECT m.id, m.content, c.path as source, m.timestamp,
-               '{}'::text[] as buckets, '{}'::text[] as tags, 'epoch_placeholder' as epochs, c.provenance,
+        SELECT m.id, m.content, m.source_path as source, m.timestamp,
+               '{}'::text[] as buckets, '{}'::text[] as tags, 'epoch_placeholder' as epochs, m.provenance,
                -- Use ts_rank_cd for cover-density ranking (closer to BM25)
                ts_rank_cd(to_tsvector('simple', m.content), to_tsquery('simple', $1)) * 10 as score,
                m.sequence, m.molecular_signature,
                m.start_byte, m.end_byte, m.type, m.numeric_value, m.numeric_unit, m.compound_id
         FROM molecules m
-        JOIN compounds c ON m.compound_id = c.id
         WHERE to_tsvector('simple', m.content) @@ to_tsquery('simple', $1)
     `;
 
@@ -443,18 +442,18 @@ export async function findAnchors(
 
     if (buckets.length > 0) {
       moleculeQuery += ` AND EXISTS (
-        SELECT 1 FROM atoms a 
-        WHERE a.source_path = c.path 
+        SELECT 1 FROM atoms a
+        WHERE a.compound_id = m.compound_id
         AND a.buckets && $${moleculeParams.length + 1}
       )`;
       moleculeParams.push(buckets);
     }
 
     if (provenance !== 'all' && provenance !== 'quarantine') {
-      moleculeQuery += ` AND c.provenance = $${moleculeParams.length + 1}`;
+      moleculeQuery += ` AND m.provenance = $${moleculeParams.length + 1}`;
       moleculeParams.push(provenance);
     } else if (provenance === 'all') {
-      moleculeQuery += ' AND c.provenance != \'quarantine\'';
+      moleculeQuery += ' AND m.provenance != \'quarantine\'';
     }
 
     // Replace hardcoded LIMIT 50 with the intended dynamic token budget scalar

@@ -1551,19 +1551,20 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
     const chatSessions: ChatSessionMetadata[] = [];
     let compoundsProcessed = 0;
 
-    // Get compounds from database or use provided IDs
-    let compoundQuery = 'SELECT id, path, provenance FROM compounds';
+    // Phase 3A: Query molecules directly instead of compounds table
+    let moleculeQuery = 'SELECT id AS compound_id, source_path, provenance, timestamp FROM molecules';
     const params: any[] = [];
 
     if (request.seed?.compound_ids && request.seed.compound_ids.length > 0) {
-      compoundQuery += ' WHERE id = ANY($1)';
+      // Filter by specific compound IDs
+      moleculeQuery += ' WHERE id = ANY($1)';
       params.push(request.seed.compound_ids);
     } else if (request.seed?.buckets && request.seed.buckets.length > 0) {
-      // Join with atoms to filter by buckets (matches working old distiller)
-      compoundQuery = `
-        SELECT DISTINCT c.id, c.path, c.provenance
-        FROM compounds c
-        JOIN atoms a ON a.compound_id = c.id
+      // Join with atoms to filter by tags (Phase 1D-1)
+      moleculeQuery = `
+        SELECT DISTINCT ON (m.compound_id) m.id AS compound_id, m.source_path, m.provenance, MAX(m.timestamp)
+        FROM molecules m
+        JOIN atoms a ON m.compound_id = a.compound_id
         WHERE EXISTS(
           SELECT 1 FROM unnest(a.buckets) as bucket
           WHERE bucket = ANY($1)
@@ -1572,11 +1573,28 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       params.push(request.seed.buckets);
     }
 
-    const compounds = (await db.run(compoundQuery, params)).rows || [];
+    const molecules = (await db.run(moleculeQuery, params)).rows || [];
 
-    // Track metrics for standard mode (after query so we have compound count)
+    // Count distinct compound_ids from molecules for accurate metrics
+    let moleculeCountQuery = 'SELECT COUNT(DISTINCT id) AS cnt FROM molecules';
+    const moleculeParams: any[] = [];
+    if (request.seed?.buckets && request.seed.buckets.length > 0) {
+      moleculeCountQuery += ` WHERE EXISTS(
+        SELECT 1 FROM atoms a
+        JOIN molecules m ON a.compound_id = m.id
+        WHERE EXISTS(
+          SELECT 1 FROM unnest(a.buckets) as bucket
+          WHERE bucket = ANY($1)
+        )
+      )`;
+      moleculeParams.push(request.seed.buckets);
+    }
+    const countResult = await db.run(moleculeCountQuery, moleculeParams);
+    const totalMolecules = parseInt(countResult.rows?.[0]?.cnt ?? '0', 10);
+
+    // Track metrics for standard mode
     const standardMetrics: DistillationMetrics = {
-      totalAtoms: compounds.length,
+      totalAtoms: totalMolecules,
       successfulReads: 0,
       provenanceMismatches: 0,
       fallbackReads: 0,
@@ -1584,59 +1602,66 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
       skippedByContent: 0,
     };
 
-    for (const compound of compounds) {
-      // Skip distillation outputs (prevent self-contamination)
-      if (isDistillationOutput(compound.path)) {
+    // Phase 1D-3: Deduplicate file reads — each unique path is read only once.
+    const notebookDir = pathManager.getNotebookDir();
+
+    type PathEntry = { localPath: string; moleculeIdx: number };
+    const seenPaths = new Set<string>();
+    const uniqueEntries: PathEntry[] = [];
+    for (const [idx, molecule] of molecules.entries()) {
+      if (!molecule.source_path) continue;
+      const localPath = path.join(notebookDir, molecule.source_path);
+      if (!seenPaths.has(localPath)) {
+        seenPaths.add(localPath);
+        uniqueEntries.push({ localPath, moleculeIdx: idx });
+      }
+    }
+
+    // Step 2: Read each unique file once into a cache.
+    const contentCache = new Map<string, string>();
+    const mtimeCache = new Map<string, number>();
+    for (const entry of uniqueEntries) {
+      if (!fs.existsSync(entry.localPath)) {
+        console.warn(`[RadialDistiller] Skipping molecule ${molecules[entry.moleculeIdx].compound_id}: file not found at ${entry.localPath}`);
         continue;
       }
+      try {
+        contentCache.set(entry.localPath, fs.readFileSync(entry.localPath, 'utf-8'));
+        const stats = fs.statSync(entry.localPath);
+        mtimeCache.set(entry.localPath, stats.mtimeMs);
+      } catch (err: any) {
+        console.warn(`[RadialDistiller] Failed to read ${entry.localPath}: ${err.message}`);
+      }
+    }
 
-      compoundsProcessed++;
-      standardMetrics.totalAtoms++;
+    // Step 3: Process all molecules using cached content.
+    for (const molecule of molecules) {
+      if (!molecule.source_path) continue;
+      if (isDistillationOutput(molecule.source_path)) continue;
 
-      // Get content from filesystem using compound.path (Standard 051 - Pointer Only)
-      // compound.path is relative to NOTEBOOK_DIR (e.g., "external-inbox/github/owner/repo/file.md")
-      let content = '';
-      const notebookDir = pathManager.getNotebookDir();
-      const localPath = path.join(notebookDir, compound.path);
+      const localPath = path.join(notebookDir, molecule.source_path);
+      const content = contentCache.get(localPath) ?? '';
+      const mtime = mtimeCache.get(localPath) ?? Date.now();
 
-      console.log(`[DEBUG] RadialDistiller: reading file at ${localPath}`);
-      
-      if (fs.existsSync(localPath)) {
-        try {
-          content = fs.readFileSync(localPath, 'utf-8');
-          standardMetrics.successfulReads++;
-          console.log(`[DEBUG] Read ${content.length} bytes from ${localPath}`);
-        } catch (err: any) {
-          console.warn(`[RadialDistiller] Failed to read ${localPath}: ${err.message}`);
-          standardMetrics.failedReads++;
-          continue;
-        }
-      } else {
-        // File not found - skip this compound
-        console.warn(`[RadialDistiller] Skipping compound ${compound.id}: file not found at ${localPath}`);
+      if (!content) {
         standardMetrics.failedReads++;
         continue;
       }
 
-      // Get file mtime
-      let mtime = Date.now();
-      if (fs.existsSync(localPath)) {
-        const stats = fs.statSync(localPath);
-        mtime = stats.mtimeMs;
-      }
+      standardMetrics.totalAtoms++;
+      standardMetrics.successfulReads++;
 
-      // Extract semantic blocks
-      console.log(`[DEBUG] About to extract blocks from ${compound.path}`);
-      const blocks = extractSemanticBlocks(content, compound.path, mtime);
-      console.log(`[DEBUG] Extracted ${blocks.length} blocks from ${compound.path}`);
+      console.log(`[DEBUG] RadialDistiller: using cached content for ${molecule.source_path}`);
+
+      const blocks = extractSemanticBlocks(content, molecule.source_path, mtime);
       allBlocks.push(...blocks);
 
       // Extract digital object metadata (NEW)
-      const baseMetadata = extractDigitalObjectMetadata(compound, content, mtime, ingestedAt);
+      const baseMetadata = extractDigitalObjectMetadata(molecule, content, mtime, ingestedAt);
       digitalObjects.push(baseMetadata);
 
       // Extract chat session metadata if applicable (NEW)
-      const chatMetadata = extractChatSessionMetadata(baseMetadata, content, compound);
+      const chatMetadata = extractChatSessionMetadata(baseMetadata, content, molecule);
       if (chatMetadata) {
         chatSessions.push(chatMetadata);
       }

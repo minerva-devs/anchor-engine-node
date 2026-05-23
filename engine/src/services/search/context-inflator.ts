@@ -112,7 +112,7 @@ export class ContextInflator {
 
                 try {
                     // 3. Inflate from DISK (mirrored file) - NO DB fallback
-                    const diskContent = await this.inflateFromDisk(res, effectiveRadius, compoundPathCache, compoundCache);
+                    const diskContent = await this.inflateFromDisk(res, effectiveRadius, compoundCache);
 
                     if (diskContent !== null) {
                         inflatedFromDisk++;
@@ -220,7 +220,6 @@ export class ContextInflator {
     private static async inflateFromDisk(
         res: SearchResult,
         radius: number,
-        pathCache: Map<string, Promise<{ filePath: string, provenance: string } | null>>,
         compoundCache?: Map<string, { path: string; provenance: string }>,
     ): Promise<string | null> {
         if (!res.compound_id) return null;
@@ -228,31 +227,19 @@ export class ContextInflator {
         // OPTIMIZATION: Use pre-fetched compound cache if available
         if (compoundCache && compoundCache.has(res.compound_id)) {
             const compound = compoundCache.get(res.compound_id)!;
-            const pathInfo = { filePath: compound.path, provenance: compound.provenance };
-            return this.inflateFromPath(res, radius, pathInfo);
+            return this.inflateFromPath(res, radius, { filePath: compound.path, provenance: compound.provenance });
         }
 
-        // Fallback to individual query (with promise caching)
-        let pathPromise = pathCache.get(res.compound_id);
-        if (!pathPromise) {
-            pathPromise = (async () => {
-                try {
-                    const result = await db.run('SELECT path, provenance FROM compounds WHERE id = $1', [res.compound_id]);
-                    if (result.rows && result.rows.length > 0) {
-                        return { filePath: result.rows[0].path as string, provenance: result.rows[0].provenance as string };
-                    }
-                    return null;
-                } catch {
-                    return null;
-                }
-            })();
-            pathCache.set(res.compound_id, pathPromise);
+        // If not in cache at all, do a batch fetch of the single ID
+        try {
+            const batchResult = await batchFetchCompounds([res.compound_id]);
+            const cached = batchResult.get(res.compound_id);
+            if (!cached) return null;
+            return this.inflateFromPath(res, radius, { filePath: cached.path, provenance: cached.provenance });
+        } catch (e) {
+            console.warn(`[ContextInflator] Batch fetch failed for compound ${res.compound_id}`, e);
+            return null;
         }
-
-        const pathInfo = await pathPromise;
-        if (!pathInfo) return null;
-
-        return this.inflateFromPath(res, radius, pathInfo);
     }
 
     /**
@@ -341,58 +328,121 @@ export class ContextInflator {
     /**
      * Get atom locations for Elastic Context sizing
      * Returns the raw positions so we can calculate density/hits BEFORE inflating
+     *
+     * Phase 2C: Queries molecules directly (no compounds table JOIN).
+     * Molecule fields (source_path, provenance) replace compound fields.
      */
     static async getAtomLocations(term: string, limit: number = 100, options: { buckets?: string[], provenance?: string } = {}): Promise<{ compoundId: string, byteOffset: number, filePath: string, timestamp: number, provenance: string }[]> {
-        // Atoms are stored with # prefix, but we might search without
         const termWithHash = term.startsWith('#') ? term : `#${term}`;
         const termWithoutHash = term.startsWith('#') ? term.slice(1) : term;
 
-        let query = `
-            SELECT ap.compound_id, ap.byte_offset, c.path, c.timestamp, c.provenance
+        // Step 1: Fetch unique compound metadata in a single batch query.
+        // Phase 2C: Query molecules directly instead of JOINing compounds table.
+        // Molecules have source_path, provenance — use those as path/provenance.
+        let metaQuery = `
+            SELECT DISTINCT ON (ap.compound_id) ap.compound_id, m.source_path AS path, MAX(m.timestamp) AS timestamp, m.provenance
             FROM atom_positions ap
-            JOIN compounds c ON ap.compound_id = c.id
-            WHERE 
-               (LOWER(ap.atom_label) = LOWER($1) 
+            JOIN molecules m ON ap.compound_id = m.compound_id
+            WHERE
+               (LOWER(ap.atom_label) = LOWER($1)
                OR LOWER(ap.atom_label) = LOWER($2)
                OR ap.atom_label ILIKE $3)
         `;
 
-        const params: any[] = [termWithHash, termWithoutHash, `${termWithoutHash}%`];
+        const metaParams: any[] = [termWithHash, termWithoutHash, `${termWithoutHash}%`];
 
-        // Apply Provenance Filter
         if (options.provenance && options.provenance !== 'all') {
-            params.push(options.provenance);
-            query += ` AND c.provenance = $${params.length}`;
+            metaParams.push(options.provenance);
+            metaQuery += ` AND m.provenance = $${metaParams.length}`;
         }
 
-        // Apply Bucket Filter (Check if compound contains ANY atom with the bucket)
         if (options.buckets && options.buckets.length > 0) {
-            params.push(options.buckets);
-            // We join atoms to check if any atom in this compound has the bucket
-            // optimize: use EXISTS instead of joining widely
-            query += ` AND EXISTS (
-                SELECT 1 FROM atoms a 
-                WHERE a.compound_id = c.id 
+            metaParams.push(options.buckets);
+            metaQuery += ` AND EXISTS (
+                SELECT 1 FROM atoms a
+                WHERE a.compound_id = m.compound_id
                 AND EXISTS (
-                    SELECT 1 FROM unnest(a.buckets) as b WHERE b = ANY($${params.length})
+                    SELECT 1 FROM unnest(a.buckets) as b WHERE b = ANY($${metaParams.length})
                 )
             )`;
         }
 
-        query += ` ORDER BY c.timestamp DESC LIMIT $${params.length + 1}`;
-        params.push(limit);
+        metaQuery += ` ORDER BY ap.compound_id, m.timestamp DESC`;
+
+        let compoundCache: Map<string, { path: string; timestamp: number; provenance: string }> = new Map();
 
         try {
-            const result = await db.run(query, params);
+            const metaResult = await db.run(metaQuery, metaParams);
+            if (metaResult.rows && metaResult.rows.length > 0) {
+                for (const row of metaResult.rows) {
+                    compoundCache.set(row.compound_id as string, {
+                        path: row.path as string,
+                        timestamp: row.timestamp as number,
+                        provenance: row.provenance as string,
+                    });
+                }
+            }
+        } catch (e) {
+            console.error('[ContextInflator] Compound metadata fetch failed for getAtomLocations', e);
+        }
+
+        // Step 2: Fetch atom positions with compound_id only.
+        let posQuery = `
+            SELECT ap.compound_id, ap.byte_offset
+            FROM atom_positions ap
+            WHERE
+               (LOWER(ap.atom_label) = LOWER($1)
+               OR LOWER(ap.atom_label) = LOWER($2)
+               OR ap.atom_label ILIKE $3)
+        `;
+
+        const posParams: any[] = [termWithHash, termWithoutHash, `${termWithoutHash}%`];
+
+        if (options.provenance && options.provenance !== 'all') {
+            // Filter atom_positions by provenance via the compound cache
+            const cachedIds = Array.from(compoundCache.keys());
+            if (cachedIds.length > 0) {
+                posQuery += ` AND ap.compound_id = ANY($${posParams.length})`;
+                posParams.push(cachedIds);
+            } else {
+                // No compounds matched — nothing to return
+                return [];
+            }
+        }
+
+        if (options.buckets && options.buckets.length > 0) {
+            const cachedIds = Array.from(compoundCache.keys());
+            if (cachedIds.length > 0) {
+                posQuery += ` AND ap.compound_id = ANY($${posParams.length})`;
+                posParams.push(cachedIds);
+            } else {
+                return [];
+            }
+        }
+
+        posQuery += ` ORDER BY ap.byte_offset LIMIT $${posParams.length + 1}`;
+        posParams.push(limit);
+
+        try {
+            const result = await db.run(posQuery, posParams);
             if (!result.rows) return [];
 
-            return result.rows.map((row: any) => ({
-                compoundId: row.compound_id as string,
-                byteOffset: row.byte_offset as number,
-                filePath: row.path as string,
-                timestamp: row.timestamp as number,
-                provenance: row.provenance as string,
-            }));
+            // Step 3: Look up compound metadata from the pre-fetched cache.
+            return result.rows.map((row: any) => {
+                const cid = row.compound_id as string;
+                const meta = compoundCache.get(cid);
+                if (!meta) {
+                    console.warn(`[ContextInflator] Compound ${cid} not found in metadata cache`);
+                    return null;
+                }
+                return {
+                    compoundId: cid,
+                    byteOffset: row.byte_offset as number,
+                    filePath: meta.path,
+                    timestamp: meta.timestamp,
+                    provenance: meta.provenance,
+                };
+            }).filter(Boolean) as any;
         } catch (e) {
             console.error(`[ContextInflator] Check locations failed for ${term}`, e);
             return [];
@@ -423,34 +473,32 @@ export class ContextInflator {
             const termWithHash = searchTerm.startsWith('#') ? searchTerm : `#${searchTerm}`;
             const termWithoutHash = searchTerm.startsWith('#') ? searchTerm.slice(1) : searchTerm;
 
+            // Step 1: Query atom_positions + molecules for (compound_id, byte_offset) — no compounds table.
             let query = `
-                SELECT ap.compound_id, ap.byte_offset, c.path, c.timestamp, c.provenance
+                SELECT ap.compound_id, ap.byte_offset
                 FROM atom_positions ap
-                JOIN compounds c ON ap.compound_id = c.id
                 WHERE (LOWER(ap.atom_label) = LOWER($1) OR LOWER(ap.atom_label) = LOWER($2))
             `;
 
             const params: any[] = [termWithHash, termWithoutHash];
 
-            // Apply Provenance Filter
+            // Apply provenance filter via molecules table (Phase 2C: no compounds JOIN)
             if (options.provenance && options.provenance !== 'all') {
+                query += ` AND ap.compound_id IN (SELECT DISTINCT compound_id FROM molecules WHERE provenance = $${params.length})`;
                 params.push(options.provenance);
-                query += ` AND c.provenance = $${params.length}`;
             }
 
-            // Apply Bucket Filter
+            // Apply bucket filter via atoms table
             if (options.buckets && options.buckets.length > 0) {
-                params.push(options.buckets);
-                query += ` AND EXISTS (
-                    SELECT 1 FROM atoms a 
-                    WHERE a.compound_id = c.id 
-                    AND EXISTS (
-                        SELECT 1 FROM unnest(a.buckets) as b WHERE b = ANY($${params.length})
-                    )
+                query += ` AND ap.compound_id IN (
+                    SELECT a.compound_id FROM atoms a
+                    WHERE a.compound_id = ap.compound_id
+                    AND EXISTS (SELECT 1 FROM unnest(a.buckets) as b WHERE b = ANY($${params.length}))
                 )`;
+                params.push(options.buckets);
             }
 
-            query += ` ORDER BY c.timestamp DESC LIMIT $${params.length + 1}`;
+            query += ` ORDER BY ap.byte_offset LIMIT $${params.length + 1}`;
             params.push(maxResults * 2);
 
             const positionsResult = await db.run(query, params);
@@ -458,140 +506,109 @@ export class ContextInflator {
                 return [];
             }
 
-            // Group by compound to avoid duplicate reads
-            const compoundPositions = new Map<string, { positions: number[], filePath: string, timestamp: number, provenance: string }>();
+            // Step 2: Collect unique compound_ids for batch molecule fetch.
+            const compoundIds = Array.from(new Set(
+                positionsResult.rows.map((row: any) => row.compound_id as string),
+            ));
 
-            for (const row of positionsResult.rows) {
-                const compoundId = row.compound_id as string;
-                const byteOffset = row.byte_offset as number;
-                const dbPath = row.path as string;
-                const timestamp = row.timestamp as number;
-                const provenance = row.provenance as string;
-
-                if (!compoundPositions.has(compoundId)) {
-                    compoundPositions.set(compoundId, {
-                        positions: [],
-                        filePath: dbPath,
-                        timestamp,
-                        provenance,
-                    });
-                }
-                compoundPositions.get(compoundId)!.positions.push(byteOffset);
+            if (compoundIds.length === 0) {
+                return [];
             }
 
-            // Radially inflate from each position, MERGING overlapping windows
-            // Read content from MIRRORED FILES on disk, not from database
-            // [Standard 132] Use adaptive concurrency based on available memory
-            const compoundEntries = Array.from(compoundPositions.entries());
-            
-            const resultsArrays = await processWithAdaptiveConcurrency(
-                compoundEntries,
-                async ([compoundId, data]) => {
-                    // Resolve the file path - try mirrored file first, then original
-                    const mirrorPath = getMirrorPath(data.filePath, data.provenance);
-                    let absolutePath = mirrorPath;
+            // Step 3: Batch-fetch molecules by compound_id (Phase 2C: include source_path/provenance from molecule).
+            const moleculeQuery = `
+                SELECT id, content, compound_id, start_byte, end_byte, source_path, provenance
+                FROM molecules
+                WHERE compound_id = ANY($1)
+                ORDER BY timestamp DESC
+            `;
 
-                    // If mirror doesn't exist, try original path
-                    if (!fs.existsSync(mirrorPath)) {
-                        absolutePath = path.isAbsolute(data.filePath)
-                            ? data.filePath
-                            : path.join(NOTEBOOK_DIR, data.filePath);
-                    }
+            let moleculesByCompound = new Map<string, Array<{ id: string; content: string; start_byte: number; end_byte: number; source_path: string; molecule_provenance: string }>>();
 
-                    // Skip if file doesn't exist
-                    if (!fs.existsSync(absolutePath)) {
-                        return [];
-                    }
-
-                    // Read file stats to get size for window clamping
-                    let fileSize = 0;
-                    try {
-                        const stats = await fs.promises.stat(absolutePath);
-                        fileSize = stats.size;
-                    } catch (e) {
-                        console.warn(`[ContextInflator] Failed to stat file: ${absolutePath}`);
-                        return [];
-                    }
-
-                    // Calculate raw windows for all positions using file size
-                    const rawWindows = data.positions.map(byteOffset => ({
-                        start: Math.max(0, byteOffset - radius),
-                        end: Math.min(fileSize, byteOffset + radius),
-                        offset: byteOffset,
-                    }));
-
-                    // Sort by start position for merge algorithm
-                    rawWindows.sort((a, b) => a.start - b.start);
-
-                    // Merge overlapping OR ADJACENT windows
-                    const MERGE_GAP_THRESHOLD = 500;
-                    const mergedWindows: { start: number; end: number; offsets: number[] }[] = [];
-                    for (const window of rawWindows) {
-                        const last = mergedWindows[mergedWindows.length - 1];
-                        if (last && (window.start <= last.end || (window.start - last.end) < MERGE_GAP_THRESHOLD)) {
-                            const newEnd = Math.max(last.end, window.end);
-                            if ((newEnd - last.start) <= maxWindowSize) {
-                                last.end = newEnd;
-                                last.offsets.push(window.offset);
-                            } else {
-                                mergedWindows.push({ start: window.start, end: window.end, offsets: [window.offset] });
-                            }
-                        } else {
-                            mergedWindows.push({ start: window.start, end: window.end, offsets: [window.offset] });
+            try {
+                const molResult = await db.run(moleculeQuery, [compoundIds]);
+                if (molResult.rows && molResult.rows.length > 0) {
+                    for (const row of molResult.rows) {
+                        const cid = row.compound_id as string;
+                        if (!moleculesByCompound.has(cid)) {
+                            moleculesByCompound.set(cid, []);
                         }
+                        moleculesByCompound.get(cid)!.push({
+                            id: row.id as string,
+                            content: row.content as string,
+                            start_byte: row.start_byte as number,
+                            end_byte: row.end_byte as number,
+                            source_path: row.source_path as string,
+                            molecule_provenance: row.provenance as string,
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('[ContextInflator] Molecule batch fetch failed, falling back to file reads:', e);
+            }
+
+            // Step 4: Group atom positions by compound_id.
+            const compoundPositions = new Map<string, number[]>();
+
+            for (const row of positionsResult.rows) {
+                const cid = row.compound_id as string;
+                if (!compoundPositions.has(cid)) {
+                    compoundPositions.set(cid, []);
+                }
+                compoundPositions.get(cid)!.push(row.byte_offset as number);
+            }
+
+            // Step 5: For each compound, inflate using molecule content instead of raw file reads.
+            const resultsArrays = await processWithAdaptiveConcurrency(
+                Array.from(compoundPositions.entries()),
+                async ([compoundId, positions]) => {
+                    const molecules = moleculesByCompound.get(compoundId) || [];
+
+                    if (molecules.length === 0) {
+                        // Fallback: read from disk like before
+                        return this.inflateFromAtomPositionsFallback(
+                            compoundId, positions, radius, maxWindowSize
+                        );
                     }
 
                     const compoundResults: SearchResult[] = [];
-                    let fd: fs.promises.FileHandle | null = null;
 
-                    try {
-                        fd = await fs.promises.open(absolutePath, 'r');
+                    for (const molecule of molecules) {
+                        const molStart = Math.max(0, molecule.start_byte - radius);
+                        const molEnd = molecule.end_byte + radius;
 
-                        for (const window of mergedWindows) {
-                            const chunkLength = window.end - window.start;
-                            if (chunkLength <= 0) continue;
-
-                            const buffer = Buffer.alloc(chunkLength);
-                            await fd.read(buffer, 0, chunkLength, window.start);
-
-                            let inflatedContent = buffer.toString('utf-8');
-
-                            // Clean up partial words at boundaries
-                            if (window.start > 0) {
-                                const firstSpace = inflatedContent.indexOf(' ');
-                                if (firstSpace !== -1 && firstSpace < 50) {
-                                    inflatedContent = inflatedContent.substring(firstSpace + 1);
-                                }
+                        // Clean up partial words at boundaries
+                        let content = molecule.content;
+                        if (molStart > 0 && content.length > 0) {
+                            const firstSpace = content.indexOf(' ');
+                            if (firstSpace !== -1 && firstSpace < 50) {
+                                content = content.substring(firstSpace + 1);
                             }
-                            if (window.end < fileSize) {
-                                const lastSpace = inflatedContent.lastIndexOf(' ');
-                                if (lastSpace > inflatedContent.length - 50) {
-                                    inflatedContent = inflatedContent.substring(0, lastSpace);
-                                }
-                            }
-
-                            if (inflatedContent.trim().length === 0) continue;
-
-                            compoundResults.push({
-                                id: `virtual_${compoundId}_${window.start}_${window.end}`,
-                                content: `...${inflatedContent}...`,
-                                source: data.filePath,
-                                timestamp: data.timestamp,
-                                buckets: ['core'],
-                                tags: [searchTerm],
-                                epochs: '',
-                                provenance: data.provenance,
-                                score: 500,
-                                compound_id: compoundId,
-                                start_byte: window.start,
-                                end_byte: window.end,
-                                is_inflated: true,
-                            });
                         }
-                    } catch (err) {
-                        console.warn(`[ContextInflator] Error reading file ${absolutePath}:`, err);
-                    } finally {
-                        if (fd) await fd.close();
+                        if (content.length > 0) {
+                            const lastSpace = content.lastIndexOf(' ');
+                            if (lastSpace > content.length - 50) {
+                                content = content.substring(0, lastSpace);
+                            }
+                        }
+
+                        if (!content || content.trim().length === 0) continue;
+
+                        compoundResults.push({
+                            id: `virtual_${compoundId}_${molecule.start_byte}_${molecule.end_byte}`,
+                            content: `...${content}...`,
+                            source: molecule.source_path, // use molecule's source_path (Phase 2C)
+                            timestamp: Date.now() / 1000,
+                            buckets: ['core'],
+                            tags: [searchTerm],
+                            epochs: '',
+                            provenance: molecule.molecule_provenance,
+                            score: 500,
+                            compound_id: compoundId,
+                            start_byte: molecule.start_byte,
+                            end_byte: molecule.end_byte,
+                            is_inflated: true,
+                        });
                     }
 
                     return compoundResults;
@@ -615,6 +632,125 @@ export class ContextInflator {
             console.error('[ContextInflator] Failed to inflate from atom positions: ', e);
             return [];
         }
+    }
+
+    /**
+     * Fallback: when no molecules are found, read directly from disk files.
+     * Uses batch-fetched compound metadata for file path resolution.
+     */
+    private static async inflateFromAtomPositionsFallback(
+        compoundId: string,
+        positions: number[],
+        radius: number,
+        maxWindowSize: number,
+    ): Promise<SearchResult[]> {
+        // Batch-fetch compound metadata to resolve file paths
+        const compoundCache = await batchFetchCompounds([compoundId]);
+        const meta = compoundCache.get(compoundId);
+        if (!meta) return [];
+
+        const mirrorPath = getMirrorPath(meta.path, meta.provenance);
+        let absolutePath = mirrorPath;
+
+        if (!fs.existsSync(mirrorPath)) {
+            absolutePath = path.isAbsolute(meta.path)
+                ? meta.path
+                : path.join(NOTEBOOK_DIR, meta.path);
+        }
+
+        if (!fs.existsSync(absolutePath)) return [];
+
+        let fileSize = 0;
+        try {
+            const stats = await fs.promises.stat(absolutePath);
+            fileSize = stats.size;
+        } catch (e) {
+            console.warn(`[ContextInflator] Failed to stat file: ${absolutePath}`);
+            return [];
+        }
+
+        // Calculate raw windows for all positions using file size
+        const rawWindows = positions.map(byteOffset => ({
+            start: Math.max(0, byteOffset - radius),
+            end: Math.min(fileSize, byteOffset + radius),
+            offset: byteOffset,
+        }));
+
+        // Sort by start position for merge algorithm
+        rawWindows.sort((a, b) => a.start - b.start);
+
+        // Merge overlapping OR ADJACENT windows
+        const MERGE_GAP_THRESHOLD = 500;
+        const mergedWindows: { start: number; end: number; offsets: number[] }[] = [];
+        for (const window of rawWindows) {
+            const last = mergedWindows[mergedWindows.length - 1];
+            if (last && (window.start <= last.end || (window.start - last.end) < MERGE_GAP_THRESHOLD)) {
+                const newEnd = Math.max(last.end, window.end);
+                if ((newEnd - last.start) <= maxWindowSize) {
+                    last.end = newEnd;
+                    last.offsets.push(window.offset);
+                } else {
+                    mergedWindows.push({ start: window.start, end: window.end, offsets: [window.offset] });
+                }
+            } else {
+                mergedWindows.push({ start: window.start, end: window.end, offsets: [window.offset] });
+            }
+        }
+
+        const compoundResults: SearchResult[] = [];
+        let fd: fs.promises.FileHandle | null = null;
+
+        try {
+            fd = await fs.promises.open(absolutePath, 'r');
+
+            for (const window of mergedWindows) {
+                const chunkLength = window.end - window.start;
+                if (chunkLength <= 0) continue;
+
+                const buffer = Buffer.alloc(chunkLength);
+                await fd.read(buffer, 0, chunkLength, window.start);
+
+                let inflatedContent = buffer.toString('utf-8');
+
+                // Clean up partial words at boundaries
+                if (window.start > 0) {
+                    const firstSpace = inflatedContent.indexOf(' ');
+                    if (firstSpace !== -1 && firstSpace < 50) {
+                        inflatedContent = inflatedContent.substring(firstSpace + 1);
+                    }
+                }
+                if (window.end < fileSize) {
+                    const lastSpace = inflatedContent.lastIndexOf(' ');
+                    if (lastSpace > inflatedContent.length - 50) {
+                        inflatedContent = inflatedContent.substring(0, lastSpace);
+                    }
+                }
+
+                if (inflatedContent.trim().length === 0) continue;
+
+                compoundResults.push({
+                    id: `virtual_${compoundId}_${window.start}_${window.end}`,
+                    content: `...${inflatedContent}...`,
+                    source: meta.path,
+                    timestamp: Date.now() / 1000,
+                    buckets: ['core'],
+                    tags: [],
+                    epochs: '',
+                    provenance: meta.provenance,
+                    score: 500,
+                    compound_id: compoundId,
+                    start_byte: window.start,
+                    end_byte: window.end,
+                    is_inflated: true,
+                });
+            }
+        } catch (err) {
+            console.warn(`[ContextInflator] Error reading file ${absolutePath}:`, err);
+        } finally {
+            if (fd) await fd.close();
+        }
+
+        return compoundResults;
     }
 
     /**

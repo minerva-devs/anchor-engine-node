@@ -51,7 +51,8 @@
       "card_template_key": "content",
       "robot_code": "",
       "card_auto_layout": false,
-      "at_sender_on_reply": false
+      "at_sender_on_reply": false,
+      "streaming_enabled": false
     },
     "feishu": {
       "enabled": false,
@@ -67,7 +68,8 @@
       "app_secret": "",
       "encrypt_key": "",
       "verification_token": "",
-      "domain": "feishu"
+      "domain": "feishu",
+      "streaming_enabled": false
     },
     "qq": {
       "enabled": false,
@@ -97,7 +99,8 @@
       "require_mention": false,
       "bot_token": "",
       "http_proxy": "",
-      "http_proxy_auth": ""
+      "http_proxy_auth": "",
+      "streaming_enabled": false
     },
     "mattermost": {
       "enabled": false,
@@ -160,7 +163,6 @@
       "encryption": false,
       "vision_enabled": true,
       "history_limit": 50,
-      "username": "",
       "password": "",
       "device_name": "qwenpaw-worker",
       "sync_timeout_ms": 30000,
@@ -291,8 +293,8 @@
   },
   "last_dispatch": {
     "channel": "console",
-    "user_id": "default",
-    "session_id": "1779215882089"
+    "user_id": "AEN-0:to:AEN-0:1779552839498:17eb7504",
+    "session_id": "AEN-0:to:AEN-0:1779552839498:17eb7504"
   },
   "running": {
     "max_iters": 50,
@@ -376,7 +378,7 @@
   },
   "active_model": {
     "provider_id": "lmstudio",
-    "model": "qwen3.5-9b@q4_k_xl"
+    "model": "qwen3.5-9b-deepseek-v4-flash"
   },
   "language": "en",
   "approval_level": "OFF",
@@ -392,7 +394,7 @@
         "enabled": true,
         "description": "",
         "display_to_user": true,
-        "async_execution": false,
+        "async_execution": true,
         "icon": "💻",
         "config": {}
       },
@@ -518,7 +520,7 @@
         "enabled": true,
         "description": "Delegate work to an external ACP agent runner",
         "display_to_user": true,
-        "async_execution": false,
+        "async_execution": true,
         "icon": "📡",
         "config": {}
       },

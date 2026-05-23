@@ -149,6 +149,14 @@ export class PathManager {
   }
 
   /**
+   * Normalize a file path (cross-platform compatible)
+   */
+  public normalizePath(filePath: string): string {
+    // Use path.normalize for cross-platform compatibility
+    return path.normalize(filePath);
+  }
+
+  /**
    * Get user settings path
    */
   public getUserSettingsPath(): string {

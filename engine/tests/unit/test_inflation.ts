@@ -1,4 +1,3 @@
-
 import { ContextInflator } from './services/search/context-inflator.js';
 import { SearchResult } from './services/search/search.js';
 import { db } from './core/db.js';
@@ -12,20 +11,19 @@ async function testInflation() {
     const body = "The quick brown fox jumps over the lazy dog. ".repeat(20);
     // Length: 45 * 20 = 900 chars
 
-    // Insert dummy compound
-    console.log("Inserting dummy compound...");
+    // Insert dummy molecule (replacing compounds table with molecules)
+    console.log("Inserting dummy molecule...");
     await db.run(
-        `INSERT INTO compounds (id, compound_body, path, timestamp, provenance, molecular_signature, atoms, molecules, embedding)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        `INSERT INTO molecules (id, compound_id, content, start_byte, end_byte, provenance, molecular_signature, embedding)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
             compoundId,
+            compoundId,
             body,
-            'test/path',
-            Date.now(),
+            0,
+            body.length,
             'internal',
             'sig',
-            [],
-            [],
             new Array(384).fill(0.1)
         ]
     );
@@ -58,8 +56,8 @@ async function testInflation() {
         console.error("FAILURE: Did not merge or expand correctly.");
     }
 
-    // Cleanup
-    await db.run(`DELETE FROM compounds WHERE id = $1`, [compoundId]);
+    // Cleanup - delete the molecule instead of compound
+    await db.run(`DELETE FROM molecules WHERE id = $1`, [compoundId]);
 }
 
 testInflation().catch(console.error);

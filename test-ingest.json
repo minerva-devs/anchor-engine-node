@@ -1,6 +1,0 @@
-{
-  "content": "# Test Document\n\nThis is a test document to verify the pointer-only architecture fix.\n\n## Key Points\n- Content should be written to mirrored_brain/\n- Database stores only pointers\n- Distillation should find this content",
-  "source": "test-upload",
-  "type": "text",
-  "buckets": ["test"]
-}

@@ -350,7 +350,9 @@ export class Database {
             embedding TEXT,
             timestamp REAL,
             tags JSONB,
-            entities JSONB
+            entities JSONB,
+            source_path TEXT,
+            provenance TEXT
           );
         `);
 
@@ -366,6 +368,8 @@ export class Database {
         { name: 'content', type: 'TEXT' },
         { name: 'tags', type: 'JSONB' },
         { name: 'entities', type: 'JSONB' },
+        { name: 'source_path', type: 'TEXT' },
+        { name: 'provenance', type: 'TEXT' },
       ];
 
       for (const col of molColumnsToAdd) {
@@ -382,27 +386,11 @@ export class Database {
       throw e;
     }
 
-    // Create Compounds table (Atomic Architecture)
-    try {
-      await this.run(`
-        CREATE TABLE IF NOT EXISTS compounds (
-          id TEXT PRIMARY KEY,
-          
-          path TEXT,
-          timestamp REAL,
-          provenance TEXT,
-          molecular_signature TEXT,
-          atoms TEXT,
-          molecules TEXT,
-          embedding TEXT
-        );
-      `);
+    // Compounds table REMOVED - Standard 051 Migration
+    // The deprecated compounds table has been removed.
+    // All data now flows through atoms/molecules tables with provenance tracking.
 
-      console.log("[DB] 'compounds' table initialized.");
-    } catch (e: any) {
-      console.error('[DB] Error creating compounds table:', e);
-      throw e;
-    }
+    console.log("[DB] ✅ Compounds table creation skipped (Standard 051: Pointer-only storage)");
 
     // Create Engrams table (Lexical Sidecar)
     try {

@@ -28,6 +28,8 @@
     "test:unit": "node tests/run-tests-with-logger.js --unit",
     "test:integration": "node tests/run-tests-with-logger.js --integration",
     "test:bench": "node tests/run-tests-with-logger.js --benchmarks",
+    "live-fire": "node scripts/run-live-fire-tests.cjs",
+    "live-fire:mjs": "node scripts/live-fire-test-suite.mjs --full",
     "setup-user-config": "node setup-user-config.mjs"
   },
   "keywords": [

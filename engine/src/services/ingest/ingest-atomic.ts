@@ -19,7 +19,13 @@ export class AtomicIngestService {
 
         // Wrap entire ingestion in a transaction for atomicity and performance
         await db.transaction(async () => {
-            await this._ingestResultInTransaction(compound, molecules, atoms, buckets, onProgress);
+            const provenanceType = compound.provenance || 'internal';
+            // Ensure provenanceType is only 'internal' or 'external' (not 'quarantine')
+            const validProvenanceType = (provenanceType as 'internal' | 'external') || 'internal';
+        const signature = compound.molecular_signature || this.generateCompoundSignature(compound.id, compound.path);
+        await this._ingestResultInTransaction(
+            compound, molecules, atoms, buckets, validProvenanceType, signature, onProgress
+        );
         });
 
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -31,9 +37,11 @@ export class AtomicIngestService {
         molecules: Molecule[],
         atoms: Atom[],
         buckets: string[],
+        provenanceType: 'internal' | 'external',
+        molecularSignature: string,
         onProgress?: (step: number, totalSteps: number, description: string) => void,
     ) {
-        const totalSteps = 6; // Total persistence steps
+        const totalSteps = 5; // Total persistence steps (removed compound persist)
         let currentStep = 0;
 
         // 1. Persist Atoms (Tags)
@@ -47,7 +55,7 @@ export class AtomicIngestService {
         const uniqueAtoms = Array.from(uniqueAtomsMap.values());
 
         if (uniqueAtoms.length > 0) {
-            await this.batchWriteAtoms(uniqueAtoms);
+            await this.batchWriteAtoms(uniqueAtoms, provenanceType);
         }
         console.log(`[AtomicIngest] ⏱️ Atoms persisted: ${Date.now() - atomsStart}ms`);
         onProgress?.(++currentStep, totalSteps, `Persisted ${uniqueAtoms.length} atoms`);
@@ -62,7 +70,7 @@ export class AtomicIngestService {
         // 2. Persist Molecules
         const moleculesStart = Date.now();
         if (molecules.length > 0) {
-            await this.batchWriteMolecules(molecules);
+            await this.batchWriteMolecules(molecules, molecularSignature, provenanceType, compound.path);
         }
         console.log(`[AtomicIngest] ⏱️ Molecules persisted: ${((Date.now() - moleculesStart) / 1000).toFixed(2)}s`);
         onProgress?.(++currentStep, totalSteps, `Persisted ${molecules.length} molecules`);
@@ -74,15 +82,9 @@ export class AtomicIngestService {
         }
         console.log(`[AtomicIngest] ⏱️ Edges persisted: ${Date.now() - edgesStart}ms`);
 
-        // 4. Persist Compound (Atomic V4)
-        const compoundStart = Date.now();
-        await this.batchWriteCompounds([compound]);
-        console.log(`[AtomicIngest] ⏱️ Compound persisted: ${((Date.now() - compoundStart) / 1000).toFixed(2)}s`);
-        onProgress?.(++currentStep, totalSteps, `Persisted compound`);
-
-        // 5. LEGACY BRIDGE: Populate 'atoms' table (was 'memory')
+        // 4. LEGACY BRIDGE: Populate 'atoms' table (was 'memory')
         const memoryStart = Date.now();
-        await this.batchWriteMemory(compound, molecules, atoms, buckets);
+        await this.batchWriteMemory(compound, molecules, atoms, buckets, molecularSignature, provenanceType);
         console.log(`[AtomicIngest] ⏱️ Memory/Atoms persisted: ${((Date.now() - memoryStart) / 1000).toFixed(2)}s`);
         onProgress?.(++currentStep, totalSteps, `Updated memory table`);
 
@@ -106,7 +108,7 @@ export class AtomicIngestService {
         onProgress?.(++currentStep, totalSteps, `Finalized positions`);
     }
 
-    private async batchWriteAtoms(atoms: Atom[]) {
+    private async batchWriteAtoms(atoms: Atom[], provenanceType: 'internal' | 'external') {
         const chunkSize = 50;
 
         for (let i = 0; i < atoms.length; i += chunkSize) {
@@ -132,7 +134,7 @@ export class AtomicIngestService {
                         Date.now(), // timestamp
                         '0', // simhash
                         JSON.stringify(this.zeroVector()), // embedding
-                        'internal', // provenance
+                        provenanceType, // provenance
                         ['atoms'], // buckets
                         [atom.label], // tags
                     ],
@@ -180,7 +182,12 @@ export class AtomicIngestService {
 
     // O(n/b) bulk INSERT — byte-budget batching to avoid PGlite WASM wire buffer overflow.
     // PGlite has an ~1MB wire message limit; large chat molecules can overflow with fixed row counts.
-    private async batchWriteMolecules(molecules: Molecule[]) {
+    private async batchWriteMolecules(
+        molecules: Molecule[],
+        molecularSignature: string,
+        provenanceType: 'internal' | 'external',
+        sourcePath: string,
+    ) {
         const MAX_BATCH_ROWS = 50;
         const MAX_BATCH_BYTES = 512 * 1024; // 512KB per INSERT message (safe margin under PGlite's ~1MB limit)
         const total = molecules.length;
@@ -219,11 +226,11 @@ export class AtomicIngestService {
             let paramIdx = 1;
 
             for (const m of batch) {
-                placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
+                placeholders.push(`($${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++}, $${paramIdx++})`);
                 values.push(
                     m.id,
                     m.content || '',
-                    m.compoundId,
+                    molecularSignature,
                     m.sequence,
                     m.start_byte || 0,
                     m.end_byte || 0,
@@ -231,16 +238,18 @@ export class AtomicIngestService {
                     // numeric_value: PostgreSQL real has range ~1E±37, clamp out-of-range to null
                     (m.numeric_value !== undefined && m.numeric_value !== null && Math.abs(m.numeric_value) < 1e37) ? m.numeric_value : null,
                     m.numeric_unit || null,
-                    m.molecular_signature || '0',
+                    molecularSignature,
                     JSON.stringify(this.zeroVector()), // embedding (we don't compute embeddings here anymore)
                     m.timestamp || Date.now(),
                     JSON.stringify(m.tags || []),
                     JSON.stringify(m.entities || {}),
+                    sourcePath,
+                    provenanceType,
                 );
             }
 
             await db.run(
-                `INSERT INTO molecules (id, content, compound_id, sequence, start_byte, end_byte, type, numeric_value, numeric_unit, molecular_signature, embedding, timestamp, tags, entities)
+                `INSERT INTO molecules (id, content, compound_id, sequence, start_byte, end_byte, type, numeric_value, numeric_unit, molecular_signature, embedding, timestamp, tags, entities, source_path, provenance)
                  VALUES ${placeholders.join(', ')}
                  ON CONFLICT (id) DO UPDATE SET
                    content = EXCLUDED.content,
@@ -255,7 +264,9 @@ export class AtomicIngestService {
                    embedding = EXCLUDED.embedding,
                    timestamp = EXCLUDED.timestamp,
                    tags = EXCLUDED.tags,
-                   entities = EXCLUDED.entities`,
+                   entities = EXCLUDED.entities,
+                   source_path = EXCLUDED.source_path,
+                   provenance = EXCLUDED.provenance`,
                 values,
             );
         }
@@ -286,50 +297,8 @@ export class AtomicIngestService {
     }
 
     private async batchWriteCompounds(compounds: Compound[]) {
-        const chunkSize = 50;
-        // Limits to prevent WASM memory OOB - molecules are linked via compound_id anyway
-        const MAX_MOLECULE_IDS = 10000;   // Don't store more than 10K IDs
-        const MAX_ATOM_IDS = 1000;        // Don't store more than 1K atom IDs
-
-        for (let i = 0; i < compounds.length; i += chunkSize) {
-            const chunk = compounds.slice(i, i + chunkSize);
-
-            for (const compound of chunk) {
-                // Limit array sizes (molecules have compound_id for lookups)
-                let atoms = compound.atoms || [];
-                let molecules = compound.molecules || [];
-
-                if (atoms.length > MAX_ATOM_IDS) {
-                    atoms = atoms.slice(0, MAX_ATOM_IDS);
-                }
-                if (molecules.length > MAX_MOLECULE_IDS) {
-                    molecules = molecules.slice(0, MAX_MOLECULE_IDS);
-                }
-
-                await db.run(
-                    `INSERT INTO compounds (id, path, timestamp, provenance, molecular_signature, atoms, molecules, embedding)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                     ON CONFLICT (id) DO UPDATE SET
-                       path = EXCLUDED.path,
-                       timestamp = EXCLUDED.timestamp,
-                       provenance = EXCLUDED.provenance,
-                       molecular_signature = EXCLUDED.molecular_signature,
-                       atoms = EXCLUDED.atoms,
-                       molecules = EXCLUDED.molecules,
-                       embedding = EXCLUDED.embedding`,
-                    [
-                        compound.id,
-                        compound.path,
-                        compound.timestamp,
-                        compound.provenance,
-                        compound.molecular_signature || '0',
-                        JSON.stringify(atoms),
-                        JSON.stringify(molecules),
-                        JSON.stringify(this.zeroVector()),
-                    ],
-                );
-            }
-        }
+        // No-op: compounds table has been removed.
+        // Molecules are linked via compound_id for lookups; atoms via edges.
     }
 
     // O(n/b) bulk INSERT for atoms
@@ -339,8 +308,10 @@ export class AtomicIngestService {
         molecules: Molecule[],
         atoms: Atom[],
         buckets: string[],
+        molecularSignature: string,
+        provenanceType: 'internal' | 'external',
     ) {
-        // 1. Write Compound Row (pointer-only, no content)
+        // 1. Write Compound Row (pointer-only, no content) — uses molecule-level signature/provenance
         await db.run(
             `INSERT INTO atoms (id, source_path, timestamp, simhash, embedding, provenance, buckets, tags, compound_id, start_byte, end_byte)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -359,9 +330,9 @@ export class AtomicIngestService {
                 compound.id,
                 compound.path,
                 compound.timestamp,
-                compound.molecular_signature || '0',
+                molecularSignature || '0',
                 JSON.stringify(this.zeroVector()),
-                compound.provenance,
+                provenanceType,
                 buckets,
                 atoms.map(a => a.label),
                 compound.id,
@@ -402,9 +373,9 @@ export class AtomicIngestService {
                     m.id,
                     compound.path,
                     m.timestamp || compound.timestamp,
-                    m.molecular_signature || this.generateHash(m.id),
+                    molecularSignature,
                     JSON.stringify(this.zeroVector()),
-                    compound.provenance,
+                    provenanceType,
                     buckets,
                     specificTags,
                     m.compoundId,
@@ -495,5 +466,20 @@ export class AtomicIngestService {
             hash |= 0;
         }
         return hash.toString(16);
+    }
+
+    /**
+     * Generate a compound signature for molecular level identification
+     */
+    private generateCompoundSignature(id: string, path?: string): string {
+        // Use content hash if available, otherwise use ID + path
+        const content = id || (path || '');
+        // Simple deterministic hash using basic operations (no crypto dependency)
+        let hash = 0;
+        for (let i = 0; i < content.length; i++) {
+            hash = ((hash << 5) - hash) + content.charCodeAt(i);
+            hash |= 0; // Convert to 32-bit integer
+        }
+        return Math.abs(hash).toString(16);
     }
 }

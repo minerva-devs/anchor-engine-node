@@ -1,4 +1,3 @@
-
 import { AtomizerService } from '../src/services/ingest/atomizer-service.js';
 import { AtomicIngestService } from '../src/services/ingest/ingest-atomic.js';
 import { db } from '../src/core/db.js';
@@ -24,7 +23,7 @@ async function testPipelineIntegrity() {
         const tables = tablesResult.rows.map(r => r[0]);
         console.log('    Existing Tables:', tables.join(', '));
 
-        const required = ['memory', 'source', 'molecules', 'compounds', 'atoms', 'atom_edges'];
+        const required = ['memory', 'source', 'molecules', 'atoms', 'atom_edges'];
         const missing = required.filter(t => !tables.includes(t));
 
         if (missing.length > 0) {
@@ -91,10 +90,10 @@ def verify():
         if (sourceCheck.rows.length === 0) throw new Error('❌ Source record not found.');
         console.log('    ✅ Source record found.');
 
-        // Check Compound
-        const compoundCheck = await db.run(`?[id] := *compounds{id}, id = $id`, { id: atomized.compound.id });
-        if (compoundCheck.rows.length === 0) throw new Error('❌ Compound record not found.');
-        console.log('    ✅ Compound record found.');
+        // Check Compound - molecules table now handles compound-level data
+        const moleculeCheck = await db.run(`?[id] := *molecules{id}, id = $id`, { id: atomized.compound.id });
+        if (moleculeCheck.rows.length === 0) throw new Error('❌ Molecule record not found.');
+        console.log('    ✅ Molecule record found.');
 
         // Check Memory (Legacy)
         const memoryCheck = await db.run(`?[id] := *memory{id}, source = $s`, { s: filePath });

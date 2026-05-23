@@ -122,37 +122,36 @@ async function* collectCompounds(
   let conditions: string[] = [];
   let queryBase = ``;
 
-  // Query both compounds AND molecules to get full content coverage
+  // Query molecules directly (Phase 2B: compounds table is now an index layer)
   queryBase += `
     SELECT DISTINCT
-      c.id as compound_id,
-      m.id as molecule_id,
-      c.path as source_path,
-      c.timestamp,
-      c.provenance,
+      m.compound_id AS compound_id,
+      m.id AS molecule_id,
+      m.source_path AS source_path,
+      m.timestamp,
+      m.provenance,
       m.start_byte,
       m.end_byte,
       m.content as content_preview
-    FROM compounds c
-    LEFT JOIN molecules m ON c.id = m.compound_id
+    FROM molecules m
   `;
-  
+
   const params: any[] = [DEFAULT_PROVENANCE];
 
   // Remove DEFAULT_PROVENANCE from params when no seed is provided - return ALL compounds
   const effectiveParams = request.seed ? [...params] : [];
 
   if (request.seed?.compound_ids?.length) {
-    conditions.push(`id = ANY($${effectiveParams.length + 1})`);
+    conditions.push(`m.compound_id = $${effectiveParams.length + 1}`);
     effectiveParams.push(request.seed.compound_ids);
   }
 
   if (request.seed?.buckets?.length) {
-    queryBase += ` JOIN atoms a ON a.compound_id = c.id WHERE EXISTS(SELECT 1 FROM unnest(a.buckets) as bucket WHERE bucket = ANY($${effectiveParams.length + 1})`;
+    queryBase += ` JOIN atoms a ON m.compound_id = a.compound_id WHERE EXISTS(SELECT 1 FROM unnest(a.buckets) as bucket WHERE bucket = ANY($${effectiveParams.length + 1})`;
     effectiveParams.push(request.seed.buckets);
   } else if (request.seed?.query) {
     const tsQuery = request.seed.query.split(/\s+/).filter(t => t.length > 0).join(' | ');
-    queryBase += ` JOIN atoms a ON a.compound_id = c.id WHERE to_tsvector('simple', a.content) @@ to_tsquery('simple', $${effectiveParams.length + 1})`;
+    queryBase += ` JOIN atoms a ON m.compound_id = a.compound_id WHERE to_tsvector('simple', a.content) @@ to_tsquery('simple', $${effectiveParams.length + 1})`;
     effectiveParams.push(tsQuery);
   }
 
@@ -160,7 +159,7 @@ async function* collectCompounds(
     queryBase += ' AND (' + conditions.join(' OR ') + ')';
   }
 
-  queryBase += ' ORDER BY timestamp DESC, m.start_byte ASC';
+  queryBase += ' ORDER BY m.timestamp DESC, m.start_byte ASC';
 
   const result = await db.run(queryBase, effectiveParams); // Fixed: use effectiveParams instead of params
   const rows = result.rows as any[];

@@ -97,7 +97,113 @@
 
 ---
 
-### 🔒 CodeQL Security Audit Summary (April 12, 2026)
+## Database Migration Roadmap
+
+### Overview
+
+The database schema is undergoing a major refactor to remove the redundant `compounds` table. This migration simplifies the schema by moving all unique metadata from compounds into the `atoms` and `molecules` tables, aligning with the pointer-only architecture principle (Standard 051).
+
+**Current Status:** Phase 2 of 5 — Schema Migration In Progress
+
+---
+
+### Phase 1: Schema Analysis ✅ Complete
+
+**Completed (March 2026):**
+- [x] Audit all compounds table fields and identify unique vs. redundant data
+- [x] Map compound metadata to atoms/molecules tables
+- [x] Document query dependencies on compounds table
+- [x] Assess breaking changes for ingestion pipeline, radial distiller, search service
+
+**Deliverables:**
+- `MIGRATION_ANALYSIS.md` - Technical analysis of schema
+- Data mapping document in `MIGRATION_PLAN.md`
+
+---
+
+### Phase 2: Schema Migration 🔄 In Progress
+
+**Current Work (May 2026):**
+- [x] Add missing columns to molecules table (`provenance`, `molecular_signature`)
+- [ ] Execute migration script to copy compound data to molecules/atoms
+- [ ] Verify migration integrity with validation queries
+- [ ] Drop compounds table after verification
+
+**Migration Script:** `engine/src/core/schema-migration.sql`
+
+**Status:** Schema changes complete, data migration in progress.
+
+---
+
+### Phase 3: Code Updates ⏳ Pending
+
+**Tasks:**
+- [ ] Update ingestion pipeline to skip compound creation step
+- [ ] Remove compound ID generation from ingestion logic
+- [ ] Update atom/molecule creation to include provenance field
+- [ ] Rewrite queries that join through compounds table (use source_path instead)
+- [ ] Update radial distiller service to query molecules/atoms directly
+
+**Estimated Duration:** 4-8 hours
+
+---
+
+### Phase 4: Testing ⏳ Pending
+
+**Test Cases:**
+1. **Ingestion test** - Ingest a file and verify molecules/atoms have provenance populated
+2. **Query compatibility** - Run existing queries that used compounds table
+3. **Data integrity** - Verify no data loss during migration
+4. **Edge cases** - Handle empty compounds table, partial migrations
+
+**Estimated Duration:** 2-4 hours
+
+---
+
+### Phase 5: Deployment ⏳ Pending
+
+**Staged Rollout Plan:**
+1. Deploy schema changes to staging environment
+2. Run data migration on staging with monitoring
+3. Update ingestion code and deploy to staging
+4. Validate full ingestion workflow on staging
+5. Deploy to production with enhanced monitoring
+
+**Monitoring Metrics:**
+- Ingestion latency (should decrease after removal)
+- Database write volume
+- Query performance for compound-related queries
+- Error rates in ingestion pipeline
+
+**Estimated Duration:** 1-2 hours
+
+---
+
+### Post-Migration: Schema Version Tracking ⏳ Future Work
+
+After the compounds table is removed, implement schema version tracking:
+
+- [ ] Create `schema_versions` table to track schema evolution
+- [ ] Add migration history logging
+- [ ] Document in `CHANGELOG.md` with proper version entries
+
+---
+
+### Documentation Files
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `MIGRATION_PLAN.md` | Detailed implementation plan, SQL scripts, testing procedures | ✅ Complete |
+| `MIGRATION_SUMMARY.md` | Executive summary and execution order | ✅ Complete |
+| `MIGRATION_ANALYSIS.md` | Technical analysis of compounds table removal | ✅ Complete |
+| `engine/src/core/schema-migration.sql` | Consolidated CREATE TABLE statements | ✅ Created |
+
+---
+
+## Related Documentation
+
+- **[Database Schema Reference](spec.md#database-schema-reference)** - Full schema documentation with ER diagram and table definitions
+- **[Current Tasks](tasks.md#p2—db-schema-clarification)** - DB schema clarification progress
 **Total Alerts Analyzed:** ~206 from CodeQL tool
 **Final Assessment:** LOW severity overall — approximately **85-90% of flagged alerts are either false positives or already mitigated through existing validation layers**
 

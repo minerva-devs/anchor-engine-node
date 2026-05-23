@@ -1,5 +1,0 @@
-{
-  "content": "# Test Document for Default Source\n\nThis tests the default source='api_upload' case.\n\n## Verification\n- Content should be written to mirrored_brain/\n- Database stores only pointers",
-  "type": "text",
-  "buckets": ["test"]
-}

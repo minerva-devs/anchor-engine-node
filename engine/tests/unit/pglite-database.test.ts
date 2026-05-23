@@ -21,7 +21,7 @@ describe('PGlite Database', () => {
     }
 
     db = new Database();
-    
+
     // Retry initialization up to 3 times for WASM stability on Windows
     let lastError: unknown;
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -67,7 +67,8 @@ describe('PGlite Database', () => {
       const tables = result.rows.map((r: any) => r.table_name);
       expect(tables).toContain('atoms');
       expect(tables).toContain('molecules');
-      expect(tables).toContain('compounds');
+      // compounds table has been removed - molecules now serves that purpose
+      expect(tables).not.toContain('compounds');
       expect(tables).toContain('tags');
     });
   });
@@ -75,7 +76,7 @@ describe('PGlite Database', () => {
   describe('basic operations', () => {
     it('should insert and query atoms with single tag (TEXT[] array)', async () => {
       // Tags column is TEXT[] - pass as proper PostgreSQL ARRAY syntax
-      await db.run(`INSERT INTO atoms (id, content, source_path, timestamp, tags) VALUES ($1, $2, $3, $4, ARRAY[$5])`, 
+      await db.run(`INSERT INTO atoms (id, content, source_path, timestamp, tags) VALUES ($1, $2, $3, $4, ARRAY[$5])`,
         ['atom-unique', 'Test content', '/tmp/test.txt', Date.now(), '#test']);
 
       const result = await db.run('SELECT id, content FROM atoms WHERE id = $1', ['atom-unique']);
@@ -85,7 +86,7 @@ describe('PGlite Database', () => {
       expect(result.rows[0].content).toBe('Test content');
     });
 
-it('should handle batch inserts with null tags', async () => {
+    it('should handle batch inserts with null tags', async () => {
       const atoms = [
         ['batch-1', 'Content 1', '/tmp/test.txt', Date.now()],
         ['batch-2', 'Content 2', '/tmp/test.txt', Date.now()],
@@ -103,9 +104,9 @@ it('should handle batch inserts with null tags', async () => {
       expect(parseInt((result.rows[0] as any).count)).toBe(3);
     });
 
-it('should handle multiple tags per atom', async () => {
+    it('should handle multiple tags per atom', async () => {
       // Insert with multiple tags (TEXT[] array format)
-      await db.run(`INSERT INTO atoms (id, content, source_path, timestamp, tags) VALUES ($1, $2, $3, $4, ARRAY[$5, $6, $7])`, 
+      await db.run(`INSERT INTO atoms (id, content, source_path, timestamp, tags) VALUES ($1, $2, $3, $4, ARRAY[$5, $6, $7])`,
         ['multi-tag-test', 'Multi tag test', '/tmp/test.txt', Date.now(), '#tag1', '#tag2', '#tag3']);
 
       const result = await db.run('SELECT tags FROM atoms WHERE id = $1', ['multi-tag-test']);
@@ -114,8 +115,8 @@ it('should handle multiple tags per atom', async () => {
       expect(tags).toContain('#tag1');
     });
 
-it('should handle null tags gracefully', async () => {
-      await db.run(`INSERT INTO atoms (id, content, source_path, timestamp, tags) VALUES ($1, $2, $3, $4, NULL)`, 
+    it('should handle null tags gracefully', async () => {
+      await db.run(`INSERT INTO atoms (id, content, source_path, timestamp, tags) VALUES ($1, $2, $3, $4, NULL)`,
         ['empty-tags-test', 'Empty tags test', '/tmp/test.txt', Date.now()]);
 
       const result = await db.run('SELECT tags FROM atoms WHERE id = $1', ['empty-tags-test']);

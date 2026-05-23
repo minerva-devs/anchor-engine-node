@@ -171,9 +171,359 @@ flowchart LR
 
 ### Component Definitions
 
-- **Compound:** File/document reference
-- **Molecule:** Semantic chunk with byte offsets (start, end)
-- **Atom:** Tag/concept (NOT content) — content lives in `~/.anchor/mirrored_brain/`
+- **Compound:** File/document reference (path, hash, metadata) - *BEING REMOVED via migration*
+- **Molecule:** Semantic chunk with byte offsets (start, end) and content
+- **Atom:** Tag/concept extracted from molecules (NOT content — content lives in `~/.anchor/mirrored_brain/`)
+
+---
+
+## Database Schema Reference
+
+### Overview
+
+The Anchor Engine uses PGlite (PostgreSQL-compatible WASM database) as its disposable index. The schema follows a three-tier hierarchy:
+
+1. **Atoms** - Individual concepts/keywords with provenance
+2. **Molecules** - Semantic text chunks with byte offsets  
+3. **Compounds** - File-level aggregation (*deprecated, being removed*)
+
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    %% Atoms table - individual concepts
+    atoms {
+        TEXT id PK "UUID v4 identifier"
+        TEXT source_path "File path where found"
+        TEXT provenance "Source: internal/external/github"
+        TEXT simhash "SimHash for dedup"
+        TEXT embedding "Vector embedding (JSON)"
+        TEXT content "Extracted text content"
+        JSONB tags "Array of tag strings"
+        JSONB entities "Named entity results"
+        JSONB payload "Additional structured data"
+    }
+
+    %% Molecules table - semantic chunks
+    molecules {
+        TEXT id PK "UUID v4 identifier"
+        TEXT content "Semantic chunk text"
+        TEXT source_path "Direct file path reference"
+        INTEGER start_byte "Byte offset start"
+        INTEGER end_byte "Byte offset end"
+        TEXT molecular_signature "64-bit Hamming SimHash"
+        JSONB tags "Array of tag strings"
+        JSONB entities "Named entity results"
+    }
+
+    %% Compounds table - DEPRECATED (being removed)
+    compounds {
+        TEXT id PK "UUID v4 identifier"
+        TEXT path "File path reference"
+        TEXT provenance "Source origin metadata"
+        TEXT molecular_signature "Compound-level signature"
+        TEXT[] atoms "Array of atom IDs (FK)"
+        TEXT[] molecules "Array of molecule IDs (FK)"
+    }
+
+    %% Tags table - atom-tag relationships
+    tags {
+        TEXT atom_id FK "Reference to atoms.id"
+        TEXT tag "Tag name/concept"
+        TEXT bucket "Bucket for grouping"
+    }
+
+    %% Edges table - graph relationships
+    edges {
+        TEXT source_id FK "Reference to atoms.id"
+        TEXT target_id FK "Reference to atoms.id"
+        TEXT relation "Relationship type"
+        REAL weight "Edge weight for ranking"
+    }
+
+    %% Sources table - source tracking
+    sources {
+        TEXT path PK "File path as unique key"
+        TEXT hash "Content hash for dedup"
+        INTEGER total_atoms "Count of atoms in this source"
+        REAL last_ingest "Last ingestion timestamp"
+    }
+
+    %% Atom positions - lazy molecule inflation
+    atom_positions {
+        TEXT compound_id FK "Reference to compounds.id"
+        TEXT atom_label "Atom/keyword label"
+        INTEGER byte_offset "Position in source text"
+    }
+
+    %% Relationships
+    atoms ||--o{ tags : "has_tags"
+    atoms ||--o{ edges : "is_source"
+    molecules ||--o{ atoms : "contains"
+    compounds ||--o{ molecules : "contains"
+    compounds ||--o{ atom_positions : "tracks"
+    
+    note "COMPOUNDS TABLE IS DEPRECATED\nBeing removed in migration Phase 2.\nAll data migrated to atoms/molecules." compounds;
+```
+
+### Table Reference
+
+#### `atoms` - Individual Concepts/Keywords
+
+Stores individual extracted concepts with their provenance and metadata. Does **not** store full content (pointer-only architecture).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT (UUID) | Primary key, unique identifier |
+| `source_path` | TEXT | File path where this atom was extracted from |
+| `timestamp` | REAL | Ingestion timestamp (Unix epoch seconds) |
+| `simhash` | TEXT | SimHash for deduplication (fingerprint) |
+| `embedding` | TEXT | Vector embedding as JSON array or null |
+| `vector_id` | BIGINT | Auto-increment ID for vector database |
+| `provenance` | TEXT | Source origin: `'internal'`, `'external'`, `'github'` |
+| `compound_id` | TEXT | FK reference (deprecated, legacy compatibility) |
+| `sequence` | INTEGER | Sequence number within source document |
+| `type` | TEXT | Atom type classification |
+| `hash` | TEXT | Content hash for deduplication |
+| `molecular_signature` | TEXT | 64-bit Hamming SimHash of parent molecule |
+| `start_byte` | INTEGER | Byte offset start in source file |
+| `end_byte` | INTEGER | Byte offset end in source file |
+| `numeric_value` | REAL | Numeric value if present (for numbers) |
+| `numeric_unit` | TEXT | Unit for numeric values (e.g., 'kg', 'm/s²') |
+| `content` | TEXT | Extracted text content of this atom |
+| `tags` | JSONB | Array of tag strings |
+| `entities` | JSONB | Named entity extraction results |
+| `payload` | JSONB | Additional structured data (Crystal Atom) |
+
+**Indexes:**
+- `idx_atoms_source_path` - Fast lookup by file path
+- `idx_atoms_provenance` - Filter by source origin
+- `idx_atoms_simhash` - Deduplication queries
+- `idx_atoms_timestamp` - Recent atoms (DESC)
+- `idx_atoms_compound_id` - Legacy compound lookups
+- `idx_atoms_payload_gin` - GIN index for payload JSONB
+
+---
+
+#### `molecules` - Semantic Text Chunks
+
+Stores semantic chunks of text with byte offsets for content extraction. Each molecule represents a meaningful segment (sentence, paragraph, or concept block).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT (UUID) | Primary key, unique identifier |
+| `content` | TEXT | Semantic chunk text content |
+| `compound_id` | TEXT | FK reference to compounds (deprecated) |
+| `sequence` | INTEGER | Sequence number within source document |
+| `start_byte` | INTEGER | Byte offset start in source file |
+| `end_byte` | INTEGER | Byte offset end in source file |
+| `type` | TEXT | Type classification ('number', 'percentage', etc.) |
+| `numeric_value` | REAL | Parsed numeric value if applicable |
+| `numeric_unit` | TEXT | Unit for numeric values |
+| `molecular_signature` | TEXT | 64-bit Hamming SimHash for molecule |
+| `embedding` | TEXT | Vector embedding as JSON array |
+| `timestamp` | REAL | Ingestion timestamp (Unix epoch) |
+| `tags` | JSONB | Array of tag strings |
+| `entities` | JSONB | Named entity extraction results |
+| `source_path` | TEXT | Direct file path reference |
+| `provenance` | TEXT | Source origin metadata |
+
+**Indexes:**
+- `idx_molecules_source_path` - Fast lookup by file path
+- `idx_molecules_provenance` - Filter by source origin
+- `idx_molecules_compound_id` - Legacy compound lookups
+- `idx_molecules_timestamp` - Recent molecules (DESC)
+- `idx_molecules_signature` - SimHash-based queries
+
+---
+
+#### `compounds` - File References (*DEPRECATED*)
+
+**Status:** Being removed in migration Phase 2. This table served as an index/aggregation layer but is redundant given that atoms and molecules already store all necessary metadata.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT (UUID) | Primary key, referenced by atoms/molecules |
+| `path` | TEXT | File path pointer |
+| `timestamp` | REAL | Ingestion timestamp |
+| `provenance` | TEXT | Source/provenance metadata |
+| `molecular_signature` | TEXT | Compound-level signature |
+| `atoms` | TEXT[] | Array of atom IDs (foreign keys) |
+| `molecules` | TEXT[] | Array of molecule IDs (foreign keys) |
+
+**Migration Note:** All data from this table is being migrated to the `atoms` and `molecules` tables. After migration, this table will be dropped.
+
+---
+
+#### `tags` - Tag-Atom Relationships
+
+The "nervous system" that connects atoms to conceptual buckets. Enables fast tag-based search and filtering.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `atom_id` | TEXT | Foreign key to atoms.id |
+| `tag` | TEXT | Tag name/concept (e.g., 'quantum', 'machine-learning') |
+| `bucket` | TEXT | Bucket for grouping tags (e.g., 'physics', 'ml') |
+
+**Primary Key:** Composite (`atom_id`, `tag`, `bucket`)
+
+**Indexes:**
+- `idx_tags_tag` - Fast tag lookup
+- `idx_tags_bucket` - Bucket-based filtering
+- `idx_tags_atom_id` - Atom-to-tags resolution
+
+---
+
+#### `edges` - Graph Relationships
+
+Stores relationships between atoms for the knowledge graph. Used by the STAR search algorithm's "Moons" component for semantic discovery.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `source_id` | TEXT | Foreign key to atoms.id (source atom) |
+| `target_id` | TEXT | Foreign key to atoms.id (target atom) |
+| `relation` | TEXT | Relationship type (e.g., 'related_to', 'causes') |
+| `weight` | REAL | Edge weight for ranking/relevance |
+
+**Primary Key:** Composite (`source_id`, `target_id`, `relation`)
+
+---
+
+#### `sources` - Source Registry
+
+Tracks ingestion sources and provides quick access to recently ingested files.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `path` | TEXT | File path (primary key) |
+| `hash` | TEXT | Content hash for deduplication |
+| `total_atoms` | INTEGER | Count of atoms in this source |
+| `last_ingest` | REAL | Last ingestion timestamp |
+
+---
+
+#### `atom_positions` - Atom Position Tracking
+
+Tracks where specific atoms/keywords appear in documents. Used by the radial distiller for context inflation.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `compound_id` | TEXT | Foreign key to compounds.id |
+| `atom_label` | TEXT | Atom/keyword label (e.g., 'quantum') |
+| `byte_offset` | INTEGER | Position in source text |
+
+**Indexes:**
+- `idx_atom_positions_label` - Fast keyword lookup
+
+---
+
+#### `summary_nodes` - Dreamer Abstractions
+
+High-level summary nodes created by the "Dreamer" abstraction layer. These represent compressed knowledge representations.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT (UUID) | Primary key |
+| `type` | TEXT | Node type classification |
+| `span_start` | REAL | Start position in context window |
+| `span_end` | REAL | End position in context window |
+| `embedding` | TEXT | Vector embedding for semantic search |
+
+---
+
+#### `github_repos` - GitHub Repository Tracking (Standard 115)
+
+Tracks ingested GitHub repositories for incremental sync and status monitoring.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT (UUID) | Primary key |
+| `owner` | TEXT | GitHub username/organization |
+| `repo` | TEXT | Repository name |
+| `branch` | TEXT | Git branch (default: 'main') |
+| `bucket` | TEXT | Storage bucket reference |
+| `github_url` | TEXT | Full GitHub URL |
+| `last_synced_at` | TIMESTAMP | Last sync timestamp |
+| `last_sync_status` | TEXT | Sync status ('success' \| 'error') |
+| `last_error` | TEXT | Error message if failed |
+| `total_files` | INTEGER | Total files indexed |
+| `total_atoms` | INTEGER | Total atoms extracted |
+| `total_size_bytes` | INTEGER | Total size in bytes |
+
+---
+
+#### `distills` - Distillation Output Tracking (Standard 016)
+
+Stores metadata pointers to distillation output files on disk. Does not store the actual content.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | TEXT (UUID) | Primary key |
+| `timestamp` | TEXT | ISO timestamp of distillation |
+| `filename` | TEXT | Base filename |
+| `file_path` | TEXT | Full path to distill file |
+| `line_count` | INTEGER | Total lines in output |
+| `lines_unique` | INTEGER | Unique lines (deduplicated) |
+| `compression_ratio` | REAL | Compression efficiency metric |
+| `source_sessions` | TEXT[] | Array of session IDs |
+| `source_files` | TEXT[] | Array of file paths processed |
+| `parameters` | JSONB | Processing parameters used |
+
+---
+
+#### `engrams` - Lexical Sidecar
+
+Simple key-value store for quick lookups. Used for storing computed values or cached results.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `key` | TEXT | Lookup key (primary key) |
+| `value` | TEXT | Associated value |
+
+---
+
+#### `synonyms` - Query Expansion Terms
+
+Stores synonym mappings for search query expansion. Helps improve recall by expanding search terms.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `term` | TEXT | Base search term (primary key) |
+| `synonyms` | TEXT | Comma-separated synonym list |
+| `created_at` | TIMESTAMP | Creation timestamp |
+
+---
+
+### Schema Migration Status
+
+| Table | Status | Notes |
+|-------|--------|-------|
+| `atoms` | ✅ Active | Primary concept storage |
+| `molecules` | ✅ Active | Semantic chunk storage |
+| `compounds` | ⚠️ Deprecated | Being removed (migration in progress) |
+| `tags` | ✅ Active | Tag-atom relationships |
+| `edges` | ✅ Active | Graph edges for STAR search |
+| `sources` | ✅ Active | Source tracking |
+| `atom_positions` | ✅ Active | Position indexing |
+| `summary_nodes` | ✅ Active | Dreamer abstractions |
+| `github_repos` | ✅ Active | GitHub ingestion (Standard 115) |
+| `distills` | ✅ Active | Distillation metadata (Standard 016) |
+| `engrams` | ✅ Active | Key-value store |
+| `synonyms` | ✅ Active | Query expansion |
+
+---
+
+### Migration Notes
+
+**Phase 1 (Complete):** Schema analysis and data mapping completed. All unique fields from `compounds` have been identified and mapped to `atoms` and `molecules`.
+
+**Phase 2 (In Progress):** Running migration script to:
+1. Copy `provenance` and `molecular_signature` from compounds to molecules/atoms
+2. Drop the `compounds` table
+
+**Phase 3 (Pending):** Update ingestion pipeline to skip compound creation during normal operations.
+
+See `MIGRATION_PLAN.md` for detailed implementation steps.
 
 ---
 
