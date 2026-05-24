@@ -420,8 +420,7 @@ TESTS-TROUBLESHOOTING.md
 TESTS_INVENTORY.md
 
 # Runtime config (should be in .anchor/, not root)
-.anchor/user_settings.json
-.anchor/*.json
+.anchor*
 
 # Root-level documentation and misc files (should be moved to proper locations)
 PROJ_ASSESSMENT.md

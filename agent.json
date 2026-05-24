@@ -294,7 +294,7 @@
   "last_dispatch": {
     "channel": "console",
     "user_id": "default",
-    "session_id": "1779661882961"
+    "session_id": "1779641231232"
   },
   "running": {
     "max_iters": 100,
@@ -309,7 +309,7 @@
     "llm_rate_limit_jitter": 1.0,
     "llm_acquire_timeout": 300.0,
     "shell_command_timeout": 60.0,
-    "shell_command_executable": "",
+    "shell_command_executable": "cmd.exe",
     "max_input_length": 130000,
     "history_max_length": 10000,
     "context_manager_backend": "light",
@@ -375,12 +375,8 @@
       "model": ""
     }
   },
-  "active_model": {
-    "provider_id": "lmstudio",
-    "model": "qwen3.5-9b-deepseek-v4-flash@q6_k"
-  },
-  "language": "en",
-  "approval_level": "OFF",
+  "language": "zh",
+  "approval_level": "AUTO",
   "system_prompt_files": [
     "AGENTS.md",
     "SOUL.md",
@@ -393,7 +389,7 @@
         "enabled": true,
         "description": "",
         "display_to_user": true,
-        "async_execution": true,
+        "async_execution": false,
         "icon": "💻",
         "config": {}
       },
@@ -516,10 +512,10 @@
       },
       "delegate_external_agent": {
         "name": "delegate_external_agent",
-        "enabled": true,
+        "enabled": false,
         "description": "Delegate work to an external ACP agent runner",
         "display_to_user": true,
-        "async_execution": true,
+        "async_execution": false,
         "icon": "📡",
         "config": {}
       },
@@ -607,7 +603,7 @@
       },
       "qwen_code": {
         "enabled": true,
-        "command": "qwen",
+        "command": "\"C:\\Users\\rsbii\\AppData\\Roaming\\npm\\qwen.exe\"",
         "args": [
           "--acp"
         ],
