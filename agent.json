@@ -293,11 +293,11 @@
   },
   "last_dispatch": {
     "channel": "console",
-    "user_id": "AEN-0:to:AEN-0:1779552839498:17eb7504",
-    "session_id": "AEN-0:to:AEN-0:1779552839498:17eb7504"
+    "user_id": "default",
+    "session_id": "1779661882961"
   },
   "running": {
-    "max_iters": 50,
+    "max_iters": 100,
     "auto_continue_on_text_only": false,
     "llm_retry_enabled": true,
     "llm_max_retries": 3,
@@ -365,8 +365,7 @@
       "rebuild_memory_index_on_start": false,
       "recursive_file_watcher": false
     },
-    "daily_memory_dir": "memory",
-    "approval_level": "OFF"
+    "daily_memory_dir": "memory"
   },
   "llm_routing": {
     "enabled": false,
@@ -378,7 +377,7 @@
   },
   "active_model": {
     "provider_id": "lmstudio",
-    "model": "qwen3.5-9b-deepseek-v4-flash"
+    "model": "qwen3.5-9b-deepseek-v4-flash@q6_k"
   },
   "language": "en",
   "approval_level": "OFF",

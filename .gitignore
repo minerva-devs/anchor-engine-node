@@ -24,8 +24,27 @@ engine/src/native/node_modules/
 # 2. Test Outputs (always ignore)
 # ============================================
 
-# Test result files
-test-output.txt
+# All test result files
+*-output.txt
+*-results.txt
+*-results-full.txt
+*-test-output.txt
+*-live-fire-output.txt
+start_output.txt
+integration-test-output.txt
+live-fire-output.txt
+unit-test-output.txt
+unit-test-results.txt
+unit-results.txt
+unit-results-full.txt
+mjs-output.txt
+server-output.txt
+build-output.txt
+check-db-content.mjs
+check-db-state.js
+check-db.cjs
+check-db.js
+check-db.mjs
 engine-build-output.txt
 engine-direct-tests.txt
 engine-error.txt
@@ -37,12 +56,17 @@ npx-vitest-results.txt
 pnpm-start-tests.bat
 test-results.txt
 vite-aliases.txt
-start_output.txt
 integration-test-output.txt
 live-fire-output.txt
+unit-results-full.txt
+test-file-persistence.cjs
+test-mcp-server.js
+test-mcp-server.mjs
+test-migration.mjs
+test-suite-live-fire.mjs
+unit-results-full.txt
 unit-test-output.txt
 unit-test-results.txt
-unit-results.txt
 unit-results-full.txt
 
 # Vitest configs (not in repo)
@@ -148,6 +172,86 @@ jobs.json
 # 6. Temporary & Debug Files
 # ============================================
 
+# Build outputs and temporary files (not tracked)
+build-output.txt
+mjs-output.txt
+server-output.txt
+check-db-content.mjs
+check-db-state.js
+check-db.cjs
+check-db.js
+check-db.mjs
+live-fire-output.txt
+unit-results-full.txt
+integration-test-output.txt
+test-file-persistence.cjs
+test-mcp-server.js
+test-mcp-server.mjs
+test-migration.mjs
+test-suite-live-fire.mjs
+tmp*.txt
+temp.txt
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+
+# ============================================
+# 7. Documentation & API Review Files (not tracked)
+# ============================================
+
+# API documentation and review notes (local use only)
+QWEN.md
+AGENT.md
+docs/*.md
+paper.bib
+github_repos.json
+jobs.json
+ingestion-response.json
+ingest_status.json
+config_ingestion.json
+memory-list.json
+agent.json
+verify-anchor-config.js
+verify-schema.mjs
+setup-user-config.mjs
+engine-migration.mjs
+fix-db.mjs
+validate-json.mjs
+append_function.js
+add_isDistillationOutput.js
+addFunction.js
+append_function.js
+
+# ============================================
+# 8. System JSON Artifacts (MIGRATION/DEBUG FILES - DELETE)
+# ============================================
+
+# System configuration artifacts from previous experiments
+$null
+0
+filename.endsWith(ext))
+system_config.json
+system_files.json
+system_ingest_status.json
+system_memory.json
+system_paths.json
+system_paths2.json
+system_status.json
+ingest-payload.json
+ingestion-response.json
+ingest_status.json
+compounds-table.json
+dep-search.json
+illuminate-search.json
+exact-search.json
+star-search-nostream.json
+atoms.json
+chats.json
+jobs.json======================================
+
 # Common temporary files
 temp_*.txt
 temp_*.ts
@@ -245,3 +349,76 @@ engine/node_modules/
 
 # Native module dependencies
 engine/src/native/node_modules/
+
+# ============================================
+# 10. Temporary & Debug Files (NOT TRAKED)
+# ============================================
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+temp.txt
+
+# Debug and temporary output files (not tracked)
+ts-sources.txt
+tsc-files-only.txt
+tsc-files.txt
+ts-files.txt
+tmp*.txt
+*.log
+
+# ============================================
+# 11. System JSON & Script Artifacts (MIGRATION/DEBUG - NOT TRAKED)
+# ============================================
+
+# System JSON configuration artifacts
+$.null
+0
+filename.endsWith(ext))
+system_config.json
+system_files.json
+system_ingest_status.json
+system_memory.json
+system_paths.json
+system_paths2.json
+system_status.json
+ingest-payload.json
+compounds-table.json
+deep-search.json
+illuminate-search.json
+exact-search.json
+star-search-nostream.json
+atoms.json
+
+# Migration/debug scripts (not tracked)
+verify-anchor-config.js
+verify-schema.mjs
+setup-user-config.mjs
+engine-migration.mjs
+fix-db.mjs
+validate-json.mjs
+addFunction.js
+add_isDistillationOutput.js
+append_function.js
+migrate-compounds.mjs
+check-db-content.mjs
+check-db-state.js
+check-db.cjs
+check-db.js
+check-db.mjs
+
+# Test migration scripts (not tracked)
+test-migration.mjs
+test-suite-live-fire.mjs
+
+# Troubleshooting and inventory files (not tracked)
+TESTS-TROUBLESHOOTING.md
+TESTS_INVENTORY.md
+
+# Runtime config (should be in .anchor/, not root)
+.anchor/user_settings.json
+.anchor/*.json
