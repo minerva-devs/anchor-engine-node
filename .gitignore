@@ -422,3 +422,30 @@ TESTS_INVENTORY.md
 # Runtime config (should be in .anchor/, not root)
 .anchor/user_settings.json
 .anchor/*.json
+
+# Root-level documentation and misc files (should be moved to proper locations)
+PROJ_ASSESSMENT.md
+PROJ_ASSESSMENT.md.new
+PROJ_ASSESSMENT.md~
+PROJECT_ASSESSMENT.md
+PROJECT_ASSESSMENT.md.new
+PROJECT_ASSESSMENT.md~
+PROJECT_ASSESSMENT.md.orig
+PROJECT_ASSESSMENT.md.bak
+PROJECT_ASSESSMENT.md.swp
+
+# Root-level test files (should be in tests/)
+PROJECT_TEST.md
+PROJECT_TEST.md.new
+PROJECT_TEST.md~
+
+# Root-level JSON config (should be in engine/ or .anchor/)
+project_settings.json
+project_settings.json.new
+PROJECT_SETTINGS.json
+
+# Root-level miscellaneous
+project_settings.json~
+project_settings.json.bak
+project_settings.json.orig
+project_settings.json.swp
