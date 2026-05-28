@@ -27,6 +27,12 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `user_settings.json.template` | Configuration template → generates `$HOME/.anchor/user_settings.json` (see Runtime Object Storage) |
 | `validate-json.mjs` | Script to build user_settings.json from template (runs on `pnpm install` + `pnpm start`) |
 | `.scratch.md` | **Agent-only exception** - Session notes for AI agents during development (never committed to main) |
+| `user_settings.docker.json` | Docker-specific user settings template |
+| `verify-anchor-config.js` | Script to verify anchor configuration |
+| `setup-user-config.mjs` | Script to setup user configuration on first run |
+| `verify-schema.mjs` | Script to verify database schema |
+| `vite.config.ts` | Vite build configuration |
+| `vitest-root.config.ts` | Vitest root configuration |
 
 **PROHIBITED in Root:**
 - Phase completion reports
@@ -34,8 +40,9 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 - Git operation logs
 - Temporary documentation files
 - Any other `.md` files not listed above
+- `skills.md` (not allowed)
 
-**Note:** `user_settings.json.template` and `validate-json.mjs` are the only **non-code, non-documentation** files allowed in root. They are essential for runtime configuration generation and are documented in the README's Configuration Guide.
+**Note:** `user_settings.json.template`, `validate-json.mjs`, `verify-anchor-config.js`, and `setup-user-config.mjs` are essential for runtime configuration generation. They are documented in the README's Configuration Guide.
 
 **Note:** `.scratch.md` is an **agent-only exception** - these session notes should never be committed to main branch and are meant for temporary AI agent development work. The file is .gitignored when not in agent sessions.
 
