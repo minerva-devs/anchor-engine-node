@@ -33,6 +33,16 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `verify-schema.mjs` | Script to verify database schema |
 | `vite.config.ts` | Vite build configuration |
 | `vitest-root.config.ts` | Vitest root configuration |
+| `Dockerfile` | Docker build file for containerization |
+| `docker-compose.yml` | Docker Compose orchestration file |
+
+**PROHIBITED in Root:**
+- Phase completion reports
+- Implementation summaries
+- Git operation logs
+- Temporary documentation files
+- Any other `.md` files not listed above
+- `skills.md` (not allowed)
 
 **PROHIBITED in Root:**
 - Phase completion reports
