@@ -259,6 +259,38 @@ interface Config {
     WIPE_MIRRORED_BRAIN_ON_SHUTDOWN: boolean;
   };
 
+  // Path Definitions (all relative to anchor root or system directories)
+  PATHS: {
+    PROJECT_ROOT: string;
+    ANCHOR_ROOT: string;
+    LOCAL_DATA_DIR: string;
+    INBOX_DIR: string;
+    EXTERNAL_INBOX_DIR: string;
+    MIRRORED_BRAIN_DIR: string;
+    BACKUPS_DIR: string;
+    LOGS_DIR: string;
+    CONTEXT_DATA_DIR: string;
+    TEST_DBS_DIR: string;
+    NOTEBOOK_DIR: string;
+    CONTEXT_DIR: string;
+    MODELS_DIR: string;
+    DIST_DIR: string;
+    DISTILLS_DIR: string;
+    SESSIONS_DIR: string;
+    CONFIG_FILE: string;
+    USER_SETTINGS: string;
+    DATABASE_FILE: string;
+    LIBRARIES_DIR: string;
+    MIRRORS_DIR: string;
+    ENGINE_BIN: string;
+    ENGINE_SRC: string;
+    ENGINE_DIST: string;
+    ENGINE_CONTEXT: string;
+    ENGINE_PLUGINS: string;
+    DESKTOP_OVERLAY_SRC: string;
+    DESKTOP_OVERLAY_DIST: string;
+  };
+
   // Database Settings
   DATABASE: {
     WIPE_ON_STARTUP: boolean; // Standard 051: Ephemeral Index (true = wipe & rebuild on each start)
@@ -308,7 +340,6 @@ const DEFAULT_CONFIG: Config = {
   HOST: '0.0.0.0',
   API_KEY: '', // REQUIRED
   VERSION: '4.8.2', // Engine version - can be overridden in user_settings.json
-  START_TIME: Date.now(), // Server start time for uptime calculation
   GITHUB_TOKEN: '', // Optional: GitHub PAT for repo ingestion: Must be set in user_settings.json -> server.api_key
   LOG_LEVEL: 'INFO',
   OVERLAY_PORT: 3002,
@@ -431,6 +462,9 @@ const DEFAULT_CONFIG: Config = {
     DATE_EXTRACTOR_SCAN_LIMIT: 2000,
   },
 
+  // Paths (will be loaded from paths.ts at runtime)
+  PATHS: {} as typeof import('./paths.js').PATHS,
+
   // Database Settings
   // Standard 127: PGlite Memory Optimization - tuned for 31k atoms
   // Increased from 64/128/8 to 256/512/32 for better cache performance
@@ -441,6 +475,7 @@ const DEFAULT_CONFIG: Config = {
     EFFECTIVE_CACHE_SIZE_MB: 512, // OS cache size hint for query planner
     WORK_MEM_MB: 32,          // In-memory sort buffer (larger = faster complex queries)
     MAINTENANCE_WORK_MEM_MB: 32,
+    START_TIME: Date.now(),
   },
 
   // Adaptive Concurrency (Standard 132)

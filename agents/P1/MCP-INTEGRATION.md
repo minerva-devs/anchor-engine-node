@@ -1,1 +1,0 @@
-MOVED: mcp-setup.md - 
