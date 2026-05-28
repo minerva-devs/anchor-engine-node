@@ -22,6 +22,7 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { execSync } from 'child_process';
+import https from 'https';
 
 // Configuration
 const PGLITE_CHUNK_IDS = 100;
@@ -171,6 +172,8 @@ export interface RadialDistillRequest {
   mode?: 'standard' | 'tag-based';  // New: distillation mode
   dry_run?: boolean;                 // New: preview without writing
   similarity_threshold?: number;     // New: aggregation aggressiveness (0.0-1.0, default 0.85)
+  normalization?: string;            // Default: 'strict' for line-level dedup
+  preserve_formatting?: boolean;     // Default: false
 }
 
 export interface RadialDistillResult {
@@ -1681,5 +1684,31 @@ export async function radialDistill(request: RadialDistillRequest): Promise<Radi
   } catch (error: any) {
     StructuredLogger.error('RADIAL_DISTILL_V2_ERROR', error);
     throw error;
+  }
+}
+
+// Named export for instantiation
+export class radialDistillerV2 {
+  constructor() {
+    // Singleton-like initialization - actual distillation happens via static method radialDistill()
+    StructuredLogger.info('[RadialDistillerV2] Instance created');
+  }
+
+  /**
+   * Static method to perform distillation (recommended usage)
+   * @param request - The distillation request
+   * @returns RadialDistillResult
+   */
+  static radialDistill(request: import('./radial-distiller-v2.js').RadialDistillRequest): Promise<import('./radial-distiller-v2.js').RadialDistillResult> {
+    return radialDistill(request);
+  }
+
+  /**
+   * Instance method to perform distillation (alternative usage)
+   * @param request - The distillation request
+   * @returns RadialDistillResult
+   */
+  async distill(request: import('./radial-distiller-v2.js').RadialDistillRequest): Promise<import('./radial-distiller-v2.js').RadialDistillResult> {
+    return radialDistill(request);
   }
 }

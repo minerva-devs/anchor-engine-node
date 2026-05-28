@@ -100,7 +100,7 @@ export const PATHS = {
   DATABASE_FILE: path.join(CONTEXT_DIR, 'context.db'),
   NOTEBOOK_DIR,
   // Standard 110: Centralized user data paths under local-data/
-  INBOX_DIR: path.resolve(process.env.INBOX_DIR || userSettings.paths?.inbox || path.join(LOCAL_DATA_DIR, 'inbox')),
+  // INBOX_DIR has been deprecated - use NOTEBOOK_DIR/internal-inbox or NOTEBOOK_DIR/external-inbox
   EXTERNAL_INBOX_DIR: path.resolve(process.env.EXTERNAL_INBOX_DIR || userSettings.paths?.external_inbox || path.join(LOCAL_DATA_DIR, 'external-inbox')),
   DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || path.join(LOCAL_DATA_DIR, 'distills')),
   MIRRORED_BRAIN_DIR: path.resolve(process.env.MIRRORED_BRAIN_DIR || userSettings.paths?.mirrored_brain || path.join(LOCAL_DATA_DIR, 'mirrored_brain')),
@@ -121,7 +121,7 @@ try {
   fs.mkdirSync(ANCHOR_ROOT, { recursive: true });
 
   // Create subdirectories if they don't exist
-  const subdirs = ['inbox', 'external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs', 'backups', 'notebook', 'context', 'models', 'dist', 'context_data', 'test-dbs'];
+  const subdirs = ['external-inbox', 'distills', 'mirrored_brain', 'sessions', 'logs', 'backups', 'notebook', 'context', 'models', 'dist', 'context_data', 'test-dbs'];
   for (const subdir of subdirs) {
     const subdirPath = path.join(LOCAL_DATA_DIR, subdir);
     if (!fs.existsSync(subdirPath)) {
@@ -141,7 +141,7 @@ try {
   // Also ensure notebook directories exist (for backward compatibility)
   try {
     fs.mkdirSync(NOTEBOOK_DIR, { recursive: true });
-    fs.mkdirSync(path.join(NOTEBOOK_DIR, 'inbox'), { recursive: true });
+    // inbox directory has been deprecated - use NOTEBOOK_DIR/internal-inbox or NOTEBOOK_DIR/external-inbox
     fs.mkdirSync(path.join(NOTEBOOK_DIR, 'external-inbox'), { recursive: true });
     fs.mkdirSync(path.join(NOTEBOOK_DIR, 'distills'), { recursive: true });
   } catch (e) {
@@ -154,7 +154,6 @@ try {
 // Export individual paths for convenience
 export const {
   BACKUPS_DIR,
-  INBOX_DIR,
   EXTERNAL_INBOX_DIR,
   DISTILLS_DIR,
   MIRRORED_BRAIN_DIR,

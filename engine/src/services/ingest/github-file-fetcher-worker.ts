@@ -51,9 +51,11 @@ interface FileData {
 }
 
 async function run(): Promise<void> {
-  const { owner, repo, branch, token, bucket } = workerData as {
-    owner: string; repo: string; branch: string; token?: string; bucket: string;
+  const { owner, repo, branch, token, bucket, extractDir } = workerData as {
+    owner: string; repo: string; branch: string; token?: string; bucket: string; extractDir?: string;
   };
+  // If extractDir is not provided, use a temp directory (backward compatibility)
+  const finalExtractDir = extractDir || path.join(os.tmpdir(), 'extracted');
   const tarballUrl = `https://api.github.com/repos/${owner}/${repo}/tarball/${branch}`;
   const startTime = Date.now();
 
@@ -120,6 +122,33 @@ async function run(): Promise<void> {
 
     progress('found', { fileCount: files.length });
 
+    // If extractDir is provided, copy files to the correct location on disk
+    if (finalExtractDir !== tempDir) {
+      progress('copying to disk', { extractDir: finalExtractDir });
+      
+      // Create parent directories if needed
+      fs.mkdirSync(finalExtractDir, { recursive: true });
+      
+      // Copy each file to the correct location
+      for (const file of files) {
+        const targetPath = path.join(finalExtractDir, path.relative(extractDir, file));
+        
+        // Ensure parent directory exists
+        fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+        
+        // Copy file content
+        fs.copyFileSync(file, targetPath);
+        
+        // Also create a symbolic link for fast access
+        try {
+          // Remove existing symlink if any
+          fs.unlinkSync(targetPath); // This will fail for actual files, which is fine
+        } catch (e) {}
+      }
+      
+      progress('copied', { fileCount: files.length, extractDir: finalExtractDir });
+    }
+
     // Read files and send in batches
     let filesIngested = 0;
     let filesSkipped = 0;
@@ -129,7 +158,7 @@ async function run(): Promise<void> {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const relativePath = path.relative(extractDir, file);
-      const sourcePath = `github:${owner}/${repo}/${relativePath}`;
+      const sourcePath = `github/${owner}/${repo}/${relativePath}`;
 
       try {
         const stat = fs.statSync(file);

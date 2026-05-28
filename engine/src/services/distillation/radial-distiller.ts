@@ -391,13 +391,15 @@ export async function radialDistill(
 ): Promise<RadialDistillResult> {
   const startTime = Date.now();
   const memBefore = process.memoryUsage();
+  let memAfter: any = null;
 
   try {
     const compoundGenerator = collectCompounds(request);
     const { uniqueLines, stats: dedupStats } = await deduplicateLines(compoundGenerator, request);
     const { outputPath, sizeBytes, compoundsCreated } = await reassembleCompounds(uniqueLines, request);
-  const duration = Date.now() - startTime;
-    const memAfter = process.memoryUsage();
+    memAfter = process.memoryUsage();
+
+    const duration = Date.now() - startTime;
     const memPeak = Math.max(memAfter.heapUsed, memBefore.heapUsed);
 
     const compressionRatio = dedupStats.unique > 0
@@ -424,7 +426,51 @@ export async function radialDistill(
     };
 
     return result;
-  } catch (error) {
-    throw error;
+  } catch (error: any) {
+    // Log the error with full stack trace
+    StructuredLogger.error('DISTILL_ERROR', error, {
+      request: request,
+      duration_ms: Date.now() - startTime,
+      memBefore_mb: Math.floor(memBefore.heapUsed / 1024 / 1024),
+      memAfter_mb: memAfter ? Math.floor(memAfter.heapUsed / 1024 / 1024) : 'N/A (error occurred)',
+    });
+
+    // Determine appropriate error response based on error type
+    if (error.code === 'ERR_MODULE_NOT_FOUND') {
+      // Database or dependency loading failure
+      StructuredLogger.error('DISTILL_MODULE_ERROR', error, {
+        module: error.code,
+        details: error.message,
+      });
+      throw new Error('Failed to load distiller service. Please restart the server.');
+    } else if (error.code === 'ENOENT') {
+      // File not found or directory not writable
+      StructuredLogger.error('DISTILL_FILE_ERROR', error, {
+        path: error.path,
+        details: error.message,
+      });
+      throw new Error('Output directory not writable. Check permissions.');
+    } else if (error.message?.includes('Memory') || 
+               error.code === 'ERR_OUT_OF_RANGE') {
+      // Memory-related errors
+      StructuredLogger.error('DISTILL_MEMORY_ERROR', error, {
+        usedHeap: memAfter?.heapUsed || 0,
+        requested: request,
+        error: error.message,
+      });
+      throw new Error('Out of memory. Reduce the corpus size or increase memory limits.');
+    } else if (error.name === 'ValidationError' || 
+               error.message?.includes('validation') ||
+               error.message?.includes('invalid')) {
+      // Validation errors
+      StructuredLogger.error('DISTILL_VALIDATION_ERROR', error, {
+        input: request,
+        error: error.message,
+      });
+      throw new Error(`Invalid input: ${error.message}`);
+    } else {
+      // Generic error
+      throw error;
+    }
   }
 }

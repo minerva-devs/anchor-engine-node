@@ -1,10 +1,10 @@
 # Anchor Engine - Project Plan & Roadmap
 
-**Project Age:** 9 months (July 2025 - May 2026) | **Status:** Production Ready + Security Hardening + v5.0.0
+**Project Age:** 9 months (July 2025 - May 2026) | **Status:** Production Ready + Security Hardening + v5.2.0
 
 ---
 
-## Current Status: v5.0.0 (May 2026)
+## Current Status: v5.2.0 (May 2026)
 
 **Version Source:** `user_settings.json.template` → generates `$HOME/.anchor/user_settings.json` on `pnpm install` + `pnpm start`
 
@@ -75,7 +75,7 @@
 - [x] Standards alignment - Unified standard numbering (001-029)
 - [x] Spec updates in `specs/plan.md` and `specs/spec.md`
 
-### Month 12: May 2026 — Streaming & Observability (v5.0.0) (CURRENT)
+### Month 12: May 2026 — Streaming & Observability (v5.2.0) (CURRENT)
 **Theme:** Memory-efficient streaming, centralized validation, observability
 
 #### Completed
@@ -557,7 +557,7 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 | Date | Version | Author | Changes |
 |------|---------|--------|---------|
-| 2026-05-10 | 5.0.0 | Anchor Team | Updated version source, fixed all doc references, 29 standards, runtime data consolidation |
+| 2026-05-10 | 5.2.0 | Anchor Team | Updated version source, fixed all doc references, 29 standards, runtime data consolidation |
 | 2026-05-10 | 4.8.0-draft | Anchor Team | Added v4.7.0 streaming/search/zod/monitoring, updated UX metrics, added test audit details |
 | 2026-03-18 | 4.7.0 | Anchor Team | Added security hardening, frictionless experience, CodeQL audit summary |
 | 2026-02-20 | 4.5.4 | Anchor Team | 6-month history documented, production ready |
@@ -568,4 +568,4 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 **Repository:** https://github.com/RSBalchII/anchor-engine-node
 **Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)
 **Standards:** [specs/current-standards/](current-standards/) — 29 active standards
-**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v5.0.0 Streaming & Observability
+**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v5.2.0 Streaming & Observability

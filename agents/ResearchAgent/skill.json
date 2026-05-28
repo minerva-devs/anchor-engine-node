@@ -1,0 +1,37 @@
+{
+  "schema_version": "workspace-skill-manifest.v1",
+  "version": 1779722815278,
+  "skills": {
+    "research": {
+      "enabled": false,
+      "channels": [
+        "all"
+      ],
+      "source": "customized",
+      "metadata": {
+        "name": "research",
+        "description": "Deep research methodology for topics, news, and papers. Orchestrates search → triage → read → cite → synthesize workflow.",
+        "version_text": "1.0",
+        "commit_text": "",
+        "source": "customized",
+        "protected": false,
+        "requirements": {
+          "require_bins": [
+            "tavily_search (MCP)",
+            "browser_use (builtin tool)"
+          ],
+          "require_envs": []
+        },
+        "updated_at": "2026-05-08T05:21:14.522785Z"
+      },
+      "requirements": {
+        "require_bins": [
+          "tavily_search (MCP)",
+          "browser_use (builtin tool)"
+        ],
+        "require_envs": []
+      },
+      "updated_at": "2026-05-08T05:21:14.522785Z"
+    }
+  }
+}

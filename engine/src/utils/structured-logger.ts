@@ -89,14 +89,14 @@ const structuredFormat = winston.format.combine(
 // Create logger instance
 const logger = winston.createLogger({
   levels: logLevels,
-  level: 'silly', // Capture all log levels including debug
+  level: 'info', // Changed from 'silly' to 'info' to filter out noisy dependency logs
   format: structuredFormat,
   transports: [
     // Main anchor_engine.log file with size-based rotation (10KB)
     new DailyRotateFile({
       filename: path.join(LOGS_DIR, 'anchor_engine.log'),
       datePattern: 'YYYY-MM-DD',
-      zippedArchive: false,
+      zippedArchive: true,
       maxSize: '10k',
       maxFiles: '7d',
       format: format.combine(
@@ -107,6 +107,21 @@ const logger = winston.createLogger({
           const metaStr = Object.keys(metadata).length > 0 ? ` ${JSON.stringify(metadata)}` : '';
           return `[${timestamp}] [${level.toUpperCase()}] ${message}${metaStr}`;
         }),
+      ),
+    }),
+    // Separate error file
+    new DailyRotateFile({
+      level: 'error',
+      filename: path.join(LOGS_DIR, 'anchor_engine_error-%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      zippedArchive: true,
+      maxSize: '10k',
+      maxFiles: '14d',
+      format: format.combine(
+        format.timestamp(),
+        format.errors({ stack: true }),
+        format.splat(),
+        format.json(),
       ),
     }),
     // Separate error file

@@ -827,6 +827,66 @@ export class GitHubIngestService {
   }
 
 
+  /**
+   * Clone and ingest a repository in one operation (static convenience method)
+   * This is the primary API endpoint handler
+   * @param owner Repository owner
+   * @param repo Repository name
+   * @param branch Branch to clone
+   * @param bucket Bucket to ingest to
+   * @param options Additional options including runAnalysis flag
+   */
+  static async cloneAndIngest(
+    owner: string,
+    repo: string,
+    branch: string,
+    bucket: string,
+    options?: { runAnalysis?: boolean; token?: string },
+  ): Promise<SyncResult> {
+    console.log(`[GitHub] 🔄 Cloning and ingesting ${owner}/${repo} (branch: ${branch}, bucket: ${bucket})`);
+    
+    const service = new GitHubIngestService();
+    
+    // Validate inputs (SSRF prevention - Standard 115, Section 3.1)
+    const isValidIdentifier = /^[a-zA-Z0-9_.-]{1,100}$/;
+    if (!isValidIdentifier.test(owner) || !isValidIdentifier.test(repo) || !isValidIdentifier.test(branch)) {
+      throw new Error(`Invalid owner, repo, or branch format: owner=${owner}, repo=${repo}, branch=${branch}`);
+    }
+    
+    try {
+      // 1. Register repository in database
+      console.log(`[GitHub] 🗄️ Registering in database...`);
+      const repoRecord = await service.registerRepo(`https://github.com/${owner}/${repo}`, bucket);
+      
+      // 2. Sync and ingest files (downloads, extracts via worker thread for isolation)
+      console.log(`[GitHub] 🍽️ Ingesting files (worker-isolated)...`);
+      const result = await service.syncRepo(repoRecord.id, {
+        runAnalysis: options?.runAnalysis,
+        token: options?.token,
+      });
+      
+      console.log(`[GitHub] ✅ Complete: ${result.files_ingested} files, ${result.atoms_created} atoms`);
+      return result;
+    } catch (error: any) {
+      console.error(`[GitHub] ❌ Clone & ingest failed: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Cleanup temporary files and worker
+   */
+  async cleanupWorker(tarballPath: string, extractDir: string): Promise<void> {
+    if (tarballPath && fs.existsSync(tarballPath)) {
+      fs.unlinkSync(tarballPath);
+      console.log(`[GitHub] Cleaned up tarball: ${tarballPath}`);
+    }
+    if (extractDir && fs.existsSync(extractDir)) {
+      fs.rmSync(extractDir, { recursive: true, force: true });
+      console.log(`[GitHub] Cleaned up extract directory: ${extractDir}`);
+    }
+  }
+
   async getRateLimitStatus(): Promise<{
     limit: number;
     remaining: number;

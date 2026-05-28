@@ -1,6 +1,6 @@
 # Anchor Engine - Documentation Index
 
-**Version:** 5.0.0 | **Updated:** May 20, 2026 | **Status:** ✅ Production Ready
+**Version:** 5.2.0 | **Updated:** May 20, 2026 | **Status:** ✅ Production Ready
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Getting Started
 - **[README.md](../README.md)** - Quick start, installation, usage guide
-- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (latest: v5.0.0)
+- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (latest: v5.2.0)
 - **[CONTRIBUTING.md](integrations/CONTRIBUTING.md)** - How to contribute
 
 ### Core Documentation
@@ -89,7 +89,7 @@
 
 ---
 
-## 📊 Key Metrics (v5.0.0)
+## 📊 Key Metrics (v5.2.0)
 
 | Metric | Value | Status |
 |--------|-------|-------|
@@ -111,7 +111,7 @@
 ```
 anchor-engine-node/
 ├── README.md                      # Start here - Quick start & usage
-├── CHANGELOG.md                   # What's new (v5.0.0)
+├── CHANGELOG.md                   # What's new (v5.2.0)
 ├── CONTRIBUTING.md                # How to contribute
 ├── LICENSE                        # AGPL-3.0 license
 ├── user_settings.json             # Configuration source of truth
@@ -219,7 +219,7 @@ anchor-engine-node/
 
 ---
 
-## 🔬 Recent Updates (v5.0.0 - May 20, 2026)
+## 🔬 Recent Updates (v5.2.0 - May 20, 2026)
 
 ### Documentation Consolidation & Cleanup
 - **Settings Consolidation:** Merged 5 separate settings files into `docs/-settings-configs.md` for unified configuration reference
@@ -305,5 +305,5 @@ anchor-engine-node/
 ---
 
 **Last Updated:** May 20, 2026
-**Version:** 5.0.0
+**Version:** 5.2.0
 **Status:** ✅ Production Ready

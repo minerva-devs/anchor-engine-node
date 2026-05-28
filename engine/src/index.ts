@@ -6,6 +6,29 @@ import path from 'path';
 import { existsSync, rmSync, readdirSync, statSync } from 'fs';
 import { fileURLToPath } from 'url';
 
+// Catch silent crashes - unhandled promise rejections and exceptions
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('\n❌ UNHANDLED REJECTION CAUGHT:\n', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('\n❌ UNCAUGHT EXCEPTION CAUGHT:\n', err);
+});
+
+process.on('beforeExit', (code) => {
+  console.error('\n⚠️ BEFORE EXIT (code:', code, '):\n');
+});
+
+process.on('SIGINT', () => {
+  console.error('\n🛑 SIGINT received (Ctrl+C)');
+  process.exit(130);
+});
+
+process.on('SIGTERM', () => {
+  console.error('\n⏹ SIGTERM received');
+  process.exit(143);
+});
+
 // Fix module load error by using explicit relative path
 import { db } from './core/db.js';
 import { config } from './config/index.js';

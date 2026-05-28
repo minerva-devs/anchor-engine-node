@@ -24,6 +24,9 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `LICENSE` | License file (AGPL-3.0) |
 | `.gitignore` | Git ignore patterns |
 | `package.json` | Package configuration |
+| `user_settings.json.template` | Configuration template → generates `$HOME/.anchor/user_settings.json` (see Runtime Object Storage) |
+| `validate-json.mjs` | Script to build user_settings.json from template (runs on `pnpm install` + `pnpm start`) |
+| `.scratch.md` | **Agent-only exception** - Session notes for AI agents during development (never committed to main) |
 
 **PROHIBITED in Root:**
 - Phase completion reports
@@ -31,6 +34,10 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 - Git operation logs
 - Temporary documentation files
 - Any other `.md` files not listed above
+
+**Note:** `user_settings.json.template` and `validate-json.mjs` are the only **non-code, non-documentation** files allowed in root. They are essential for runtime configuration generation and are documented in the README's Configuration Guide.
+
+**Note:** `.scratch.md` is an **agent-only exception** - these session notes should never be committed to main branch and are meant for temporary AI agent development work. The file is .gitignored when not in agent sessions.
 
 ### 2.2 Specs Directory (`/specs/`)
 
@@ -223,11 +230,12 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.1 | 2026-05-25 | Updated version to 2.1 |
 | 2.0 | 2026-04-09 | Restructured for clarity, consolidated specs and docs |
 | 1.0 | 2026-02-20 | Initial documentation policy |
 
 ---
 
-**Last Updated:** April 9, 2026
-**Version:** 2.0
+**Last Updated:** May 25, 2026
+**Version:** 2.1
 **Status:** ✅ Active

@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 5.0.0 | **Status:** Production Ready + v5.0.0 Streaming & Observability | **Updated:** May 10, 2026
+**Version:** 5.2.0 | **Status:** Production Ready + v5.2.0 Streaming & Observability | **Updated:** May 20, 2026
 
 ## Quick Reference
 
@@ -16,7 +16,7 @@
 
 ---
 
-## Recent Changes (v5.0.0 — May 2026)
+## Recent Changes (v5.2.0 — May 2026)
 
 ### Streaming Architecture
 - [x] **Streaming Search** (`/v1/memory/search/stream`) - SSE-based progressive results
@@ -112,7 +112,7 @@ User Query → API Route → Zod Validation → Search Service → PGlite Query 
 
 ---
 
-## Streaming Architecture (v5.0.0)
+## Streaming Architecture (v5.2.0)
 
 ### Streaming Search (`/v1/memory/search/stream`)
 
@@ -591,7 +591,7 @@ Where:
 
 ---
 
-## Deduplication Pipeline (v5.0.0)
+## Deduplication Pipeline (v5.2.0)
 
 ### 5-Layer Dedup Strategy
 
@@ -637,8 +637,8 @@ flowchart TB
 
 ### Performance
 
-- **Before v5.0.0:** 25-35% dedup rate
-- **After v5.0.0:** 40-50% dedup rate
+- **Before v5.2.0:** 25-35% dedup rate
+- **After v5.2.0:** 40-50% dedup rate
 
 ---
 
@@ -700,7 +700,7 @@ flowchart TB
 
 ---
 
-## Performance Benchmarks (v5.0.0)
+## Performance Benchmarks (v5.2.0)
 
 ### Search Performance
 
@@ -716,8 +716,8 @@ flowchart TB
 
 ### Deduplication
 
-- **Before v5.0.0:** 25-35% dedup rate
-- **After v5.0.0:** 40-50% dedup rate (+15%)
+- **Before v5.2.0:** 25-35% dedup rate
+- **After v5.2.0:** 40-50% dedup rate (+15%)
 
 ### Memory Management
 
@@ -765,7 +765,7 @@ flowchart LR
 | **Browser Paradigm** | Jan 2026 | Tag-Walker replaces vector search |
 | **Standards Consolidation** | Feb 2026 | Unified 29 standards (001-029) |
 | **Security Hardening** | Apr 2026 | Path traversal, SQL injection, auth bypass, API key strength |
-| **Streaming & Observability** | May 2026 | v5.0.0: Streaming search/ingest, Zod validation, performance monitoring |
+| **Streaming & Observability** | May 2026 | v5.2.0: Streaming search/ingest, Zod validation, performance monitoring |
 
 ---
 
@@ -890,7 +890,7 @@ GET  /v1/tags                    # List tags
 
 ---
 
-## Performance Benchmarks (v5.0.0)
+## Performance Benchmarks (v5.2.0)
 
 ---
 
@@ -909,7 +909,7 @@ GET  /v1/tags                    # List tags
 
 ---
 
-## Performance Benchmarks (v5.0.0)
+## Performance Benchmarks (v5.2.0)
 
 | Metric | Result | Target | Status |
 |--------|--------|--------|--------|

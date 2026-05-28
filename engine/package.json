@@ -1,6 +1,6 @@
 {
   "name": "anchor-engine",
-  "version": "5.0.0",
+  "version": "5.2.0",
   "type": "module",
   "description": "Anchor Headless Context Engine & Knowledge Graph",
   "main": "src/index.js",
@@ -60,6 +60,12 @@
     ],
     "outputPath": "dist-android",
     "compress": "GZip"
+  },
+  "worker": {
+    "type": "es2022",
+    "loader": {
+      "\\.ts$": "ts-node/esm"
+    }
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.2.0",

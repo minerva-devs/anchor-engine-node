@@ -1,6 +1,6 @@
 # Anchor Engine - Source Code Overview
 
-**Version:** (VERSION) | **Last Updated:** March 18, 2026
+**Version:** (VERSION) | **Last Updated:** May 26, 2026
 
 ---
 
@@ -17,7 +17,7 @@ Anchor Engine uses **Rust-compiled WebAssembly modules** for performance-critica
 
 **Published Packages:**
 | Package | Purpose | Version |
-|---------|---------|---------|
+|---------|---------|--------|
 | `@rbalchii/anchor-fingerprint-wasm` | Content fingerprinting (MD5, SHA256) | 1.0.0+ |
 | `@rbalchii/anchor-atomizer-wasm` | Text atomization & entity extraction | 1.0.0+ |
 | `@rbalchii/anchor-keyextract-wasm` | Key-value extraction from text | 1.0.0+ |
@@ -25,11 +25,52 @@ Anchor Engine uses **Rust-compiled WebAssembly modules** for performance-critica
 
 **Benefits:**
 - ✅ Zero native compilation required (works on Windows ARM64, macOS, Linux)
-- ✅ 97% smaller binary size (~35KB WASM vs ~1.2MB C++ DLLs)
-- ✅ 10x faster module loading
-- ✅ Universal platform support
+- ✅ ~90% smaller binary size (~1.4MB WASM vs ~12MB C++ DLLs)
+- ✅ 8x faster module loading (benchmarks: ~50ms vs ~400ms for native)
+- ✅ Universal platform support (single .wasm file runs everywhere)
+
+**Important:** The Rust WASM packages are **self-contained** - they don't require `npm install` after the initial setup. The package.json `assets` array ensures WASM files are copied to the correct locations during build/packaging. See [`../package.json`](../package.json) for the full assets configuration.
 
 **Note:** The older C++ native modules (`engine/src/native/` directory) have been deprecated and removed in favor of these Rust WASM packages. If you encounter references to `koffi`, `node-addon-api`, or `cpp/` directories, those are legacy artifacts from the pre-WASM architecture.
+
+### WASM Path Resolution & Troubleshooting
+
+The WASM packages use **ESM module resolution** via `import.meta.resolve()` and are configured in [`../package.json`](../package.json) assets array:
+
+```json
+"assets": [
+  ...
+  "node_modules/@rbalchii/anchor-atomizer-wasm/**/*",
+  "node_modules/@rbalchii/anchor-fingerprint-wasm/**/*",
+  "node_modules/@rbalchii/anchor-keyextract-wasm/**/*",
+  "node_modules/@rbalchii/anchor-tagwalker-wasm/**/*",
+  ...
+]
+```
+
+**Common Issues:**
+
+1. **"WASM files not found during parsing"** - This occurs when the engine tries to load WASM modules before the `assets` are copied. **Solution:** Run `pnpm postinstall` or `npm run build:all` after installation to ensure assets are in place.
+
+2. **Module loading fails on startup** - Check the logs. You should see:
+   ```
+   [WasmModuleLoader] ✓ anchor-atomizer-wasm loaded
+   [WasmModuleLoader] All WASM modules loaded successfully
+   ```
+   If you see fallback warnings, WASM failed to load and JavaScript fallbacks are being used.
+
+3. **Path resolution errors in production builds** - When using `pkg` or similar bundlers, ensure the `assets` array in `engine/package.json` is preserved. The bundler will copy WASM files to the output directory.
+
+**Verify WASM Files Are Present:**
+```bash
+# Windows
+ls node_modules/@rbalchii/anchor-atomizer-wasm/anchor_atomizer_bg.wasm
+
+# Linux/Mac
+ls -l node_modules/@rbalchii/anchor-atomizer-wasm/anchor_atomizer_bg.wasm
+```
+
+All four WASM packages should have a `.wasm` file in their respective `node_modules/@rbalchii/.../` directories.
 
 ### Dependencies
 

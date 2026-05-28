@@ -1371,6 +1371,122 @@ export async function iterativeSearch(
  * 
  * @param useMaxRecall - If true, uses MAX_RECALL_CONFIG for comprehensive retrieval
  */
+// --- Special Prefix Handlers (Standard 086) ---
+/**
+ * Handle special query prefixes like "distill:" for direct distill lookups
+ * "distill:" (no bucket) → list all distills
+ * "distill:<bucket>" → query distills table and return full result
+ */
+async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars: number = 20000, tags: string[] = []): Promise<any> {
+  const prefix = query.trim().toLowerCase();
+  
+  if (prefix.startsWith('distill:')) {
+    const bucketParam = prefix.substring(8).trim(); // Remove "distill:"
+    
+    if (!bucketParam) {
+      // "distill:" with no bucket → list all distills
+      try {
+        const distills = await db.run(
+          'SELECT id, timestamp, filename, file_path, line_count, lines_unique, compression_ratio, source_sessions, source_files, parameters FROM distills ORDER BY timestamp DESC LIMIT 50',
+        );
+        
+        return {
+          context: 'Here are the latest distills from the database:',
+          results: distills.rows || [],
+          strategy: 'prefix_distill_list',
+          metadata: {
+            query_type: 'distill_list',
+            total_distills: distills.rows?.length || 0,
+          },
+        };
+      } catch (error: any) {
+        console.error('[Search] Failed to list distills:', error);
+        return {
+          context: 'Unable to list distills. Please try again later.',
+          results: [],
+          strategy: 'prefix_distill_error',
+          metadata: { error: error.message },
+        };
+      }
+    } else if (bucketParam.startsWith('github:')) {
+      // "distill:github:user/repo" → query distills table for this bucket
+      try {
+        // The distills table doesn't have a direct bucket column, but we can search by filename or parameters
+        // For now, we'll list all distills and filter by the bucket name in parameters
+        const distills = await db.run(
+          `SELECT id, timestamp, filename, file_path, line_count, lines_unique, compression_ratio, source_sessions, source_files, parameters 
+           FROM distills 
+           WHERE parameters::jsonb->>'bucket' = $1 
+           ORDER BY timestamp DESC 
+           LIMIT 50`,
+          [bucketParam],
+        );
+        
+        const bucketDistills = distills.rows || [];
+        
+        if (bucketDistills.length === 0) {
+          return {
+            context: `No distills found for bucket "${bucketParam}".`,
+            results: [],
+            strategy: 'prefix_distill_empty',
+            metadata: { bucket: bucketParam, found: 0 },
+          };
+        }
+        
+        // Return the first distill with full content (if available on disk)
+        const firstDistill = bucketDistills[0];
+        try {
+          const fs = await import('fs');
+          if (firstDistill.file_path && fs.existsSync(firstDistill.file_path)) {
+            const fullResult = JSON.parse(fs.readFileSync(firstDistill.file_path, 'utf-8'));
+            return {
+              context: `Full result for distill from bucket "${bucketParam}":`,
+              results: [fullResult],
+              strategy: 'prefix_distill_full',
+              metadata: {
+                bucket: bucketParam,
+                distill_id: firstDistill.id,
+                timestamp: firstDistill.timestamp,
+              },
+            };
+          }
+        } catch (readError: any) {
+          console.error('[Search] Failed to read distill file:', readError);
+        }
+        
+        return {
+          context: `Found ${bucketDistills.length} distill(s) for bucket "${bucketParam}". Returning metadata:`,
+          results: bucketDistills,
+          strategy: 'prefix_distill_metadata',
+          metadata: {
+            bucket: bucketParam,
+            distills_found: bucketDistills.length,
+          },
+        };
+      } catch (error: any) {
+        console.error('[Search] Failed to query distills for bucket:', error);
+        return {
+          context: `Unable to search distills for "${bucketParam}". Please try again later.`,
+          results: [],
+          strategy: 'prefix_distill_error',
+          metadata: { bucket: bucketParam, error: error.message },
+        };
+      }
+    }
+    
+    // Unknown bucket format
+    return {
+      context: `Unknown bucket format "${bucketParam}". Use "distill:github:user/repo" format.`,
+      results: [],
+      strategy: 'prefix_distill_invalid_bucket',
+      metadata: { bucket: bucketParam },
+    };
+  }
+
+  // Not a known prefix, proceed with normal search
+  return null;
+}
+
 export async function smartChatSearch(
   query: string,
   buckets: string[] = [],
@@ -1380,6 +1496,12 @@ export async function smartChatSearch(
   useMaxRecall: boolean = false,
   userContext?: UserContext,
 ): Promise<{ context: string; results: SearchResult[]; strategy: string; splitQueries?: string[]; metadata?: any; toAgentString: () => string }> {
+
+  // Check for special prefixes first
+  const prefixResult = await handlePrefixQuery(query, buckets, maxChars, tags);
+  if (prefixResult && prefixResult.results.length > 0) {
+    return prefixResult as any;
+  }
 
   const isLongQuery = query.length > 100;
   let initial = { results: [] as SearchResult[], context: '', toAgentString: () => '' };

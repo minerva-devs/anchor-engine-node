@@ -13,8 +13,9 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { config } from '../config/index.js';
+import { tools } from './tools.js';
 
-const ANCHOR_BASE_URL = `http://localhost:${config.PORT}`;
+export const ANCHOR_API_BASE_URL = `http://localhost:${config.PORT}`;
 
 // Create MCP server
 const server = new Server(
@@ -30,8 +31,8 @@ const server = new Server(
 );
 
 // Helper function to make HTTP requests to Anchor Engine
-async function callAnchorAPI(endpoint: string, options?: RequestInit): Promise<any> {
-  const url = `${ANCHOR_BASE_URL}${endpoint}`;
+export async function callAnchorAPI(endpoint: string, options?: RequestInit): Promise<any> {
+  const url = `${ANCHOR_API_BASE_URL}${endpoint}`;
   const response = await fetch(url, {
     headers: {
       'Content-Type': 'application/json',
@@ -353,166 +354,40 @@ const TOOLS = [
 
 // Handle tool list request
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools: TOOLS };
+  return { tools };
 });
 
 // Handle tool execution
 server.setRequestHandler(CallToolRequestSchema, async request => {
   const { name, arguments: args } = request.params;
 
+  // Find the tool and execute it
+  const tool = tools.find(t => t.name === name);
+  if (!tool) {
+    throw new Error(`Unknown tool: ${name}`);
+  }
+
   try {
-    let resultText: string;
+    const result = await tool.execute(
+      {
+        rootUri: undefined,
+        sandbox: null,
+        user: null,
+        server: server,
+      },
+      args
+    );
 
-    switch (name) {
-      case 'anchor_start': {
-        const result = await callAnchorAPI('/v1/system/start', {
-          method: 'POST',
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_stop': {
-        const result = await callAnchorAPI('/v1/system/stop', {
-          method: 'POST',
-          body: JSON.stringify(args),
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_status': {
-        const result = await callAnchorAPI('/v1/system/status');
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_health': {
-        const result = await callAnchorAPI('/health');
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_ingest': {
-        const { wait, ...ingestArgs } = args || {};
-
-        // Start ingestion
-        const result = await callAnchorAPI('/v1/ingest', {
-          method: 'POST',
-          body: JSON.stringify(ingestArgs),
-        });
-
-        // Optionally wait for completion
-        if (wait) {
-          await callAnchorAPI('/v1/system/wait-for-ingest', {
-            method: 'POST',
-            body: JSON.stringify({ job_id: result.job_id }),
-          });
-        }
-
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_ingest_status': {
-        const result = await callAnchorAPI('/v1/system/ingest-status');
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_wait_for_ingest': {
-        const result = await callAnchorAPI('/v1/system/wait-for-ingest', {
-          method: 'POST',
-          body: JSON.stringify(args),
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_set_ingestion_config': {
-        const result = await callAnchorAPI('/v1/config/ingestion', {
-          method: 'POST',
-          body: JSON.stringify(args),
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_get_ingestion_config': {
-        const result = await callAnchorAPI('/v1/config/ingestion');
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_search': {
-        // Fixed: Use /v1/memory/search with stream=false to match UI search behavior
-        const result = await callAnchorAPI('/v1/memory/search?stream=false', {
-          method: 'POST',
-          body: JSON.stringify(args),
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_distill': {
-        // Fixed: Use /v1/memory/distill to match UI distill endpoint
-        const result = await callAnchorAPI('/v1/memory/distill?stream=false', {
-          method: 'POST',
-          body: JSON.stringify(args),
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_illuminate': {
-        // Fixed: Use /v1/memory/explore for BFS graph traversal
-        const result = await callAnchorAPI('/v1/memory/explore', {
-          method: 'POST',
-          body: JSON.stringify(args),
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_set_path': {
-        const result = await callAnchorAPI('/v1/system/paths', {
-          method: 'POST',
-          body: JSON.stringify(args),
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_delete_path': {
-        const result = await callAnchorAPI('/v1/system/paths', {
-          method: 'DELETE',
-          body: JSON.stringify(args),
-        });
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      case 'anchor_list_paths': {
-        const result = await callAnchorAPI('/v1/system/paths');
-        resultText = JSON.stringify(result, null, 2);
-        break;
-      }
-
-      default:
-        throw new Error(`Unknown tool: ${name}`);
-    }
-
-    // Wrap response with ingestion progress banner if active
-    const wrappedText = await wrapResponseWithStatus(resultText);
-    return {
-      content: [{ type: 'text', text: wrappedText }],
-    };
+    return result;
   } catch (error: any) {
-    // Also wrap error responses with ingestion status
-    const errorText = `Error executing ${name}: ${error.message}`;
-    const wrappedError = await wrapResponseWithStatus(errorText);
+    // Wrap error in MCP error format
     return {
-      content: [{ type: 'text', text: wrappedError }],
+      content: [
+        {
+          type: 'text',
+          text: `Error executing tool ${name}: ${error.message}`,
+        },
+      ],
       isError: true,
     };
   }
