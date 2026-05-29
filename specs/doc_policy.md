@@ -35,6 +35,9 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `vitest-root.config.ts` | Vitest root configuration |
 | `Dockerfile` | Docker build file for containerization |
 | `docker-compose.yml` | Docker Compose orchestration file |
+| `scripts/run-engine.bat` | Python wrapper script to start/stop engine (Windows) |
+| `scripts/start-engine.ps1` | PowerShell script to start engine |
+| `scripts/stop-engine.bat` | Batch script to stop engine |
 
 **PROHIBITED in Root:**
 - Phase completion reports

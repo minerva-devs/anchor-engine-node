@@ -21,7 +21,18 @@ yarn-error.log*
 engine/src/native/node_modules/
 
 # ============================================
-# 2. Test Outputs (always ignore)
+# 3. Engine Control Scripts (ALLOWED)
+# ============================================
+
+# Engine control scripts - explicitly allowed (must come before generic ignore)
+/scripts/run-engine.bat
+/scripts/start-engine.bat
+/scripts/start-engine.ps1
+/scripts/stop-engine.bat
+/scripts/engine_server.py
+
+# ============================================
+# 4. Test Outputs (always ignore)
 # ============================================
 
 # All test result files
@@ -321,8 +332,16 @@ engine/
 tests/
 test-wasm/
 
-# Scripts and utilities
-scripts/
+# Scripts and utilities (exclude engine control scripts)
+/scripts/*.js
+/scripts/*.mjs
+/scripts/*.ts
+# But allow engine control scripts
+!/scripts/run-engine.bat
+!/scripts/start-engine.bat
+!/scripts/start-engine.ps1
+!/scripts/stop-engine.bat
+!/scripts/engine_server.py
 
 # Documentation
 docs/
