@@ -15,6 +15,7 @@ const config = defineConfig({
       'engine/tests/unit/**/*.test.ts',
       'engine/tests/integration/**/*.test.ts',
       'engine/tests/benchmarks/**/*.test.ts',
+      'tests/e2e/**/*.test.ts',
     ],
     exclude: [
       '**/node_modules/**',
