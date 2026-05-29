@@ -5,6 +5,47 @@ All notable changes to Anchor Engine will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [5.1.0] - 2026-05-28
+
+### Added
+- **Testing Infrastructure**
+  - Playwright-based e2e UI verification tests (`test_suite/anchor_engine_ux_test_suite.py`)
+  - Comprehensive API documentation with OpenAPI specs and curl examples (`docs/testing/API-SURFACE.md`)
+  - System metrics endpoint `/v1/stats` (uptime, memory, request counters)
+  - Reliable engine startup/shutdown scripts
+
+- **QwenPaw Environment Integration**
+  - PowerShell environment fix script (`Fix-QwenPawEnv.ps1`) for PATH ordering and UTF-8 support
+  - Git Bash `.bashrc` with Windows→Linux compatibility aliases
+  - PowerShell 7 profile auto-loader (`.powershell_profile.ps1`)
+
+- **Project Structure**
+  - Moved to `coding_projects/anchor-engine-node` workspace
+  - New infrastructure: `agents/`, `specs/decisions/`, `specs/INTEGRATIONS/`
+  - Database initialization scripts (`create-db.js`, `init-db.js`)
+
+### Changed
+- **Major Cleanup (v5.1.0 preparation)**
+  - Removed orphaned route: `engine/src/routes/v1/ingest-updated.ts`
+  - Removed orphaned service: `engine/src/services/ingest/ingest-atomic-updated.ts`
+  - Deprecated bright-nodes reference in documentation
+  - Cleaned all test artifacts, JSON build outputs, and temporary files (20+ files)
+  - Consolidated inbox: old inbox → internal-inbox
+
+- **Documentation**
+  - Added Testing section to README.md with e2e test instructions
+  - Created API surface documentation covering all 15 route files + 4 additional endpoints
+  - Updated UX/UI recursion workflow docs (require live engine for testing)
+
+### Fixed
+- Search route implementation restored from previous working commit
+- Removed circular imports and missing dependencies in route architecture
+- Cleaned stale TODO/FIXME comments from codebase
+
+---
+
 ## [5.0.0] - 2026-05-28
 
 ### Added

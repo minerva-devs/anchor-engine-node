@@ -86,6 +86,13 @@ vitest-root.config.ts
 root-vitest-config.ts
 
 # ============================================
+# 2. Project State Files (never commit to main)
+# ============================================
+
+# Project state summaries (local tracking only)
+PROJECT_STATE_SUMMARY.md
+
+# ============================================
 # 3. QwenPaw & Agent Configuration (NEVER COMMIT)
 # ============================================
 
