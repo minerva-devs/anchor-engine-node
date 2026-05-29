@@ -99,6 +99,22 @@ pnpm start
 
 Open: http://localhost
 
+### Try It Instantly
+
+```bash
+curl -X POST http://localhost:3160/v1/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "my first memory", "token_budget": 2048}'
+```
+
+**Sample Response:**
+```json
+{
+  "atoms": [...],
+  "provenance": [{"atom_id": "abc123", "link_reason": "2 shared tags: #memory, #first"}]
+}
+```
+
 ## How It Works (High‑Level)
 
 ### 1. Content lives on disk, not in the database

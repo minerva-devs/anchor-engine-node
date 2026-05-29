@@ -108,6 +108,19 @@ describe('UI Verification Tests - Following ux-ui-recursion-workflow.md spec', (
       console.log('[Test] Page title:', title);
       expect(title).toContain('Anchor Engine');
     });
+
+    it('should navigate to search page', async () => {
+      const response = await page.goto(`${BASE_URL}/search`);
+      expect(response?.ok()).toBe(true);
+      
+      // Wait for content to load
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Verify search box exists
+      const searchBox = page.locator('input[type="text"]');
+      console.log('[Test] Search box found:', await searchBox.count());
+      expect(await searchBox.count()).toBeGreaterThan(0);
+    });
   });
 
   /**
