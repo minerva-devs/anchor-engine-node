@@ -289,6 +289,31 @@ MIGRATION_SUMMARY.md
 TEST_ASSESSMENT.md
 
 # ============================================
+# 7. Test Artifacts & Logs (LOCAL ONLY - NEVER COMMIT)
+# ============================================
+
+# Playwright test reports
+playwright-report/
+playwright-report.json
+
+# Test results directories
+test-results/
+test-results-*/
+test-results-*.json
+test-results-*.xml
+e2e-results/
+e2e-results-*/
+
+# Temporary test files
+test-api-endpoints.mjs
+
+# Console log files
+console.log(data))
+*.log
+*.txt
+**/*.txt
+
+# ============================================
 # 7. Development Tools (IDE, NOT PROJECT DATA)
 # ============================================
 
@@ -332,11 +357,17 @@ zenodo.json
 # 9. Directories to KEEP in Project Root
 # ============================================
 
-# Engine source and build
+# Engine source and build (exclude tracked files)
 engine/
+!engine/src/routes/api.ts
+!engine/src/routes/v1/atoms.ts
+!engine/src/routes/v1/git.ts
+!engine/src/routes/v1/compounds.ts
+!engine/src/routes/v1/molecules.ts
 
 # Tests and test utilities
 tests/
+!tests/e2e/ui-verification.test.ts
 test-wasm/
 
 # Scripts and utilities (exclude engine control scripts)

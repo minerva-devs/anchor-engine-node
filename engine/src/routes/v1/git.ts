@@ -20,6 +20,55 @@ function parseGitHubUrl(url: string): { owner: string; repo: string; branch: str
 
 export function setupGitRoutes(app: Application) {
   // GitHub Repository Ingestion Endpoints (Standard 115)
+  
+  // POST /v1/ingest/github - Alias endpoint for backward compatibility with tests
+  app.post('/v1/ingest/github', async (req: Request, res: Response) => {
+    try {
+      const { owner = 'RSBalchII', repo = 'anchor-engine-node', branch = 'main' } = req.body;
+      
+      // Validate inputs
+      if (!owner || !repo) {
+        return res.status(400).json({ error: 'owner and repo are required' });
+      }
+
+      const url = `https://github.com/${owner}/${repo}.git`;
+      
+      // Use same logic as /v1/github/repos
+      const includeHistory = req.body.include_history === true;
+      const runAnalysis = req.body.run_analysis === true;
+
+      const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
+      const service = new GitHubIngestService();
+
+      // Register repo with auto-generated bucket
+      const bucket = `github:${owner}/${repo}`;
+      
+      // Use unauthenticated requests by default (no token stored)
+      const tempToken = undefined; 
+
+      console.log(`[API] GitHub ingestion via alias endpoint: ${url}`);
+
+      // Register and ingest
+      await service.registerRepo(url, bucket);
+      
+      res.status(200).json({
+        status: 'success',
+        message: `GitHub repo ingestion initiated for ${owner}/${repo}`,
+        url,
+        owner,
+        repo,
+        branch,
+        files_to_process: 0, // Will be updated after clone
+      });
+    } catch (error: any) {
+      console.error('[API] GitHub ingestion error:', error);
+      res.status(500).json({ 
+        error: 'GitHub ingestion failed',
+        details: error.message 
+      });
+    }
+  });
+
   // POST /v1/github/repos - Register new repo and trigger initial ingestion
   app.post('/v1/github/repos', validate(schemas.githubRepos), async (req: Request, res: Response) => {
     try {

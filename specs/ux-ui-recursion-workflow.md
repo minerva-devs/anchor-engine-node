@@ -20,17 +20,89 @@ This document defines the proper human UX workflow for testing Anchor Engine's s
 ## Prerequisites & Setup
 
 ### 1. Engine Startup (REQUIRED)
-```bash
-# Navigate to project root
-cd engine
 
-# Build and start server with full logging
+#### Option A: Python Wrapper Script (Recommended for LLM Devs) ✅
+**Location:** `scripts/engine_server.py`
+**Why use this:** Simple, reliable startup without tool_call formatting issues. Just run the script directly.
+
+```bash
+# Run from any directory
+python scripts\engine_server.py start
+
+# Expected output:
+# ✓ PGlite initialized at: ~/.anchor/context_data
+# ✓ Anchor Context Engine running on 0.0.0.0:3160
+# Health check available at http://localhost:3160/health
+```
+
+**Note:** The old `scripts/run-engine.bat` is deprecated - use the Python wrapper instead.
+
+```bash
+# Windows - Run from any directory
+scripts\run-engine.bat
+
+# Or Python directly
+python scripts\engine_server.py start
+
+# Expected output:
+# ✓ PGlite initialized at: ~/.anchor/context_data
+# ✓ Anchor Context Engine running on 0.0.0.0:3160
+# Health check available at http://localhost:3160/health
+```
+
+#### Option B: PowerShell Script (Full Setup)
+**Location:** `scripts/start-engine.ps1`  
+**Use case:** When you need full dependency installation and build.
+
+```powershell
+# Run from project root or any directory
+.\scripts\start-engine.ps1
+
+# Quiet mode (skip install/build logs)
+.\scripts\start-engine.ps1 -Quiet
+```
+
+#### Option C: Direct pnpm Commands
+**Location:** `package.json` scripts section  
+**Use case:** When already in the project directory.
+
+```bash
 pnpm start-with-logging
 
 # Expected output:
 # ✓ PGlite initialized at: ~/.anchor/context_data
 # ✓ Anchor Context Engine running on 0.0.0.0:3160
 # Health check available at http://localhost:3160/health
+```
+
+---
+
+## Script Locations Reference
+
+| Script | Path | Purpose |
+|--------|------|---------|
+| **Python Wrapper (NEW)** | `scripts/engine_server.py` | Simple start/stop for LLM devs ✅ |
+| **PowerShell Startup** | `scripts/start-engine.ps1` | Full setup with dependency installation |
+| **Batch Stop** | `scripts/stop-engine.bat` | Stop only the engine process on port 3160 |
+| **Test Runner** | `tests/e2e/ui-verification.test.ts` | Playwright UI tests |
+| **GitHub Clone Test** | `tests/e2e/github-clone-e2e.test.ts` | E2E GitHub clone verification |
+
+---
+
+## Quick Start Commands
+
+```bash
+# 1. Start the engine (use Python wrapper for simplicity)
+scripts\run-engine.bat
+
+# 2. Verify it's running
+curl http://localhost:3160/health
+
+# 3. Run UI tests (requires engine running)
+pnpm test:e2e
+
+# 4. Stop the engine
+scripts\stop-engine.bat
 ```
 
 **⚠️ CRITICAL:** All tests in this workflow MUST be run with the live engine started via `pnpm start-with-logging`. Do NOT use mock servers, stubs, or test doubles - real API calls are required to validate search, ingestion, and distillation functionality. The UI tests verify end-to-end behavior that can only be validated against a running instance.
