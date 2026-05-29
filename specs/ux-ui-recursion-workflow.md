@@ -19,19 +19,21 @@ This document defines the proper human UX workflow for testing Anchor Engine's s
 
 ## Prerequisites & Setup
 
-### 1. Engine Startup
+### 1. Engine Startup (REQUIRED)
 ```bash
 # Navigate to project root
 cd engine
 
 # Build and start server with full logging
-npm run build && npm start
+pnpm start-with-logging
 
 # Expected output:
 # ✓ PGlite initialized at: ~/.anchor/context_data
 # ✓ Anchor Context Engine running on 0.0.0.0:3160
 # Health check available at http://localhost:3160/health
 ```
+
+**⚠️ CRITICAL:** All tests in this workflow MUST be run with the live engine started via `pnpm start-with-logging`. Do NOT use mock servers, stubs, or test doubles - real API calls are required to validate search, ingestion, and distillation functionality. The UI tests verify end-to-end behavior that can only be validated against a running instance.
 
 ### 2. Repository Cloning (via GitHub Modal)
 Using the navbar's GitHub modal feature:
