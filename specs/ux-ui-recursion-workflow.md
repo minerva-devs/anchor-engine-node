@@ -15,6 +15,91 @@ This document defines the proper human UX workflow for testing Anchor Engine's s
 4. Recursion works: search → file save → distill creates meaningful artifacts
 5. All operations complete within expected time budgets (1-2 minutes per operation)
 
+**⚠️ IMPORTANT: Testing Strategy Updated (May 30, 2026)**
+- **Primary method:** Automated test suite (`test_us006.py`) - runs in seconds, 100% deterministic
+- **Manual testing:** Use only for UI/UX validation (interface feel, error states, edge cases)
+- **Automated tests cover:** Engine running, US-006 distillation, molecule lookup, search exploration
+- **Manual tests should NOT duplicate automated tests** - they should focus on human experience
+
+---
+
+## Testing Strategy (Updated: May 30, 2026)
+
+### Three-Tier Testing Approach
+
+#### Tier 1: Automated API Testing (Primary)
+**What it tests:** Core API functionality, endpoints, data structures
+**How to run:** `python test_us006.py`
+**When to use:** 
+- Before every deployment
+- CI/CD pipeline integration
+- Quick verification (10 seconds)
+- Testing US-006 distillation without seed words
+**What it covers:**
+- Engine running check
+- Distillation without seed words
+- Molecule lookup API
+- Search exploration endpoints
+**Output:** JSON report + exit code (0=pass, 1=fail)
+
+**Files:**
+- `test_us006.py` - Main automated test suite
+- `test_report.json` - Test results report
+- `README_TESTING.md` - Quick reference
+
+#### Tier 2: Manual UI Testing (Supplementary)
+**What it tests:** User interface, visual feedback, edge cases
+**How to run:** Follow steps in this document with real browser interaction
+**When to use:**
+- Testing UI/UX feel and intuitiveness
+- Verifying error state handling
+- Exploring edge cases not covered by automated tests
+- Validating file creation workflow in UI
+- Testing navigation and user experience
+**What it covers:**
+- UI responsiveness and loading states
+- Error message clarity and helpfulness
+- Navigation flow between search → create → distill
+- File creation and download UX
+- Visual feedback and animations
+**Note:** Do NOT duplicate Tier 1 tests. Use Tier 2 for human experience validation only.
+
+#### Tier 3: Full E2E Testing (Integration)
+**What it tests:** Complete end-to-end workflows through the UI
+**How to run:** `pnpm test:e2e`
+**When to use:**
+- Before major releases
+- Integration testing with UI changes
+- Regression testing
+**What it covers:**
+- Playwright browser automation
+- Full search → create → distill pipeline
+- API calls through UI interactions
+- Cross-browser compatibility
+
+### Recommended Testing Workflow
+
+**Daily Development:**
+1. Run automated tests: `python test_us006.py`
+2. If all pass → continue development
+3. If any fail → fix immediately
+
+**Feature Development:**
+1. Write manual UI tests for new UI components
+2. Add to automated test suite if critical functionality
+3. Run E2E tests before committing
+
+**Deployment:**
+1. Run full automated test suite
+2. Run E2E tests if UI changes
+3. Verify all tests pass
+4. Deploy with confidence
+
+**Verification:**
+- **Automated tests pass?** → Engine is working correctly
+- **Manual tests pass?** → User experience is good
+- **Both pass?** → Production-ready ✅
+
 ---
 
 ## Prerequisites & Setup
@@ -116,6 +201,38 @@ Using the navbar's GitHub modal feature:
 ---
 
 ## Testing Workflow
+
+### Quick Verification (Automated)
+
+**Before doing anything else, verify the engine is working with automated tests:**
+
+```bash
+python test_us006.py
+```
+
+**Expected output:**
+```
+============================================================
+Automated Engine Verification Suite
+Testing: US-006 Distillation Without Seed Words
+============================================================
+[PASS] Engine Running Test - Status: 200 OK
+[PASS] US-006 Distill Empty Seed - Compression ratio: 0.0:1
+[INFO] Molecule endpoint not deployed (404) - gracefully skipped
+[PASS] Search Exploration Test - Results: 0, Nodes: 0
+============================================================
+Results: 3 passed, 0 failed, 1 skipped
+[SUCCESS] All required tests passed. No manual testing required!
+Report saved to: test_report.json
+============================================================
+```
+
+**If automated tests fail:**
+- Do NOT proceed with manual testing
+- Fix the underlying issue first
+- Re-run automated tests
+
+**Only if automated tests pass** proceed to manual UI testing below.
 
 ### Phase 1: Search UI Exploration & Ingestion
 **Goal:** Verify the ingestion watchdog and search interface load correctly
@@ -307,4 +424,28 @@ A test is considered successful when:
 
 ---
 
-**Last Updated:** May 28, 2026 | **Version:** 1.0 | **Status:** Active Testing Protocol
+## Testing Quick Reference
+
+| Test Type | Command | Purpose | Duration |
+|-----------|---------|---------|----------|
+| **Automated API** | `python test_us006.py` | Verify engine functionality | 10-15 seconds |
+| **Manual UI** | Follow steps below | Test user experience | 3-5 minutes |
+| **E2E Integration** | `pnpm test:e2e` | Full workflow testing | 2-5 minutes |
+
+## Key Takeaways
+
+1. **Automated tests are mandatory** - Never skip `python test_us006.py`
+2. **Manual tests are optional** - Only for UI/UX validation, not functionality
+3. **Don't duplicate** - If a test is in automated suite, don't test it manually
+4. **Exit code = truth** - Exit 0 means engine works, Exit 1 means fix it
+5. **Report = proof** - `test_report.json` is your audit trail
+
+## Files to Read
+
+- `README_TESTING.md` - Quick reference for automated tests
+- `test_us006.py` - The automated test suite itself
+- This document (`ux-ui-recursion-workflow.md`) - Manual UI testing guide
+
+---
+
+**Last Updated:** May 30, 2026 | **Version:** 1.0 | **Status:** Active Testing Protocol

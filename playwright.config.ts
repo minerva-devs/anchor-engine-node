@@ -19,8 +19,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI, // Fail if 'only' is used in CI
   retries: process.env.CI ? 2 : 0, // Retry twice on CI, no retries locally
   reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
-    ['json', { outputFile: 'playwright-report.json' }],
+    ['html', { outputFolder: '.anchor/test-output/playwright/report' }],
+    ['json', { outputFile: '.anchor/test-output/playwright/report.json' }],
     ['list'], // Console-friendly list format
   ],
 
@@ -30,6 +30,8 @@ export default defineConfig({
     trace: 'on-first-retry', // Save traces on first retry for debugging
     screenshot: 'only-on-failure', // Take screenshots only on failure
     video: 'retain-on-failure', // Keep videos of failed tests
+    screenshot: { path: '.anchor/test-output/playwright/screenshots' }, // Store screenshots in .anchor
+    video: { dir: '.anchor/test-output/playwright/videos' }, // Store videos in .anchor
   },
 
   // Configure projects for different browsers (optional)
