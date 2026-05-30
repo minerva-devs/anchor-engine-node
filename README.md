@@ -8,6 +8,16 @@ It's a deterministic, explainable, CPU‑only system for storing and retrieving 
 
 It replaces embeddings with a physics‑inspired graph algorithm (STAR) that retrieves context using structure, time, and meaning — not dense vectors.
 
+## Citation
+
+If you use this software in your research, please cite:
+
+**DOI:** https://doi.org/10.5281/zenodo.19324840  
+**Citation:** Balch II, R. S. (2026). STAR: Semantic Temporal Associative Retrieval - A Local-First Graph-Based Context Engine (v5.0.0). Zenodo.
+
+**Software:** [Anchor Engine Node](https://github.com/RSBalchII/anchor-engine-node)  
+**License:** AGPL-3.0
+
 ## Why This Exists
 
 Most AI memory systems today assume:

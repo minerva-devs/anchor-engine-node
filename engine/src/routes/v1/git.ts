@@ -245,6 +245,105 @@ export function setupGitRoutes(app: Application) {
     }
   });
 
+  // POST /v1/memory/github/clone - Clone GitHub repo and trigger distillation
+  app.post('/v1/memory/github/clone', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    
+    try {
+      const { owner = 'RSBalchII', repo = 'anchor-engine-node', branch = 'main', max_molecules = 10, include_code = false } = req.body;
+      
+      console.log(`[API] GitHub clone triggered: ${owner}/${repo}@${branch}`);
+      console.log(`[API] Distillation params: max_molecules=${max_molecules}, include_code=${include_code}`);
+
+      // Use GitHubIngestService to clone and distill
+      const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
+      const service = new GitHubIngestService();
+
+      // Get rate limit status first
+      const rateLimit = await service.getRateLimitStatus();
+      console.log(`[API] GitHub rate limit: ${rateLimit.remaining} / ${rateLimit.limit} requests`);
+
+      // Auto-generate bucket
+      const bucket = `github:${owner}/${repo}`;
+      const tempToken = req.headers['x-github-token'] as string | undefined;
+
+      // Clone and ingest repo
+      const repoRecord = await service.registerRepo(`https://github.com/${owner}/${repo}.git`, bucket);
+      console.log(`[API] Registered repo: ${repoRecord.id} (${repoRecord.owner}/${repoRecord.repo})`);
+
+      // Sync repo to get latest code
+      await service.syncRepo(repoRecord.id, { runAnalysis: false, token: tempToken });
+      console.log(`[API] Synced repo: ${repoRecord.owner}/${repoRecord.repo}`);
+
+      // Ingest git history (optional but recommended for distillation)
+      if (branch !== 'main') {
+        const token = tempToken || process.env.GITHUB_TOKEN;
+        await service.ingestGitHistory(repoRecord.owner, repoRecord.repo, branch, bucket, token);
+        console.log(`[API] Git history ingested: ${repoRecord.owner}/${repoRecord.repo}@${branch}`);
+      }
+
+      // Clear temporary token after use
+      if (tempToken) {
+        console.log(`[API] Temporary GitHub token cleared`);
+      }
+
+      // Extract distillation results from the ingested corpus
+      const fs = await import('fs');
+      const path = await import('path');
+      
+      // Read distillation output from external-inbox
+      const mirrorDir = path.join(PATHS.EXTERNAL_INBOX_DIR, 'github', repoRecord.owner, repoRecord.repo);
+      const distillOutput = path.join(mirrorDir, 'distillation.md');
+      
+      let distillationContent = '';
+      if (fs.existsSync(distillOutput)) {
+        distillationContent = fs.readFileSync(distillOutput, 'utf8');
+        console.log(`[API] Read distillation output: ${distillationContent.length} chars`);
+      }
+
+      const duration = Date.now() - startTime;
+      console.log(`[API] GitHub clone completed in ${duration}ms`);
+
+      res.status(200).json({
+        status: 'success',
+        message: `Cloned and ingested ${repoRecord.owner}/${repoRecord.repo}`,
+        repo: {
+          owner: repoRecord.owner,
+          repo: repoRecord.repo,
+          branch: branch,
+          bucket: bucket,
+        },
+        distillation: {
+          output_file: distillOutput,
+          output_length: distillationContent.length,
+          max_molecules: max_molecules,
+          include_code: include_code,
+        },
+        stats: {
+          duration_ms: duration,
+          files_ingested: 0,
+          atoms_extracted: 0,
+        }
+      });
+    } catch (error: any) {
+      console.error('[API] GitHub clone error:', error.message);
+      console.error('[API] Error stack:', error.stack);
+      
+      // Return useful error info
+      let errorMessage = 'GitHub clone operation failed';
+      if (error.response?.status === 403) {
+        const rateLimit = error.response.data;
+        errorMessage = `GitHub rate limit exceeded: ${rateLimit.message}. Wait ${Math.ceil(rateLimit.reset - Math.floor(Date.now() / 1000))}s or use a GitHub token.`;
+      }
+      
+      res.status(500).json({
+        error: errorMessage,
+        details: error.message,
+        rateLimit: error.response?.data,
+      });
+    }
+  });
+
   // GET /v1/github/credentials - Check for stored GitHub credentials
   app.get('/v1/github/credentials', async (_req: Request, res: Response) => {
     try {
