@@ -223,7 +223,6 @@ temp.txt
 # API documentation and review notes (local use only)
 QWEN.md
 AGENT.md
-docs/*.md
 paper.bib
 github_repos.json
 jobs.json
@@ -371,18 +370,6 @@ tests/
 test-wasm/
 
 # Scripts and utilities (exclude engine control scripts)
-/scripts/*.js
-/scripts/*.mjs
-/scripts/*.ts
-# But allow engine control scripts
-!/scripts/run-engine.bat
-!/scripts/start-engine.bat
-!/scripts/start-engine.ps1
-!/scripts/stop-engine.bat
-!/scripts/engine_server.py
-
-# Documentation
-docs/
 
 # Source code
 src/
