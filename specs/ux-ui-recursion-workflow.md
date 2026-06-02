@@ -106,38 +106,26 @@ This document defines the proper human UX workflow for testing Anchor Engine's s
 
 ### 1. Engine Startup (REQUIRED)
 
-#### Option A: Python Wrapper Script (Recommended for LLM Devs) ✅
-**Location:** `scripts/engine_server.py`
-**Why use this:** Simple, reliable startup without tool_call formatting issues. Just run the script directly.
+#### Option A: pnpm start (Recommended) ✅
+**Location:** `package.json` scripts section  
+**Why use this:** Simple, reliable, built-in. Works from project root or any directory.
 
 ```bash
-# Run from any directory
-python scripts\engine_server.py start
+pnpm install  # First time only - installs dependencies
+pnpm start    # Start the engine
 
 # Expected output:
 # ✓ PGlite initialized at: ~/.anchor/context_data
 # ✓ Anchor Context Engine running on 0.0.0.0:3160
 # Health check available at http://localhost:3160/health
+⏱️ Startup Time: ~15 seconds
 ```
 
-**Note:** The old `scripts/run-engine.bat` is deprecated - use the Python wrapper instead.
-
-```bash
-# Windows - Run from any directory
-scripts\run-engine.bat
-
-# Or Python directly
-python scripts\engine_server.py start
-
-# Expected output:
-# ✓ PGlite initialized at: ~/.anchor/context_data
-# ✓ Anchor Context Engine running on 0.0.0.0:3160
-# Health check available at http://localhost:3160/health
-```
+**Note:** This requires the engine to be built first. If you haven't installed dependencies, run `pnpm install` first.
 
 #### Option B: PowerShell Script (Full Setup)
 **Location:** `scripts/start-engine.ps1`  
-**Use case:** When you need full dependency installation and build.
+**Use case:** When you need full dependency installation and build in one step.
 
 ```powershell
 # Run from project root or any directory
@@ -147,17 +135,14 @@ python scripts\engine_server.py start
 .\scripts\start-engine.ps1 -Quiet
 ```
 
-#### Option C: Direct pnpm Commands
-**Location:** `package.json` scripts section  
-**Use case:** When already in the project directory.
+#### Option C: Direct node Command
+**Location:** `engine/dist/index.js`  
+**Use case:** When already in the project directory and you want direct control.
 
 ```bash
-pnpm start-with-logging
+node --expose-gc engine/dist/index.js
 
-# Expected output:
-# ✓ PGlite initialized at: ~/.anchor/context_data
-# ✓ Anchor Context Engine running on 0.0.0.0:3160
-# Health check available at http://localhost:3160/health
+# Logs go to: .anchor/logs/anchor_engine.log (or current stdout if not specified)
 ```
 
 ---
@@ -166,7 +151,7 @@ pnpm start-with-logging
 
 | Script | Path | Purpose |
 |--------|------|---------|
-| **Python Wrapper (NEW)** | `scripts/engine_server.py` | Simple start/stop for LLM devs ✅ |
+| **pnpm start** | `package.json` scripts section | Simple startup ✅ Recommended |
 | **PowerShell Startup** | `scripts/start-engine.ps1` | Full setup with dependency installation |
 | **Batch Stop** | `scripts/stop-engine.bat` | Stop only the engine process on port 3160 |
 | **Test Runner** | `tests/e2e/ui-verification.test.ts` | Playwright UI tests |
@@ -177,20 +162,23 @@ pnpm start-with-logging
 ## Quick Start Commands
 
 ```bash
-# 1. Start the engine (use Python wrapper for simplicity)
-scripts\run-engine.bat
+# 1. Install dependencies (first time only)
+pnpm install
 
-# 2. Verify it's running
+# 2. Start the engine
+pnpm start
+
+# 3. Verify it's running
 curl http://localhost:3160/health
 
-# 3. Run UI tests (requires engine running)
+# 4. Run UI tests (requires engine running)
 pnpm test:e2e
 
-# 4. Stop the engine
+# 5. Stop the engine
 scripts\stop-engine.bat
 ```
 
-**⚠️ CRITICAL:** All tests in this workflow MUST be run with the live engine started via `pnpm start-with-logging`. Do NOT use mock servers, stubs, or test doubles - real API calls are required to validate search, ingestion, and distillation functionality. The UI tests verify end-to-end behavior that can only be validated against a running instance.
+**⚠️ CRITICAL:** All tests in this workflow MUST be run with the live engine started via `pnpm start`. Do NOT use mock servers, stubs, or test doubles - real API calls are required to validate search, ingestion, and distillation functionality. The UI tests verify end-to-end behavior that can only be validated against a running instance.
 
 ### 2. Repository Cloning (via GitHub Modal)
 Using the navbar's GitHub modal feature:

@@ -487,6 +487,7 @@ export class Database {
           timestamp TEXT NOT NULL,
           filename TEXT NOT NULL,
           file_path TEXT NOT NULL,
+          content TEXT,  -- Full JSON output for instant retrieval (optional)
           line_count INTEGER NOT NULL,
           lines_unique INTEGER NOT NULL,
           compression_ratio REAL,

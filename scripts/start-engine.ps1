@@ -1,4 +1,4 @@
-﻿# ============================================================================
+# ============================================================================
 # Anchor Engine Startup Script (PowerShell)
 # ============================================================================
 # This script performs a clean startup of the Anchor Engine:
@@ -49,7 +49,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "[4/4] Starting Anchor Engine..." -ForegroundColor Yellow
 
 # Start the engine and capture its process ID
-$process = Start-Process "pnpm start-with-logging" -PassThru -WindowStyle Hidden
+$process = Start-Process "pnpm start" -PassThru -WindowStyle Hidden
 $enginePid = $process.Id
 
 Write-Host "[OK] Engine started with PID: $enginePid" -ForegroundColor Green

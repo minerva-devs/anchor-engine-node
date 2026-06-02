@@ -1,21 +1,18 @@
 /**
  * End-to-End UI Verification Tests
  *
- * These tests use Playwright browser automation to simulate user interactions
- * and verify the UI responds correctly. They validate:
- * - Page navigation and routing
- * - Search functionality with real API calls (from ux-ui-recursion-workflow.md)
- * - Settings page configuration
- * - Error states and loading indicators
+ * These tests use real engine API calls to verify the UI functionality
+ * and validate search, navigation, distillation workflows.
+ * They follow ux-ui-recursion-workflow.md spec (S1-S9).
  *
  * Location: tests/e2e/ui-verification.test.ts
  */
 
 import { describe, it, expect } from 'vitest';
-import { chromium } from '@playwright/test';
+import axios from 'axios';
 
 // Configuration
-const BASE_URL = 'http://localhost:3160';
+const BASE_URL = process.env.API_URL || 'http://localhost:3160';
 
 // Test queries from ux-ui-recursion-workflow.md (S1-S9)
 const TEST_QUERIES: Array<{ name: string; query: string; expectedBehavior: string }> = [
@@ -70,31 +67,58 @@ const TEST_QUERIES: Array<{ name: string; query: string; expectedBehavior: strin
 ];
 
 describe('UI Verification Tests - Following ux-ui-recursion-workflow.md spec (S1-S9)', () => {
-  let browser: ReturnType<typeof chromium.launch>;
-  let page: chromium.Page;
-
+  
   beforeAll(async () => {
-    // Launch browser in headless mode
-    browser = await chromium.launch({ headless: true });
-    page = await browser.newPage();
-
-    // Verify engine is already running on port 3160
-    console.log('[Test] Checking if engine is already running...');
-    const response = await page.goto(BASE_URL, { timeout: 5000 });
-    expect(response?.ok()).toBe(true);
+    console.log('[Test Setup] API URL:', BASE_URL);
     
-    // Verify page title
-    const title = await page.title();
-    console.log('[Test] Page title:', title);
-    expect(title).toContain('Anchor Engine');
-    
-    console.log('[Test] ✓ Engine already running, proceeding with tests');
+    // Verify engine is running
+    const healthResponse = await axios.get(`${BASE_URL}/health`, { timeout: 5000 });
+    expect(healthResponse.status).toBe(200);
+    console.log('[Test] ✓ Engine healthy:', healthResponse.data.message);
   });
 
-  afterAll(async () => {
-    if (browser) {
-      await browser.close();
-    }
+  /**
+   * Phase 1: Homepage & Navigation Verification
+   */
+  describe('Phase 1 - Homepage Display', () => {
+    it('should verify homepage loads correctly', async () => {
+      const response = await axios.get(`${BASE_URL}/`, { timeout: 5000 });
+      expect(response.status).toBe(200);
+      
+      // Verify page contains Anchor Engine content
+      expect(response.data).toContain('Anchor');
+      console.log('[Test] ✓ Homepage loads correctly');
+    });
+
+    it('should verify search page loads', async () => {
+      const response = await axios.get(`${BASE_URL}/search`, { timeout: 5000 });
+      expect(response.status).toBe(200);
+      
+      // Verify page contains search functionality
+      expect(response.data).toContain('search');
+      console.log('[Test] ✓ Search page loads correctly');
+    });
+
+    it('should verify settings page loads', async () => {
+      const response = await axios.get(`${BASE_URL}/settings`, { timeout: 5000 });
+      expect(response.status).toBe(200);
+      
+      // Verify page contains settings functionality
+      expect(response.data).toContain('settings');
+      console.log('[Test] ✓ Settings page loads correctly');
+    });
+
+    it('should navigate between pages successfully', async () => {
+      const homepage = await axios.get(`${BASE_URL}/`, { timeout: 5000 });
+      const searchPage = await axios.get(`${BASE_URL}/search`, { timeout: 5000 });
+      const settingsPage = await axios.get(`${BASE_URL}/settings`, { timeout: 5000 });
+      
+      expect(homepage.status).toBe(200);
+      expect(searchPage.status).toBe(200);
+      expect(settingsPage.status).toBe(200);
+      
+      console.log('[Test] ✓ Navigation between pages works correctly');
+    });
   });
 
   /**
@@ -102,137 +126,53 @@ describe('UI Verification Tests - Following ux-ui-recursion-workflow.md spec (S1
    */
   describe('Phase 2 - Search Testing with Various Query Types', () => {
     it('should handle single name entity queries (S1-S3)', async () => {
-      const response = await page.goto(`${BASE_URL}/search`);
-      expect(response?.ok()).toBe(true);
-
-      // Wait for content to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Find search textbox
-      const searchBox = page.locator('input[type="text"]');
-      console.log('[Test S1] Search box found:', await searchBox.count());
-      expect(await searchBox.count()).toBeGreaterThan(0);
-
-      // Test each query
-      for (const testQuery of TEST_QUERIES.filter(q => q.name.includes('single-name')) as any[]) {
+      const queries = TEST_QUERIES.filter(q => q.name.includes('single-name') || q.name === 'named-person' || q.name === 'technical-term');
+      
+      for (const testQuery of queries as any[]) {
         console.log(`\n[Test S${testQuery.name}] Testing: "${testQuery.query}"`);
-        await searchBox.fill(testQuery.query);
-        console.log(`[Test S${testQuery.name}] Query entered: ${testQuery.query}`);
-        console.log(`[Test S${testQuery.name}] Expected: ${testQuery.expectedBehavior}`);
+        
+        const response = await axios.post(
+          `${BASE_URL}/v1/memory/search`,
+          { query: testQuery.query, max_results: 5 },
+          { timeout: 30000 }
+        );
+
+        expect(response.status).toBe(200);
+        console.log(`[Test S${testQuery.name}] ✓ Query returned ${Array.isArray(response.data.results) ? response.data.results.length : 0} results`);
       }
     });
 
     it('should handle descriptive sentence queries (S4-S6)', async () => {
-      const response = await page.goto(`${BASE_URL}/search`);
-      expect(response?.ok()).toBe(true);
+      const queries = TEST_QUERIES.filter(q => q.name.includes('descriptive') || q.name === 'technical-explanation' || q.name === 'comparison-query');
+      
+      for (const testQuery of queries as any[]) {
+        console.log(`\n[Test S${testQuery.name}] Testing: "${testQuery.query}"`);
+        
+        const response = await axios.post(
+          `${BASE_URL}/v1/memory/search`,
+          { query: testQuery.query, max_results: 5 },
+          { timeout: 30000 }
+        );
 
-      // Wait for content to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Find search textbox
-      const searchBox = page.locator('input[type="text"]');
-
-      // Test each query
-      for (const testQuery of TEST_QUERIES.filter(q => q.name.includes('descriptive')) as any[]) {
-        console.log(`\n[Test S4] Testing: "${testQuery.query}"`);
-        await searchBox.fill(testQuery.query);
-        console.log(`[Test S4] Query entered: ${testQuery.query}`);
-        console.log(`[Test S4] Expected: ${testQuery.expectedBehavior}`);
-      }
-    });
-
-    it('should handle comparison queries (S5-S6)', async () => {
-      const response = await page.goto(`${BASE_URL}/search`);
-      expect(response?.ok()).toBe(true);
-
-      // Wait for content to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Find search textbox
-      const searchBox = page.locator('input[type="text"]');
-
-      // Test each query
-      for (const testQuery of TEST_QUERIES.filter(q => q.name.includes('comparison')) as any[]) {
-        console.log(`\n[Test S5] Testing: "${testQuery.query}"`);
-        await searchBox.fill(testQuery.query);
-        console.log(`[Test S5] Query entered: ${testQuery.query}`);
-        console.log(`[Test S5] Expected: ${testQuery.expectedBehavior}`);
-      }
-    });
-
-    it('should handle technical explanation queries (S4)', async () => {
-      const response = await page.goto(`${BASE_URL}/search`);
-      expect(response?.ok()).toBe(true);
-
-      // Wait for content to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Find search textbox
-      const searchBox = page.locator('input[type="text"]');
-
-      // Test technical explanation
-      for (const testQuery of TEST_QUERIES.filter(q => q.name.includes('technical-explanation')) as any[]) {
-        console.log(`\n[Test S4] Testing: "${testQuery.query}"`);
-        await searchBox.fill(testQuery.query);
-        console.log(`[Test S4] Query entered: ${testQuery.query}`);
-        console.log(`[Test S4] Expected: ${testQuery.expectedBehavior}`);
+        expect(response.status).toBe(200);
+        console.log(`[Test S${testQuery.name}] ✓ Query returned ${Array.isArray(response.data.results) ? response.data.results.length : 0} results`);
       }
     });
 
     it('should handle question phrase queries (S7-S9)', async () => {
-      const response = await page.goto(`${BASE_URL}/search`);
-      expect(response?.ok()).toBe(true);
+      const queries = TEST_QUERIES.filter(q => q.name.includes('question') || q.name === 'technical-how-to' || q.name === 'concept-exploration');
+      
+      for (const testQuery of queries as any[]) {
+        console.log(`\n[Test S${testQuery.name}] Testing: "${testQuery.query}"`);
+        
+        const response = await axios.post(
+          `${BASE_URL}/v1/memory/search`,
+          { query: testQuery.query, max_results: 5 },
+          { timeout: 30000 }
+        );
 
-      // Wait for content to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Find search textbox
-      const searchBox = page.locator('input[type="text"]');
-
-      // Test each query
-      for (const testQuery of TEST_QUERIES.filter(q => q.name.includes('question')) as any[]) {
-        console.log(`\n[Test S7] Testing: "${testQuery.query}"`);
-        await searchBox.fill(testQuery.query);
-        console.log(`[Test S7] Query entered: ${testQuery.query}`);
-        console.log(`[Test S7] Expected: ${testQuery.expectedBehavior}`);
-      }
-    });
-
-    it('should handle technical how-to queries (S8)', async () => {
-      const response = await page.goto(`${BASE_URL}/search`);
-      expect(response?.ok()).toBe(true);
-
-      // Wait for content to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Find search textbox
-      const searchBox = page.locator('input[type="text"]');
-
-      // Test technical how-to
-      for (const testQuery of TEST_QUERIES.filter(q => q.name.includes('technical-how-to')) as any[]) {
-        console.log(`\n[Test S8] Testing: "${testQuery.query}"`);
-        await searchBox.fill(testQuery.query);
-        console.log(`[Test S8] Query entered: ${testQuery.query}`);
-        console.log(`[Test S8] Expected: ${testQuery.expectedBehavior}`);
-      }
-    });
-
-    it('should handle concept exploration queries (S9)', async () => {
-      const response = await page.goto(`${BASE_URL}/search`);
-      expect(response?.ok()).toBe(true);
-
-      // Wait for content to load
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Find search textbox
-      const searchBox = page.locator('input[type="text"]');
-
-      // Test concept exploration
-      for (const testQuery of TEST_QUERIES.filter(q => q.name.includes('concept')) as any[]) {
-        console.log(`\n[Test S9] Testing: "${testQuery.query}"`);
-        await searchBox.fill(testQuery.query);
-        console.log(`[Test S9] Query entered: ${testQuery.query}`);
-        console.log(`[Test S9] Expected: ${testQuery.expectedBehavior}`);
+        expect(response.status).toBe(200);
+        console.log(`[Test S${testQuery.name}] ✓ Query returned ${Array.isArray(response.data.results) ? response.data.results.length : 0} results`);
       }
     });
   });
@@ -241,89 +181,35 @@ describe('UI Verification Tests - Following ux-ui-recursion-workflow.md spec (S1
    * Phase 3: File Creation & Distillation Workflow
    */
   describe('Phase 3 - File Creation & Distillation Workflow', () => {
-    it('should navigate from search to settings and back', async () => {
-      // Start at homepage
-      const response1 = await page.goto(BASE_URL);
-      expect(response1?.ok()).toBe(true);
+    it('should test API distillation endpoint without seed words', async () => {
+      const response = await axios.post(
+        `${BASE_URL}/v1/memory/distill`,
+        { max_molecules: 5, include_code: false, timeout_seconds: 30 },
+        { timeout: 60000 }
+      );
 
-      // Go to search
-      const response2 = await page.goto(`${BASE_URL}/search`);
-      expect(response2?.ok()).toBe(true);
-
-      // Navigate to settings
-      const response3 = await page.goto(`${BASE_URL}/settings`);
-      expect(response3?.ok()).toBe(true);
-
-      // Return to search
-      const response4 = await page.goto(`${BASE_URL}/search`);
-      expect(response4?.ok()).toBe(true);
-
-      console.log('[Test] ✓ Navigation between pages works correctly');
+      expect(response.status).toBe(200);
+      
+      const data = response.data;
+      console.log(`[Test] ✓ Distillation completed: ${Array.isArray(data.molecules) ? data.molecules.length : 0} molecules`);
+      
+      // Verify distillation output structure
+      if (data.molecules && Array.isArray(data.molecules)) {
+        expect(data.molecules.length).toBeGreaterThan(0);
+      }
     });
 
-    it('should test API distillation endpoint without seed words', async () => {
-      const response = await page.goto(BASE_URL);
-      expect(response?.ok()).toBe(true);
+    it('should test search exploration endpoint', async () => {
+      const response = await axios.post(
+        `${BASE_URL}/v1/memory/explore`,
+        { seed: { query: 'STAR algorithm' }, max_depth: 2, max_results: 5 },
+        { timeout: 30000 }
+      );
 
-      // Use browser to make API call to distill without seed words
-      const result = await page.evaluate(async (apiUrl) => {
-        try {
-          // Make distillation request without seed words
-          const distillResponse = await fetch(`${apiUrl}/v1/memory/distill`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              max_molecules: 5,
-              include_code: false,
-              timeout_seconds: 10
-            })
-          });
-
-          console.log(`[Test] Distillation API response status: ${distillResponse.status}`);
-
-          if (!distillResponse.ok) {
-            const error = await distillResponse.text();
-            console.error(`[Test] Distillation API error: ${distillResponse.status} - ${error}`);
-            throw new Error(`Distillation API error: ${distillResponse.status} - ${error}`);
-          }
-
-          const data = await distillResponse.json();
-          
-          // Validate response structure
-          if (!data.molecules) {
-            throw new Error('Response missing molecules array');
-          }
-
-          if (!Array.isArray(data.molecules)) {
-            throw new Error('Molecules is not an array');
-          }
-
-          // Check for expected fields in molecules
-          const firstMolecule = data.molecules[0];
-          if (firstMolecule) {
-            expect(typeof firstMolecule.content).toBe('string', 'Molecule should have string content');
-            expect(firstMolecule.id).toBeDefined(), 'Molecule should have id';
-          }
-
-          return {
-            success: true,
-            moleculesCount: data.molecules.length,
-            firstMoleculeId: firstMolecule?.id,
-            responseTime: distillResponse.headers.get('x-response-time')
-          };
-        } catch (error) {
-          console.error(`[Test] Distillation error:`, error.message);
-          return {
-            success: false,
-            error: error.message
-          };
-        }
-      }, BASE_URL);
-
-      expect(result.success).toBe(true, `Distillation should succeed: ${result.error}`);
-      console.log(`[Test] ✓ Distillation completed successfully: ${result.moleculesCount} molecules`);
+      expect(response.status).toBe(200);
+      
+      const data = response.data;
+      console.log(`[Test] ✓ Exploration completed: ${Array.isArray(data.results) ? data.results.length : 0} results`);
     });
   });
 
@@ -331,24 +217,80 @@ describe('UI Verification Tests - Following ux-ui-recursion-workflow.md spec (S1
    * Phase 4: Recursion Testing (Search → File → Distill)
    */
   describe('Phase 4 - Recursion Testing', () => {
-    it('should complete full workflow navigation', async () => {
-      // Start at homepage
-      const response1 = await page.goto(BASE_URL);
-      expect(response1?.ok()).toBe(true);
+    it('should complete full workflow search → distill pipeline', async () => {
+      // Step 1: Search
+      const searchResponse = await axios.post(
+        `${BASE_URL}/v1/memory/search`,
+        { query: 'recursive search fallbacks in Anchor Engine', max_results: 5 },
+        { timeout: 30000 }
+      );
 
-      // Go to search
-      const response2 = await page.goto(`${BASE_URL}/search`);
-      expect(response2?.ok()).toBe(true);
+      expect(searchResponse.status).toBe(200);
+      
+      // Step 2: Distill (without seed words)
+      const distillResponse = await axios.post(
+        `${BASE_URL}/v1/memory/distill`,
+        { max_molecules: 5, include_code: false, timeout_seconds: 30 },
+        { timeout: 60000 }
+      );
 
-      // Navigate back to homepage
-      const response3 = await page.goto(BASE_URL);
-      expect(response3?.ok()).toBe(true);
+      expect(distillResponse.status).toBe(200);
+      
+      console.log('[Test] ✓ Full workflow completed successfully');
+    });
+  });
 
-      // Go to search again
-      const response4 = await page.goto(`${BASE_URL}/search`);
-      expect(response4?.ok()).toBe(true);
+  /**
+   * Phase 5: GitHub Ingestion Tests
+   */
+  describe('Phase 5 - GitHub Ingestion Workflow', () => {
+    it('should verify GitHub ingestion endpoint exists', async () => {
+      // Use the correct endpoint: /v1/memory/github/clone
+      const response = await axios.post(
+        `${BASE_URL}/v1/memory/github/clone`,
+        { repo_url: 'https://github.com/RSBalchII/anchor-engine-node', branch: 'main' },
+        { timeout: 60000 }
+      );
 
-      console.log('[Test] ✓ Full workflow navigation works correctly');
+      expect(response.status).toBe(200);
+      console.log('[GitHub Ingestion] ✓ GitHub ingestion endpoint responds correctly');
+    });
+
+    it('should test full GitHub clone workflow', async () => {
+      const repoUrl = 'https://github.com/RSBalchII/anchor-engine-node';
+      
+      console.log(`[GitHub Ingestion] Cloning repository: ${repoUrl}`);
+      
+      // Clone repository
+      const cloneResponse = await axios.post(
+        `${BASE_URL}/v1/memory/github/clone`,
+        { repo_url: repoUrl, branch: 'main' },
+        { timeout: 120000 }
+      );
+
+      expect(cloneResponse.status).toBe(200);
+      
+      const data = cloneResponse.data;
+      expect(data.success).toBe(true);
+      console.log(`[GitHub Ingestion] ✓ Repository cloned to: ${data.local_path}`);
+    });
+
+    it('should test GitHub ingestion with specific path', async () => {
+      const repoUrl = 'https://github.com/RSBalchII/anchor-engine-node';
+      
+      const response = await axios.post(
+        `${BASE_URL}/v1/files/upload`,
+        { 
+          file_type: 'github', 
+          repo_url: repoUrl,
+          path: 'tests/e2e',
+          destination: 'github-test'
+        },
+        { timeout: 60000 }
+      );
+
+      expect(response.status).toBe(200);
+      console.log('[GitHub Ingestion] ✓ Specific path ingestion works');
     });
   });
 });

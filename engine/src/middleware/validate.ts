@@ -19,6 +19,7 @@ interface FieldSchema {
   min?: number;
   max?: number;
   itemType?: string;
+  properties?: Record<string, FieldSchema>;
 }
 
 /**
@@ -116,7 +117,12 @@ export const schemas: Record<string, Record<string, FieldSchema>> = {
 
   /** POST /v1/memory/distill */
   memoryDistill: {
-    seed: { type: 'string', required: false },
+    seed: { type: 'object', required: false, properties: {
+      query: { type: 'string', required: true, minLength: 1 },
+      compound_ids: { type: 'array', required: false, itemType: 'string' },
+      buckets: { type: 'array', required: false, itemType: 'string' },
+      tags: { type: 'array', required: false, itemType: 'string' },
+    } },
     radius: { type: 'number', required: false, min: 1, max: 10 },
     max_radius: { type: 'number', required: false, min: 1, max: 20 },
     output_format: { type: 'string', required: false },

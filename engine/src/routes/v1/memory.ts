@@ -71,9 +71,35 @@ export function setupMemoryRoutes(app: Application) {
   app.post('/v1/memory/distill', async (req: Request, res: Response) => {
     const startTime = Date.now();
 
+    // DEBUG: Log incoming data to file — MUST be in .anchor/logs/ per doc_policy.md
+    const { writeFileSync } = require('fs');
+    const os = require('os');
+    const homeDir = os.homedir();
+    const logPath = `${homeDir}/.anchor/logs/distill-debug.log`;
+    
+    // DEBUG: Log incoming data
+    const debugLog = [
+      '=== DISTILL REQUEST ===',
+      `req.headers: ${JSON.stringify(req.headers)}`,
+      `req.body type: ${typeof req.body}`,
+      `req.body: ${JSON.stringify(req.body)}`,
+      `req.body.seed: ${JSON.stringify(req.body?.seed)}`,
+      `req.body seed is undefined: ${req.body?.seed === undefined}`,
+    ].join('\n');
+    
+    // Synchronously write to file BEFORE any async operations
+    try {
+      writeFileSync(logPath, debugLog + '\n\n', { flag: 'a' });
+      console.log('[DEBUG distill] ✓ Debug log written to', logPath);
+    } catch (writeErr) {
+      console.error('[DEBUG distill] ✗ Failed to write debug log:', String(writeErr));
+    }
+
     StructuredLogger.info('DISTILL_REQUEST', {
       endpoint: '/v1/memory/distill',
       mode: 'radial',
+      hasBody: !!req.body,
+      bodyKeys: req.body ? Object.keys(req.body) : [],
     });
 
     try {
@@ -116,9 +142,27 @@ export function setupMemoryRoutes(app: Application) {
       }
 
       // Standard mode: Single JSON response (v2 with tag-based + decision records support)
+      console.log('[DEBUG distill] === BEFORE radialDistill ===');
+      console.log('[DEBUG distill] body:', JSON.stringify(body));
+      console.log('[DEBUG distill] body.seed:', body?.seed);
+      console.log('[DEBUG distill] body.seed is undefined:', body?.seed === undefined);
+      
       const bodyWithDefaults = { ...body, auto_save: true }; // Enable auto-save for all distillation requests
       
-      const result = await radialDistill(bodyWithDefaults);
+      // DEBUG: Log what's being passed to radialDistill
+      console.log('[DEBUG distill] bodyWithDefaults:', JSON.stringify(bodyWithDefaults));
+      console.log('[DEBUG distill] bodyWithDefaults.seed:', bodyWithDefaults?.seed);
+      
+      // Pass the request object directly - radialDistill will extract cache key internally
+      // Add timeout guard to prevent indefinite hangs from PGlite async DB operations
+      // Increased from 30s to 120s (2 minutes) to accommodate large corpus distillation
+      const distillTimeoutMs = 120000; // 120 second timeout
+      const result: any = await Promise.race([
+        radialDistill(bodyWithDefaults),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error(`Distillation timed out after ${distillTimeoutMs}ms`)), distillTimeoutMs)
+        )
+      ]);
       const duration = Date.now() - startTime;
 
       StructuredLogger.info('RADIAL_DISTILL_COMPLETE', {

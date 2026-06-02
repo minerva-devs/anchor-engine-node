@@ -44,9 +44,10 @@ Radial Distillation v2.0 produces **Decision Records** — structured JSON objec
 │  └── Tag blocks by type (problem, solution, rationale, etc.)│
 │                                                              │
 │  Phase 2: DEDUPLICATE                                        │
-│  ├── Group blocks by type                                   │
-│  ├── Compute SimHash per block                              │
-│  └── Merge blocks with same type + hash (combine provenance)│
+│  ├── Tier 1: Compound-level dedup (SHA-256, zero-copy)     │
+│  ├── Tier 2: Line-level dedup (normalized text hashing)    │
+│  ├── Tier 3: Block-level dedup (SimHash semantic)         │
+│  └── Merge duplicates with combined provenance             │
 │                                                              │
 │  Phase 3: REASSEMBLE                                         │
 │  ├── Group blocks by source file                            │
@@ -54,6 +55,14 @@ Radial Distillation v2.0 produces **Decision Records** — structured JSON objec
 │  └── Write output (JSON or legacy YAML)                     │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Deduplication Strategy:**
+Distillation v2.0 uses a three-tier deduplication approach to ensure legible output:
+1. **Compound-level (Tier 1):** Fast zero-copy SHA-256 hash prevents reprocessing duplicate compounds
+2. **Line-level (Tier 2):** Normalized line hashing deduplicates overlapping content within and across compounds. This is critical: if two atoms are adjacent in pointer space, their inflated context may share words/characters. Line-level dedup ensures these overlaps are removed.
+3. **Block-level (Tier 3):** SimHash on semantic blocks (problem/solution/rationale) for cross-compound semantic deduplication
+
+**Key Insight:** Without line-level deduplication, adjacent atoms' inflated context would contain redundant overlapping content. The deduplication process is what makes distillation output legible and readable.
 
 ### 2.2 Decision Record Schema
 

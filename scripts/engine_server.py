@@ -39,15 +39,16 @@ def start_engine():
     except Exception as e:
         print(f"[WARN] Could not check port: {e}")
     
-    # Step 2: Start the engine directly (no build/install needed - already done)
-    print("\n[1/1] Starting Anchor Engine...")
+    # Step 2: Start the engine using pnpm start
+    # This runs: node --expose-gc engine/dist/index.js
+    print("\n[1/1] Starting Anchor Engine via pnpm start...")
     
     result = subprocess.run(
-        ["pnpm", "start-with-logging"],
+        "pnpm start",
         cwd=PROJECT_ROOT,
+        shell=True,
         capture_output=False,
-        text=True,
-        shell=True
+        text=True
     )
     
     print("\n" + "=" * 60)

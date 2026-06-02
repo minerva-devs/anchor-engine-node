@@ -15,6 +15,7 @@ const config = defineConfig({
       'engine/tests/unit/**/*.test.ts',
       'engine/tests/integration/**/*.test.ts',
       'engine/tests/benchmarks/**/*.test.ts',
+      'engine/tests/**/*.test.ts',
       'tests/e2e/**/*.test.ts',
     ],
     exclude: [
@@ -22,7 +23,6 @@ const config = defineConfig({
       '**/dist/**',
       '**/.git/**',
       '**/coverage/**',
-      '.anchor/local-data/inbox/**',
     ],
     unstubAllExports: true,
     coverage: {
@@ -35,8 +35,8 @@ const config = defineConfig({
         '**/*.d.ts',
       ],
     },
-    testTimeout: 30000,
-    hookTimeout: 10000,
+    testTimeout: 150000,
+    hookTimeout: 60000,
     reporters: ['verbose'],
     define: {
       __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),

@@ -358,11 +358,11 @@ const DEFAULT_CONFIG: Config = {
   VECTOR_INGEST_BATCH: 50,
 
   // Resource Management
-  GC_COOLDOWN_MS: 30000, // 30 seconds
-  MAX_ATOMS_IN_MEMORY: 2000,
-  MONITORING_INTERVAL_MS: 30000, // 30 seconds
-  CACHE_TTL_MS: 60000, // 60 seconds (1 minute)
-  MAX_CACHE_SIZE: 500, // Increased from 100 to 500
+  GC_COOLDOWN_MS: 15000, // 15 seconds (reduced for faster cleanup)
+  MAX_ATOMS_IN_MEMORY: 2500, // Increased from 2000
+  MONITORING_INTERVAL_MS: 20000, // 20 seconds
+  CACHE_TTL_MS: 120000, // 2 minutes (increased)
+  MAX_CACHE_SIZE: 800, // Increased from 500
 
   // Distiller Configuration (v2.1)
   DISTILLER: {

@@ -22,7 +22,7 @@
 ### 🧠 **Users** - Understanding, Using, Exploring
 
 **Start here:**
-1. [**Whitepaper**](./docs/whitepaper.md) - The Sovereign Context Protocol (conceptual, no code)
+1. [**Whitepaper**](./docs/whitepaper.md) - The STAR Context Protocol (conceptual, no code)
 2. [**API Examples**](./README.md#api-examples) - How to use the engine
 3. [**Architecture Overview**](./specs/spec.md#architecture-overview) - How it works (high-level)
 

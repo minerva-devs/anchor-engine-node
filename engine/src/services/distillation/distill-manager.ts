@@ -8,6 +8,7 @@
 import { db } from '../../core/db.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import crypto from 'crypto';
+import fs from 'fs';
 
 export interface DistillMetadata {
   id: string;
@@ -20,6 +21,10 @@ export interface DistillMetadata {
   source_sessions: string[];
   source_files: string[];
   parameters: Record<string, any>;
+  // Pointer-based file reading (Standard: Pointer-Based File Reading for Distills v5.3.0)
+  start_byte: number;  // Byte offset where file content starts
+  end_byte: number;    // Byte offset where file content ends
+  file_size: number;   // Total file size for metadata
   created_at?: string;
 }
 
@@ -32,6 +37,7 @@ function generateDistillId(): string {
 
 /**
  * Record a distill in the database
+ * Reads actual file size and stores byte offsets for pointer-based reading
  */
 export async function recordDistill(
   metadata: Omit<DistillMetadata, 'id' | 'created_at'>,
@@ -39,18 +45,50 @@ export async function recordDistill(
   const id = generateDistillId();
   const now = new Date().toISOString();
 
+  // Calculate byte offsets for pointer-based file reading
+  let startByte = 0;
+  let endByte = 0;
+  let fileSize = 0;
+
+  // If byte offsets are provided, use them; otherwise read file size
+  if (metadata.start_byte !== undefined) {
+    startByte = metadata.start_byte;
+  }
+  
+  if (metadata.file_size > 0) {
+    fileSize = metadata.file_size;
+  } else if (metadata.file_path && fs.existsSync(metadata.file_path)) {
+    // Read actual file size
+    try {
+      const stats = fs.statSync(metadata.file_path);
+      fileSize = stats.size;
+      // For full file distills, start at 0 and end at file size
+      startByte = 0;
+      endByte = fileSize;
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      const errObj = error instanceof Error ? error : new Error(msg);
+      StructuredLogger.error('FILE_STAT_FAILED', msg, { path: metadata.file_path, stack: errObj.stack });
+      fileSize = 0; // Default to 0 if can't read file
+    }
+  }
+
   const distill: DistillMetadata = {
     ...metadata,
     id,
     created_at: now,
+    start_byte: startByte,
+    end_byte: endByte,
+    file_size: fileSize,
   };
 
   try {
     await db.run(
       `INSERT INTO distills (
         id, timestamp, filename, file_path, line_count, lines_unique,
-        compression_ratio, source_sessions, source_files, parameters
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        compression_ratio, source_sessions, source_files, parameters,
+        start_byte, end_byte, file_size
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         distill.id,
         distill.timestamp,
@@ -62,6 +100,9 @@ export async function recordDistill(
         distill.source_sessions,
         distill.source_files,
         JSON.stringify(distill.parameters),
+        startByte,
+        endByte,
+        fileSize,
       ],
     );
 
@@ -71,6 +112,10 @@ export async function recordDistill(
       filename: distill.filename,
       line_count: distill.line_count,
       compression_ratio: distill.compression_ratio,
+      // Pointer-based file reading info
+      start_byte: startByte,
+      end_byte: endByte,
+      file_size: fileSize,
     });
 
     return distill;
@@ -108,6 +153,10 @@ export async function getDistill(id: string): Promise<DistillMetadata | null> {
       source_sessions: row.source_sessions || [],
       source_files: row.source_files || [],
       parameters: row.parameters ? JSON.parse(row.parameters) : {},
+      // Pointer-based file reading (Standard: Pointer-Based File Reading for Distills v5.3.0)
+      start_byte: row.start_byte !== undefined ? parseInt(row.start_byte) : 0,
+      end_byte: row.end_byte !== undefined ? parseInt(row.end_byte) : 0,
+      file_size: row.file_size !== undefined ? parseInt(row.file_size) : 0,
       created_at: row.created_at?.toISOString(),
     };
   } catch (error: any) {

@@ -519,6 +519,19 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
             console.warn('[Watchdog] Could not invalidate search cache:', e);
         }
 
+        // Standard 076: Automatic Distillation Trigger
+        // After all files are indexed, trigger automatic corpus distillation that overwrites previous version
+        try {
+            const { radialDistill } = await import('../distillation/radial-distiller-v2.js');
+            console.log('[Watchdog] ⏳ Automatic distillation starting after ingestion...');
+            
+            // Call radialDistill with empty request (triggers full corpus distillation)
+            await radialDistill({ mode: 'corpus' }, undefined);
+            console.log('[Watchdog] ✅ Automatic distillation completed - latest distill overwrote previous');
+        } catch (error: any) {
+            console.warn('[Watchdog] ⚠️ Automatic distillation failed during ingestion:', error.message);
+        }
+
         // Trigger Mirror: write cleaned content from original file (Standard 051 - Pointer Only)
         // Since compound_body is removed, we read from the original file and sanitize
         console.log('[Watchdog] Preparing mirror write from original file...');

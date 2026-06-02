@@ -112,7 +112,7 @@ describe('GitHub Clone Integration Tests', () => {
 
       // Validate clone
       expect(existsSync(cloneDir)).toBe(true);
-      expect(existsSync(join(cloneDir, 'package.json'))).toBe(true);
+      expect(existsSync(join(cloneDir, 'engine/package.json'))).toBe(true); // package.json is in engine/ subdirectory
       expect(existsSync(join(cloneDir, 'README.md'))).toBe(true);
 
       // Log results
