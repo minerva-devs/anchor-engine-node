@@ -156,6 +156,9 @@ export interface RadialDistillRequest {
   auto_save?: boolean;
   mode?: 'standard' | 'tag-based' | 'corpus';
   dry_run?: boolean;
+  max_molecules?: number;      // Limit number of molecules to process (for API speed)
+  timeout_seconds?: number;    // Maximum time allowed for distillation (in seconds)
+  include_code?: boolean;      // Whether to include code content in output
 }
 
 /**
@@ -267,39 +270,45 @@ function extractDigitalObjectMetadata(
  * Queries molecules directly (Standard 051), not compounds + filesystem
  */
 async function collectBlocksFromMolecules(
-  seed?: { query?: string; compound_ids?: string[]; buckets?: string[]; tags?: string[] }
+  request?: { query?: string; compound_ids?: string[]; buckets?: string[]; tags?: string[]; max_molecules?: number }
 ): Promise<SemanticBlock[]> {
   const blocks: SemanticBlock[] = [];
-  
+
+  // Calculate max limit (default to corpus mode when no seed or empty object)
+  let limitParam = PGLITE_CHUNK_IDS;
+  if (request?.max_molecules && request.max_molecules < PGLITE_CHUNK_IDS) {
+    limitParam = request.max_molecules;
+  }
+
   // Query molecules directly (Standard 051)
   let sql = `SELECT id, content, source_path, provenance, timestamp FROM molecules WHERE content IS NOT NULL AND LENGTH(content) > 10`;
   const params: any[] = [];
-  
-  if (seed?.compound_ids && seed.compound_ids.length > 0) {
-    sql += ` AND compound_id IN (${seed.compound_ids.map((_, i) => `$${i + 1}`).join(',')})`;
-    params.push(...seed.compound_ids);
-  } else if (seed?.query) {
+
+  if (request?.compound_ids && request.compound_ids.length > 0) {
+    sql += ` AND compound_id IN (${request.compound_ids.map((_, i) => `$${i + 1}`).join(',')})`;
+    params.push(...request.compound_ids);
+  } else if (request?.query) {
     // Use search to find relevant compounds, then query their molecules
     const searchResult = await db.run(
       `SELECT DISTINCT compound_id FROM atoms WHERE content ILIKE $1`,
-      [`%${seed.query}%`]
+      [`%${request.query}%`]
     );
     const compoundIds = searchResult.rows.map((r: any) => r.compound_id);
     if (compoundIds.length > 0) {
       sql += ` AND compound_id IN (${compoundIds.map((_: string, i: number) => `$${i + 1}`).join(',')})`;
       params.push(...compoundIds);
     }
-  } else if (seed?.buckets && seed.buckets.length > 0) {
-    sql += ` AND provenance IN (${seed.buckets.map((_, i) => `$${i + 1}`).join(',')})`;
-    params.push(...seed.buckets);
-  } else if (seed?.tags && seed.tags.length > 0) {
+  } else if (request?.buckets && request.buckets.length > 0) {
+    sql += ` AND provenance IN (${request.buckets.map((_, i) => `$${i + 1}`).join(',')})`;
+    params.push(...request.buckets);
+  } else if (request?.tags && request.tags.length > 0) {
     // Tag-based mode: query molecules with matching tags
     sql += ` AND tags @> $1::jsonb`;
-    params.push(JSON.stringify(seed.tags));
+    params.push(JSON.stringify(request.tags));
   }
-  
-  sql += ` ORDER BY timestamp DESC LIMIT ${PGLITE_CHUNK_IDS}`;
-  
+
+  sql += ` ORDER BY timestamp DESC LIMIT ${limitParam}`;
+
   const result = await db.run(sql, params);
   
   for (const row of result.rows) {

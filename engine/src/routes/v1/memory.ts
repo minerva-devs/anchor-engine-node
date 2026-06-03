@@ -120,7 +120,11 @@ export function setupMemoryRoutes(app: Application) {
           streamOpts.output_format = 'json';
         }
 
-        const stream = executeStreamingDistill(streamOpts);
+        // Respect include_code and timeout for streaming mode too
+        const maxMolecules = body.max_molecules || body.radius || 5;
+        const distillTimeoutMs = body.timeout_seconds ? body.timeout_seconds * 1000 : 60000;
+
+        const stream = executeStreamingDistill({ ...streamOpts, max_molecules: maxMolecules });
 
         // Set up SSE headers
         res.setHeader('Content-Type', 'text/event-stream');
@@ -146,22 +150,27 @@ export function setupMemoryRoutes(app: Application) {
       console.log('[DEBUG distill] body:', JSON.stringify(body));
       console.log('[DEBUG distill] body.seed:', body?.seed);
       console.log('[DEBUG distill] body.seed is undefined:', body?.seed === undefined);
-      
-      const bodyWithDefaults = { ...body, auto_save: true }; // Enable auto-save for all distillation requests
-      
+
+      // Enable auto-save and pass all parameters (including max_molecules, include_code, timeout_seconds)
+      const bodyWithDefaults = { ...body, auto_save: true };
+
       // DEBUG: Log what's being passed to radialDistill
       console.log('[DEBUG distill] bodyWithDefaults:', JSON.stringify(bodyWithDefaults));
       console.log('[DEBUG distill] bodyWithDefaults.seed:', bodyWithDefaults?.seed);
-      
-      // Pass the request object directly - radialDistill will extract cache key internally
+
       // Add timeout guard to prevent indefinite hangs from PGlite async DB operations
-      // Increased from 30s to 120s (2 minutes) to accommodate large corpus distillation
-      const distillTimeoutMs = 120000; // 120 second timeout
+      // Use user-provided timeout_seconds or default to 60s for API requests
+      const userTimeoutMs = body.timeout_seconds ? body.timeout_seconds * 1000 : 60000;
+      const distillTimeoutMs = Math.min(userTimeoutMs, 300000); // Cap at 5 minutes max
+      
+      // Create timeout-aware promise with proper error handling
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Distillation timed out after ${userTimeoutMs}ms as requested`)), distillTimeoutMs);
+      });
+
       const result: any = await Promise.race([
         radialDistill(bodyWithDefaults),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error(`Distillation timed out after ${distillTimeoutMs}ms`)), distillTimeoutMs)
-        )
+        timeoutPromise,
       ]);
       const duration = Date.now() - startTime;
 

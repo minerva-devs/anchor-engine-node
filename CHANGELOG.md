@@ -46,6 +46,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.1.1] - 2026-06-03
+
+### Fixed
+- **Distillation Endpoint Optimization**
+  - Added `max_molecules` parameter to limit corpus-mode queries and prevent timeouts
+  - Restored `timeout_seconds` support with user-configurable timeout (default: 60s) instead of hardcoded 120s
+  - Fixed streaming mode to respect `max_molecules` and use proper default values
+  
+- **Build Infrastructure**
+  - Restored build script (`scripts/build.ts`) that compiles TypeScript → JavaScript for production deployment
+  - Added missing devDependencies: `@types/node`, `rimraf`, `typescript`
+
+- **GitHub Ingestion Service**
+  - Fixed import extensions from `.ts` to `.js` (NodeNext module resolution requirement)
+  - Corrected corrupted method calls: `.tson()` → `.json()`, `.tsON.parse()` → `JSON.parse()`
+  - Removed duplicate entries in file extension mapping
+
+---
+
 ## [5.0.0] - 2026-05-28
 
 ### Added
@@ -90,7 +109,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Agent Discovery service
-- Graph Export functionality  
+- Graph Export functionality
 - Ingestion Status API endpoint
 
 ---
