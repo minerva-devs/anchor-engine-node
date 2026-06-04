@@ -71,12 +71,12 @@ export function setupMemoryRoutes(app: Application) {
   app.post('/v1/memory/distill', async (req: Request, res: Response) => {
     const startTime = Date.now();
 
-    // DEBUG: Log incoming data to file — MUST be in .anchor/logs/ per doc_policy.md
-    const { writeFileSync } = require('fs');
-    const os = require('os');
+    // DEBUG: Log incoming data to file — MUST be in .anchor/logs/ per doc_policy.md Section 5
+    const fs = await import('fs');
+    const os = await import('os');
     const homeDir = os.homedir();
     const logPath = `${homeDir}/.anchor/logs/distill-debug.log`;
-    
+
     // DEBUG: Log incoming data
     const debugLog = [
       '=== DISTILL REQUEST ===',
@@ -86,10 +86,10 @@ export function setupMemoryRoutes(app: Application) {
       `req.body.seed: ${JSON.stringify(req.body?.seed)}`,
       `req.body seed is undefined: ${req.body?.seed === undefined}`,
     ].join('\n');
-    
+
     // Synchronously write to file BEFORE any async operations
     try {
-      writeFileSync(logPath, debugLog + '\n\n', { flag: 'a' });
+      fs.writeFileSync(logPath, debugLog + '\n\n', { flag: 'a' });
       console.log('[DEBUG distill] ✓ Debug log written to', logPath);
     } catch (writeErr) {
       console.error('[DEBUG distill] ✗ Failed to write debug log:', String(writeErr));
@@ -159,10 +159,12 @@ export function setupMemoryRoutes(app: Application) {
       console.log('[DEBUG distill] bodyWithDefaults.seed:', bodyWithDefaults?.seed);
 
       // Add timeout guard to prevent indefinite hangs from PGlite async DB operations
-      // Use user-provided timeout_seconds or default to 60s for API requests
-      const userTimeoutMs = body.timeout_seconds ? body.timeout_seconds * 1000 : 60000;
-      const distillTimeoutMs = Math.min(userTimeoutMs, 300000); // Cap at 5 minutes max
-      
+      // Use user-provided timeout_seconds or default to 30s for API requests (prevent 60s timeouts)
+      const userTimeoutMs = body.timeout_seconds ? body.timeout_seconds * 1000 : 30000;
+      const distillTimeoutMs = Math.min(userTimeoutMs, 120000); // Cap at 2 minutes max
+
+      console.log(`[DEBUG distill] Using timeout: ${distillTimeoutMs}ms (max_molecules: ${bodyWithDefaults.max_molecules})`);
+
       // Create timeout-aware promise with proper error handling
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error(`Distillation timed out after ${userTimeoutMs}ms as requested`)), distillTimeoutMs);
@@ -172,6 +174,12 @@ export function setupMemoryRoutes(app: Application) {
         radialDistill(bodyWithDefaults),
         timeoutPromise,
       ]);
+
+      // Send success acknowledgment immediately to prevent axios timeout
+      if (!res.headersSent && res.writableEnded) {
+        return; // Client already closed connection
+      }
+
       const duration = Date.now() - startTime;
 
       StructuredLogger.info('RADIAL_DISTILL_COMPLETE', {

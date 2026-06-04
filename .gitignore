@@ -30,6 +30,8 @@ engine/src/native/node_modules/
 /scripts/start-engine.ps1
 /scripts/stop-engine.bat
 /scripts/engine_server.py
+/scripts/start-engine-bg.mjs
+/scripts/stop-engine-bg.mjs
 
 # ============================================
 # 4. Test Outputs (always ignore)
@@ -134,6 +136,10 @@ missions/
 # 4. Runtime Data - ALL NOW IN .anchor/
 # These were in project root but MUST be moved
 # ============================================
+
+# ⚠️ CRITICAL: Project root .anchor directory is NON-STANDARD
+# All runtime data should be at $HOME/.anchor/, not at project root
+.anchor/
 
 # Runtime directories (moved to .anchor/)
 backup/

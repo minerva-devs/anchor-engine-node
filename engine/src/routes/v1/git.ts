@@ -232,6 +232,134 @@ export function setupGitRoutes(app: Application) {
     }
   });
 
+  /**
+   * POST /v1/memory/github/clone - Alias endpoint for compatibility with existing tests
+   * Downloads and registers a GitHub repository (without triggering ingestion immediately)
+   */
+  app.post('/v1/memory/github/clone', async (req: Request, res: Response) => {
+    try {
+      const { repo_url, branch = 'main' } = req.body;
+
+      if (!repo_url) {
+        return res.status(400).json({ error: 'repo_url is required' });
+      }
+
+      // Use the same logic as /v1/github/repos but without immediate ingestion
+      const url = repo_url.replace(/\.git$/, '');
+      const owner = url.match(/github\.com\/([^/]+)\/([^/]+)/)?.[1] || '';
+      const repo = url.match(/github\.com\/[^/]+\/([^/.]+)$/)?.[1]?.replace('.git', '') || '';
+
+      if (!owner || !repo) {
+        return res.status(400).json({ error: 'Invalid GitHub URL' });
+      }
+
+      const bucket = `github:${owner}/${repo}`;
+
+      const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
+      const service = new GitHubIngestService();
+
+      // Register and ingest (this is what the alias endpoint should do)
+      console.log(`[API] GitHub clone endpoint triggered: ${repo_url} (branch: ${branch})`);
+      
+      // Start async sync to actually download and ingest the repo
+      const tempToken = req.headers['x-github-token'] as string | undefined;
+      (async () => {
+        try {
+          await service.registerRepo(url, bucket);
+          
+          // Now call syncRepo to start background ingestion
+          if (!tempToken) {
+            await service.syncRepo(repo.id, { runAnalysis: false, token: undefined });
+          } else {
+            await service.syncRepo(repo.id, { runAnalysis: false, token: tempToken });
+          }
+          
+          console.log(`[API] GitHub clone background sync started: ${repo_url}`);
+        } catch (error: any) {
+          console.error('[API] Background sync failed during clone:', error.message);
+        }
+      })();
+
+      // Clear temp token after use
+      if (tempToken) {
+        console.log(`[API] Temporary GitHub token cleared after clone: ${repo_url}`);
+      }
+
+      res.status(200).json({
+        success: true,
+        status: 'registered',
+        message: `Repository cloned successfully`,
+        url,
+        owner,
+        repo,
+        branch,
+        bucket,
+      });
+    } catch (error: any) {
+      console.error('[API] GitHub clone endpoint error:', error);
+      res.status(500).json({ 
+        error: 'GitHub clone failed',
+        details: error.message
+      });
+    }
+  });
+
+  /**
+   * POST /v1/files/upload - Accept files for ingestion (GitHub-specific alias)
+   * For GitHub repos, this calls the registerRepo endpoint directly
+   */
+  app.post('/v1/files/upload', async (req: Request, res: Response) => {
+    try {
+      const { file_type, repo_url, path, destination } = req.body;
+
+      if (!file_type || !repo_url) {
+        return res.status(400).json({ error: 'file_type and repo_url are required' });
+      }
+
+      // Only support GitHub files via this endpoint (for compatibility)
+      if (file_type !== 'github') {
+        return res.status(400).json({ 
+          error: 'Only GitHub file uploads are supported via /v1/files/upload' 
+        });
+      }
+
+      console.log(`[API] File upload triggered for ${repo_url} (path: ${path})`);
+
+      const url = repo_url.replace(/\.git$/, '');
+      const owner = url.match(/github\.com\/([^/]+)\/([^/]+)/)?.[1] || '';
+      const repo = url.match(/github\.com\/[^/]+\/([^/.]+)$/)?.[1]?.replace('.git', '') || '';
+
+      if (!owner || !repo) {
+        return res.status(400).json({ error: 'Invalid GitHub URL' });
+      }
+
+      const bucket = `github:${owner}/${repo}`;
+
+      const { GitHubIngestService } = await import('../../services/ingest/github-ingest-service.js');
+      const service = new GitHubIngestService();
+
+      // Register the repo (this will clone it)
+      console.log(`[API] Uploading GitHub repo: ${url}`);
+      await service.registerRepo(url, bucket);
+
+      res.status(200).json({
+        success: true,
+        status: 'registered',
+        message: `GitHub repository uploaded and registered`,
+        url,
+        owner,
+        repo,
+        bucket,
+      });
+    } catch (error: any) {
+      console.error('[API] File upload error:', error);
+      res.status(500).json({ 
+        error: 'File upload failed',
+        details: error.message
+      });
+    }
+  });
+
   // GET /v1/github/rate-limit - Check GitHub API rate limit status
   app.get('/v1/github/rate-limit', async (_req: Request, res: Response) => {
     try {

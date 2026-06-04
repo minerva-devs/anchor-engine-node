@@ -7,12 +7,175 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.2.0+cleanup] - 2026-06-03
+
+### Testing Documentation Cleanup & Consolidation
+
+**Merged duplicate documentation:**
+- Consolidated `docs/testing/LIVE-FIRE-TEST-SUITE.md` (571 lines) into `specs/current-standards/search-retrieval/014-search-algorithm-testing.md`
+- Added P5 edge cases section with 10+ test examples
+- Added P6 performance benchmarks section with latency validation tests  
+- Added CI/CD integration examples for GitHub Actions workflow
+- Added troubleshooting guide covering common issues and fixes
+- Added best practices section with 7 key recommendations
+- Standard 014 expanded from 301 to 541 lines (80% increase)
+
+**Removed legacy test files:**
+- Deleted 15 deprecated testing patterns from `tests/legacy/` directory:
+  - comprehensive-test.js, full-sequence-test.js, config-test.js, db-close-test.js
+  - db-test.js, distillation-test.js, fixed-startup-test.js, individual-import-test.js
+  - minimal-db-test.js, minimal-test.js, route-setup-test.js, test-tool-executor.js
+  - test-fixed-engine.js, test-native-module.js, test-server.js, accurate-test.js
+
+**Removed duplicate documentation:**
+- Deleted `docs/testing/LIVE-FIRE-TEST-SUITE.md` (merged into Standard 014)
+- Removed now-empty `docs/testing/` directory
+
+### Testing Framework Updates
+
+**New P5 Edge Cases Tests:**
+- Empty query handling
+- Very long query validation  
+- Special characters: `&`, `|`, `"`, `'`
+- HTML entity/XSS prevention
+- Unicode character support
+- Single character queries
+- Malformed input handling
+
+**New P6 Performance Benchmarks:**
+- Semantic search latency (<3s target)
+- Tag-based search latency (<1s target)
+- Byte offset search latency (<500ms target)
+- FTS search latency (<200ms target)
+- Empty query latency (<100ms target)
+- Performance validation with 50% margin tolerance
+
+**CI/CD Integration Examples:**
+- GitHub Actions workflow for automated testing
+- Watch mode for development iterations
+- Phase-specific execution (P0-P4 for CI, P5-P6 for full suites)
+
+**Troubleshooting Guide:**
+- Tests failing immediately (engine not running)
+- Logs not being created (permissions/PROJECT_ROOT issues)
+- Performance tests exceeding targets (insufficient corpus)
+- Pain point detection not working (Standard 027 configuration)
+
+### Documentation Updates
+
+- Updated `docs/INDEX.md` with recent cleanup notes
+- Added version bump: Standard 014 v1.0.0 → v2.0.0
+- Updated CHANGELOG.md with testing cleanup history
+
+---
+
+## [5.2.0] - 2026-05-28
+
+### Testing Documentation Cleanup & Consolidation
+
+**Merged duplicate documentation:**
+- Consolidated `docs/testing/LIVE-FIRE-TEST-SUITE.md` (571 lines) into `specs/current-standards/search-retrieval/014-search-algorithm-testing.md`
+- Added P5 edge cases section with 10+ test examples
+- Added P6 performance benchmarks section with latency validation tests  
+- Added CI/CD integration examples for GitHub Actions workflow
+- Added troubleshooting guide covering common issues and fixes
+- Added best practices section with 7 key recommendations
+- Standard 014 expanded from 301 to 541 lines (80% increase)
+
+**Removed legacy test files:**
+- Deleted 15 deprecated testing patterns from `tests/legacy/` directory:
+  - comprehensive-test.js, full-sequence-test.js, config-test.js, db-close-test.js
+  - db-test.js, distillation-test.js, fixed-startup-test.js, individual-import-test.js
+  - minimal-db-test.js, minimal-test.js, route-setup-test.js, test-tool-executor.js
+  - test-fixed-engine.js, test-native-module.js, test-server.js, accurate-test.js
+
+**Removed duplicate documentation:**
+- Deleted `docs/testing/LIVE-FIRE-TEST-SUITE.md` (merged into Standard 014)
+- Removed now-empty `docs/testing/` directory
+
+### Testing Framework Updates
+
+**New P5 Edge Cases Tests:**
+- Empty query handling
+- Very long query validation  
+- Special characters: `&`, `|`, `"`, `'`
+- HTML entity/XSS prevention
+- Unicode character support
+- Single character queries
+- Malformed input handling
+
+**New P6 Performance Benchmarks:**
+- Semantic search latency (<3s target)
+- Tag-based search latency (<1s target)
+- Byte offset search latency (<500ms target)
+- FTS search latency (<200ms target)
+- Empty query latency (<100ms target)
+- Performance validation with 50% margin tolerance
+
+**CI/CD Integration Examples:**
+- GitHub Actions workflow for automated testing
+- Watch mode for development iterations
+- Phase-specific execution (P0-P4 for CI, P5-P6 for full suites)
+
+**Troubleshooting Guide:**
+- Tests failing immediately (engine not running)
+- Logs not being created (permissions/PROJECT_ROOT issues)
+- Performance tests exceeding targets (insufficient corpus)
+- Pain point detection not working (Standard 027 configuration)
+
+### Documentation Updates
+
+- Updated `docs/INDEX.md` with recent cleanup notes
+- Added version bump: Standard 014 v1.0.0 → v2.0.0
+- Updated CHANGELOG.md with testing cleanup history
+
+---
+
+## [5.2.0] - 2026-05-28
+
+### Added
+- **Testing Infrastructure**
+  - Playwright-based e2e UI verification tests (`test_suite/anchor_engine_ux_test_suite.py`)
+  - Comprehensive API documentation with OpenAPI specs and curl examples
+  - System metrics endpoint `/v1/stats` (uptime, memory, request counters)
+  - Reliable engine startup/shutdown scripts
+
+- **QwenPaw Environment Integration**
+  - PowerShell environment fix script for PATH ordering and UTF-8 support
+  - Git Bash `.bashrc` with Windows→Linux compatibility aliases
+  - PowerShell 7 profile auto-loader
+
+- **Project Structure**
+  - Moved to `coding_projects/anchor-engine-node` workspace
+  - New infrastructure: `agents/`, `specs/decisions/`, `specs/INTEGRATIONS/`
+  - Database initialization scripts (`create-db.js`, `init-db.js`)
+
+### Changed
+- **Major Cleanup (v5.1.0 preparation)**
+  - Removed orphaned route: `engine/src/routes/v1/ingest-updated.ts`
+  - Removed orphaned service: `engine/src/services/ingest/ingest-atomic-updated.ts`
+  - Deprecated bright-nodes reference in documentation
+  - Cleaned all test artifacts, JSON build outputs, and temporary files (20+ files)
+  - Consolidated inbox: old inbox → internal-inbox
+
+- **Documentation**
+  - Added Testing section to README.md with e2e test instructions
+  - Created API surface documentation covering all 15 route files + 4 additional endpoints
+  - Updated UX/UI recursion workflow docs (require live engine for testing)
+
+### Fixed
+- Search route implementation restored from previous working commit
+- Removed circular imports and missing dependencies in route architecture
+- Cleaned stale TODO/FIXME comments from codebase
+
+---
+
 ## [5.1.0] - 2026-05-28
 
 ### Added
 - **Testing Infrastructure**
   - Playwright-based e2e UI verification tests (`test_suite/anchor_engine_ux_test_suite.py`)
-  - Comprehensive API documentation with OpenAPI specs and curl examples (`docs/testing/API-SURFACE.md`)
+  - Comprehensive API documentation with OpenAPI specs and curl examples
   - System metrics endpoint `/v1/stats` (uptime, memory, request counters)
   - Reliable engine startup/shutdown scripts
 
@@ -53,7 +216,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `max_molecules` parameter to limit corpus-mode queries and prevent timeouts
   - Restored `timeout_seconds` support with user-configurable timeout (default: 60s) instead of hardcoded 120s
   - Fixed streaming mode to respect `max_molecules` and use proper default values
-  
+
 - **Build Infrastructure**
   - Restored build script (`scripts/build.ts`) that compiles TypeScript → JavaScript for production deployment
   - Added missing devDependencies: `@types/node`, `rimraf`, `typescript`
@@ -97,68 +260,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Streaming distillation with real-time output
 - UI improvements for search results
 - Watchdog process for memory management
-
-### Fixed
-- Stability fixes and performance optimizations
-- Search cache improvements
-- Ephemeral database standard implementation
-
----
-
-## [4.9.0] - 2026-05-15
-
-### Added
-- Agent Discovery service
-- Graph Export functionality
-- Ingestion Status API endpoint
-
----
-
-## [4.8.0] - 2026-03-15
-
-### Added
-- MCP server as first-class binary entry point
-- Comprehensive Zod validation for all routes
-- API documentation with OpenAPI specs
-
-### Changed
-- Major reliability and observability improvements
-- Performance optimizations for search queries
-
----
-
-## [4.7.0] - 2026-02-28
-
-### Added
-- Streaming search results with incremental delivery
-- UI enhancements for better user experience
-
----
-
-## [4.5.0] - 2026-02-14
-
-### Added
-- WASM-based AST parser for code analysis
-- Geometric deduplication algorithm
-- Buckets system for efficient storage
-
----
-
-## [4.3.0] - 2026-02-01
-
-### Changed
-- Migrated to PGlite-first architecture for ARM64 Windows support
-- Removed deprecated native modules
-
----
-
-## [4.2.2] - 2026-01-28
-
-### Fixed
-- License update to AGPLv3 (Dual Licensing Model)
-
----
-
-## [Previous Versions]
-
-See git history for earlier releases.

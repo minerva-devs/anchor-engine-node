@@ -103,6 +103,7 @@ export const PATHS = {
   // INBOX_DIR for backward compatibility - maps to NOTEBOOK_DIR/external-inbox
   INBOX_DIR: path.resolve(process.env.INBOX_DIR || userSettings.paths?.inbox || path.join(NOTEBOOK_DIR, 'external-inbox')),
   EXTERNAL_INBOX_DIR: path.resolve(process.env.EXTERNAL_INBOX_DIR || userSettings.paths?.external_inbox || path.join(LOCAL_DATA_DIR, 'external-inbox')),
+  INTERNAL_INBOX_DIR: path.resolve(process.env.INTERNAL_INBOX_DIR || userSettings.paths?.internal_inbox || path.join(NOTEBOOK_DIR, 'internal-inbox')),
   DISTILLS_DIR: path.resolve(process.env.DISTILLS_DIR || userSettings.paths?.distills || path.join(LOCAL_DATA_DIR, 'distills')),
   MIRRORED_BRAIN_DIR: path.resolve(process.env.MIRRORED_BRAIN_DIR || userSettings.paths?.mirrored_brain || path.join(LOCAL_DATA_DIR, 'mirrored_brain')),
   SESSIONS_DIR: path.resolve(process.env.SESSIONS_DIR || userSettings.paths?.sessions || path.join(LOCAL_DATA_DIR, 'sessions')),

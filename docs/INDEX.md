@@ -1,6 +1,15 @@
 # Anchor Engine - Documentation Index
 
-**Version:** 5.2.0 | **Updated:** May 20, 2026 | **Status:** ✅ Production Ready
+**Version:** 5.2.0 | **Updated:** June 3, 2026 | **Status:** ✅ Production Ready
+
+---
+
+## 📊 Recent Updates (v5.2.0 + Testing Cleanup)
+
+### Documentation Consolidation & Duplicates Removed
+- **Testing Standards Merged**: Consolidated `docs/testing/LIVE-FIRE-TEST-SUITE.md` into `specs/current-standards/search-retrieval/014-search-algorithm-testing.md` (v2.0.0)
+- **Legacy Tests Removed**: Deleted 15 legacy test files from `tests/legacy/` directory (deprecated testing patterns)
+- **Empty Directory Removed**: Cleaned up now-empty `docs/testing/` directory
 
 ---
 
