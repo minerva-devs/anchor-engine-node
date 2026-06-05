@@ -1,4 +1,3 @@
-
 # STAR: Semantic Temporal Associative Retrieval
 ## The Browser Paradigm for AI Memory
 
