@@ -13,7 +13,7 @@ authors:
 affiliations:
   - name: Independent Researcher, New Mexico Tech Affiliated
     index: 1
-date: 23 February 2026
+date: 18 March 2026
 bibliography: paper.bib
 ---
 
@@ -27,166 +27,98 @@ STAR has been production-validated on a 28-million-token corpus of chat history 
 
 # Statement of Need
 
-## The Problem
+Current Retrieval-Augmented Generation (RAG) systems for AI memory require high-specification servers with GPUs and substantial RAM, creating a barrier for individual researchers and resource-constrained environments. Personal AI memory is often locked behind cloud subscriptions or enterprise infrastructure.
 
-Current Retrieval-Augmented Generation (RAG) systems for AI memory require high-specification servers with GPUs and substantial RAM, locking personal AI memory behind cloud subscriptions and enterprise infrastructure.
-
-The author encountered this when accumulating 40 chat sessions (~18M tokens). When forced to start new sessions due to context limits, summaries proved insufficient—models needed full conversational history. Existing solutions required either:
-- Cloud dependencies (privacy concerns, recurring costs)
-- Local vector databases requiring 4-8GB RAM just for the index
-- Enterprise hardware inaccessible to individual researchers
-
-## Research Purpose
-
-STAR addresses this gap by implementing sparse graph retrieval that:
-1. **Runs on consumer hardware** (4GB RAM, CPU-only)
-2. **Operates locally** (no cloud dependencies, data sovereignty)
-3. **Provides explainable results** (tag paths show why each result was retrieved)
-4. **Scales linearly** (O(k·d̄) complexity vs. O(n) for dense vectors)
-
-Target users include researchers managing large literature corpora, developers maintaining AI-assisted projects, privacy-conscious users, and resource-constrained environments.
+STAR addresses this gap with a sparse graph retrieval system that runs on consumer hardware (4GB RAM, CPU-only), operates locally without cloud dependencies, provides explainable results via tag paths, and scales linearly with O(k·d̄) complexity versus O(n) for dense vector approaches. The system enables researchers, developers, and privacy-conscious users to navigate large-scale personal knowledge corpora on standard laptops.
 
 # State of the Field
 
-## Dense Vector RAG (HNSW, FAISS)
+## Dense Vector and Graph-Based Retrieval
 
-Systems like HNSW [@malkov2018efficient] and FAISS [@johnson2019billion] represent state-of-the-art approximate nearest neighbor search. However, they require loading complete vector indices into RAM (4-8GB for modest corpora), restricting deployment to high-specification servers. Vector similarity also provides limited explainability—results match because embeddings are "close," but specific reasoning remains opaque.
+Systems like HNSW [@malkov2018efficient] and FAISS [@johnson2019billion] represent state-of-the-art approximate nearest neighbor search but require loading complete vector indices into RAM (4-8GB for modest corpora), restricting deployment to high-specification servers and providing limited explainability. Recent graph-based memory systems like TOBUGraph [@tobugraph2024] and Mem0 [@mem02025] explore alternative structures, often relying on LLM-based extractions or dense embeddings. In contrast, STAR introduces a deterministic, physics-inspired multiplicative scoring model (the Unified Field Equation) that prioritizes resource-constrained, local-first environments (operating on CPU-only, 4GB RAM footprints) and provides native explainability through explicit tag paths.
+
+STAR contributes a complete, deployed system with validated performance on 25M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) per-atom deduplication lookups via SimHash [@charikar2002similar] and disposable index architectures.
 
 | Method | Time Complexity | Space Complexity | Explainability | Hardware |
 |--------|----------------|------------------|----------------|----------|
-| **Dense Vector ANN (HNSW)** | $O(n \log n)$ or $O(n)$ | $O(n \cdot d)$ | Opaque (black box) | GPU preferred |
+| **Dense Vector ANN (HNSW)** | $O(\log n)$ query; $O(n \log n)$ build | $O(n \cdot d)$ | Opaque | GPU preferred |
 | **STAR (Sparse Graph)** | **$O(k \cdot \bar{d})$** | **$O(|E|)$** | **Native (tag paths)** | **CPU-only** |
 
-Where:
-- $n$ = total atoms
-- $k$ = query tags (typically 5–20)
-- $\bar{d}$ = average tag degree (typically 10–100)
-- $d$ = vector dimension (typically 768–1536)
-- $|E|$ = sparse edges (typically $10 \cdot n$)
+Where $n$ = total atoms, $k$ = query tags (typically 5–20), $\bar{d}$ = average tag degree (typically 10–100), $d$ = vector dimension (typically 768–1536), and $|E|$ = sparse edges (typically $10 \cdot n$). For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR asymptotically faster than dense retrieval.
 
-For personal knowledge graphs, $k \cdot \bar{d} \ll n$, making STAR asymptotically faster than dense retrieval.
+## Personal AI Memory and Novel Contribution
 
-## Graph-Based Memory Systems
-
-Recent work explores graph structures as alternatives to dense vectors. T-Retriever [@wei2026tretriever] introduces tree-based hierarchical retrieval using semantic-structural entropy but does not incorporate temporal decay. PersonalAI [@menschikov2025personalai] proposes a knowledge graph framework with hyper-edges for personalized LLM agents but focuses on framework design rather than production implementation.
-
-STAR contributes a complete, deployed system with validated performance on 28M tokens of real-world data. The bipartite graph approach (Atoms × Tags) enforces strict separation between content and metadata, enabling O(1) deduplication via SimHash [@charikar2002similar] and disposable index architectures.
-
-## Personal AI Memory
-
-Second Me [@wei2025second] proposes LLM-based memory parameterization requiring significant computational resources. STAR achieves similar associative retrieval goals through deterministic physics-based scoring, enabling deployment on minimal hardware.
-
-## Build vs. Contribute
-
-Existing sparse retrieval libraries (Lucene, Terrier) focus on traditional keyword search without temporal decay modeling, graph-based associative traversal, SimHash deduplication, or byte-offset lazy loading. STAR's unified field equation combining semantic, temporal, and structural factors in a multiplicative scoring model represents a novel contribution not present in existing packages.
+Second Me [@wei2025second] proposes LLM-based memory parameterization requiring significant computational resources. STAR achieves similar associative retrieval through deterministic physics-based scoring, enabling deployment on minimal hardware. Existing sparse retrieval libraries (Lucene, Terrier) focus on traditional keyword search without temporal decay modeling, graph-based associative traversal, SimHash deduplication, or byte-offset lazy loading. STAR's unified field equation combining semantic, temporal, and structural factors in a multiplicative scoring model represents a novel contribution not present in existing packages.
 
 # Software Design
 
-## Architecture: The Browser Paradigm
+## Architecture and Data Model
 
-STAR implements the "Browser Paradigm" for AI memory: just as browsers render websites by loading only necessary shards (HTML, CSS, JS) rather than the entire internet, STAR retrieves only relevant atoms required for the current query. This enables universal deployment across hardware capabilities.
+STAR implements the "Browser Paradigm" for AI memory: just as browsers render websites by loading only necessary shards, STAR retrieves only relevant atoms required for the current query. The architecture uses Node.js as the interface layer, TypeScript for all processing including SimHash fingerprinting, PGlite (WASM-based PostgreSQL) for sparse graph storage, and filesystem pointers for content (disposable, rebuildable indices).
 
-| Component | Browser Equivalent | Anchor Engine Implementation |
-|-----------|-------------------|------------------------------|
-| **HTML/CSS/JS shards** | Web page components | Atoms (tags + byte offsets) |
-| **DOM tree** | Document structure | Tag graph $G = (A, T, E)$ |
-| **Lazy loading** | On-demand resource fetch | Radial inflation from disk |
-| **Cache** | Browser cache | Ephemeral PGlite index |
+The data model follows a three-tier hierarchy: Compounds (document references), Molecules (semantic chunks with byte offsets), Atoms (content units with tags), and Tags (conceptual labels). Content resides in the filesystem; the database stores only pointers, enabling O(1) per-atom deduplication lookups via 64-bit SimHash fingerprints, ephemeral indices, and lazy loading.
 
-The hybrid architecture uses:
-- **Node.js** as the "Browser Shell" (UI, networking, OS integration)
-- **C++ N-API modules** as the "Rendering Engine" (text processing, SimHash fingerprinting)
-- **PGlite** (PostgreSQL-compatible) for sparse graph storage
-- **Filesystem pointers** for content (disposable, rebuildable indices)
+**v4.3.0 Migration Note:** Prior to February 2026, STAR used C++ N-API modules for performance-critical operations. The migration to pure TypeScript + PGlite WASM eliminated all native compilation requirements, enabling seamless deployment on ARM64 Windows and other platforms without platform-specific builds.
 
-## Data Model: Compound → Molecule → Atom
-
-| Level | Role | Content Stored | Example |
-|-------|------|----------------|---------|
-| **Compound** | Document reference | Full text (temporary) | `ChatSessions.yaml` (91.88MB) |
-| **Molecule** | Semantic chunk | Chunk text + byte offsets | Bytes 1024–2048 |
-| **Atom** | Tag/concept | **Metadata only** | `#authentication`, `#session` |
-
-Content lives in the filesystem; the database stores only pointers (byte offsets + tags). This separation enables:
-- O(1) deduplication via 64-bit SimHash fingerprints
-- Ephemeral indices (database wiped on shutdown, rebuilt from source)
-- Lazy loading (content read from disk only when needed)
-
-## The Unified Field Equation
+## Unified Field Equation
 
 The gravity score for query $q$ and candidate atom $a$ is:
 
-$$W(q, a) = \vert T(q) \cap T(a)\vert \cdot \gamma^{d(q,a)} \times e^{-\lambda \Delta t} \times \left(1 - \frac{H(h_q, h_a)}{64}\right)$$
+$$W(q, a) = |T(q) \cap T(a)| \cdot \gamma^{d(q,a)} \times e^{-\lambda \Delta t} \times \left(1 - \frac{H(h_q, h_a)}{64}\right)$$
 
-Where:
-- $\vert T(q) \cap T(a)\vert$: Shared tag count (semantic co-occurrence)
-- $\gamma^{d(q,a)}$: Damping factor raised to hop distance (default $\gamma = 0.85$)
-- $e^{-\lambda \Delta t}$: Temporal decay ($\lambda = 0.0001$ s⁻¹, ~115 min half-life)
-- $1 - H(h_q, h_a)/64$: SimHash similarity (0-63 Hamming distance normalized)
+where $|T(q) \cap T(a)|$ counts shared tags, $\gamma^{d(q,a)}$ applies damping per hop distance ($\gamma = 0.85$), $e^{-\lambda \Delta t}$ models temporal decay ($\lambda = 0.00001$ h⁻¹, ~7.9 year half-life suited to personal knowledge bases where old memories retain value), and $1 - H(h_q, h_a)/64$ measures SimHash similarity. Multiplicative scoring ensures any zero factor eliminates noise.
 
-**Design rationale:** Multiplicative scoring ensures any zero factor eliminates noise. Additive approaches accumulate weak signals; multiplicative approaches require all factors to contribute.
+## Retrieval Protocol
 
-## Retrieval Protocol: Planets and Moons
-
-STAR implements a three-phase retrieval protocol:
-
-### Phase 1 — Anchor Discovery (Planets)
-High-precision seed set via direct matching using:
-- Full-text search (BM25-style) via PostgreSQL FTS
-- Radial inflation from atom positions
-- Engram cache for O(1) frequent entity lookup
-
-**Output:** 20–200 anchor atoms with $d(q,a) = 0$
-
-### Phase 2 — Radial Inflation (Moons)
-High-recall expansion via recursive tag-walker graph traversal:
-
-```python
-def radial_inflation(anchors, radius=1, max_per_hop=50):
-    current_hop = anchors
-    all_results = set(anchors)
-    
-    for hop in range(radius):
-        candidates = get_connected_nodes(current_hop)
-        weighted = apply_unified_field_equation(candidates, anchors)
-        top_k = select_by_gravity(weighted, max_per_hop)
-        all_results.update(top_k)
-        current_hop = top_k
-    
-    return all_results
-```
-
-**Output:** 40–500 associated atoms ranked by gravity score
-
-### Phase 3 — Elastic Context Assembly
-Token-budget compliance with maximal coherence:
-- Merge atoms within 500-byte proximity from same source
-- Snap to sentence boundaries for narrative flow
-- Progressive inflation (top 10% get 2× radius, etc.)
-
-**Result:** 40–100 atoms → 8–12 coherent paragraphs
+STAR executes a three-phase retrieval protocol: (1) Anchor Discovery via full-text search and radial inflation, yielding 20–200 anchor atoms; (2) Radial Inflation via recursive tag-walker graph traversal, expanding to 40–500 associated atoms ranked by gravity score; (3) Elastic Context Assembly merging atoms within proximity and snapping to sentence boundaries to produce 8–12 coherent paragraphs.
 
 ## SQL-Native Implementation
 
-The equation executes as a single recursive SQL CTE in PGlite:
+The equation executes as a single recursive SQL CTE in PGlite, enabling precise hop-distance tracking for damping application. The O(k·d̄·r) complexity remains tractable for personal-scale corpora.
 
-```sql
-WITH RECURSIVE hop_traversal AS (
-  -- Anchors at hop 0
-  SELECT anchor_id, 0 as hop_distance FROM anchors
-  
-  UNION ALL
-  
-  -- Recursive expansion
-  SELECT t2.atom_id, ht.hop_distance + 1
-  FROM hop_traversal ht
-  JOIN tags t1 ON ht.atom_id = t1.atom_id
-  JOIN tags t2 ON t1.tag = t2.tag
-  WHERE ht.hop_distance < max_radius
-)
-SELECT atom_id,
-  ((shared_tags / 10.0) * POWER(0.85, hop_distance)) *
-  EXP(-0.0001 * time_delta) * simhash_similarity as gravity_score
-```
+## Quality Assurance
 
-This single SQL statement executes the entire retrieval pipeline, leveraging database query optimization for efficiency.
+A comprehensive test suite includes unit tests for core components (atomizer, fingerprinting, graph traversal) and integration tests for end-to-end search behavior. A benchmarking framework provides reproducible performance measurements; all benchmarks reported here can be reproduced using the provided scripts.
+
+# Research Impact Statement
+
+## Production Validation
+
+STAR has been production-validated on a corpus of 28 million tokens (~100MB) comprising 151,876 atoms, 280,000 molecules, and 436 files. All benchmarks were run on an AMD Ryzen / Intel i7-class CPU with 16GB DDR4 RAM, NVMe SSD, Windows 11, and no GPU. Ingestion throughput reaches 1,200 molecules/second on this hardware, processing the entire corpus in approximately four minutes. 
+
+**Search Latency Note:** Search latency scales linearly with dataset size. The ~150ms claim was measured on a 1,500 atom dataset. Current production deployment (151,000 atoms) shows ~7.7s latency for standard queries, which is acceptable for the comprehensive context retrieval use case where 100k+ characters of non-duplicated context are assembled.
+
+| Metric | Value | Dataset Size |
+|--------|-------|--------------|
+| **Ingestion throughput** | 1,200 mol/s | 151k atoms |
+| **Standard search latency** (p95) | 150 ms | 1.5k atoms |
+| **Standard search latency** (p95) | 7.7 s | 151k atoms |
+| **Max‑recall search latency** (p95) | 690 ms | 1.5k atoms |
+| **Peak memory** (ingestion) | 1,657 MB | 151k atoms |
+| **Idle memory** (post‑cleanup) | 510 MB | 151k atoms |
+
+## External Use and Reproducibility
+
+The system provides stateless context retrieval via HTTP API for integration with agent frameworks (OpenCLAW, custom agents) and CLI automation. All benchmarks are reproducible using the included `benchmarks/` directory (ingestion‑benchmark.ts, search‑benchmark.ts, comparison‑framework.ts). Containerization via Docker and docker‑compose enables deployment with identical environments (Node.js 20 LTS, 2 CPU, 2 GB RAM limits).
+
+## Community Readiness
+
+STAR is released under AGPL‑3.0 with comprehensive documentation (80+ architecture standards), Docker support, and a stable production release (v4.3.0). The repository is publicly available at https://github.com/RSBalchII/anchor‑engine‑node.
+
+**Platform Support:** v4.3.0+ runs on ARM64 Windows, x64 Windows, Linux (x64/ARM64), and macOS (Intel/Apple Silicon) without platform-specific compilation.
+
+# AI Usage Disclosure
+
+Generative AI tools (GitHub Copilot, Gemini, Qwen Coder, Kimi AI, Deepseek Coder) assisted with code scaffolding, SQL query patterns, documentation drafts, and grammar checking. The human author reviewed all AI-generated code, made all architectural decisions, verified mathematical correctness, conducted all benchmarks, and edited all documentation. Core algorithm design, mathematical derivations, research direction, benchmark methodology, and production validation were exclusively human contributions. The author bears complete responsibility for accuracy, originality, licensing compliance, and reproducibility.
+
+# Competing interests
+
+The author declares no competing interests.
+
+# Acknowledgments
+
+This research was conducted as independent work without external funding.
+
+The STAR algorithm builds upon foundational work in similarity estimation (Charikar's SimHash), graph-based search (PageRank), and information retrieval (sparse vector models). The implementation uses PGlite by ElectricSQL and open-source tools from the Node.js ecosystem.
+
+# References
