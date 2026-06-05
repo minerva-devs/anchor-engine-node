@@ -1876,6 +1876,22 @@
                 setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 100);
             }, []);
 
+            // Poll watchdog status every 3 seconds to keep UI in sync
+            useEffect(() => {
+                const pollInterval = setInterval(async () => {
+                    try {
+                        const data = await fetch('/v1/watchdog/status', {
+                            headers: { 'Authorization': `Bearer ${API_KEY}` }
+                        }).then(r => r.json());
+                        setWatchdogStatus({ isRunning: data.isRunning, watchedPaths: data.watchedPaths || [] });
+                    } catch (error) {
+                        console.error('Failed to poll watchdog status:', error);
+                    }
+                }, 3000);
+
+                return () => clearInterval(pollInterval);
+            }, [API_KEY]);
+
             const loadSettings = async () => {
                 try {
                     const data = await api.getSettings?.() || await fetch('/v1/settings', {

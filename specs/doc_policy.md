@@ -38,6 +38,8 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `scripts/run-engine.bat` | Python wrapper script to start/stop engine (Windows) |
 | `scripts/start-engine.ps1` | PowerShell script to start engine |
 | `scripts/stop-engine.bat` | Batch script to stop engine |
+| `scripts/start-engine-bg.mjs` | Node.js background startup (Standard 014 OPS-005) |
+| `scripts/stop-engine-bg.mjs` | Node.js background shutdown (Standard 014 OPS-005) |
 
 **PROHIBITED in Root:**
 - Phase completion reports

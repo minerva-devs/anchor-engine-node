@@ -604,12 +604,11 @@ export async function radialDistill(
   console.log('[DEBUG radialDistill] request.seed === undefined:', request?.seed === undefined);
   
   // Write debug info to file — MUST be in .anchor/logs/ per doc_policy.md Section 5
-  const { writeFileSync } = require('fs');
-  const os = require('os');
+  const os = await import('os');
   const homeDir = os.homedir();
   const logPath = `${homeDir}/.anchor/logs/radial-distill-debug.log`;
   try {
-    writeFileSync(
+    fs.writeFileSync(
       logPath, 
       `request: ${JSON.stringify(request)}\n` +
       `request.seed: ${JSON.stringify(request?.seed)}\n` +

@@ -1,6 +1,6 @@
 # Anchor Engine Standards Index
 
-This directory contains **33 active architecture standards** for Anchor Engine, organized by category.
+This directory contains **34 active architecture standards** for Anchor Engine, organized by category.
 
 ---
 
@@ -13,7 +13,7 @@ This directory contains **33 active architecture standards** for Anchor Engine, 
 | **Configuration & Paths** | 3 | Configuration management, path validation, path usage |
 | **Search & Retrieval** | 5 | MCP tools, streaming search, mobile optimization, illumination, algorithm reference |
 | **Distillation** | 6 | Radial distillation, zero-copy deduplication, output storage, self-contamination prevention, tag-based mode |
-| **Operations & Logging** | 2 | Operational visibility, pain point logging |
+| **Operations & Logging** | 3 | Operational visibility, pain point logging, background startup scripts |
 | **Performance** | 1 | Adaptive concurrency control |
 | **Robustness** | 1 | WASM fallback |
 | **Data Integrity** | 1 | Data integrity operations |
@@ -83,7 +83,7 @@ This directory contains **33 active architecture standards** for Anchor Engine, 
 
 | # | Standard | File |
 |---|----------|------|
-| **014** | Operational Visibility | [operations-logging/014-operational-visibility.md](operations-logging/014-operational-visibility.md) |
+| **001** | Operational Visibility (OPS-001 to OPS-005) | [operations-logging/014-operational-visibility.md](operations-logging/014-operational-visibility.md) |
 | **027** | Pain Point Logging | [operations-logging/027-pain-point-logging.md](operations-logging/027-pain-point-logging.md) |
 
 ### Performance & Robustness

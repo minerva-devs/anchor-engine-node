@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Merged duplicate documentation:**
 - Consolidated `docs/testing/LIVE-FIRE-TEST-SUITE.md` (571 lines) into `specs/current-standards/search-retrieval/014-search-algorithm-testing.md`
 - Added P5 edge cases section with 10+ test examples
-- Added P6 performance benchmarks section with latency validation tests  
+- Added P6 performance benchmarks section with latency validation tests
 - Added CI/CD integration examples for GitHub Actions workflow
 - Added troubleshooting guide covering common issues and fixes
 - Added best practices section with 7 key recommendations
@@ -28,8 +28,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - test-fixed-engine.js, test-native-module.js, test-server.js, accurate-test.js
 
 **Removed duplicate documentation:**
+- Consolidated `docs/testing/API-SURFACE.md` references into standard specs
 - Deleted `docs/testing/LIVE-FIRE-TEST-SUITE.md` (merged into Standard 014)
 - Removed now-empty `docs/testing/` directory
+
+### Background Startup Scripts (Standard 014 OPS-005)
+
+**Implemented agent-friendly background startup/shutdown scripts:**
+- `scripts/start-engine-bg.mjs` - Node.js background startup with:
+  - Build verification (`engine/dist/index.js`)
+  - Port conflict detection (auto-finds available port)
+  - File logging to `.anchor/logs/start-{timestamp}.log`
+  - Immediate exit after health check (non-blocking for agents)
+  - Health check retries before success confirmation
+
+- `scripts/stop-engine-bg.mjs` - Node.js background shutdown with:
+  - Port-based PID detection (cross-platform, Windows 11 compatible)
+  - Graceful SIGTERM shutdown first
+  - Force kill if graceful shutdown fails
+  - File logging to `.anchor/logs/stop-{timestamp}.log`
+
+**Benefits:**
+- No blocking console output during startup/shutdown
+- Automatic port conflict resolution
+- Persistent logging for debugging
+- Cross-platform compatibility (Windows 11, Linux, macOS)
 
 ### Testing Framework Updates
 
@@ -92,6 +115,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 **Removed duplicate documentation:**
 - Deleted `docs/testing/LIVE-FIRE-TEST-SUITE.md` (merged into Standard 014)
 - Removed now-empty `docs/testing/` directory
+
+### Background Startup Scripts (Standard 014 OPS-005)
+
+**Implemented agent-friendly background startup/shutdown scripts:**
+- `scripts/start-engine-bg.mjs` - Node.js background startup with:
+  - Build verification (`engine/dist/index.js`)
+  - Port conflict detection (auto-finds available port)
+  - File logging to `.anchor/logs/start-{timestamp}.log`
+  - Immediate exit after health check (non-blocking for agents)
+  - Health check retries before success confirmation
+
+- `scripts/stop-engine-bg.mjs` - Node.js background shutdown with:
+  - Port-based PID detection (cross-platform, Windows 11 compatible)
+  - Graceful SIGTERM shutdown first
+  - Force kill if graceful shutdown fails
+  - File logging to `.anchor/logs/stop-{timestamp}.log`
+
+**Benefits:**
+- No blocking console output during startup/shutdown
+- Automatic port conflict resolution
+- Persistent logging for debugging
+- Cross-platform compatibility (Windows 11, Linux, macOS)
 
 ### Testing Framework Updates
 

@@ -21,6 +21,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as tar from 'tar';
+import fetch from 'node-fetch';
 
 // File exclusion patterns
 const EXCLUDE_PATTERNS = [
@@ -70,10 +71,20 @@ async function run(): Promise<void> {
     progress('downloading', { url: tarballUrl });
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort('Download timeout after 120s'), 120_000);
+    const timeoutId = setTimeout(() => controller.abort('Download timeout after 120s'), 120_000);
 
-    const response = await fetch(tarballUrl, { headers, redirect: 'follow', signal: controller.signal });
-    clearTimeout(timeout);
+    try {
+      const response = await fetch(tarballUrl, { headers, redirect: 'follow', signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+      }
+    } catch (err: any) {
+      progress('error', { message: `Download failed: ${err.message || 'Unknown error'}`, url: tarballUrl });
+      parentPort?.postMessage({ type: 'error', message: err.message, stack: err.stack });
+      throw err;
+    }
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
