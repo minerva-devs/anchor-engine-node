@@ -387,21 +387,33 @@ export class LRUCache<K, V> {
         if (this.cache.size > targetSize) {
           this.resize(targetSize);
         }
-        console.log(
-          `[LRUCache] CRITICAL: Evicted to ${targetSize} entries (memory: ${percentageUsed.toFixed(1)}%)`
-        );
+        // Log to separate file instead of runtime log to prevent pollution
+        this.writeLRULog(`[CRITICAL] Evicted to ${targetSize} entries (memory: ${percentageUsed.toFixed(1)}%)`);
       } else if (percentageUsed >= this.memoryPressureThreshold) {
         // High pressure: Evict 30% of cache (but keep minimum floor of 20 entries)
         const targetSize = Math.max(20, Math.floor(this.maxEntries * 0.7));
         if (this.cache.size > targetSize) {
           this.resize(targetSize);
         }
-        console.log(
-          `[LRUCache] HIGH PRESSURE: Evicted to ${targetSize} entries (memory: ${percentageUsed.toFixed(1)}%)`
-        );
+        // Log to separate file instead of runtime log to prevent pollution
+        this.writeLRULog(`[HIGH PRESSURE] Evicted to ${targetSize} entries (memory: ${percentageUsed.toFixed(1)}%)`);
       }
     } catch (error) {
       console.error('[LRUCache] Memory check failed:', error);
+    }
+  }
+
+  /**
+   * Write LRU cache log entry to separate file
+   */
+  private writeLRULog(message: string): void {
+    try {
+      const timestamp = new Date().toISOString();
+      const logEntry = `[${timestamp}] ${message}\n`;
+      fs.appendFileSync(this.lruLogPath, logEntry);
+    } catch (error) {
+      // Silently fail - don't crash if logging fails
+      console.debug('[LRUCache] Failed to write log:', error);
     }
   }
 
