@@ -457,57 +457,45 @@ process.on('SIGINT', async () => {
     console.log('[Shutdown] Closing database connection...');
     await db.close();
 
-    // Standard 110: Ephemeral Index Architecture
-    // Clear ALL derived data on shutdown - only inbox/ is source of truth
-    // Controlled by user_settings.json (database.wipe_on_shutdown, watcher.wipe_mirrored_brain_on_shutdown)
-
-    // 1. Wipe PGlite Database (index/cache) - controlled by database.wipe_on_shutdown
-    const shouldWipeDb = config.DATABASE?.WIPE_ON_SHUTDOWN === true;
-    if (shouldWipeDb) {
+    // Standard 110: Ephemeral Index Architecture — Unconditional wipe on shutdown
+    // All PGlite tables (atoms, molecules, sources, distills) must be cleared
+    // so each engine start rebuilds fresh from inbox/ (source of truth)
+    
+    // 1. Unconditionally wipe ALL PGlite database tables
+    console.log('[Shutdown] Wiping all ephemeral PGlite database tables...');
+    try {
       const dbPath = process.env.PGLITE_DB_PATH || path.join(PATHS.LOCAL_DATA_DIR, 'context', 'context.db');
       if (existsSync(dbPath)) {
-        console.log('[Shutdown] Wiping PGlite database (database.wipe_on_shutdown=true)...');
-        try {
-          rmSync(dbPath, { recursive: true, force: true });
-          console.log('[Shutdown] ✓ PGlite database wiped.');
-        } catch (e: any) {
-          console.warn(`[Shutdown] ⚠ Could not wipe PGlite database: ${e.message}`);
-          console.warn('[Shutdown] Will be wiped on next startup');
-        }
+        rmSync(dbPath, { recursive: true, force: true });
+        console.log('[Shutdown] ✓ PGlite database wiped — all atoms/molecules/sources/distills cleared.');
+      } else {
+        console.log('[Shutdown] ⚠ No PGlite DB found at:', dbPath);
       }
-    } else {
-      console.log('[Shutdown] Skipping DB wipe (set database.wipe_on_shutdown=true to enable)');
+    } catch (e: any) {
+      console.error(`[Shutdown] ✗ Could not wipe PGlite database: ${e.message}`);
     }
 
-    // 2. Wipe SQLite3 context.db (anchor-core FFI database)
-    const contextDbPath = path.join(PATHS.LOCAL_DATA_DIR, 'context', 'context.db');
-    if (existsSync(contextDbPath) && shouldWipeDb) {
-      console.log('[Shutdown] Wiping SQLite3 context.db (anchor-core FFI)...');
+    // 2. Wipe SQLite3 context.db (anchor-core FFI database) — same unconditional pattern
+    const sqliteDbPath = path.join(PATHS.LOCAL_DATA_DIR, 'context', 'context.db');
+    if (existsSync(sqliteDbPath)) {
       try {
-        rmSync(contextDbPath, { force: true });
+        rmSync(sqliteDbPath, { recursive: true, force: true });
         console.log('[Shutdown] ✓ SQLite3 context.db wiped.');
       } catch (e: any) {
-        console.warn(`[Shutdown] ⚠ Could not wipe SQLite3 context.db: ${e.message}`);
-        console.warn('[Shutdown] Will be wiped on next startup');
+        console.error(`[Shutdown] ✗ Could not wipe SQLite3 context.db: ${e.message}`);
       }
     }
 
     // 3. Clear mirrored_brain/ (extracted from inbox/, regenerated on start)
-    // Controlled by watcher.wipe_mirrored_brain_on_shutdown
-    const shouldWipeMirror = config.WATCHER?.WIPE_MIRRORED_BRAIN_ON_SHUTDOWN === true;
-    if (shouldWipeMirror) {
-      const { MIRRORED_BRAIN_PATH } = await import('./services/mirror/mirror.js');
-      if (existsSync(MIRRORED_BRAIN_PATH)) {
-        console.log('[Shutdown] Clearing mirrored_brain/ (watcher.wipe_mirrored_brain_on_shutdown=true)...');
-        try {
-          rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
-          console.log('[Shutdown] ✓ mirrored_brain/ cleared.');
-        } catch (e: any) {
-          console.warn(`[Shutdown] ⚠ Could not clear mirrored_brain/: ${e.message}`);
-        }
+    const { MIRRORED_BRAIN_PATH } = await import('./services/mirror/mirror.js');
+    if (existsSync(MIRRORED_BRAIN_PATH)) {
+      console.log('[Shutdown] Clearing mirrored_brain/...');
+      try {
+        rmSync(MIRRORED_BRAIN_PATH, { recursive: true, force: true });
+        console.log('[Shutdown] ✓ mirrored_brain/ cleared.');
+      } catch (e: any) {
+        console.warn(`[Shutdown] ⚠ Could not clear mirrored_brain/: ${e.message}`);
       }
-    } else {
-      console.log('[Shutdown] Skipping mirrored_brain wipe (set watcher.wipe_mirrored_brain_on_shutdown=true to enable)');
     }
 
     // 4. Clear GitHub Mirror Directory (cloned repos, derived from ingestion)

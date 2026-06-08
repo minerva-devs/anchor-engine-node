@@ -85,15 +85,15 @@ export function setupHealthRoutes(app: express.Application) {
   app.get('/health/native', async (_req: Request, res: Response) => {
     try {
       const healthStatus = await healthCheckService.checkHealth();
-      const nativeHealth = healthStatus.components.find(c => c.name === 'native-modules');
+      const wasmHealth = healthStatus.components.find(c => c.name === 'wasm-modules');
 
-      if (nativeHealth) {
-        const statusCode = nativeHealth.status === 'healthy' ? 200 :
-          nativeHealth.status === 'degraded' ? 207 : 503;
+      if (wasmHealth) {
+        const statusCode = wasmHealth.status === 'healthy' ? 200 :
+          wasmHealth.status === 'degraded' ? 207 : 503;
 
-        res.status(statusCode).json(nativeHealth);
+        res.status(statusCode).json(wasmHealth);
       } else {
-        res.status(500).json({ error: 'Native module health check not available' });
+        res.status(500).json({ error: 'WASM module health check not available' });
       }
     } catch (error: any) {
       res.status(500).json({ error: error.message });

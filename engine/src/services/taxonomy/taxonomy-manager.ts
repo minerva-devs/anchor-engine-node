@@ -10,6 +10,12 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import { SemanticCategory } from '../../types/taxonomy.js';
 import { db } from '../../core/db.js';
+import { 
+  KNOWN_PEOPLE, 
+  KNOWN_PLACES, 
+  KNOWN_SYSTEMS,
+  categorizeEntity 
+} from '../../config/known-entities.js';
 
 const TAXONOMY_DIR = path.join(process.cwd(), 'user_data', 'taxonomy');
 const CURRENT_RULES_FILE = path.join(TAXONOMY_DIR, 'current_rules.json');
@@ -176,17 +182,14 @@ export class TaxonomyManager {
   private guessCategory(word: string): string {
     const lowerWord = word.toLowerCase();
     
-    // Check against known person names
-    const knownPeople = ['rob', 'jade', 'dory', 'coda', 'alex']; // Add more as needed
-    if (knownPeople.includes(lowerWord)) return 'Person/Relationship';
+    // Check against known person names (centralized config)
+    if (KNOWN_PEOPLE.some(name => lowerWord.includes(name))) return 'Person/Relationship';
     
-    // Check against known places
-    const knownPlaces = ['albuquerque', 'bernalillo', 'sandia', 'los alamos', 'texas'];
-    if (knownPlaces.includes(lowerWord)) return 'Location';
+    // Check against known places (centralized config)
+    if (KNOWN_PLACES.some(place => lowerWord.includes(place))) return 'Location';
     
-    // Check against known technical terms
-    const knownTech = ['node.js', 'typescript', 'cozodb', 'rag', 'vector', 'embedding', 'api'];
-    if (knownTech.some(tech => lowerWord.includes(tech))) return 'Technical';
+    // Check against known technical terms (centralized config)
+    if (KNOWN_SYSTEMS.some(tech => lowerWord.includes(tech))) return 'Technical';
     
     // Default to unknown concept
     return 'Unknown Concept';

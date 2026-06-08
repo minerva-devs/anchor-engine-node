@@ -888,27 +888,9 @@ GET  /v1/buckets                 # List buckets
 GET  /v1/tags                    # List tags
 ```
 
----
 
-## Performance Benchmarks (v5.2.0)
 
 ---
-
-## API Endpoints (v5.0.0)
-
-```bash
-GET  /health                     # System status
-POST /v1/ingest                  # Ingest content
-POST /v1/ingest/streaming        # Stream large file ingestion (v5.0.0)
-POST /v1/memory/search           # Search memory
-POST /v1/memory/search/stream    # Streaming search with SSE results (v5.0.0)
-POST /v1/memory/explore          # BFS graph traversal (illuminate)
-GET  /v1/buckets                 # List buckets
-GET  /v1/tags                    # List tags
-```
-
----
-
 ## Performance Benchmarks (v5.2.0)
 
 | Metric | Result | Target | Status |

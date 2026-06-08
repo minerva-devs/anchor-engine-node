@@ -15,6 +15,8 @@ import { db } from '../src/core/db.js';
 import { atomizer } from '../src/services/ingestion/atomizer.js';
 import { sanitizer } from '../src/services/ingestion/sanitizer.js';
 import { fingerprinter } from '../src/services/semantic/fingerprinter.js';
+// Import WASM-based fingerprint module for direct fingerprint operations
+import { fingerprint as fingerprintWasm, distance as distanceWasm } from '@rbalchii/anchor-fingerprint-wasm';
 
 export class DiagnosticTestRunner {
   private framework: TestFramework;
@@ -471,67 +473,53 @@ export class DiagnosticTestRunner {
    */
   private createNativeModuleTest(): TestCase {
     return {
-      name: 'Native Module Functionality',
-      description: 'Test native module loading and functionality',
+      name: 'WASM Module Functionality',
+      description: 'Test WASM-based fingerprint module and content sanitization',
       testFn: async () => {
-        console.log('  🔧 Testing native module functionality...');
+        console.log('  🔧 Testing WASM module functionality...');
         
         try {
-          // Try to import and test native modules
-          const nativeModulePath = testConfigManager.getConfig().environment.nativeModulePath;
-          
-          if (!nativeModulePath) {
-            console.log('  ⚠️  No native module path configured, skipping native module test');
-            return;
-          }
-          
-          // Dynamically import the native module
-          const nativeModule = await import(nativeModulePath);
-          
-          // Test fingerprint function if available
-          if (typeof nativeModule.fingerprint === 'function') {
-            const testFp = nativeModule.fingerprint('test string');
-            if (typeof testFp === 'undefined') {
-              console.warn('  ⚠️  Native fingerprint function returned undefined');
-            } else {
-              console.log('  ✅ Native fingerprint function working');
-            }
+          // Test WASM-based fingerprint function (replaces nativeModule.fingerprint)
+          console.log('    - Testing fingerprint()...');
+          const testText = 'Hello, this is a test string for fingerprinting!';
+          const fingerprint1 = await fingerprintWasm(testText);
+          if (typeof fingerprint1 === 'bigint') {
+            console.log(`  ✅ Fingerprint generation working: ${fingerprint1}`);
           } else {
-            console.log('  ⚠️  Native fingerprint function not available');
+            throw new Error(`Unexpected fingerprint result type: ${typeof fingerprint1}`);
           }
           
-          // Test distance function if available
-          if (typeof nativeModule.distance === 'function') {
-            const testDist = nativeModule.distance(12345n, 67890n);
-            if (typeof testDist === 'undefined') {
-              console.warn('  ⚠️  Native distance function returned undefined');
-            } else {
-              console.log('  ✅ Native distance function working');
-            }
+          // Test WASM-based distance function (replaces nativeModule.distance)
+          console.log('    - Testing distance()...');
+          const testText2 = 'Hello, this is a very similar test string!';
+          const fp1 = await fingerprintWasm(testText);
+          const fp2 = await fingerprintWasm(testText2);
+          const dist = await distanceWasm(fp1, fp2);
+          if (typeof dist === 'number') {
+            console.log(`  ✅ Distance calculation working: ${dist} bits differ`);
           } else {
-            console.log('  ⚠️  Native distance function not available');
+            throw new Error(`Unexpected distance result type: ${typeof dist}`);
           }
           
-          // Test cleanse function if available
-          if (typeof nativeModule.cleanse === 'function') {
-            const testClean = nativeModule.cleanse('{"response_content": "test", "extra": "removed"}');
-            if (typeof testClean === 'undefined') {
-              console.warn('  ⚠️  Native cleanse function returned undefined');
-            } else {
-              console.log('  ✅ Native cleanse function working');
-            }
+          // Test content sanitization using sanitizer service (replaces nativeModule.cleanse)
+          console.log('    - Testing content sanitization...');
+          const testResponse = '{"response_content": "test data", "extra_field": "should be removed"}';
+          if (sanitizer) {
+            const sanitized = await sanitizer.sanitizeText(testResponse);
+            console.log(`  ✅ Sanitization working: input length ${testResponse.length} → output length ${sanitized?.length || 0}`);
           } else {
-            console.log('  ⚠️  Native cleanse function not available');
+            // If sanitizer service is not available, just log that we'd test it here
+            console.log('  ⚠️  Sanitizer service not available, skipping sanitization test');
           }
           
-          console.log('  ✅ Native module functionality test completed');
+          console.log('  ✅ WASM module functionality tests completed successfully');
         } catch (error) {
-          console.warn('  ⚠️  Native module test failed (may be expected if native modules not built):', error.message);
-          // Don't throw error as native modules may not be available in all environments
+          console.warn('  ⚠️  WASM module test failed:', error.message);
+          // Don't throw error as WASM modules may not be available in all environments
         }
       },
       timeout: 8000,
-      tags: ['native-modules', 'performance'],
+      tags: ['wasm-modules', 'performance'],
       dependencies: []
     };
   }

@@ -90,6 +90,29 @@ export class Database {
       // Use pathManager for consistent absolute path (Standard 051)
       const dbPath = process.env.PGLITE_DB_PATH || pathManager.getDatabasePath();
 
+      // NEW: Validate directory exists and is writable before attempting operations
+      try {
+        if (!fs.existsSync(dbPath)) {
+          console.log(`[DB] Creating database directory: ${dbPath}`);
+          fs.mkdirSync(dbPath, { recursive: true });
+          console.log(`[DB] Directory created successfully: ${dbPath}`);
+        } else {
+          // Verify write permission by creating and removing a test file
+          const testFile = path.join(dbPath, '.write-test');
+          try {
+            fs.writeFileSync(testFile, 'test', { flag: 'w' });
+            fs.rmSync(testFile);
+            console.log(`[DB] Directory verified writable: ${dbPath}`);
+          } catch (err: any) {
+            console.error(`[DB] Error verifying write permission: ${err.message}`);
+            throw new Error(`Database directory not writable: ${err.message}`);
+          }
+        }
+      } catch (dirError: any) {
+        console.error('[DB] Cannot create/access database directory:', dirError.message);
+        throw new Error(`Database initialization failed: ${dirError.message}`);
+      }
+
       // Wipe and recreate the database directory on every startup (Standard 051 - Ephemeral Index)
       // Controlled by user_settings.json: database.wipe_on_startup (default: true)
       const shouldWipe = config.DATABASE?.WIPE_ON_STARTUP !== false;

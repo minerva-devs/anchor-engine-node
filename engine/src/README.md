@@ -1,6 +1,6 @@
 # Anchor Engine - Source Code Overview
 
-**Version:** (VERSION) | **Last Updated:** May 26, 2026
+**Version:** 5.2.0 | **Last Updated:** May 26, 2026
 
 ---
 

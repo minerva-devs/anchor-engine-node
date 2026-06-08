@@ -1,12 +1,12 @@
 /**
  * Native Module Bottleneck Identification Script
  * 
- * Identifies performance bottlenecks in native modules by running comprehensive profiling
+ * Identifies performance bottlenecks in WASM modules by running comprehensive profiling
  */
 
-import { nativeModuleProfiler } from '../utils/native-module-profiler.js';
+import { moduleProfiler } from '../utils/module-profiler.js';
 import { logWithContext } from '../utils/structured-logger.js';
-import type { ProfilingConfig } from '../utils/native-module-profiler.js';
+import type { ProfilingConfig } from '../utils/module-profiler.js';
 
 // Comprehensive test data for bottleneck identification
 function generateBottleneckTestData(): { [key: string]: any[] } {
@@ -133,7 +133,7 @@ function generateBottleneckTestData(): { [key: string]: any[] } {
 
 // Run bottleneck identification
 async function runBottleneckIdentification() {
-  logWithContext.info('Starting native module bottleneck identification...');
+  logWithContext.info('Starting WASM module bottleneck identification...');
   
   try {
     // Generate comprehensive test data
@@ -180,7 +180,7 @@ async function runBottleneckIdentification() {
       totalIterations: configs.reduce((sum, c) => sum + c.iterations, 0),
     });
     
-    const results = await nativeModuleProfiler.profileMultiple(configs);
+    const results = await moduleProfiler.profileMultiple(configs);
     
     // Log summary of results
     logWithContext.info('Bottleneck identification completed', {
@@ -189,18 +189,18 @@ async function runBottleneckIdentification() {
     });
     
     // Generate detailed report
-    const report = nativeModuleProfiler.generateReport();
+    const report = moduleProfiler.generateReport();
     console.log('\n' + report);
     
     // Identify slowest operations
-    const slowest = nativeModuleProfiler.getSlowestOperations(5);
+    const slowest = moduleProfiler.getSlowestOperations(5);
     console.log('\nSlowest Operations:');
     slowest.forEach((op: any, idx: number) => {
       console.log(`  ${idx + 1}. ${op.operation}: ${op.avgDuration.toFixed(4)}ms avg (${op.minDuration.toFixed(4)}ms - ${op.maxDuration.toFixed(4)}ms)`);
     });
     
     // Identify highest memory impact operations
-    const highMemory = nativeModuleProfiler.getHighestMemoryImpact(5);
+    const highMemory = moduleProfiler.getHighestMemoryImpact(5);
     console.log('\nHighest Memory Impact Operations:');
     highMemory.forEach((op: any, idx: number) => {
       console.log(`  ${idx + 1}. ${op.operation}: ${op.memoryDelta.toFixed(2)}MB change`);
@@ -258,11 +258,11 @@ async function runBottleneckIdentification() {
 if (require.main === module) {
   runBottleneckIdentification()
     .then(() => {
-      logWithContext.info('Native module bottleneck identification script completed successfully');
+      logWithContext.info('WASM module bottleneck identification script completed successfully');
       process.exit(0);
     })
     .catch(error => {
-      logWithContext.error('Native module bottleneck identification script failed', error);
+      logWithContext.error('WASM module bottleneck identification script failed', error);
       process.exit(1);
     });
 }

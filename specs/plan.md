@@ -18,7 +18,7 @@
 - [x] **Runtime Data Consolidation** - All runtime data routes to `~/.anchor/` via `engine/src/config/paths.ts`
 - [x] **Test Suite Stabilization** - 100% pass rate, vitest migration complete
 
-### Upcoming: v5.1.0 (May 2026)
+### Upcoming: v5.3.0 (June 2026)
 - [ ] Integration test suite (search pipeline, distillation, MCP, memory pressure)
 - [ ] Failure tracking + circuit breaker pattern
 - [ ] Tag sanitization at write time (not just render time)
@@ -88,7 +88,7 @@
 - [x] **Runtime Data Consolidation** - All runtime data routes to `~/.anchor/` via `engine/src/config/paths.ts`
 - [x] **Test Suite Stabilization** - 100% pass rate, vitest migration complete
 
-#### In Progress (v5.1.0)
+#### In Progress (v5.3.0)
 - [ ] Integration test suite
 - [ ] Failure tracking + circuit breaker
 - [ ] Tag sanitization at write time
@@ -427,7 +427,7 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 1. ~~**Jest→Vitest migration**~~ (12 files) ✅ COMPLETED
 2. ~~**Security path validation fixes**~~ ✅ COMPLETED
 3. ~~**Engine version logging**~~ ✅ COMPLETED
-4. **Integration test suite** - Critical for production stability (v5.1.0 target)
+4. **Integration test suite** - Critical for production stability (v5.3.0 target)
 5. **Failure tracking + circuit breaker** - Prevents cascading failures
 
 #### Recommended Build Tools
@@ -474,7 +474,6 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 - [ ] **Audit WASM dependencies** — List all `@rbalchii/*-wasm` packages, assess build complexity
 - [ ] **Evaluate direct `.wasm` loading** — Can we ship `.wasm` files in `node_modules` and load them via `fetch()` or `WebAssembly.instantiate()`?
-- [ ] **Evaluate `node-addon-api` + `.node` binaries** — For C++ modules, ship precompiled binaries per platform
 - [ ] **Document tradeoffs** — npm registry vs direct loading: versioning, caching, CI, size
 - [ ] **Prototype one module** — Pick the smallest WASM module and test direct loading
 
@@ -497,7 +496,7 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
 | PGlite scalability limits | Medium | High | Benchmark early, SQLite fallback ready |
-| Native module compatibility | Low | Medium | Graceful degradation, JS fallbacks |
+| WASM module compatibility | Low | Medium | Graceful degradation, JS fallbacks (Standard 013) |
 | Search calibration brittleness | Medium | Medium | Extensive testing, adaptive fallbacks |
 
 ### Schedule Risks
@@ -516,7 +515,7 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 - Node.js 18+
 - PNPM package manager
-- C++ build tools (native modules)
+- Rust toolchain (for WASM compilation, optional)
 - PGlite (bundled)
 
 ### Production Deployment
@@ -548,7 +547,7 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 - ✅ README - Quick start works
 - ✅ Whitepaper - Architecture explained
-- ✅ Standards - 29 active standards in `specs/current-standards/`
+- ✅ Standards - 34 active standards in `specs/current-standards/`
 - ✅ Examples - Usage examples provided
 
 ---
@@ -567,5 +566,5 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 **Repository:** https://github.com/RSBalchII/anchor-engine-node
 **Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)
-**Standards:** [specs/current-standards/](current-standards/) — 29 active standards
+**Standards:** [specs/current-standards/](current-standards/) — 34 active standards
 **Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v5.2.0 Streaming & Observability

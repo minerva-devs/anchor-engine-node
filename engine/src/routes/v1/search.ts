@@ -50,6 +50,10 @@ export function setupSearchRoutes(app: Application) {
       const buckets = body.buckets || [];
       const allBuckets = bucketParam ? [...buckets, bucketParam] : buckets;
       const tags = (req.body).tags || [];
+      const provenance = body.provenance || 'all';
+
+      // Get clean mode from request
+      const cleanMode = body.mode === 'clean' ? 'clean' : 'standard';
 
       if (!streamMode) {
         // Non-streaming mode: Return single JSON response with content (FRICTIONLESS_SPEC.md section 4.1)
@@ -58,9 +62,10 @@ export function setupSearchRoutes(app: Application) {
           allBuckets,
           maxChars,
           tags,
-          (req.body).provenance || 'all',
+          provenance,
           useMaxRecall,
           body.user_context,
+          cleanMode,
         );
 
         const duration = Date.now() - startTime;

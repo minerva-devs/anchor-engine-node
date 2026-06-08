@@ -14,7 +14,7 @@ This paper presents **STAR** (Semantic Temporal Associative Retrieval), a novel 
 
 We present the mathematical foundation, implementation details, and production benchmarks from real workloads: 91MB chat history ingested in under 3 minutes, 280,000 molecules indexed, zero data loss. STAR achieves **O(k·d̄)** retrieval complexity where *k* = query tags and *d̄* = average tag degree, compared to **O(n log n)** for dense vector ANN.
 
-**v5.0.0 Update (March 2026):** Added unified standards architecture (26 active standards 001-026), improved memory management, and comprehensive security hardening.
+**v5.0.0 Update (March 2026):** Added unified standards architecture (34 active standards (001-034)), improved memory management, and comprehensive security hardening.
 
 **Keywords:** Information Retrieval, Graph-Based Search, SimHash, Local-First AI, Explainable AI, PGlite, MCP
 
@@ -442,4 +442,4 @@ LIMIT 200;
 
 ---
 
-**Author Note:** This whitepaper represents the foundational architecture of Anchor Engine v5.0.0 (March 2026). The v5.0.0 migration to unified standards architecture (26 active standards 001-026) and comprehensive security hardening eliminated previous documentation inconsistencies, enabling seamless deployment on ARM64 Windows and other platforms without platform-specific builds. All benchmarks are from production workloads on consumer hardware (Windows 11 ARM64, XPS 13, 16GB RAM, NVMe SSD).
+**Author Note:** This whitepaper represents the foundational architecture of Anchor Engine v5.0.0 (March 2026). The v5.0.0 migration to unified standards architecture (34 active standards (001-034)) and comprehensive security hardening eliminated previous documentation inconsistencies, enabling seamless deployment on ARM64 Windows and other platforms without platform-specific builds. All benchmarks are from production workloads on consumer hardware (Windows 11 ARM64, XPS 13, 16GB RAM, NVMe SSD).

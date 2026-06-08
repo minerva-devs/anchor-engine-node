@@ -21,6 +21,7 @@ export interface StreamingSearchOptions {
   tags?: string[];
   provenance?: 'internal' | 'external' | 'quarantine' | 'all';
   useMaxRecall?: boolean;
+  mode?: 'standard' | 'clean';
   userContext?: UserContext;
   batchSize?: number;
   verbose?: boolean; // Enable search results logging for test verification
@@ -92,6 +93,7 @@ export async function* executeStreamingSearch(
       options.provenance || 'all',
       options.useMaxRecall || false,
       options.userContext,
+      options.mode || 'standard',
     );
 
     const allResults = searchResult.results;

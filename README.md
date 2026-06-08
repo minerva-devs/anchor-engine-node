@@ -11,7 +11,7 @@
 **Start here:**
 1. [**Documentation Policy**](./specs/doc_policy.md) - Required read (abstractions, paths, conventions)
 2. [**Project Specs**](./specs/spec.md) - Architecture, API, data model, test framework
-3. [**Current Standards**](./specs/current-standards/) - Active architecture standards (001-030)
+3. [**Current Standards**](./specs/current-standards/) - Active architecture standards (001-034)
 
 **Quick reference:**
 - [**Test Framework**](./specs/spec.md#test-framework-architecture) - How to test (P0, Vitest, integration, operational)
@@ -63,7 +63,7 @@ pnpm start
 pnpm test
 
 # Start with logging
-pnpm start-with-logging
+pnpm start
 
 # Run operational verification
 python test_us006.py
@@ -151,8 +151,8 @@ Anchor Engine uses Rust-compiled WebAssembly modules for performance-critical op
 
 **Benefits:**
 - ✅ Zero native compilation required (works on Windows ARM64, macOS, Linux)
-- ✅ 97% smaller binary size (~35KB WASM vs ~1.2MB C++ DLLs)
-- ✅ 10x faster module loading
+- ✅ ~90% smaller binary size (~1.4 MB WASM vs ~12 MB C++ DLLs)
+- ✅ 8x faster module loading (benchmarks: ~50ms vs ~400ms for native)
 - ✅ Universal platform support
 
 > Note: The older C++ native modules (`engine/src/native/` directory) have been deprecated and removed in favor of these Rust WASM packages. See `engine/src/README.md` for full architectural details.

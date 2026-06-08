@@ -24,6 +24,9 @@ export interface SearchRequest {
     buckets?: string[];      // e.g., ["@code", "@visual", "@memory"]
     provenance?: 'internal' | 'external' | 'quarantine' | 'all'; // Data Provenance filter
 
+    // Clean mode for token-efficient output (Task 1)
+    mode?: 'standard' | 'clean';
+
     user_context?: UserContext; // Federated Sovereignty (User Context)
 }
 

@@ -11,22 +11,26 @@ graph TB
         A --> E[Test Suite Page]
     end
     
-    subgraph Backend API
-        B --> F[/v1/search]
-        B --> G[/v1/distill]
+    subgraph Backend_API["Backend API (Express.js :3160)"]
+        B --> F[/v1/memory/search]
+        B --> G[/v1/memory/distill]
         B --> H[/v1/ingest]
         A --> I[/v1/files/read]
         A --> J[/v1/files/upload]
         D --> K[/v1/quarantine]
     end
     
-    subgraph Engine Core
-        F --> L[Context Engine]
-        L --> M[Vector Database]
-        L --> N[Knowledge Graph]
-        G --> M
+    subgraph Engine_Core["Engine Core (STAR Algorithm)"]
+        F --> L[STAR Search<br/>Tag-Walker Graph]
+        L --> M[(PGlite<br/>WASM PostgreSQL)]
+        G --> N[Radial Distiller v2]
         H --> O[Git Cloner]
-        H --> P[AST Parser]
+        H --> P[AST Parser<br/>web-tree-sitter WASM]
+    end
+    
+    subgraph Storage["Storage Layer"]
+        M --> Q[~/.anchor/context_data/<br/>Disposable Index]
+        L --> R[~/.anchor/mirrored_brain/<br/>Source of Truth]
     end
 ```
 

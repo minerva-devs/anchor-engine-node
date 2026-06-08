@@ -1,11 +1,11 @@
 /**
  * SimHash Computation Performance Profiling Script
  * 
- * Profiles the performance of SimHash computation in native modules
+ * Profiles the performance of SimHash computation in WASM modules
  */
 
-import type { ProfilingConfig } from '../utils/native-module-profiler.js';
-import { nativeModuleProfiler } from '../utils/native-module-profiler.js';
+import type { ProfilingConfig } from '../utils/module-profiler.js';
+import { moduleProfiler } from '../utils/module-profiler.js';
 import { logWithContext } from '../utils/structured-logger.js';
 
 // Generate test data for SimHash profiling
@@ -58,30 +58,18 @@ function generateSimHashTestData(): any[] {
 // Generate test data for distance calculation
 async function generateDistanceTestData(): Promise<any[]> {
   const testData = [];
-  const { nativeModuleManager } = await import('../utils/native-module-manager.js');
-  const nativeModule = nativeModuleManager.loadNativeModule('ece_native', 'ece_native.node');
+  const { wasmModuleLoader } = await import('../utils/wasm-module-loader.js');
+  const fingerprintFn = wasmModuleLoader?.fingerprint;
 
-  // Create some fingerprints using the native module if available
-  if (nativeModule && typeof nativeModule.fingerprint === 'function') {
-    for (let i = 0; i < 50; i++) {
-      const text1 = `Sample text for fingerprinting ${i}`;
-      const text2 = `Similar sample text for fingerprinting ${i}`;
-
-      testData.push({
-        a: nativeModule.fingerprint ? nativeModule.fingerprint(text1) : `fp_${i}_a`,
-        b: nativeModule.fingerprint ? nativeModule.fingerprint(text2) : `fp_${i}_b`,
-      });
-    }
-  } else {
-    // Fallback with dummy fingerprints
-    for (let i = 0; i < 50; i++) {
-      testData.push({
-        a: `fingerprint_a_${i}`,
-        b: `fingerprint_b_${i}`,
-      });
-    }
+  // Create fingerprints using WASM module (with JS fallback)
+  for (let i = 0; i < 50; i++) {
+    const text1 = `Sample text for fingerprinting ${i}`;
+    const text2 = `Similar sample text for fingerprinting ${i}`;
+    testData.push({
+      a: fingerprintFn ? fingerprintFn(text1) : `fp_${i}_a`,
+      b: fingerprintFn ? fingerprintFn(text2) : `fp_${i}_b`,
+    });
   }
-
   return testData;
 }
 
@@ -109,7 +97,7 @@ async function runSimHashProfiling() {
       testDataSize: fingerprintTestData.length,
     });
     
-    const fingerprintResult = await nativeModuleProfiler.profileOperation(fingerprintConfig);
+    const fingerprintResult = await moduleProfiler.profileOperation(fingerprintConfig);
     
     // Log the fingerprinting results
     logWithContext.info('SimHash fingerprinting profiling completed', {
@@ -141,7 +129,7 @@ async function runSimHashProfiling() {
       testDataSize: distanceTestData.length,
     });
     
-    const distanceResult = await nativeModuleProfiler.profileOperation(distanceConfig);
+    const distanceResult = await moduleProfiler.profileOperation(distanceConfig);
     
     // Log the distance calculation results
     logWithContext.info('SimHash distance calculation profiling completed', {
@@ -155,11 +143,11 @@ async function runSimHashProfiling() {
     });
     
     // Generate and save report
-    const report = nativeModuleProfiler.generateReport();
+    const report = moduleProfiler.generateReport();
     console.log('\n' + report);
     
     // Identify slowest operations
-    const slowest = nativeModuleProfiler.getSlowestOperations(3);
+    const slowest = moduleProfiler.getSlowestOperations(3);
     if (slowest.length > 0) {
       console.log('Slowest Operations:');
       slowest.forEach((op: any, idx: number) => {
@@ -168,7 +156,7 @@ async function runSimHashProfiling() {
     }
     
     // Identify highest memory impact operations
-    const highMemory = nativeModuleProfiler.getHighestMemoryImpact(3);
+    const highMemory = moduleProfiler.getHighestMemoryImpact(3);
     if (highMemory.length > 0) {
       console.log('Highest Memory Impact Operations:');
       highMemory.forEach((op: any, idx: number) => {

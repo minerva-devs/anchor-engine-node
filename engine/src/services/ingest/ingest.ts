@@ -32,6 +32,7 @@ function determineProvenance(source: string, type?: string): 'internal' | 'exter
   // Get canonical paths for comparison
   const inboxDir = PATHS.INBOX_DIR.replace(/\\/g, '/');
   const externalInboxDir = PATHS.EXTERNAL_INBOX_DIR.replace(/\\/g, '/');
+  const anchorRoot = PATHS.ANCHOR_ROOT.replace(/\\/g, '/');
 
   // 1. Explicit Trusted Inbox (internal provenance, 3.0x boost)
   if (normalizedSource.startsWith(inboxDir) ||
@@ -47,6 +48,14 @@ function determineProvenance(source: string, type?: string): 'internal' | 'exter
     normalizedSource.includes('news_agent') ||
     type === 'external') {
     return 'external';
+  }
+
+  // 3. Runtime objects under ANCHOR_ROOT are internal (not external)
+  if (normalizedSource.startsWith(anchorRoot)) {
+    // Exclude explicitly external sources within anchor root
+    if (!normalizedSource.includes('web_scrape') && !normalizedSource.includes('news_agent')) {
+      return 'internal';
+    }
   }
 
   // Default to external for all other sources

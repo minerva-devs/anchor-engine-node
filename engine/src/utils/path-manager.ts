@@ -169,6 +169,58 @@ export class PathManager {
   public getSovereignTagsPath(): string {
     return path.resolve(this.getContextDir(), 'internal_tags.json');
   }
+
+  /**
+   * Sanitize a file system path for cross-platform compatibility and safety
+   * @param p - The path to sanitize
+   * @param maxLength - Optional maximum length (defaults to Windows limit of 260)
+   * @returns Sanitized path
+   */
+  public sanitizePath(p: string, maxLength?: number): string {
+    let result = p;
+    
+    // Remove invalid characters for both Unix and Windows
+    // Control characters (0x00-0x1F) except tab/newline/carriage return
+    result = result.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, '');
+    
+    // Remove trailing slashes for cleaner paths
+    result = result.replace(/\/$/, '');
+    
+    // Apply length limit if specified
+    const effectiveMaxLength = maxLength || 260; // Windows default
+    
+    if (result.length > effectiveMaxLength) {
+      const prefix = path.basename(result);
+      const dir = path.dirname(result);
+      const allowedLength = Math.max(0, effectiveMaxLength - prefix.length - 3);
+      result = path.join(dir.substring(0, allowedLength), `...${prefix}`);
+      console.warn(`[PathManager] Truncated long path to ${result} (${result.length}/${effectiveMaxLength})`);
+    }
+    
+    return result;
+  }
+
+  /**
+   * Check if a path is safe for the current platform
+   */
+  public validatePath(p: string, context?: string): boolean {
+    // Windows-specific checks
+    if (this.platform === 'win32') {
+      const upper = p.toUpperCase();
+      const components = upper.split(path.sep).filter(c => c.length > 0);
+      
+      const RESERVED_NAMES = ['CON', 'PRN', 'AUX', 'NUL', ...Array.from({length: 8}, (_, i) => `COM${i+1}`), ...Array.from({length: 6}, (_, i) => `LPT${i+1}`)];
+      
+      for (const component of components) {
+        if (RESERVED_NAMES.includes(component)) {
+          console.warn(`[PathManager] Path contains reserved Windows name: ${component}`);
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  }
 }
 
 // Export singleton instance

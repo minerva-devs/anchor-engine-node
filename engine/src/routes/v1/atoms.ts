@@ -11,7 +11,7 @@ export function setupAtomRoutes(app: Application) {
       const query = req.query as Record<string, string | undefined>;
       const limit = parseInt(query.limit || '20', 10);
       const offset = parseInt(query.offset || '0', 10);
-      const order_by = (query.order_by as string) || '-timestamp';
+      let order_by = (query.order_by as string) || 'timestamp'; // default to ascending by timestamp
 
       // Build query dynamically based on filters
       let sqlQuery = 'SELECT id, source_path, timestamp, simhash, embedding, provenance, created_at FROM atoms';
@@ -19,14 +19,22 @@ export function setupAtomRoutes(app: Application) {
       const params: any[] = [];
       
       // Add order by clause (validate to prevent SQL injection)
-      const validOrderBy: string[] = ['-id', '-timestamp', 'sequence'];
-      const safeOrderBy = validOrderBy.includes(order_by) ? order_by : '-timestamp';
-
-      sqlQuery += `ORDER BY ${safeOrderBy} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      const validOrderBy: string[] = ['id', 'timestamp', 'sequence'];
+      
+      if (validOrderBy.includes(order_by)) {
+        // Use explicit DESC/ASC keywords that PostgreSQL understands
+        sqlQuery += `ORDER BY ${order_by} DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      } else {
+        // Fallback to default ordering (timestamp descending)
+        sqlQuery += `ORDER BY timestamp DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+      }
       params.push(limit);
       params.push(offset);
 
-      const result = await db.run(sqlQuery, params);
+      const result = await db.run(sqlQuery, params); // Add debug logging here
+
+      console.log('DEBUG SQL Query:', sqlQuery);       // Log the generated query
+      console.log('DEBUG Params:', JSON.stringify(params));   // Log parameters
 
       const atoms = (result.rows || []).map((row: any) => ({
         id: row.id,

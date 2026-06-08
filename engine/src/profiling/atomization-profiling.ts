@@ -1,11 +1,11 @@
 /**
  * Atomization Performance Profiling Script
  * 
- * Profiles the performance of the atomization process in native modules
+ * Profiles the performance of the atomization process in WASM modules
  */
 
-import type { ProfilingConfig } from '../utils/native-module-profiler.js';
-import { nativeModuleProfiler } from '../utils/native-module-profiler.js';
+import type { ProfilingConfig } from '../utils/module-profiler.js';
+import { moduleProfiler } from '../utils/module-profiler.js';
 import { logWithContext } from '../utils/structured-logger.js';
 
 // Generate test data for atomization profiling
@@ -83,7 +83,7 @@ async function runAtomizationProfiling() {
       testDataSize: testData.length,
     });
     
-    const result = await nativeModuleProfiler.profileOperation(config);
+    const result = await moduleProfiler.profileOperation(config);
     
     // Log the results
     logWithContext.info('Atomization profiling completed', {
@@ -97,11 +97,11 @@ async function runAtomizationProfiling() {
     });
     
     // Generate and save report
-    const report = nativeModuleProfiler.generateReport();
+    const report = moduleProfiler.generateReport();
     console.log('\n' + report);
     
     // Identify slowest operations
-    const slowest = nativeModuleProfiler.getSlowestOperations(3);
+    const slowest = moduleProfiler.getSlowestOperations(3);
     if (slowest.length > 0) {
       console.log('Slowest Operations:');
       slowest.forEach((op: any, idx: number) => {

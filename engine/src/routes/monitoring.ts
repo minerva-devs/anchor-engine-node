@@ -71,7 +71,7 @@ monitoringRouter.get('/health', async (_req: Request, res: Response) => {
       components: {
         database: dbStatus,
         logging: logStatus,
-        nativeModules: 'healthy', // Would check actual native module status in real implementation
+        wasmModules: 'healthy', // Would check actual WASM module status in real implementation
       },
     };
 
@@ -275,12 +275,12 @@ monitoringRouter.get('/db-health', async (_req: Request, res: Response) => {
   }
 });
 
-// Native module health endpoint
+// WASM module health endpoint
 monitoringRouter.get('/native-health', (_req: Request, res: Response) => {
   try {
-    // In a real implementation, this would check the actual status of native modules
+    // In a real implementation, this would check the actual status of WASM modules
     // For now, we'll return a mock response indicating healthy status
-    const nativeModuleStatus = {
+    const wasmModuleStatus = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       modules: {
@@ -297,9 +297,9 @@ monitoringRouter.get('/native-health', (_req: Request, res: Response) => {
       },
     };
 
-    res.status(200).json(nativeModuleStatus);
+    res.status(200).json(wasmModuleStatus);
   } catch (error: any) {
-    logWithContext.error('Native module health check failed', error);
+    logWithContext.error('WASM module health check failed', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -454,7 +454,7 @@ monitoringRouter.get('/status', async (_req: Request, res: Response) => {
       },
       components: {
         database: 'checking...',
-        nativeModules: 'checking...',
+        wasmModules: 'checking...',
         ingestion: 'checking...',
         search: 'checking...',
         api: 'running',
@@ -463,16 +463,16 @@ monitoringRouter.get('/status', async (_req: Request, res: Response) => {
     };
 
     // Run all health checks in parallel
-    const [dbHealth, nativeHealth, ingestHealth, searchHealth] = await Promise.allSettled([
+    const [dbHealth, wasmHealth, ingestHealth, searchHealth] = await Promise.allSettled([
       db.run('SELECT 1 as a', []),
-      Promise.resolve({}), // Native modules check
+      Promise.resolve({}), // WASM modules check
       db.run('SELECT id FROM atoms LIMIT 1', []),
       db.run('SELECT id, content, ts_rank(to_tsvector(\'simple\', content), plainto_tsquery(\'simple\', $1)) as score FROM atoms WHERE to_tsvector(\'simple\', content) @@ plainto_tsquery(\'simple\', $1) LIMIT 1', ['test']),
     ]);
 
     // Update component statuses
     statusData.components.database = dbHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy';
-    statusData.components.nativeModules = 'healthy'; // Simplified
+    statusData.components.wasmModules = 'healthy'; // Simplified
     statusData.components.ingestion = ingestHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy';
     statusData.components.search = searchHealth.status === 'fulfilled' ? 'healthy' : 'unhealthy';
 

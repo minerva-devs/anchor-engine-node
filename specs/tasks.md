@@ -153,15 +153,10 @@
 - Ingestion pipeline writes directly to molecules/atoms without compound intermediates
 - Code audit confirmed: no active references to creating compounds table
 
-See **[MIGRATION_PLAN.md](../MIGRATION_PLAN.md)** for detailed implementation plan.
-
-#### Links to Detailed Documentation
-- **[Migration Plan](../MIGRATION_PLAN.md)** - Full implementation steps, SQL scripts, testing procedures
-- **[Migration Summary](../MIGRATION_SUMMARY.md)** - Executive summary and execution order
-- **[Migration Analysis](../MIGRATION_ANALYSIS.md)** - Technical analysis of compounds table removal
+The compounds table migration is complete. All phases documented inline above.
 
 #### Next Steps for Schema Evolution
-1. Complete compounds table migration (current work)
+1. Schema version tracking completed - compounds table removed successfully
 2. Add schema version tracking table (`schema_versions`)
 3. Document any future schema changes in a changelog format
 4. Consider migrating to a proper migration framework (e.g., Flyway, Liquibase) for future updates
@@ -214,4 +209,4 @@ Tasks are complete when:
 
 **Repository:** https://github.com/RSBalchII/anchor-engine-node  
 **Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)  
-**Standards:** [specs/current-standards/](current-standards/) — 30 active standards
+**Standards:** [specs/current-standards/](current-standards/) — 34 active standards

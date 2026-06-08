@@ -23,7 +23,7 @@ Dependencies MUST be correctly classified:
 |------|----------|----------|
 | **Runtime** | `dependencies` | express, js-yaml, undici, commander, WASM packages |
 | **Build-time** | `devDependencies` | typescript, vitest, @types/* |
-| **Optional** | `optionalDependencies` | Platform-specific native modules |
+| **Optional** | `optionalDependencies` | Platform-specific WASM modules |
 
 ### 2. Validation Script
 

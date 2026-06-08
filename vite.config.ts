@@ -8,6 +8,8 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/.git/**',
+      '**/test-wasm/**',
+      '**/*.cjs',
       '**/coverage/**',
     ],
     coverage: {

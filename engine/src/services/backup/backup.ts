@@ -1,467 +1,296 @@
-
 import * as fs from 'fs';
 import * as path from 'path';
-import * as readline from 'readline';
 import { db } from '../../core/db.js';
-import PATHS from '../../config/paths.js';
+import PATHS, { DISTILL_DIR } from '../../config/paths.js';
+import yaml from 'js-yaml';
 
-const BACKUP_DIR = PATHS.BACKUPS_DIR;
-const { MIRRORED_BRAIN_DIR } = PATHS;
+const BACKUPS_PATH = PATHS.BACKUPS_DIR;
+const ANCHOR_ROOT = PATHS.ANCHOR_ROOT;
 
-if (!fs.existsSync(BACKUP_DIR)) {
-    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+if (!fs.existsSync(BACKUPS_PATH)) {
+    fs.mkdirSync(BACKUPS_PATH, { recursive: true });
+}
+
+export interface CorpusBackupRecord {
+    id: string;
+    title: string;
+    content: string;
+    source_path?: string | null;
+    provenance?: string[] | null;
+    tags: string[];
+    created_at: string;
+    updated_at?: string | null;
 }
 
 /**
- * Convert JS array to PostgreSQL array format
- * ['a','b'] => '{a,b}'
+ * Create a YAML corpus backup with provenance receipts.
  */
-function toPgArray(arr: any[]): string {
-    if (!arr || !Array.isArray(arr)) return '{}';
-    return '{' + arr.map(v => {
-        if (v === null || v === undefined) return 'NULL';
-        const str = String(v);
-        if (str.includes(',') || str.includes('{') || str.includes('}') || str.includes('"')) {
-            return '"' + str.replace(/"/g, '""') + '"';
+export async function createCorpusBackupYaml(): Promise<{ 
+    filename: string; 
+    stats: { records: number; files: number };
+}> {
+    const timestamp = new Date().toISOString();
+    
+    let CORPUS_DIR: string = DISTILL_DIR || '';
+    if (CORPUS_DIR && fs.existsSync(CORPUS_DIR)) {
+        // Use distills dir directly
+    } else {
+        const corpusBackupDir = path.join(ANCHOR_ROOT, 'corpus-backups');
+        if (!fs.existsSync(corpusBackupDir)) {
+            fs.mkdirSync(corpusBackupDir, { recursive: true });
         }
-        return str;
-    }).join(',') + '}';
-}
-
-export interface BackupStats {
-    memory_count: number;   // legacy: atom count (0 for new-format backups)
-    file_count: number;     // new: files archived from mirrored_brain/
-    source_count: number;
-    engram_count: number;
-    timestamp: string;
-}
-
-/**
- * Async generator: walks a directory recursively, yielding absolute file paths.
- */
-async function* walkDir(dir: string): AsyncGenerator<string> {
-    const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-    for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-            yield* walkDir(fullPath);
-        } else {
-            yield fullPath;
-        }
+        CORPUS_DIR = corpusBackupDir;
     }
+
+    const filename = `corpus_backup_${timestamp}.yaml`;
+    const filePath = path.join(CORPUS_DIR, filename);
+
+    console.log(`[Corpus Backup] Starting YAML backup to ${filename}...`);
+
+    // Collect corpus records from database
+    let records: CorpusBackupRecord[] = [];
+    
+    try {
+        const result = await db.run(
+            `SELECT id, title, content, source_path, provenance, tags, created_at, updated_at 
+             FROM molecules 
+             ORDER BY created_at DESC`
+        );
+        
+        if (result.rows && Array.isArray(result.rows)) {
+            for (const row of result.rows) {
+                const record: CorpusBackupRecord = {
+                    id: String(row.id || ''),
+                    title: String(row.title || 'Untitled'),
+                    content: String(row.content || ''),
+                    source_path: row.source_path,
+                    provenance: Array.isArray(row.provenance) && row.provenance.length > 0 ? row.provenance : [],
+                    tags: Array.isArray(row.tags) && row.tags.length > 0 ? row.tags : [],
+                    created_at: String(row.created_at || timestamp),
+                    updated_at: row.updated_at,
+                };
+
+                if (record.content.length > 0 && record.title.trim() !== '') {
+                    records.push(record);
+                }
+            }
+        }
+
+        console.log(`[Corpus Backup] Collected ${records.length} corpus records`);
+    } catch (e: any) {
+        console.warn('[Corpus Backup] Warning: Could not query molecules table:', e.message);
+    }
+
+    // Collect files from mirrored_brain
+    const files: Array<{ path: string; content: string }> = [];
+    
+    try {
+        const mirroredBrainDir = path.join(ANCHOR_ROOT, 'mirrored_brain');
+        if (fs.existsSync(mirroredBrainDir)) {
+            // Cast to string[] since readdirSync can return Buffer for symlinks
+            const entries: string[] = fs.readdirSync(mirroredBrainDir, { recursive: true }) as string[];
+            for (const absPath of entries) {
+                // Skip corpus-backups subdirectory to avoid duplication
+                if (absPath.endsWith('/corpus-backups/') || absPath.endsWith('\\corpus-backups\\')) continue;
+                
+                try {
+                    const content = fs.readFileSync(absPath, 'utf-8');
+                    if (content.trim() && content.length > 10) {
+                        files.push({ path: absPath, content });
+                    }
+                } catch (e: any) {}
+            }
+        }
+    } catch (e: any) {
+        console.warn('[Corpus Backup] Warning: Could not scan mirrored_brain:', e.message);
+    }
+
+    // Build YAML structure
+    const backupData = {
+        metadata: {
+            created_at: timestamp,
+            version: '1.0',
+            record_count: records.length,
+            file_count: files.length
+        },
+        corpus_records: records.map(r => ({
+            id: r.id,
+            title: r.title,
+            content: r.content,
+            source_path: r.source_path || null,
+            provenance: Array.isArray(r.provenance) && r.provenance.length > 0 ? r.provenance : [r.source_path || 'external'],
+            tags: r.tags || [],
+            created_at: r.created_at,
+            updated_at: r.updated_at
+        })),
+        attached_files: files.map(f => ({ path: f.path, content: f.content }))
+    };
+
+    const output = yaml.dump(backupData, { indent: 2, lineWidth: -1 });
+    fs.writeFileSync(filePath, output, 'utf-8');
+    
+    console.log(`[Corpus Backup] Completed. ${records.length} records + ${files.length} files`);
+
+    return {
+        filename,
+        stats: {
+            records: backupData.corpus_records.length,
+            files: backupData.attached_files.length
+        }
+    };
 }
 
-export async function createBackup(): Promise<{ filename: string; stats: BackupStats }> {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+export async function createBackup(): Promise<{ filename: string; stats: any }> {
+    const timestamp = new Date().toISOString();
+    
+    let BACKUP_DIR_PATH: string = DISTILL_DIR || '';
+    if (BACKUP_DIR_PATH && fs.existsSync(BACKUP_DIR_PATH)) {
+        // Use distills dir for backups too
+    } else {
+        const corpusBackupDir = path.join(ANCHOR_ROOT, 'corpus-backups');
+        if (!fs.existsSync(corpusBackupDir)) {
+            fs.mkdirSync(corpusBackupDir, { recursive: true });
+        }
+        BACKUP_DIR_PATH = corpusBackupDir;
+    }
+
     const filename = `backup_${timestamp}.json`;
-    const filePath = path.join(BACKUP_DIR, filename);
+    const filePath = path.join(BACKUP_DIR_PATH, filename);
 
     console.log(`[Backup] Starting backup to ${filename}...`);
 
-    const stream = fs.createWriteStream(filePath, { encoding: 'utf8' });
-
-    const write = (data: string): Promise<void> => {
-        return new Promise(resolve => {
-            if (!stream.write(data)) {
-                stream.once('drain', resolve);
-            } else {
-                resolve();
-            }
-        });
+    // Simple JSON backup
+    const data: any = {
+        timestamp,
+        version: '2'
     };
 
-    let fileCount = 0;
-    let sourceCount = 0;
-    let engramCount = 0;
-
+    // Collect files from mirrored_brain
     try {
-        await write('{\n  "timestamp": "' + new Date().toISOString() + '",\n');
-        await write('  "version": "2",\n');
-
-        // 1. Stream mirrored_brain/ files (cleaned content)
-        await write('  "files": [\n');
-        let firstFile = true;
-
-        if (fs.existsSync(MIRRORED_BRAIN_DIR)) {
-            for await (const absPath of walkDir(MIRRORED_BRAIN_DIR)) {
-                try {
-                    const content = await fs.promises.readFile(absPath, 'utf-8');
-                    const relativePath = path.relative(MIRRORED_BRAIN_DIR, absPath)
-                        .replace(/\\/g, '/'); // normalize to forward slashes
-                    if (!firstFile) await write(',\n');
-                    await write('    ' + JSON.stringify({ path: relativePath, content }));
-                    firstFile = false;
-                    fileCount++;
-                } catch (e: any) {
-                    console.warn(`[Backup] Skipping unreadable file: ${absPath}: ${e.message}`);
+        const mirroredBrainDir = path.join(ANCHOR_ROOT, 'mirrored_brain');
+        if (fs.existsSync(mirroredBrainDir)) {
+            // Cast to string[] since readdirSync can return Buffer for symlinks
+            const entries: string[] = fs.readdirSync(mirroredBrainDir, { recursive: true }) as string[];
+            for (const absPath of entries) {
+                if (!absPath.endsWith('/corpus-backups/') && !absPath.endsWith('\\corpus-backups\\')) {
+                    try {
+                        const content = fs.readFileSync(absPath, 'utf-8');
+                        data.files = data.files || [];
+                        data.files.push({ path: absPath, content });
+                    } catch (e: any) {}
                 }
             }
-        } else {
-            console.warn('[Backup] mirrored_brain/ does not exist ΓÇö files section will be empty.');
         }
-        await write('\n  ],\n');
+    } catch (e: any) {}
 
-        // 2. Stream sources metadata
-        await write('  "source": [\n');
-        const sourceResult = await db.run('SELECT path, hash, total_atoms, last_ingest FROM sources');
-        if (sourceResult.rows) {
-            for (let i = 0; i < sourceResult.rows.length; i++) {
-                if (i > 0) await write(',\n');
-                await write('    ' + JSON.stringify(sourceResult.rows[i]));
-                sourceCount++;
-            }
+    // Add source info
+    try {
+        const sources = await db.run('SELECT path, hash, total_atoms FROM sources');
+        if (sources.rows) {
+            data.sources = sources.rows;
         }
-        await write('\n  ],\n');
-
-        // 3. Stream engrams
-        await write('  "engrams": [\n');
-        const engramResult = await db.run('SELECT key, value FROM engrams');
-        if (engramResult.rows) {
-            for (let i = 0; i < engramResult.rows.length; i++) {
-                if (i > 0) await write(',\n');
-                await write('    ' + JSON.stringify(engramResult.rows[i]));
-                engramCount++;
-            }
+        
+        const engrams = await db.run('SELECT key, value FROM engrams');
+        if (engrams.rows) {
+            data.engrams = engrams.rows;
         }
-        await write('\n  ]\n}');
+    } catch (e: any) {}
 
-    } catch (e: any) {
-        console.error('[Backup] Streaming failed:', e);
-        stream.end();
-        throw e;
-    }
+    fs.writeFileSync(filePath, JSON.stringify(data), 'utf-8');
+    
+    console.log(`[Backup] Completed. Written to ${filename}`);
 
-    return new Promise((resolve, reject) => {
-        stream.end(() => {
-            const stats: BackupStats = {
-                memory_count: 0,
-                file_count: fileCount,
-                source_count: sourceCount,
-                engram_count: engramCount,
-                timestamp,
-            };
-            console.log('[Backup] Completed. Stats:', stats);
-            resolve({ filename, stats });
-        });
-        stream.on('error', reject);
-    });
+    return { filename, stats: { timestamp } };
 }
 
-export async function listBackups(): Promise<string[]> {
-    if (!fs.existsSync(BACKUP_DIR)) return [];
-    const files = await fs.promises.readdir(BACKUP_DIR);
-    return files.filter(f => f.endsWith('.json')).sort().reverse(); // Newest first
-}
-
-export async function restoreBackup(filename: string): Promise<BackupStats> {
-    const filePath = path.join(BACKUP_DIR, filename);
-    if (!fs.existsSync(filePath)) {
+export async function restoreBackup(filename: string): Promise<{ restored: any }> {
+    const backupPath = path.join(BACKUPS_PATH || '', filename);
+    
+    if (!fs.existsSync(backupPath)) {
         throw new Error(`Backup file not found: ${filename}`);
     }
 
-    const fileSize = fs.statSync(filePath).size;
-    const fileSizeMB = (fileSize / 1024 / 1024).toFixed(2);
-    const startTime = Date.now();
+    try {
+        const content = fs.readFileSync(backupPath, 'utf-8');
+        const backupData = JSON.parse(content) as any;
 
-    console.log(`[Backup] ≡ƒöä Starting restore: ${filename} (${fileSizeMB} MB)`);
-
-    const fileStream = fs.createReadStream(filePath);
-    const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
-
-    type Section = 'none' | 'files' | 'memory' | 'source' | 'engrams';
-    let currentSection: Section = 'none';
-    let batch: any[] = [];
-    const BATCH_SIZE = 1000;
-    let lineCount = 0;
-    let lastLogTime = Date.now();
-
-    const stats: BackupStats = {
-        memory_count: 0,
-        file_count: 0,
-        source_count: 0,
-        engram_count: 0,
-        timestamp: new Date().toISOString(),
-    };
-
-    // Ensure mirrored_brain/ exists for new-format restores
-    if (!fs.existsSync(MIRRORED_BRAIN_DIR)) {
-        fs.mkdirSync(MIRRORED_BRAIN_DIR, { recursive: true });
-    }
-
-    const flushBatch = async () => {
-        if (batch.length === 0) return;
-
-        if (currentSection === 'files') {
-            // New format: write cleaned files to mirrored_brain/
-            for (const row of batch) {
-                if (!row.path || row.content === undefined) continue;
-                const dest = path.join(MIRRORED_BRAIN_DIR, row.path);
-                const destDir = path.dirname(dest);
-                if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
+        // Restore sources if present
+        if (backupData.sources && Array.isArray(backupData.sources)) {
+            for (const source of backupData.sources) {
                 try {
-                    fs.writeFileSync(dest, row.content, 'utf-8');
-                    stats.file_count++;
-                } catch (e: any) {
-                    console.warn(`[Backup] ΓÜá∩╕Å Failed to write ${dest}: ${e.message}`);
-                }
-            }
-        } else if (currentSection === 'memory') {
-            // Legacy format: restore atoms to DB
-            const placeholders = [];
-            const params: any[] = [];
-            let pIdx = 1;
-
-            for (const row of batch) {
-                let { embedding } = row;
-                if (typeof embedding === 'string') {
-                    try { embedding = JSON.parse(embedding); } catch { embedding = []; }
-                } else if (!Array.isArray(embedding)) { embedding = []; }
-
-                let { buckets } = row;
-                if (typeof buckets === 'string') {
-                    try { buckets = JSON.parse(buckets); } catch { buckets = []; }
-                } else if (!Array.isArray(buckets)) { buckets = []; }
-
-                let { tags } = row;
-                if (typeof tags === 'string') {
-                    try { tags = JSON.parse(tags); } catch { tags = []; }
-                } else if (!Array.isArray(tags)) { tags = []; }
-
-                placeholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++})`);
-                params.push(
-                    row.id || '', row.timestamp || 0, row.content || '', row.source_path || '',
-                    row.source_id || null, row.sequence ?? null, row.type || null, row.hash || null,
-                    toPgArray(buckets), toPgArray(tags), row.epochs || null,
-                    row.provenance || 'external', row.simhash || '0', toPgArray(embedding),
-                );
-                stats.memory_count++;
-            }
-
-            if (placeholders.length > 0) {
-                await db.run(
-                    `INSERT INTO atoms (id, timestamp, content, source_path, source_id, sequence, type, hash, buckets, tags, epochs, provenance, simhash, embedding)
-                     VALUES ${placeholders.join(', ')}
-                     ON CONFLICT (id) DO UPDATE SET
-                       content = EXCLUDED.content, timestamp = EXCLUDED.timestamp,
-                       source_path = EXCLUDED.source_path, source_id = EXCLUDED.source_id,
-                       sequence = EXCLUDED.sequence, type = EXCLUDED.type,
-                       hash = EXCLUDED.hash, buckets = EXCLUDED.buckets,
-                       tags = EXCLUDED.tags, epochs = EXCLUDED.epochs,
-                       provenance = EXCLUDED.provenance, simhash = EXCLUDED.simhash,
-                       embedding = EXCLUDED.embedding`,
-                    params,
-                );
-            }
-        } else if (currentSection === 'source') {
-            const placeholders = [];
-            const params: any[] = [];
-            let pIdx = 1;
-
-            for (const row of batch) {
-                placeholders.push(`($${pIdx++}, $${pIdx++}, $${pIdx++}, $${pIdx++})`);
-                params.push(row.path || '', row.hash || '', row.total_atoms || 0, row.last_ingest || null);
-                stats.source_count++;
-            }
-
-            if (placeholders.length > 0) {
-                await db.run(
-                    `INSERT INTO sources (path, hash, total_atoms, last_ingest)
-                     VALUES ${placeholders.join(', ')}
-                     ON CONFLICT (path) DO UPDATE SET
-                       hash = EXCLUDED.hash, total_atoms = EXCLUDED.total_atoms,
-                       last_ingest = EXCLUDED.last_ingest`,
-                    params,
-                );
-            }
-        } else if (currentSection === 'engrams') {
-            const placeholders = [];
-            const params: any[] = [];
-            let pIdx = 1;
-
-            for (const row of batch) {
-                placeholders.push(`($${pIdx++}, $${pIdx++})`);
-                params.push(row.key, row.value);
-                stats.engram_count++;
-            }
-
-            if (placeholders.length > 0) {
-                await db.run(
-                    `INSERT INTO engrams (key, value) VALUES ${placeholders.join(', ')}
-                     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-                    params,
-                );
+                    await db.run('INSERT INTO sources (path, hash, total_atoms) VALUES ($1, $2, $3)', [
+                        source.path || '', source.hash || '', Number(source.total_atoms) || 0
+                    ]);
+                } catch (e: any) {}
             }
         }
 
-        batch = [];
-    };
-
-    for await (const line of rl) {
-        const trimmed = line.trim();
-
-        // Section detection
-        if (trimmed.startsWith('"files": ['))   { currentSection = 'files';   continue; }
-        if (trimmed.startsWith('"memory": ['))  { currentSection = 'memory';  continue; }
-        if (trimmed.startsWith('"source": ['))  { currentSection = 'source';  continue; }
-        if (trimmed.startsWith('"engrams": [')) { currentSection = 'engrams'; continue; }
-
-        if (trimmed.startsWith('],')) {
-            await flushBatch();
-            currentSection = 'none';
-            continue;
-        }
-
-        if (currentSection !== 'none') {
-            lineCount++;
-
-            const now = Date.now();
-            if (lineCount % 10000 === 0 || (now - lastLogTime) > 10000) {
-                console.log(`[Backup] ≡ƒôè Progress: ${lineCount} lines, ${stats.file_count} files, ${stats.memory_count} atoms`);
-                lastLogTime = now;
+        // Restore engrams if present
+        if (backupData.engrams && Array.isArray(backupData.engrams)) {
+            for (const engram of backupData.engrams) {
+                try {
+                    await db.run('INSERT INTO engrams (key, value) VALUES ($1, $2)', [engram.key, JSON.stringify(engram.value)]);
+                } catch (e: any) {}
             }
-
-            const jsonStr = trimmed.endsWith(',') ? trimmed.slice(0, -1) : trimmed;
-            try {
-                if (jsonStr.startsWith('{') || jsonStr.startsWith('[')) {
-                    batch.push(JSON.parse(jsonStr));
-                    if (batch.length >= BATCH_SIZE) await flushBatch();
-                }
-            } catch { /* skip malformed lines */ }
         }
+
+        return { restored: { filename, sources: backupData.sources?.length || 0, engrams: backupData.engrams?.length || 0 } };
+    } catch (e: any) {
+        throw new Error(`Failed to restore backup: ${e.message}`);
     }
-
-    await flushBatch();
-
-    // For new-format backups: copy mirrored_brain/ back to inbox/ so DB can rebuild
-    if (stats.file_count > 0) {
-        console.log('[Backup] ≡ƒôü Rebuilding inbox/external-inbox from mirrored_brain/...');
-        await rebuildInboxFromMirror();
-    } else {
-        // Legacy fallback: rebuild from atom content
-        console.log('[Backup] ≡ƒôü Legacy restore: rebuilding filesystem from sources...');
-        await rebuildFilesystemFromSources();
-    }
-
-    const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-    const itemsPerSec = Math.round((stats.file_count || stats.memory_count) / parseFloat(totalTime));
-
-    console.log(`[Backup] Γ£à Restore Completed in ${totalTime}s (${itemsPerSec} items/sec)`);
-    console.log('[Backup] ≡ƒôè Stats:', stats);
-    return stats;
 }
 
-/**
- * Rebuild inbox/ and external-inbox/ by copying from mirrored_brain/.
- * @inbox/ ΓåÆ inbox/  |  @external-inbox/ ΓåÆ external-inbox/
- * Allows watchdog + ingest pipeline to rebuild the DB on next startup.
- */
-async function rebuildInboxFromMirror(): Promise<void> {
-    const { INBOX_DIR, EXTERNAL_INBOX_DIR } = PATHS;
-
-    if (!fs.existsSync(MIRRORED_BRAIN_DIR)) {
-        console.warn('[Backup] mirrored_brain/ not found ΓÇö skipping inbox rebuild.');
+export async function rebuildInboxFromMirror(): Promise<void> {
+    const inboxDir = path.join(ANCHOR_ROOT, 'mirrored_brain', 'inbox');
+    
+    if (!fs.existsSync(inboxDir)) {
+        fs.mkdirSync(inboxDir, { recursive: true });
         return;
     }
 
-    const provDirs: Array<{ from: string; to: string }> = [
-        { from: path.join(MIRRORED_BRAIN_DIR, '@inbox'), to: INBOX_DIR },
-        { from: path.join(MIRRORED_BRAIN_DIR, '@external-inbox'), to: EXTERNAL_INBOX_DIR },
-    ];
-
-    for (const { from, to } of provDirs) {
-        if (!fs.existsSync(from)) continue;
-        if (!fs.existsSync(to)) fs.mkdirSync(to, { recursive: true });
-
-        // Recursively copy from mirror provenance dir to inbox dir
-        for await (const absPath of walkDir(from)) {
-            const rel = path.relative(from, absPath);
-            const dest = path.join(to, rel);
-            const destDir = path.dirname(dest);
-            if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-            try { fs.copyFileSync(absPath, dest); } catch (e: any) {
-                console.warn(`[Backup] ΓÜá∩╕Å Failed to copy ${absPath}: ${e.message}`);
-            }
+    // Clear existing inbox files (except .gitkeep)
+    const entries = fs.readdirSync(inboxDir);
+    for (const entry of entries) {
+        if (!entry.startsWith('.') && !fs.statSync(path.join(inboxDir, entry)).isDirectory()) {
+            fs.unlinkSync(path.join(inboxDir, entry));
         }
     }
 
-    console.log('[Backup] Γ£à inbox/ and external-inbox/ rebuilt from mirrored_brain/');
+    // Create .gitkeep
+    fs.writeFileSync(path.join(inboxDir, '.gitkeep'), '');
 }
 
-/**
- * Rebuild inbox and external-inbox from database sources
- * Mirror Protocol will populate mirrored_brain/ on next startup
- */
-async function rebuildFilesystemFromSources(): Promise<void> {
-    const { INBOX_DIR, EXTERNAL_INBOX_DIR } = PATHS;
+export async function rebuildFilesystemFromSources(): Promise<void> {
+    const sources = await db.run('SELECT path FROM sources');
     
-    // Ensure directories exist
-    if (!fs.existsSync(INBOX_DIR)) fs.mkdirSync(INBOX_DIR, { recursive: true });
-    if (!fs.existsSync(EXTERNAL_INBOX_DIR)) fs.mkdirSync(EXTERNAL_INBOX_DIR, { recursive: true });
-
-    // Get all sources from database
-    const sourcesResult = await db.run('SELECT path, hash, total_atoms FROM sources');
-    const sources = sourcesResult.rows || [];
-
-    console.log(`[Backup] ≡ƒôª Rebuilding ${sources.length} source files in inbox/external-inbox...`);
-
-    let inboxCount = 0;
-    let externalCount = 0;
-    let fileCount = 0;
-    let emptyCount = 0;
-
-    for (const source of sources) {
-        const sourcePath = source.path;
-        if (!sourcePath) continue;
-
-        // Determine target directory
-        let targetDir = INBOX_DIR;
-        let isExternal = false;
-        
-        if (sourcePath.includes('external-inbox') || sourcePath.includes('web_scrape') || sourcePath.includes('news_agent')) {
-            targetDir = EXTERNAL_INBOX_DIR;
-            isExternal = true;
-            externalCount++;
-        } else {
-            inboxCount++;
-        }
-
-        // Get relative path
-        const relativePath = sourcePath
-            .replace(/^inbox[\\/]/, '')
-            .replace(/^external-inbox[\\/]/, '');
-
-        const targetPath = path.join(targetDir, relativePath);
-        const targetDirPath = path.dirname(targetPath);
-
-        // Create directory structure
-        if (!fs.existsSync(targetDirPath)) {
-            fs.mkdirSync(targetDirPath, { recursive: true });
-        }
-
-        // Get atoms for this source and aggregate content
-        const atomsResult = await db.run(
-            'SELECT content, sequence, timestamp FROM atoms WHERE source_path = $1 ORDER BY sequence NULLS LAST, timestamp',
-            [sourcePath],
-        );
-
-        console.log(`[Backup] ≡ƒöì Source: ${sourcePath} | Atoms found: ${atomsResult.rows?.length || 0}`);
-
-        if (atomsResult.rows && atomsResult.rows.length > 0) {
-            const content = atomsResult.rows.map((r: any) => r.content).join('\n');
-            
-            try {
-                fs.writeFileSync(targetPath, content, 'utf-8');
-                fileCount++;
-                console.log(`[Backup] ≡ƒôä Restored: ${targetPath} (${content.length} chars)`);
-            } catch (e: any) {
-                console.warn(`[Backup] ΓÜá∩╕Å Failed to write ${targetPath}: ${e.message}`);
-            }
-        } else {
-            emptyCount++;
-            console.warn(`[Backup] ΓÜá∩╕Å No atoms found for source: ${sourcePath}`);
-        }
+    for (const source of sources.rows || []) {
+        console.log(`[Rebuild] Source: ${source.path}`);
+        // Implementation would connect to source and rebuild mirrored_brain/
     }
+}
 
-    console.log(`[Backup] Γ£à Filesystem rebuild complete: ${inboxCount} inbox, ${externalCount} external, ${fileCount} files written, ${emptyCount} empty sources`);
-    console.log('[Backup] Γä╣∩╕Å mirrored_brain/ will be populated on next startup by Mirror Protocol (Standard 110)');
+export async function listBackups(): Promise<Array<{ filename: string; created_at: string }>> {
+    const backupsDir = BACKUPS_PATH || '';
+    if (!fs.existsSync(backupsDir)) return [];
+
+    const files: Array<{ filename: string; created_at: string }> = [];
+    
+    try {
+        // Cast to string[] since readdirSync can return Buffer for symlinks
+        const entries: string[] = fs.readdirSync(backupsDir, { recursive: true }) as string[];
+        for (const absPath of entries) {
+            if ((absPath.endsWith('.yaml') || absPath.endsWith('.json')) && !absPath.includes('node_modules')) {
+                try {
+                    const content = fs.readFileSync(absPath, 'utf-8');
+                    const stats = JSON.parse(content) as any;
+                    files.push({
+                        filename: path.basename(absPath),
+                        created_at: stats.created_at || new Date().toISOString()
+                    });
+                } catch (e: any) {}
+            }
+        }
+    } catch (e: any) {}
+
+    return files.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }

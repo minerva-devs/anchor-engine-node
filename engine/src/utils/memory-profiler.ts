@@ -266,7 +266,7 @@ class MemoryProfiler {
         growth: rssGrowth - heapGrowth,
         confidence: 'medium',
         description: `RSS grew significantly more than heap (${(rssGrowth / 1024 / 1024).toFixed(2)}MB vs ${(heapGrowth / 1024 / 1024).toFixed(2)}MB)`,
-        recommendation: 'Check native modules, file streams, or worker threads for leaks',
+        recommendation: 'Check WASM modules, file streams, or worker threads for leaks',
       });
     }
 

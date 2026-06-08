@@ -56,24 +56,24 @@ const DIAGNOSTIC_TESTS: TestConfig[] = [
   },
   {
     name: 'Native Module Availability',
-    description: 'Check if native modules are properly loaded',
+    description: 'Check if WASM modules are properly loaded',
     testFn: async () => {
       try {
-        // Test native module functionality through the API
+        // Test WASM module functionality through the API
         const response = await axios.get('http://localhost:3000/health/native');
 
         if (response.status === 500) {
-          // Native modules might not be available, which is OK in some environments
-          console.log('⚠️  Native modules not available (using fallback implementations)');
+          // WASM modules might not be available, which is OK in some environments
+          console.log('⚠️  WASM modules not available (using fallback implementations)');
         } else if (response.status === 200) {
-          console.log('✅ Native modules loaded successfully');
+          console.log('✅ WASM modules loaded successfully');
         } else {
-          throw new Error(`Native module health check returned unexpected status: ${response.status}`);
+          throw new Error(`WASM module health check returned unexpected status: ${response.status}`);
         }
       } catch (error) {
-        console.error('❌ Native module availability test failed:', error);
-        // Don't throw error as native modules are optional in some environments
-        console.log('ℹ️  Native modules not available - using JavaScript fallbacks');
+        console.error('❌ WASM module availability test failed:', error);
+        // Don't throw error as WASM modules are optional in some environments
+        console.log('ℹ️  WASM modules not available - using JavaScript fallbacks');
       }
     },
     timeout: 10000,

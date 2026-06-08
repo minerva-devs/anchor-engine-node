@@ -73,8 +73,11 @@ async function run(): Promise<void> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort('Download timeout after 120s'), 120_000);
 
+    let response: Response;
+    
     try {
-      const response = await fetch(tarballUrl, { headers, redirect: 'follow', signal: controller.signal });
+      // Download with proper type handling for undici Response
+      response = await fetch(tarballUrl, { headers, redirect: 'follow', signal: controller.signal }) as any;
       clearTimeout(timeoutId);
       
       if (!response.ok) {
@@ -86,6 +89,7 @@ async function run(): Promise<void> {
       throw err;
     }
 
+    // Check response status again after successful fetch
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');
       throw new Error(`GitHub API error: ${response.status} ${response.statusText} - ${errorText.slice(0, 200)}`);

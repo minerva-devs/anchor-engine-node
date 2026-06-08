@@ -2,6 +2,7 @@ import { db } from '../../core/db.js';
 import { config } from '../../config/index.js';
 import type { Atom, Molecule, Compound } from '../../types/atomic.js';
 import { filterTags } from '../../utils/tag-filter.js';
+import { modulateTags, normalizeTag } from '../../utils/tag-modulation.js';
 
 export class AtomicIngestService {
 
@@ -136,7 +137,7 @@ export class AtomicIngestService {
                         JSON.stringify(this.zeroVector()), // embedding
                         provenanceType, // provenance
                         ['atoms'], // buckets
-                        [atom.label], // tags
+                        [normalizeTag(atom.label) || atom.label], // tags - ensure # prefix at ingestion time
                     ],
                 );
             }
@@ -165,8 +166,8 @@ export class AtomicIngestService {
             const allBuckets = new Set([...buckets, ...(atom as any).buckets || []]);
 
             // Filter atom label through blacklist
-            const filteredTags = filterTags([atom.label]);
-            const tags = filteredTags.length > 0 ? filteredTags : [atom.label]; // Keep original if filter removes everything
+            const filteredTags = filterTags([normalizeTag(atom.label) || atom.label]);
+            const tags = filteredTags.length > 0 ? filteredTags : [normalizeTag(atom.label) || atom.label]; // Normalize before fallback
 
             for (const bucket of allBuckets) {
                 for (const tag of tags) {

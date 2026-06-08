@@ -22,6 +22,10 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `README.md` | Project overview, quickstart, API reference, architecture |
 | `CHANGELOG.md` | Version history and release notes |
 | `LICENSE` | License file (AGPL-3.0) |
+| `CONTRIBUTING.md` | Contribution guidelines and development setup |
+| `CODE_OF_CONDUCT.md` | Contributor Covenant Code of Conduct |
+| `CITATION.cff` | Citation metadata (CFF format) |
+| `.github/` | GitHub community files (CODEOWNERS, PR template) |
 | `.gitignore` | Git ignore patterns |
 | `package.json` | Package configuration |
 | `user_settings.json.template` | Configuration template → generates `$HOME/.anchor/user_settings.json` (see Runtime Object Storage) |
@@ -33,6 +37,9 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `verify-schema.mjs` | Script to verify database schema |
 | `vite.config.ts` | Vite build configuration |
 | `vitest-root.config.ts` | Vitest root configuration |
+| `playwright.config.ts` | Playwright e2e test configuration |
+| `.eslintrc.cjs` | ESLint code linting configuration |
+| `README_TESTING.md` | Quick reference for running tests |
 | `Dockerfile` | Docker build file for containerization |
 | `docker-compose.yml` | Docker Compose orchestration file |
 | `scripts/run-engine.bat` | Python wrapper script to start/stop engine (Windows) |
@@ -40,14 +47,6 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `scripts/stop-engine.bat` | Batch script to stop engine |
 | `scripts/start-engine-bg.mjs` | Node.js background startup (Standard 014 OPS-005) |
 | `scripts/stop-engine-bg.mjs` | Node.js background shutdown (Standard 014 OPS-005) |
-
-**PROHIBITED in Root:**
-- Phase completion reports
-- Implementation summaries
-- Git operation logs
-- Temporary documentation files
-- Any other `.md` files not listed above
-- `skills.md` (not allowed)
 
 **PROHIBITED in Root:**
 - Phase completion reports
@@ -173,9 +172,9 @@ This includes:
 
 ---
 
-## 5. Maintenance Guidelines
+## 6. Maintenance Guidelines
 
-### 5.1 Before Merging PR
+### 6.1 Before Merging PR
 
 - [ ] Verify no prohibited `.md` files in root
 - [ ] Ensure all new features documented in README or CHANGELOG
@@ -183,14 +182,14 @@ This includes:
 - [ ] Remove temporary documentation files after integration
 - [ ] **Verify user_settings.json is NOT in project root** (should be in `.anchor/user_settings.json`)
 
-### 5.2 Automated Checks (Future CI/CD)
+### 6.2 Automated Checks (Future CI/CD)
 
 - Reject PRs with prohibited `.md` files in root
 - Verify `CHANGELOG.md` updated for version changes
 - Check `README.md` includes new features
 - Validate documentation links and cross-references
 
-### 5.3 Content Ownership
+### 6.3 Content Ownership
 
 | Domain | Owner | Primary Location |
 |--------|-------|------------------|
@@ -202,9 +201,9 @@ This includes:
 
 ---
 
-## 6. Migration Path
+## 7. Migration Path
 
-### 6.1 Root-to-Docs Migration
+### 7.1 Root-to-Docs Migration
 
 Move root-level documentation to appropriate `docs/` subdirectories:
 
@@ -216,11 +215,11 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 | `PAIN_POINTS_DOCUMENTATION.md` | `docs/guides/pain-points.md` | ✅ |
 | `CLAW-CODE-INTEGRation.md` | `docs/integrations/claw-integration.md` | ✅ |
 
-### 6.2 Specs Consolidation
+### 7.2 Specs Consolidation
 
 **Current State:**
 - `specs/` contains only 3 core files: `spec.md`, `plan.md`, `tasks.md`
-- `specs/current-standards/` has 26 active standards
+- `specs/current-standards/` has 34 active standards
 - `specs/archive-legacy/` has 45 historical standards
 
 **Target State:**
@@ -230,7 +229,7 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 ---
 
-## 7. Rationale
+## 8. Rationale
 
 **Why this policy?**
 1. **Prevents Documentation Sprawl:** Clear boundaries prevent uncontrolled growth
@@ -248,16 +247,17 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 ---
 
-## 8. Version History
+## 9. Version History
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.2 | 2026-06-05 | Cleaned WASM/NAPI references, fixed duplicate sections, updated standards count |
 | 2.1 | 2026-05-25 | Updated version to 2.1 |
 | 2.0 | 2026-04-09 | Restructured for clarity, consolidated specs and docs |
 | 1.0 | 2026-02-20 | Initial documentation policy |
 
 ---
 
-**Last Updated:** May 25, 2026
-**Version:** 2.1
+**Last Updated:** June 5, 2026
+**Version:** 2.2
 **Status:** ✅ Active

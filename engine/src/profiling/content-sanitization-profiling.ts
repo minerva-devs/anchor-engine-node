@@ -1,12 +1,12 @@
 /**
  * Content Sanitization Performance Profiling Script
  * 
- * Profiles the performance of content sanitization in native modules
+ * Profiles the performance of content sanitization in WASM modules
  * This includes the "Key Assassin" functionality for cleaning JSON artifacts
  */
 
-import type { ProfilingConfig } from '../utils/native-module-profiler.js';
-import { nativeModuleProfiler } from '../utils/native-module-profiler.js';
+import type { ProfilingConfig } from '../utils/module-profiler.js';
+import { moduleProfiler } from '../utils/module-profiler.js';
 import { logWithContext } from '../utils/structured-logger.js';
 
 // Generate test data for sanitization profiling
@@ -219,7 +219,7 @@ async function runSanitizationProfiling() {
       testDataSize: sanitizeTestData.length,
     });
     
-    const sanitizeResult = await nativeModuleProfiler.profileOperation(sanitizeConfig);
+    const sanitizeResult = await moduleProfiler.profileOperation(sanitizeConfig);
     
     // Log the sanitization results
     logWithContext.info('Content sanitization profiling completed', {
@@ -251,7 +251,7 @@ async function runSanitizationProfiling() {
       testDataSize: cleanseTestData.length,
     });
     
-    const cleanseResult = await nativeModuleProfiler.profileOperation(cleanseConfig);
+    const cleanseResult = await moduleProfiler.profileOperation(cleanseConfig);
     
     // Log the cleanse results
     logWithContext.info('Key Assassin (cleanse) profiling completed', {
@@ -265,11 +265,11 @@ async function runSanitizationProfiling() {
     });
     
     // Generate and save report
-    const report = nativeModuleProfiler.generateReport();
+    const report = moduleProfiler.generateReport();
     console.log('\n' + report);
     
     // Identify slowest operations
-    const slowest = nativeModuleProfiler.getSlowestOperations(3);
+    const slowest = moduleProfiler.getSlowestOperations(3);
     if (slowest.length > 0) {
       console.log('Slowest Operations:');
       slowest.forEach((op: any, idx: number) => {
@@ -278,7 +278,7 @@ async function runSanitizationProfiling() {
     }
     
     // Identify highest memory impact operations
-    const highMemory = nativeModuleProfiler.getHighestMemoryImpact(3);
+    const highMemory = moduleProfiler.getHighestMemoryImpact(3);
     if (highMemory.length > 0) {
       console.log('Highest Memory Impact Operations:');
       highMemory.forEach((op: any, idx: number) => {

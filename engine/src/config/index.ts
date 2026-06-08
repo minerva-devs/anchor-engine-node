@@ -113,6 +113,22 @@ const _UserSettingsSchema = z.object({
   memory: MemorySettingsSchema.optional(),
   low_resource: LowResourceSchema.optional(),
   limits: LimitsSchema.optional(),
+
+  // Cache Settings Schema (LRU Cache Configuration)
+  cache: z.object({
+    max_entries_search_result: z.number().int().positive().optional(),
+    max_entries_query_parse: z.number().int().positive().optional(),
+    max_entries_semantic_expansion: z.number().int().positive().optional(),
+    max_entries_engram: z.number().int().positive().optional(),
+    memory_pressure_threshold: z.number().int().min(1).max(100).optional(),
+    critical_memory_threshold: z.number().int().min(1).max(100).optional(),
+    enable_memory_pressure_eviction: z.boolean().optional(),
+    search_result_ttl_ms: z.number().int().positive().optional(),
+    query_parse_ttl_ms: z.number().int().positive().optional(),
+    semantic_expansion_ttl_ms: z.number().int().positive().optional(),
+    engram_ttl_ms: z.number().int().positive().optional(),
+  }).optional(),
+
   // Allow additional properties for backward compatibility
 }).passthrough();
 
@@ -211,6 +227,21 @@ interface Config {
     fts_window_size: number;
     fts_padding: number;
   };
+
+  // Cache Settings (LRU Cache Configuration)
+  CACHE: {
+    MAX_ENTRIES_SEARCH_RESULT: 500,
+    MAX_ENTRIES_QUERY_PARSE: 500,
+    MAX_ENTRIES_SEMANTIC_EXPANSION: 1000,
+    MAX_ENTRIES_ENGRAM: 200,
+    MEMORY_PRESSURE_THRESHOLD: 88,
+    CRITICAL_MEMORY_THRESHOLD: 95,
+    ENABLE_MEMORY_PRESSURE_EVICTION: true,
+    SEARCH_RESULT_TTL_MS: 60000,
+    QUERY_PARSE_TTL_MS: 300000,
+    SEMANTIC_EXPANSION_TTL_MS: 600000,
+    ENGRAM_TTL_MS: 120000,
+  },
 
   // Models
   MODELS: {
@@ -419,6 +450,21 @@ const DEFAULT_CONFIG: Config = {
     max_chars_limit: 20000,    // 20k chars max limit
     fts_window_size: 1500,
     fts_padding: 750,
+  },
+
+  // Cache Settings (LRU Cache Configuration)
+  CACHE: {
+    MAX_ENTRIES_SEARCH_RESULT: 500,
+    MAX_ENTRIES_QUERY_PARSE: 500,
+    MAX_ENTRIES_SEMANTIC_EXPANSION: 1000,
+    MAX_ENTRIES_ENGRAM: 200,
+    MEMORY_PRESSURE_THRESHOLD: 88,
+    CRITICAL_MEMORY_THRESHOLD: 95,
+    ENABLE_MEMORY_PRESSURE_EVICTION: true,
+    SEARCH_RESULT_TTL_MS: 60000,
+    QUERY_PARSE_TTL_MS: 300000,
+    SEMANTIC_EXPANSION_TTL_MS: 600000,
+    ENGRAM_TTL_MS: 120000,
   },
 
   // Models
@@ -699,6 +745,21 @@ function loadConfig(): Config {
         if (userSettings.ingestion.dedup_strength) loadedConfig.INGESTION.DEDUP_STRENGTH = userSettings.ingestion.dedup_strength;
         if (userSettings.ingestion.token_budget_default !== undefined) loadedConfig.INGESTION.TOKEN_BUDGET_DEFAULT = userSettings.ingestion.token_budget_default;
         if (userSettings.ingestion.ingestion_profile) loadedConfig.INGESTION.INGESTION_PROFILE = userSettings.ingestion.ingestion_profile;
+      }
+
+      // Load Cache Settings (LRU Cache Configuration)
+      if (userSettings.cache) {
+        if (userSettings.cache.max_entries_search_result !== undefined) loadedConfig.CACHE.MAX_ENTRIES_SEARCH_RESULT = userSettings.cache.max_entries_search_result;
+        if (userSettings.cache.max_entries_query_parse !== undefined) loadedConfig.CACHE.MAX_ENTRIES_QUERY_PARSE = userSettings.cache.max_entries_query_parse;
+        if (userSettings.cache.max_entries_semantic_expansion !== undefined) loadedConfig.CACHE.MAX_ENTRIES_SEMANTIC_EXPANSION = userSettings.cache.max_entries_semantic_expansion;
+        if (userSettings.cache.max_entries_engram !== undefined) loadedConfig.CACHE.MAX_ENTRIES_ENGRAM = userSettings.cache.max_entries_engram;
+        if (userSettings.cache.memory_pressure_threshold !== undefined) loadedConfig.CACHE.MEMORY_PRESSURE_THRESHOLD = userSettings.cache.memory_pressure_threshold;
+        if (userSettings.cache.critical_memory_threshold !== undefined) loadedConfig.CACHE.CRITICAL_MEMORY_THRESHOLD = userSettings.cache.critical_memory_threshold;
+        if (userSettings.cache.enable_memory_pressure_eviction !== undefined) loadedConfig.CACHE.ENABLE_MEMORY_PRESSURE_EVICTION = userSettings.cache.enable_memory_pressure_eviction;
+        if (userSettings.cache.search_result_ttl_ms !== undefined) loadedConfig.CACHE.SEARCH_RESULT_TTL_MS = userSettings.cache.search_result_ttl_ms;
+        if (userSettings.cache.query_parse_ttl_ms !== undefined) loadedConfig.CACHE.QUERY_PARSE_TTL_MS = userSettings.cache.query_parse_ttl_ms;
+        if (userSettings.cache.semantic_expansion_ttl_ms !== undefined) loadedConfig.CACHE.SEMANTIC_EXPANSION_TTL_MS = userSettings.cache.semantic_expansion_ttl_ms;
+        if (userSettings.cache.engram_ttl_ms !== undefined) loadedConfig.CACHE.ENGRAM_TTL_MS = userSettings.cache.engram_ttl_ms;
       }
 
       // Load Distiller Configuration (v2.1)

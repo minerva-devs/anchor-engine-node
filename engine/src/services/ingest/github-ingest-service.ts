@@ -51,7 +51,7 @@ interface SyncResult {
   };
 }
 
-// File exclusion patterns (Standard 115, Section 3.3)
+// File exclusion patterns (Standard 115, Section 3.3) - now handled by isTextFile()
 const EXCLUDE_PATTERNS = [
   'node_modules/',
   '.git/',
@@ -59,22 +59,8 @@ const EXCLUDE_PATTERNS = [
   'build/',
   'target/',
   'vendor/',
-  '.bin',
-  '.exe',
-  '.dll',
-  '.so',
-  '.dylib',
-  '.png',
-  '.jpg',
-  '.jpeg',
-  '.gif',
-  '.svg',
-  '.ico',
-  '.pdf',
-  '.doc',
-  '.docx',
-  '.lock', // package-lock.tson, Cargo.lock, etc.
-];
+  'test-wasm/',
+]; // Directory patterns only - binary files handled by isTextFile()
 
 // Language detection by extension
 const LANGUAGE_MAP: Record<string, string> = {
@@ -131,6 +117,39 @@ const LANGUAGE_MAP: Record<string, string> = {
 export class GitHubIngestService {
   private atomizer: AtomizerService;
   private atomicIngest: AtomicIngestService;
+
+  /**
+   * Check if a file extension is text-based (should be ingested) or binary (skip)
+   */
+  isTextFile(ext: string): boolean {
+    const textExtensions = [
+      '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.jsx',
+      '.py', '.rst', '.md', '.markdown',
+      '.json', '.yaml', '.yml', '.toml', '.xml', '.html',
+      '.css', '.scss', '.sass', '.less', '.styl',
+      '.java', '.c', '.cpp', '.h', '.hpp', '.cc', '.cxx',
+      '.cs', '.rb', '.php', '.swift', '.kt', '.scala',
+      '.go', '.rs', '.ex', '.exs', '.erl', '.hs', '.clj',
+      '.ml', '.fs', '.vue', '.svelte', '.sh', '.bash', '.zsh',
+      '.ps1', '.bat', '.cmd', '.dockerfile', '.sql', '.lua', '.r',
+      '.txt', '.log', '.mdx', '.tex', '.latex'
+    ];
+    
+    const binaryExtensions = [
+      '.wasm', '.node', '.map', '.exe', '.dll', '.so', '.dylib',
+      '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.avif',
+      '.mp4', '.mkv', '.mp3', '.wav', '.ogg', '.pdf', '.doc', '.docx',
+      '.zip', '.tar', '.gz', '.bz2' // archives/compressed files
+    ];
+
+    const lowerExt = ext.toLowerCase();
+    
+    if (binaryExtensions.includes(lowerExt)) return false;
+    if (textExtensions.includes(lowerExt)) return true;
+    
+    // Default: treat files with common code extensions as text
+    return ['.ts', '.js', '.tsx', '.jsx'].includes(lowerExt) || !['.', 'exe', 'so', 'dylib', 'wasm'].some(suffix => lowerExt.endsWith(suffix));
+  }
 
   constructor() {
     this.atomizer = new AtomizerService();
@@ -535,6 +554,13 @@ export class GitHubIngestService {
                 // Ingest each file in the batch
                 for (const file of files) {
                   try {
+                    // Skip binary files - they produce noise when text-scraped
+                    const ext = path.extname(file.relativePath).toLowerCase();
+                    if (!this.isTextFile(ext)) {
+                      filesSkipped++;
+                      continue;
+                    }
+
                     const atomizeResult = await this.atomizer.atomize(
                       file.content,
                       file.sourcePath,
@@ -568,7 +594,7 @@ export class GitHubIngestService {
                 }
 
                 if (prog && prog.current % 25 === 0) {
-                  console.log(`[GitHub] Progress: ${prog.current}/${prog.total} files (${prog.skipped} skipped)`);
+                  console.log(`[GitHub] Progress: ${prog.current}/${prog.total} files (${filesSkipped} skipped, ${filesIngested} ingested)`);
                 }
                 break;
               }

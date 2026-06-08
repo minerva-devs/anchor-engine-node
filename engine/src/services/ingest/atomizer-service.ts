@@ -14,13 +14,9 @@ import type { CodeBlock } from './code-ast-parser.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Native modules from @rbalchii packages (with fallbacks)
-let nativeFingerprint: ((text: string) => string) | null = null;
-let nativeCleanse: ((text: string) => string) | null = null;
-
-// Native modules removed - using WASM implementations only
-// const fp = await import('@rbalchii/native-fingerprint');
-// const ka = await import('@rbalchii/native-keyassassin');
+// WASM modules from @rbalchii packages — loaded via wasm-module-loader.js
+// All performance-critical ops (fingerprint, atomize, keyextract, tagwalker)
+// use Rust-compiled WebAssembly. JS fallbacks available if WASM unavailable.
 
 export class AtomizerService {
 
@@ -1277,14 +1273,7 @@ export class AtomizerService {
     }
 
     private generateSimHash(text: string): string {
-        // Use @rbalchii/native-fingerprint if available
-        if (nativeFingerprint) {
-            try {
-                return nativeFingerprint(text);
-            } catch { /* fall through to JS fallback */ }
-        }
-
-        // JS Fallback: Simple Jenkins Hash
+        // JS Fallback: Simple Jenkins Hash (WASM fingerprinting via wasmModuleLoader)
         let hash = 0;
         if (text.length === 0) return '0';
         for (let i = 0; i < text.length; i++) {

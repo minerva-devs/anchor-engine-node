@@ -6,7 +6,6 @@
  */
 
 import { db } from '../core/db.js';
-import { nativeModuleManager } from '../utils/native-module-manager.js';
 import { wasmModuleLoader } from '../utils/wasm-module-loader.js';
 import * as os from 'os';
 import * as fs from 'fs/promises';
@@ -78,9 +77,6 @@ export class HealthCheckService {
     const dbHealth = await this.checkDatabaseHealth();
     components.push(dbHealth);
 
-    // Check native modules
-    const nativeHealth = this.checkNativeModulesHealth();
-    components.push(nativeHealth);
 
     // Check WASM modules
     const wasmHealth = this.checkWasmModulesHealth();
@@ -167,88 +163,8 @@ export class HealthCheckService {
   }
 
   /**
-   * Check native modules health
+   * Check WASM modules health
    */
-  private checkNativeModulesHealth(): ComponentHealth {
-    try {
-      const status = nativeModuleManager.getAllStatus();
-
-      // Check if critical native modules are loaded
-      const eceNativeStatus = status.get('ece_native');
-
-      if (!eceNativeStatus) {
-        return {
-          name: 'native-modules',
-          status: 'unhealthy',
-          message: 'Native module manager not initialized properly',
-        };
-      }
-
-      if (!eceNativeStatus.loaded) {
-        return {
-          name: 'native-modules',
-          status: 'degraded',
-          message: 'Native modules not loaded, using fallback implementations',
-          details: {
-            fallbackActive: eceNativeStatus.fallbackActive,
-            error: eceNativeStatus.error,
-          },
-        };
-      }
-
-      // Test native module functionality if loaded
-      if (!eceNativeStatus.fallbackActive) {
-        try {
-          const native = nativeModuleManager.loadNativeModule('ece_native', 'ece_native.node');
-
-          // Test basic functionality
-          if (typeof native?.fingerprint === 'function') {
-            const testHash = native.fingerprint('health check test');
-            if (typeof testHash !== 'undefined') {
-              return {
-                name: 'native-modules',
-                status: 'healthy',
-                message: 'Native modules loaded and functional',
-                details: {
-                  modulesLoaded: Array.from(status.keys()),
-                  fallbackActive: eceNativeStatus.fallbackActive,
-                },
-              };
-            }
-          }
-        } catch (error: any) {
-          return {
-            name: 'native-modules',
-            status: 'degraded',
-            message: `Native module functionality test failed: ${error.message}`,
-            details: {
-              error: error.message,
-            },
-          };
-        }
-      }
-
-      return {
-        name: 'native-modules',
-        status: eceNativeStatus.fallbackActive ? 'degraded' : 'healthy',
-        message: eceNativeStatus.fallbackActive ? 'Native modules loaded with fallback implementations' : 'Native modules loaded and operational',
-        details: {
-          fallbackActive: eceNativeStatus.fallbackActive,
-          error: eceNativeStatus.error,
-        },
-      };
-    } catch (error: any) {
-      return {
-        name: 'native-modules',
-        status: 'unhealthy',
-        message: `Native module check failed: ${error.message}`,
-        details: {
-          error: error.message,
-        },
-      };
-    }
-  }
-
   /**
    * Check WASM modules health (Standard 013)
    */

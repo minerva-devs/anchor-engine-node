@@ -54,6 +54,9 @@ export { getBrightNodes, getStructuredGraph } from './bright-nodes.js';
 // Import the new LRU cache implementation
 import { LRUCache, searchResultCache as lruSearchCache } from '../../utils/lru-cache.js';
 
+// --- Clean Mode Artifact Patterns ---
+import { DEFAULT_ARTIFACT_PATTERNS, stripArtifacts, validateCleanContent, preprocessCleanResult } from '../../types/search.js';
+
 export interface CacheEntry {
   results: { context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string };
   timestamp: number;
@@ -844,6 +847,7 @@ export async function executeSearch(
   filters?: { type?: string; minVal?: number; maxVal?: number; },
   useMaxRecall: boolean = false,
   userContext?: UserContext,
+  mode?: string,
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
   console.log(`[Search] executeSearch (Physics Engine V2) called with provenance: ${provenance}`);
   const startTime = Date.now();
@@ -1145,6 +1149,7 @@ export async function executeMoleculeSearch(
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   explicitTags: string[] = [],
   userContext?: UserContext,
+  mode: 'standard' | 'clean' = 'standard',
 ): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
   // Memory-aware throttling
   const throttleResult = await throttleSearchForMemory();
@@ -1193,6 +1198,38 @@ export async function executeMoleculeSearch(
   allResults.sort((a, b) => b.score - a.score);
 
   console.log(`[MoleculeSearch] Combined results from ${molecules.length} molecules: ${allResults.length} total results`);
+
+  // Clean Mode Filtering
+  if (mode === 'clean') {
+    const cleanedResults = allResults.map(result => {
+      // Strip artifacts using regex patterns
+      let cleanContent = stripArtifacts(result.content);
+      
+      // Validate content length
+      const validation = validateCleanContent(cleanContent, maxChars);
+      if (!validation.valid) {
+        console.log(`[Search] Cleaning: Skipping result with content length ${cleanContent.length} (max: ${maxChars})`);
+        return null;
+      }
+      
+      // Create cleaned molecule object
+      const cleanMolecule = {
+        ...result,
+        clean_content: cleanContent,
+        relevance_score: result.score,
+        removed_artifacts: [], // Can be extended to track specific artifacts removed
+      };
+      
+      return cleanMolecule;
+    }).filter(m => m != null) as SearchResult[];
+
+    console.log(`[Search] Clean mode filtering complete: ${allResults.length} -> ${cleanedResults.length} results`);
+    
+    // Use cleaned results if they exist, otherwise fall back to original
+    const finalResults = cleanedResults.length > 0 ? cleanedResults : allResults;
+    
+    return formatResults(finalResults, maxChars);
+  }
 
   return await formatResults(allResults, maxChars); // Use original maxChars to maintain token budget
 }
@@ -1281,6 +1318,7 @@ export async function iterativeSearch(
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   useMaxRecall: boolean = false,
   userContext?: UserContext,
+  mode: 'standard' | 'clean' = 'standard',
 ): Promise<{ context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string }> {
   // Memory-aware throttling
   const throttleResult = await throttleSearchForMemory();
@@ -1311,7 +1349,7 @@ export async function iterativeSearch(
 
   // Strategy 1: Standard Expanded Search (All Nouns, Verbs, Dates + Expansion)
   console.log('[IterativeSearch] Strategy 1: Standard Execution');
-  let results = await executeSearch(query, buckets, maxChars, provenance, tags, undefined, useMaxRecall, userContext);
+  let results = await executeSearch(query, buckets, maxChars, provenance, tags, undefined, useMaxRecall, userContext, mode);
   if (results.results.length > 0) {
     lruSearchCache.set(cacheKey, { results: { ...results, attempt: 1 }, timestamp: Date.now() }, 2048);
     return { ...results, attempt: 1 };
@@ -1331,7 +1369,7 @@ export async function iterativeSearch(
     // Re-inject scope tags
     const strictQuery = Array.from(uniqueTokens).join(' ') + ' ' + tagsString;
     console.log(`[IterativeSearch] Fallback Query 1: "${strictQuery.trim()}"`);
-    results = await executeSearch(strictQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
+    results = await executeSearch(strictQuery, buckets, maxChars, provenance, tags, undefined, false, userContext, mode);
     if (results.results.length > 0) {
       lruSearchCache.set(cacheKey, { results: { ...results, attempt: 2 }, timestamp: Date.now() }, 2048);
       return { ...results, attempt: 2 };
@@ -1348,7 +1386,7 @@ export async function iterativeSearch(
 
   if (entityQuery.trim().length > 0 && entityQuery.trim() !== (Array.from(uniqueTokens).join(' ') + ' ' + tagsString).trim()) {
     console.log(`[IterativeSearch] Fallback Query 2: "${entityQuery.trim()}"`);
-    results = await executeSearch(entityQuery, buckets, maxChars, provenance, tags, undefined, false, userContext);
+    results = await executeSearch(entityQuery, buckets, maxChars, provenance, tags, undefined, false, userContext, mode);
     if (results.results.length > 0) {
       lruSearchCache.set(cacheKey, { results: { ...results, attempt: 3 }, timestamp: Date.now() }, 2048);
       return { ...results, attempt: 3 };
@@ -1495,6 +1533,7 @@ export async function smartChatSearch(
   provenance: 'internal' | 'external' | 'quarantine' | 'all' = 'all',
   useMaxRecall: boolean = false,
   userContext?: UserContext,
+  mode: 'standard' | 'clean' = 'standard',
 ): Promise<{ context: string; results: SearchResult[]; strategy: string; splitQueries?: string[]; metadata?: any; toAgentString: () => string }> {
 
   // Check for special prefixes first
@@ -1508,7 +1547,7 @@ export async function smartChatSearch(
 
   // 1. Initial Attempt (Skip if it's a massive max-recall query to force chunking)
   if (!isLongQuery || !useMaxRecall) {
-    initial = await iterativeSearch(query, buckets, maxChars, tags, provenance, useMaxRecall, userContext);
+    initial = await iterativeSearch(query, buckets, maxChars, tags, provenance, useMaxRecall, userContext, mode);
 
     // If we have enough results, returns immediately
     if (initial.results.length >= 10 && !useMaxRecall) {
@@ -1572,7 +1611,7 @@ export async function smartChatSearch(
   const parallelResults: Awaited<ReturnType<typeof executeSearch>>[] = [];
   for (const entity of splitQueries) {
     parallelResults.push(
-      await executeSearch(entity, buckets, budgetPerQuery, provenance, tags, undefined, useMaxRecall, userContext),
+      await executeSearch(entity, buckets, budgetPerQuery, provenance, tags, undefined, useMaxRecall, userContext, mode),
     );
   }
 

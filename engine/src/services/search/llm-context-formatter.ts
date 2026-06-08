@@ -12,6 +12,11 @@
  */
 
 import type { SearchResult } from './search-utils.js';
+import { EntityExtractorService } from '../../services/extraction/entity-extractor.js';
+import { KNOWN_PEOPLE } from '../../config/known-entities.js';
+
+// Initialize the service instance for reuse
+const extractorService = new EntityExtractorService();
 
 // ============ Type Definitions ============
 
@@ -123,77 +128,48 @@ export class LLMContextFormatter {
   }
   
   /**
-   * Extract entities from atoms (people, systems, concepts)
+   * Extract entities from atoms using the centralized EntityExtractorService
    */
   private extractEntities(atoms: SearchResult[]): Entity[] {
     const entityMap = new Map<string, Entity>();
     
-    // Common entity patterns
-    const personPatterns = [
-      /\b(Rob|Robert|Coda|Dory|Jade)\b/gi,
-      /\b(author|user|partner|collaborator)\b/gi,
-    ];
-    
-    const systemPatterns = [
-      /\b(Anchor Engine|ECE|External Context Engine|STAR|PGlite|SQLite)\b/gi,
-      /\b(C\+\+|Node\.js|TypeScript|React)\b/gi,
-    ];
-    
-    const conceptPatterns = [
-      /\b(POML|sovereign memory|context inflation|physics walker)\b/gi,
-      /\b(imposter syndrome|career|growth|change)\b/gi,
-    ];
-    
     for (const atom of atoms) {
-      const text = `${atom.content} ${atom.tags?.join(' ') || ''}`.toLowerCase();
+      const text = `${atom.content} ${atom.tags?.join(' ') || ''}`;
       
-      // Extract people
-      for (const pattern of personPatterns) {
-        pattern.lastIndex = 0;
-        let match;
-        while ((match = pattern.exec(text)) !== null) {
-          const name = this.capitalize(match[1]);
-          if (!entityMap.has(name)) {
-            entityMap.set(name, {
-              name,
-              type: 'person',
-              role: this.inferPersonRole(name, atoms),
-              mentions: 0,
-              related_topics: [],
-              atom_ids: [],
-            });
-          }
-          const entity = entityMap.get(name)!;
-          entity.mentions++;
-          entity.atom_ids.push(atom.id);
-          entity.related_topics = [...new Set([...entity.related_topics, ...this.extractTopics(atom)])];
+      // Use the centralized service to extract all entities at once
+      const extractionResult = extractorService.extract(text);
+      
+      // Process extracted entities and add to map
+      for (const entity of extractionResult) {
+        let entityType: Entity['type'];
+        switch (entity.type) {
+          case 'person': entityType = 'person'; break;
+          case 'system': entityType = 'technology'; break;
+          case 'place': entityType = 'concept'; break;
+          default: entityType = 'concept';
         }
-      }
-      
-      // Extract systems/technologies
-      for (const pattern of systemPatterns) {
-        pattern.lastIndex = 0;
-        let match;
-        while ((match = pattern.exec(text)) !== null) {
-          const name = match[1];
-          if (!entityMap.has(name)) {
-            entityMap.set(name, {
-              name,
-              type: this.classifySystem(name),
-              role: 'technology',
-              mentions: 0,
-              related_topics: [],
-              atom_ids: [],
-            });
-          }
-          const entity = entityMap.get(name)!;
-          entity.mentions++;
-          entity.atom_ids.push(atom.id);
-          entity.related_topics = [...new Set([...entity.related_topics, ...this.extractTopics(atom)])];
+        
+        if (!entityMap.has(entity.name)) {
+          entityMap.set(entity.name, {
+            name: entity.name,
+            type: entityType,
+            role: this.inferRoleFromContext(entity.type, entity.mentions),
+            mentions: 0,
+            related_topics: [],
+            atom_ids: [],
+          });
+        }
+        
+        const existing = entityMap.get(entity.name)!;
+        if (existing.mentions < entity.mentions) {
+          existing.mentions = entity.mentions;
+        }
+        if (!existing.atom_ids.includes(atom.id)) {
+          existing.atom_ids.push(atom.id);
         }
       }
     }
-    
+
     // Sort by mentions and return top entities
     return Array.from(entityMap.values())
       .sort((a, b) => b.mentions - a.mentions)
@@ -491,10 +467,13 @@ export class LLMContextFormatter {
     const entities: string[] = [];
     const text = `${atom.content} ${atom.tags?.join(' ') || ''}`;
     
-    // Simple entity extraction (can be improved with NER)
-    const personMatches = text.match(/\b(Rob|Coda|Dory|Jade)\b/gi);
-    if (personMatches) {
-      entities.push(...personMatches.map(this.capitalize));
+    // Use dynamic pattern generation from centralized KNOWN_PEOPLE array
+    if (KNOWN_PEOPLE.length > 0) {
+      const regexPattern = new RegExp(`\\b(${KNOWN_PEOPLE.join('|')})\\b`, 'gi');
+      const personMatches = text.match(regexPattern);
+      if (personMatches) {
+        entities.push(...personMatches.map(p => this.capitalize(p)));
+      }
     }
     
     return [...new Set(entities)];
@@ -513,5 +492,18 @@ export class LLMContextFormatter {
       .map(a => a.id);
     
     return related;
+  }
+  
+  /**
+   * Infer entity role from context (based on mentions and type)
+   */
+  private inferRoleFromContext(type: string, mentions: number): string {
+    if (type === 'person') {
+      return mentions > 5 ? 'primary' : mentions > 1 ? 'secondary' : 'mentioned';
+    }
+    if (type === 'system' || type === 'technology') {
+      return mentions > 3 ? 'core' : 'supporting';
+    }
+    return 'context';
   }
 }

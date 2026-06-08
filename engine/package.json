@@ -24,7 +24,7 @@
     "test:vector": "node --loader ts-node/esm tests/unit/test_vector_service.ts",
     "benchmark": "node tests/benchmark.js",
     "build": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc",
-    "build:npm-native": "echo \"Native modules now handled via npm packages\"",
+    "build:wasm": "echo \"WASM modules handled via @rbalchii/*-wasm npm packages\"",
     "build:standalone": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc && pkg dist/index.js --target node18-linux-arm64 --output dist-android/anchor-engine --compress GZip && pkg dist/index.js --target node18-win-x64 --output dist-win/anchor-engine.exe --compress GZip",
     "build:win": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc && pkg dist/index.js --target node18-win-x64 --output dist-win/anchor-engine.exe --compress GZip",
     "build:android": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\" && tsc && pkg dist/index.js --target node18-linux-arm64 --output dist-android/anchor-engine --compress GZip",
@@ -107,9 +107,5 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
-  },
-  "optionalDependencies": {
-    "node-gyp": "^12.3.0",
-    "node-gyp-build": "^4.8.4"
   }
 }
