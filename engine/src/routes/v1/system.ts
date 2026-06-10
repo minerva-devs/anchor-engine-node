@@ -686,9 +686,11 @@ export function setupSystemRoutes(app: Application) {
         return;
       }
 
-      // Additional checks: must end with .yaml or .json and be a file
-      if (!realFilePath.endsWith('.yaml') && !realFilePath.endsWith('.json')) {
-        res.status(403).json({ error: 'Access denied: only .yaml and .json files allowed' });
+      // Additional checks: only allow safe file extensions
+      const allowedExts = ['.yaml', '.json', '.md', '.txt', '.yml'];
+      const ext = path.extname(realFilePath).toLowerCase();
+      if (!allowedExts.includes(ext) && !realFilePath.match(/\.(yaml|json|md|txt|yml)$/i)) {
+        res.status(403).json({ error: 'Access denied: file type not allowed' });
         return;
       }
 
@@ -705,6 +707,82 @@ export function setupSystemRoutes(app: Application) {
         content: content,
       });
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================
+  // Watchdog Path Management Endpoints
+  // ============================================
+
+  // POST /v1/system/watcher/reload - Reload watched paths from config without restart
+  app.post('/v1/system/watcher/reload', async (_req: Request, res: Response) => {
+    try {
+      const fs = await import('fs');
+      const pathModule = await import('path');
+
+      // Read current user settings to get extra_paths
+      const settingsPath = PATHS.USER_SETTINGS;
+      if (!fs.existsSync(settingsPath)) {
+        res.status(404).json({ error: 'User settings not found' });
+        return;
+      }
+
+      const settingsContent = await fs.promises.readFile(settingsPath, 'utf-8');
+      const settings = JSON.parse(settingsContent);
+
+      // Extract extra_paths from watcher config
+      const extraPaths = settings.watcher?.extra_paths || [];
+
+      if (extraPaths.length === 0) {
+        res.status(400).json({ 
+          error: 'No extra paths configured',
+          message: 'Add paths to "watcher.extra_paths" in user_settings.json first'
+        });
+        return;
+      }
+
+      // Resolve all paths and add them to the watcher
+      const results = [];
+      for (const pathStr of extraPaths) {
+        try {
+          const resolvedPath = pathModule.resolve(pathStr);
+          
+          // Check if already watching this path
+          const { getWatchedPaths } = await import('../../services/ingest/watchdog.js');
+          const currentPaths = getWatchedPaths();
+          if (!currentPaths.includes(resolvedPath)) {
+            const { addWatchPath } = await import('../../services/ingest/watchdog.js');
+            const success = await addWatchPath(resolvedPath);
+            
+            results.push({
+              path: resolvedPath,
+              status: success ? 'added' : 'failed',
+              message: success ? `Now watching: ${resolvedPath}` : 'Failed to add path'
+            });
+          } else {
+            results.push({
+              path: resolvedPath,
+              status: 'already_watching',
+              message: `Already watching: ${resolvedPath}`
+            });
+          }
+        } catch (error: any) {
+          results.push({
+            path: pathStr,
+            status: 'error',
+            error: error.message
+          });
+        }
+      }
+
+      res.status(200).json({
+        status: 'success',
+        message: `Reloaded ${extraPaths.length} paths`,
+        results
+      });
+    } catch (error: any) {
+      console.error('[API] Watcher reload error:', error);
       res.status(500).json({ error: error.message });
     }
   });

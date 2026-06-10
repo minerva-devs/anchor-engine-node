@@ -42,11 +42,12 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `README_TESTING.md` | Quick reference for running tests |
 | `Dockerfile` | Docker build file for containerization |
 | `docker-compose.yml` | Docker Compose orchestration file |
-| `scripts/run-engine.bat` | Python wrapper script to start/stop engine (Windows) |
 | `scripts/start-engine.ps1` | PowerShell script to start engine |
 | `scripts/stop-engine.bat` | Batch script to stop engine |
 | `scripts/start-engine-bg.mjs` | Node.js background startup (Standard 014 OPS-005) |
 | `scripts/stop-engine-bg.mjs` | Node.js background shutdown (Standard 014 OPS-005) |
+| `scripts/build.ts` | TypeScript build script |
+| `scripts/engine_server.py` | Python engine server wrapper |
 
 **PROHIBITED in Root:**
 - Phase completion reports
@@ -62,36 +63,42 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 
 ### 2.2 Specs Directory (`/specs/`)
 
-**Core Files (Only):**
+**Core Files:**
 | File | Purpose |
 |------|---------|
-| `spec.md` | Main technical specification with architecture diagrams |
+| `spec.md` | Main technical specification with architecture diagrams, web dashboard, engine core modules |
 | `plan.md` | Development roadmap and phased implementation |
 | `tasks.md` | Current implementation tasks and priorities |
 | `doc_policy.md` | This documentation policy |
+| `DATA-MODEL.md` | Data model: Compound → Molecule → Atom → Tag hierarchy |
 
 **Subdirectories:**
-- `current-standards/` - 26 active architecture standards (001-026)
-- `archive-legacy/` - Historical standards and legacy documentation (059-136+)
-- `decisions/` - Architecture decision records
+- `current-standards/` - 38 active architecture standards (flat directory, numbered 001–032)
+- `INTEGRATIONS/` - Integration specifications (MCP)
 
 **PROHIBITED in specs root:**
 - Duplicate documentation already in README
 - Phase reports or implementation logs
 - Redundant standards documentation
+- Architecture decision records (merge into relevant standards instead)
 
 ### 2.3 Docs Directory (`/docs/`)
 
-**Core Focus Areas:**
+**Core Files:**
 
-| Area | Files | Purpose |
-|------|-------|---------|
-| **Whitepaper** | `whitepaper.md`, `paper.md`, `arxiv/` | STAR algorithm research and academic papers |
-| **API Reference** | `API.md`, `api/endpoints.md` | Complete API documentation and endpoints |
-| **Deployment** | `DEPLOYMENT.md` | Deployment guides for all platforms |
-| **Standards** | `STANDARDS.md`, `standards/` | Active standards index and reference |
-| **Troubleshooting** | `TROUBLESHOOTING.md`, `troubleshooting/` | Issue resolution and best practices |
-| **Integration** | `integrations/`, `CONTRIBUTING.md` | External integrations and contribution guidelines |
+| File | Purpose |
+|------|---------|
+| `INDEX.md` | Documentation index and navigation hub |
+| `whitepaper.md` | STAR Algorithm whitepaper — theoretical foundation |
+| `paper.md` | Academic paper (JOSS/TechArxiv submission) |
+| `settings-configs.md` | Consolidated settings and configuration reference |
+| `code-patterns.md` | Code patterns used throughout the codebase |
+| `design-patterns.md` | Design patterns and architectural decisions |
+| `star-algebra-reference.md` | STAR algebra reference and search algorithm details |
+
+**Subdirectories:**
+- `workflows/` - User workflow guides (`in-use.md`, `ideas.md`)
+- `integrations/` - Integration guides (`CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`)
 
 **PROHIBITED in docs root:**
 - Temporary files
@@ -194,10 +201,10 @@ This includes:
 | Domain | Owner | Primary Location |
 |--------|-------|------------------|
 | **Architecture** | Architecture Team | `specs/spec.md`, `specs/current-standards/` |
-| **User Guides** | Documentation Team | `docs/` (whitepaper, guides, integration) |
-| **API Reference** | Development Team | `docs/API.md`, `api/endpoints.md` |
-| **Deployment** | DevOps Team | `docs/DEPLOYMENT.md` |
-| **Testing** | QA Team | `tests/README.md`, `docs/testing/` |
+| **User Guides** | Documentation Team | `docs/` (whitepaper, workflows, integrations) |
+| **API Reference** | Development Team | `specs/spec.md`, `engine/src/routes/v1/` |
+| **Deployment** | DevOps Team | `README.md` (Quick Start), `Dockerfile` |
+| **Testing** | QA Team | `engine/tests/`, `README_TESTING.md` |
 
 ---
 
@@ -218,14 +225,15 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 ### 7.2 Specs Consolidation
 
 **Current State:**
-- `specs/` contains only 3 core files: `spec.md`, `plan.md`, `tasks.md`
-- `specs/current-standards/` has 34 active standards
-- `specs/archive-legacy/` has 45 historical standards
+- `specs/` contains 5 core files: `spec.md`, `plan.md`, `tasks.md`, `doc_policy.md`, `DATA-MODEL.md`
+- `specs/current-standards/` has 38 active standards in a flat directory (numbered 001–032)
+- Architecture diagrams merged into `spec.md` (removed standalone `ARCHITECTURE.md`)
+- Decision records merged into relevant standards (removed `decisions/` directory)
 
 **Target State:**
 - No additional `.md` files in `specs/` root
-- All standards properly organized in subdirectories
-- Clear separation between active and historical content
+- All standards in flat `current-standards/` directory, ordered foundational → assistive
+- Integration specs remain in `INTEGRATIONS/`
 
 ---
 
@@ -251,6 +259,7 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.3 | 2026-06-10 | Flattened standards (38, no subdirectories), merged ARCHITECTURE.md into spec.md, removed archive-legacy and decisions references, updated docs/ section to match reality, added restored docs files, dropped PM2, switched to pnpm-only |
 | 2.2 | 2026-06-05 | Cleaned WASM/NAPI references, fixed duplicate sections, updated standards count |
 | 2.1 | 2026-05-25 | Updated version to 2.1 |
 | 2.0 | 2026-04-09 | Restructured for clarity, consolidated specs and docs |
@@ -258,6 +267,6 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 ---
 
-**Last Updated:** June 5, 2026
-**Version:** 2.2
+**Last Updated:** June 10, 2026
+**Version:** 2.3
 **Status:** ✅ Active

@@ -1,6 +1,6 @@
 # Anchor Engine — Documentation Index
 
-**Version:** 5.2.0 | **Updated:** June 5, 2026 | **Status:** ✅ Production Ready
+**Version:** 5.2.0 | **Updated:** June 10, 2026 | **Status:** ✅ Production Ready
 
 ---
 
@@ -9,14 +9,29 @@
 ### Getting Started
 - **[README.md](../README.md)** — Quick start, installation, usage guide
 - **[CHANGELOG.md](../CHANGELOG.md)** — Version history (latest: v5.2.0)
-- **[-settings-configs.md](-settings-configs.md)** — Consolidated settings and configurations
+- **[settings-configs.md](settings-configs.md)** — Consolidated settings and configurations
 
 ### Core Documentation (`docs/`)
 | File | Purpose |
 |------|---------|
 | **[whitepaper.md](whitepaper.md)** | STAR Algorithm whitepaper — theoretical foundation |
 | **[paper.md](paper.md)** | Academic paper (JOSS/TechArxiv submission) |
-| **[-settings-configs.md](-settings-configs.md)** | Unified configuration reference |
+| **[settings-configs.md](settings-configs.md)** | Unified configuration reference |
+| **[code-patterns.md](code-patterns.md)** | Code patterns used throughout the codebase |
+| **[design-patterns.md](design-patterns.md)** | Design patterns and architectural decisions |
+| **[star-algebra-reference.md](star-algebra-reference.md)** | STAR algebra reference and search algorithm details |
+
+### User Workflows (`docs/workflows/`)
+| File | Purpose |
+|------|---------|
+| **[in-use.md](workflows/in-use.md)** | Current manual workflow guide |
+| **[ideas.md](workflows/ideas.md)** | Future workflow automation ideas |
+
+### Integration Guides (`docs/integrations/`)
+| File | Purpose |
+|------|---------|
+| **[CODE_OF_CONDUCT.md](integrations/CODE_OF_CONDUCT.md)** | Contributor Covenant Code of Conduct |
+| **[CONTRIBUTING.md](integrations/CONTRIBUTING.md)** | Contribution guidelines |
 
 ### Architecture & Standards (`specs/`)
 | File | Purpose |
@@ -25,14 +40,9 @@
 | **[specs/plan.md](../specs/plan.md)** | Development roadmap and phased implementation |
 | **[specs/tasks.md](../specs/tasks.md)** | Current implementation tasks and priorities |
 | **[specs/doc_policy.md](../specs/doc_policy.md)** | Documentation policy — single source of truth for file locations |
-| **[specs/ARCHITECTURE.md](../specs/ARCHITECTURE.md)** | Detailed architecture overview |
 | **[specs/DATA-MODEL.md](../specs/DATA-MODEL.md)** | Data model: Compound → Molecule → Atom → Tag hierarchy |
-| **[specs/ux-ui-recursion-workflow.md](../specs/ux-ui-recursion-workflow.md)** | UX/UI testing workflow |
 
-**Standards:** 34 active architecture standards in **[specs/current-standards/](../specs/current-standards/)**, organized by category:
-- Database & Memory (5) · Security (4) · Configuration & Paths (3) · Search & Retrieval (5)
-- Distillation (6) · Operations & Logging (3) · Testing (2) · Documentation (1)
-- Dependencies (1) · Analysis (1) · Performance (1) · Robustness (1) · Data Integrity (1)
+**Standards:** 38 active architecture standards in **[specs/current-standards/](../specs/current-standards/)** (flat directory, ordered foundational → assistive).
 
 ### Source Code (`engine/`)
 - **[engine/src/README.md](../engine/src/README.md)** — Source code overview, technology stack (Rust WASM + PGlite)
@@ -52,22 +62,22 @@
 → Check **[specs/plan.md](../specs/plan.md)** for known risks and mitigations. Runtime logs live in `$HOME/.anchor/logs/`.
 
 ### "I need to understand the system architecture"
-→ Study **[specs/spec.md](../specs/spec.md)** and **[specs/ARCHITECTURE.md](../specs/ARCHITECTURE.md)**
+→ Study **[specs/spec.md](../specs/spec.md)** (includes architecture diagrams, web dashboard, engine core modules)
 
 ### "I'm researching the theory behind Anchor Engine"
 → Read **[whitepaper.md](whitepaper.md)** and **[paper.md](paper.md)**
 
 ### "I want to understand the search algorithm (STAR)"
-→ See **[specs/spec.md](../specs/spec.md#star-search-algorithm)** and the search standards in `specs/current-standards/search-retrieval/`
+→ See **[specs/spec.md](../specs/spec.md#star-search-algorithm)** and search standards in `specs/current-standards/`
 
 ### "How does distillation work?"
-→ Read **[specs/current-standards/distillation/010-radial-distillation-v2.md](../specs/current-standards/distillation/010-radial-distillation-v2.md)**
+→ Read **[specs/current-standards/010-radial-distillation-v2.md](../specs/current-standards/010-radial-distillation-v2.md)**
 
 ### "I want to contribute code"
 → Start with **[specs/doc_policy.md](../specs/doc_policy.md)** for conventions, then **[engine/src/README.md](../engine/src/README.md)** for source structure
 
 ### "I want to explore standards"
-→ Browse **[specs/current-standards/](../specs/current-standards/)** — 34 active standards with full implementation details
+→ Browse **[specs/current-standards/](../specs/current-standards/)** — 38 active standards with full implementation details
 
 ---
 
@@ -80,7 +90,7 @@
 | **Search Latency** | <200ms (p95, standard queries) | ✅ Optimized |
 | **Ingestion Throughput** | 1,200 mol/sec | ✅ Verified |
 | **Deduplication Rate** | 40–50% | ✅ With SimHash |
-| **Active Standards** | 34 | ✅ Organized by category |
+| **Active Standards** | 38 | ✅ Flattened, numerically ordered |
 | **WASM Module Size** | ~1.4 MB (4 packages) | ✅ 90% smaller than C++ DLLs |
 
 ---
@@ -98,18 +108,24 @@ anchor-engine-node/
 │   ├── INDEX.md                       # This file
 │   ├── whitepaper.md                  # STAR algorithm whitepaper
 │   ├── paper.md                       # Academic paper
-│   └── -settings-configs.md           # Consolidated configuration reference
+│   ├── settings-configs.md            # Consolidated configuration reference
+│   ├── code-patterns.md               # Code patterns guide
+│   ├── design-patterns.md             # Design patterns
+│   ├── star-algebra-reference.md      # STAR algebra reference
+│   ├── workflows/                     # User workflow guides
+│   │   ├── in-use.md
+│   │   └── ideas.md
+│   └── integrations/                  # Integration guides
+│       ├── CODE_OF_CONDUCT.md
+│       └── CONTRIBUTING.md
 │
 ├── specs/                             # Technical specifications
-│   ├── spec.md                        # System specification
+│   ├── spec.md                        # System specification (incl. architecture)
 │   ├── plan.md                        # Development roadmap
 │   ├── tasks.md                       # Current tasks
 │   ├── doc_policy.md                  # Documentation policy
-│   ├── ARCHITECTURE.md                # Architecture overview
 │   ├── DATA-MODEL.md                  # Data model
-│   ├── ux-ui-recursion-workflow.md    # Testing workflow
-│   ├── current-standards/             # 34 active standards (by category)
-│   ├── decisions/                     # Architecture decision records
+│   ├── current-standards/             # 38 active standards (flat, numeric)
 │   └── INTEGRATIONS/                  # Integration specs
 │
 ├── engine/                            # Anchor Engine implementation
@@ -134,10 +150,12 @@ anchor-engine-node/
 
 ## 🔬 Recent Updates (v5.2.0)
 
-### Documentation Consolidation
-- **Flattened docs/**: Reduced `docs/` to 4 essential files (whitepaper, paper, settings, index)
-- **Removed legacy docs**: Deleted 25+ stale .md files that had been superseded by specs or standards
-- **Standards consolidation**: All active standards live in `specs/current-standards/` (34 total)
+### Documentation Consolidation (June 2026)
+- **Flattened standards**: All 38 active standards now live in `specs/current-standards/` as a flat directory
+- **Merged ARCHITECTURE.md** into `specs/spec.md` — architecture now lives in the system specification
+- **Restored docs**: Recovered `code-patterns.md`, `design-patterns.md`, `star-algebra-reference.md` from git history
+- **Deleted clutter**: Removed 19 one-off fix scripts, PM2 configs, and stale runtime data from project root
+- **Fixed .gitignore**: Removed embedded code, resolved contradictions with tracked files
 
 ### WASM-Native Architecture (v4.3.0+)
 - All performance-critical operations use **Rust-compiled WebAssembly** (`@rbalchii/*-wasm` packages)
@@ -146,7 +164,7 @@ anchor-engine-node/
 
 ### Security Hardening
 - Path Traversal Prevention (Standard 025)
-- Auth Bypass Prevention (Standard 024)
+- Auth Bypass Prevention (Standard 023)
 - API Key Strength Validation (Standard 024)
 - Zero-Copy Deduplication (Standard 026)
 
@@ -161,6 +179,6 @@ anchor-engine-node/
 
 ---
 
-**Last Updated:** June 5, 2026
+**Last Updated:** June 10, 2026
 **Version:** 5.2.0
 **Status:** ✅ Production Ready

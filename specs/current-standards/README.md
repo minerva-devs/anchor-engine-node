@@ -1,108 +1,51 @@
 # Anchor Engine Standards Index
 
-This directory contains **34 active architecture standards** for Anchor Engine, organized by category.
+This directory contains **38 active architecture standards** for Anchor Engine.
 
 ---
 
-## 📊 Standards Overview
-
-| Category | Standards | Purpose |
-|----------|-----------|---------|
-| **Database & Memory** | 5 | Data architecture, ephemeral database, pointer-only storage |
-| **Security** | 4 | Security hardening, auth bypass, path traversal, API key validation |
-| **Configuration & Paths** | 3 | Configuration management, path validation, path usage |
-| **Search & Retrieval** | 5 | MCP tools, streaming search, mobile optimization, illumination, algorithm reference |
-| **Distillation** | 6 | Radial distillation, zero-copy deduplication, output storage, self-contamination prevention, tag-based mode |
-| **Operations & Logging** | 3 | Operational visibility, pain point logging, background startup scripts |
-| **Performance** | 1 | Adaptive concurrency control |
-| **Robustness** | 1 | WASM fallback |
-| **Data Integrity** | 1 | Data integrity operations |
-| **Testing** | 2 | MCP integration testing, unified test pipeline |
-| **Dependencies** | 1 | Dependency validation |
-| **Analysis** | 1 | Code analysis |
-| **Documentation** | 1 | Documentation hygiene |
-
----
-
-## 🔑 Quick Access
-
-### Foundation Standards
+## 📊 All Standards (ordered foundational → assistive)
 
 | # | Standard | File |
 |---|----------|------|
-| **001** | Memory-Safe Ingestion | [database-memory/001-memory-safe-ingestion.md](database-memory/001-memory-safe-ingestion.md) |
-| **002** | Reproducible Benchmarking | [database-memory/002-reproducible-benchmarking.md](database-memory/002-reproducible-benchmarking.md) |
-
-### Database & Memory
-
-| # | Standard | File |
-|---|----------|------|
-| **007** | PGlite Memory Optimization | [database-memory/007-pglite-memory-optimization.md](database-memory/007-pglite-memory-optimization.md) |
-| **020** | Ephemeral Database | [database-memory/020-ephemeral-database.md](database-memory/020-ephemeral-database.md) |
-| **021** | Pointer-Only Storage | [database-memory/021-pointer-only-storage.md](database-memory/021-pointer-only-storage.md) |
-
-### Security Standards (P0 Critical)
-
-| # | Standard | File | Priority |
-|---|----------|------|----------|
-| **023** | Authentication Bypass Prevention | [security/023-auth-bypass-prevention.md](security/023-auth-bypass-prevention.md) | P0 |
-| **025** | Path Traversal Prevention | [security/025-path-traversal-prevention.md](security/025-path-traversal-prevention.md) | P0 |
-| **024** | API Key Strength Validation | [security/024-api-key-strength-validation.md](security/024-api-key-strength-validation.md) | P0 |
-| **011** | Security Hardening | [security/011-security-hardening.md](security/011-security-hardening.md) | P0 |
-
-### Configuration & Paths
-
-| # | Standard | File |
-|---|----------|------|
-| **015** | Configuration Management | [configuration-paths/015-configuration-management.md](configuration-paths/015-configuration-management.md) |
-| **018** | Configuration Validation | [configuration-paths/018-configuration-validation.md](configuration-paths/018-configuration-validation.md) |
-| **029** | Path Usage Validation | [configuration-paths/029-path-usage-validation.md](configuration-paths/029-path-usage-validation.md) |
-
-### Search & Retrieval
-
-| # | Standard | File |
-|---|----------|------|
-| **003** | MCP Tool Interface | [search-retrieval/003-mcp-tool-interface.md](search-retrieval/003-mcp-tool-interface.md) |
-| **004** | Streaming Search | [search-retrieval/004-streaming-search.md](search-retrieval/004-streaming-search.md) |
-| **006** | Mobile Search Optimization | [search-retrieval/006-mobile-search-optimization.md](search-retrieval/006-mobile-search-optimization.md) |
-| **009** | Illuminate BFS Traversal | [search-retrieval/009-illuminate-bfs-traversal.md](search-retrieval/009-illuminate-bfs-traversal.md) |
-| **031** | Search Algorithms Comprehensive Reference | [search-retrieval/031-search-algorithms-comprehensive.md](search-retrieval/031-search-algorithms-comprehensive.md) |
-
-### Distillation
-
-| # | Standard | File |
-|---|----------|------|
-| **008** | Radial Distillation | [distillation/008-radial-distillation.md](distillation/008-radial-distillation.md) |
-| **010** | Radial Distillation v2 | [distillation/010-radial-distillation-v2.md](distillation/010-radial-distillation-v2.md) |
-| **026** | Zero-Copy Deduplication | [distillation/026-zero-copy-dedup.md](distillation/026-zero-copy-dedup.md) |
-| **027** | Distillation Output Storage | [distillation/027-distillation-output-storage.md](distillation/027-distillation-output-storage.md) |
-| **028** | Self-Contamination Prevention | [distillation/028-self-contamination-prevention.md](distillation/028-self-contamination-prevention.md) |
-| **029** | Tag-Based Distillation Mode | [distillation/029-tag-based-distillation.md](distillation/029-tag-based-distillation.md) |
-
-### Operations & Logging
-
-| # | Standard | File |
-|---|----------|------|
-| **001** | Operational Visibility (OPS-001 to OPS-005) | [operations-logging/014-operational-visibility.md](operations-logging/014-operational-visibility.md) |
-| **027** | Pain Point Logging | [operations-logging/027-pain-point-logging.md](operations-logging/027-pain-point-logging.md) |
-
-### Performance & Robustness
-
-| # | Standard | File |
-|---|----------|------|
-| **005** | Adaptive Concurrency Control | [performance/005-adaptive-concurrency-control.md](performance/005-adaptive-concurrency-control.md) |
-| **013** | WASM Fallback | [robustness/013-wasm-fallback.md](robustness/013-wasm-fallback.md) |
-
-### Data Integrity & Testing
-
-| # | Standard | File |
-|---|----------|------|
-| **012** | Data Integrity | [data-integrity/012-data-integrity.md](data-integrity/012-data-integrity.md) |
-| **016** | MCP Integration Testing | [testing/016-mcp-integration-testing.md](testing/016-mcp-integration-testing.md) |
-| **017** | Dependency Validation | [dependencies/017-dependency-validation.md](dependencies/017-dependency-validation.md) |
-| **019** | Code Analysis | [analysis/019-code-analysis.md](analysis/019-code-analysis.md) |
-| **022** | Documentation Hygiene | [documentation/022-documentation-hygiene.md](documentation/022-documentation-hygiene.md) |
-| **028** | Unified Test Pipeline | [testing/028-unified-test-pipeline.md](testing/028-unified-test-pipeline.md) |
+| 001 | Memory-Safe Ingestion | [001-memory-safe-ingestion.md](001-memory-safe-ingestion.md) |
+| 002 | Reproducible Benchmarking | [002-reproducible-benchmarking.md](002-reproducible-benchmarking.md) |
+| 003 | MCP Tool Interface | [003-mcp-tool-interface.md](003-mcp-tool-interface.md) |
+| 004 | Streaming Search | [004-streaming-search.md](004-streaming-search.md) |
+| 005 | Adaptive Concurrency Control | [005-adaptive-concurrency-control.md](005-adaptive-concurrency-control.md) |
+| 006 | Mobile Search Optimization | [006-mobile-search-optimization.md](006-mobile-search-optimization.md) |
+| 007 | PGlite Memory Optimization | [007-pglite-memory-optimization.md](007-pglite-memory-optimization.md) |
+| 008 | Radial Distillation | [008-radial-distillation.md](008-radial-distillation.md) |
+| 009 | Illuminate BFS Traversal | [009-illuminate-bfs-traversal.md](009-illuminate-bfs-traversal.md) |
+| 010 | Radial Distillation v2 | [010-radial-distillation-v2.md](010-radial-distillation-v2.md) |
+| 011 | Security Hardening | [011-security-hardening.md](011-security-hardening.md) |
+| 012 | Data Integrity | [012-data-integrity.md](012-data-integrity.md) |
+| 013 | WASM Fallback | [013-wasm-fallback.md](013-wasm-fallback.md) |
+| 014 | Circuit Breaker Pattern | [014-circuit-breaker-pattern.md](014-circuit-breaker-pattern.md) |
+| 014 | Operational Visibility | [014-operational-visibility.md](014-operational-visibility.md) |
+| 014 | Search Algorithm Testing | [014-search-algorithm-testing.md](014-search-algorithm-testing.md) |
+| 015 | Configuration Management | [015-configuration-management.md](015-configuration-management.md) |
+| 016 | MCP Integration Testing | [016-mcp-integration-testing.md](016-mcp-integration-testing.md) |
+| 017 | Dependency Validation | [017-dependency-validation.md](017-dependency-validation.md) |
+| 018 | AST Parser WASM | [018-ast-parser-wasm.md](018-ast-parser-wasm.md) |
+| 018 | Configuration Validation | [018-configuration-validation.md](018-configuration-validation.md) |
+| 019 | Code Analysis | [019-code-analysis.md](019-code-analysis.md) |
+| 019 | Test Environment Consistency | [019-test-environment-consistency.md](019-test-environment-consistency.md) |
+| 020 | Ephemeral Database | [020-ephemeral-database.md](020-ephemeral-database.md) |
+| 021 | Pointer-Only Storage | [021-pointer-only-storage.md](021-pointer-only-storage.md) |
+| 022 | Documentation Hygiene | [022-documentation-hygiene.md](022-documentation-hygiene.md) |
+| 023 | Auth Bypass Prevention | [023-auth-bypass-prevention.md](023-auth-bypass-prevention.md) |
+| 024 | API Key Strength Validation | [024-api-key-strength-validation.md](024-api-key-strength-validation.md) |
+| 025 | Path Traversal Prevention | [025-path-traversal-prevention.md](025-path-traversal-prevention.md) |
+| 026 | Zero-Copy Deduplication | [026-zero-copy-dedup.md](026-zero-copy-dedup.md) |
+| 027 | Distillation Output Storage | [027-distillation-output-storage.md](027-distillation-output-storage.md) |
+| 027 | Pain Point Logging | [027-pain-point-logging.md](027-pain-point-logging.md) |
+| 028 | Self-Contamination Prevention | [028-self-contamination-prevention.md](028-self-contamination-prevention.md) |
+| 028 | Unified Test Pipeline | [028-unified-test-pipeline.md](028-unified-test-pipeline.md) |
+| 029 | Path Usage Validation | [029-path-usage-validation.md](029-path-usage-validation.md) |
+| 029 | Tag-Based Distillation | [029-tag-based-distillation.md](029-tag-based-distillation.md) |
+| 031 | Search Algorithms Comprehensive | [031-search-algorithms-comprehensive.md](031-search-algorithms-comprehensive.md) |
+| 032 | API Error Handling | [032-api-error-handling-standard.md](032-api-error-handling-standard.md) |
 
 ---
 
@@ -131,5 +74,5 @@ Each standard follows this structure:
 
 ---
 
-**Last Updated:** May 19, 2026
-**Total Standards:** 33
+**Last Updated:** June 10, 2026
+**Total Standards:** 38

@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [5.3.0] - 2026-06-10
+
+### Documentation Drift Repair & Standards Consolidation
+
+**Documentation Policy (v2.3):**
+- Updated `doc_policy.md` to match reality: 38 standards, flat directory, current docs/ structure
+- Removed stale `archive-legacy/` references and `decisions/` directory (merged into relevant standards)
+
+**Standards Flattened:**
+- Flattened `specs/current-standards/` from 14 category subdirectories into single flat directory
+- 38 active standards numbered 001–032, ordered foundational → assistive
+- Duplicate-numbered standards (014, 018, 019, 027, 028, 029) preserved with distinct names
+
+**Architecture Consolidated:**
+- Merged `ARCHITECTURE.md` into `spec.md` — architecture diagrams, web dashboard, engine core modules now in system spec
+- Removed `ux-ui-recursion-workflow.md` (no longer needed)
+
+**Docs Restored from Git History:**
+- Restored: `code-patterns.md`, `design-patterns.md`, `star-algebra-reference.md`
+- Restored: `integrations/CODE_OF_CONDUCT.md`, `integrations/CONTRIBUTING.md`
+- Renamed: `-settings-configs.md` → `settings-configs.md`
+
+**Root Cleanup:**
+- Deleted 19 one-off fix scripts cluttering project root
+- Removed PM2 configs, `.babelrc`, `config/` directory
+- Dropped `package-lock.json` (pnpm only)
+- Cleaned `.gitignore`: removed embedded JavaScript code, fixed contradictions with tracked files
+- Restored missing root `package.json` + `pnpm-workspace.yaml`
+- Re-added `CITATION.cff` to tracking
+
+### Distillation Pipeline Fixes
+
+**API Routes:**
+- Added `POST /v1/distills` route to trigger distillation
+- Removed `compounds.ts` route (always returned 404, table removed per Standard 051)
+- Fixed `/v1/files/read` to allow `.md`/`.txt`/`.yml` extensions (was blocking distill output reads)
+- `stats.ts`: replaced hardcoded placeholder with real implementation (uptime, memory, DB row counts, search counter)
+
+**MCP Tools:**
+- Fixed `anchor_distill`: was calling non-existent `POST /v1/distills` → now calls `POST /v1/memory/distill`
+- Fixed `anchor_distill` body format: maps `{source_url, source_text}` → proper `RadialDistillRequest`
+- Added `anchor_list_distills` and `anchor_get_distill` tools
+- `callAnchorAPI()` now supports GET requests
+
+**Distill Manager:**
+- Rewritten to query PGlite `distills` table instead of in-memory-only store
+- `recordDistill()` writes metadata pointers to DB on completion
+- In-memory cache retained for fast UI polling
+
+**UI:**
+- Fixed `output_format` from unsupported `'source-grouped'` to `'decision-records'`
+- Added decision-records format handler (`parsedContent.records`)
+
+---
+
 ## [5.2.0] - 2026-06-03
 
 ### Testing Documentation Cleanup & Consolidation

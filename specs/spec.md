@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 5.2.0 | **Status:** Production Ready + v5.2.0 Streaming & Observability | **Updated:** May 20, 2026
+**Version:** 5.2.0 | **Status:** Production Ready + v5.2.0 Streaming & Observability | **Updated:** June 10, 2026
 
 ## Quick Reference
 
@@ -50,7 +50,7 @@
 - **[docs/INDEX.md](../docs/INDEX.md)** - Documentation navigation hub
 - **[docs/whitepaper.md](../docs/whitepaper.md)** - STAR Algorithm whitepaper (arXiv ready)
 - **[engine/src/README.md](../engine/src/README.md)** - Source code overview
-- **[specs/current-standards/](current-standards/)** - Active architecture standards (001-029)
+- **[specs/current-standards/](current-standards/)** - 38 active architecture standards (flat directory)
 
 ---
 
@@ -109,6 +109,43 @@ flowchart TB
 ```
 User Query → API Route → Zod Validation → Search Service → PGlite Query → Context Inflation → Return 618k chars
 ```
+
+### Web Dashboard
+
+**Location:** `engine/public/index.html`
+
+**Tech Stack:** React 18.3.1 (CDN), ReactDOM 18.3.1 (CDN), Babel 7.26.0 (CDN), TailwindCSS 3.4 (CDN), Lucide Icons, js-yaml 4.1.0
+
+| Route | Description | API Endpoints |
+|-------|-------------|---------------|
+| `/` | Homepage with status | Health check, status |
+| `/search` | Main search interface | `GET /v1/search` |
+| `/settings` | Configuration page | `POST /v1/settings`, `GET /v1/settings` |
+| `/quarantine` | Quarantined files | `GET /v1/quarantine`, `POST /v1/quarantine/unquarantine` |
+| `/test` | Test suite runner | `POST /v1/test/run` |
+
+### Engine Core Modules
+
+| Module | Purpose | Location |
+|--------|---------|----------|
+| Context Engine | Core reasoning loop | `engine/src/context/` |
+| PGlite DB | In-memory PostgreSQL-compatible store | `engine/src/core/db.ts` |
+| Search (STAR) | Physics-inspired graph retrieval | `engine/src/services/search/` |
+| Distillation | Summarization & extraction (Radial v2) | `engine/src/services/distillation/` |
+| Git Cloner | Repository cloning & AST parsing | `engine/src/services/ingest/` |
+| Mirror Protocol | Filesystem source-of-truth sync | `engine/src/services/mirror/` |
+
+### Quick Reference
+
+| Task | Command |
+|------|---------|
+| Start engine | `pnpm start` |
+| Run all tests | `pnpm test` |
+| Run integration tests | `pnpm test:vitest run integration` |
+| Build production | `pnpm build` |
+| Open dashboard | `http://localhost:3160` |
+
+**API Base URL:** `http://localhost:3160/v1`
 
 ---
 
@@ -941,12 +978,43 @@ All active standards live in `specs/current-standards/`.
 
 ---
 
+## API Reference
+
+All routes served from `http://localhost:3160/v1/`. Route files live in `engine/src/routes/v1/`.
+
+| Route File | Endpoints | Purpose |
+|-----------|-----------|---------|
+| `admin.ts` | `/v1/admin/*` | Administrative operations |
+| `atoms.ts` | `/v1/atoms` | Atom (entity/keyword) queries |
+| `backup.ts` | `/v1/backup/*` | Database backup and restore |
+| `compounds.ts` | `/v1/compounds` | Source document management |
+| `distills.ts` | `/v1/distills/list`, `/v1/distills/:id`, `/v1/distills/:id/stream` | Distillation output access |
+| `encryption.ts` | `/v1/encrypt/*` | Content encryption/decryption |
+| `git.ts` | `/v1/git/clone` | GitHub repository cloning |
+| `ingest.ts` | `/v1/ingest`, `/v1/ingest/streaming` | File ingestion (standard + streaming) |
+| `memory.ts` | `/v1/memory/search`, `/v1/memory/search/stream`, `/v1/memory/distill` | Core memory operations |
+| `molecules.ts` | `/v1/molecules` | Molecule queries |
+| `research.ts` | `/v1/research/*` | Web research operations |
+| `search.ts` | `/v1/search` | Search with `distill:` prefix support |
+| `settings.ts` | `/v1/settings` | Configuration management |
+| `stats.ts` | `/v1/stats` | System metrics (uptime, memory, DB counts) |
+| `system.ts` | `/v1/system/*`, `/v1/health`, `/v1/watchdog/*` | System health, watchdog control |
+| `tags.ts` | `/v1/tags` | Tag queries and management |
+
+**Search supports special prefixes:**
+- `distill:` — list all distills
+- `distill:<bucket>` — query distills by bucket name
+
+**Health check:** `GET http://localhost:3160/health`
+
+---
+
 ## Documentation
 
 - **[README.md](../README.md)** - Quick start, API examples, troubleshooting
 - **[CHANGELOG.md](../CHANGELOG.md)** - Version history (v5.0.0)
 - **[docs/whitepaper.md](../docs/whitepaper.md)** | The Sovereign Context Protocol
-- **[specs/current-standards/](current-standards/)** - Active architecture standards (001-029)
+- **[specs/current-standards/](current-standards/)** - 38 active architecture standards (flat directory)
 
 ---
 

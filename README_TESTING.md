@@ -1,6 +1,6 @@
 # Anchor Engine — Automated Testing Quick Reference
 
-**Version:** 5.2.0 | **Updated:** June 5, 2026
+**Version:** 5.2.0 | **Updated:** June 10, 2026
 
 ---
 
@@ -31,7 +31,7 @@ npx vitest run engine/tests/unit/paths-config.test.ts
 
 ## Test Architecture
 
-The three-tier testing strategy (documented in `specs/ux-ui-recursion-workflow.md`):
+The three-tier testing strategy:
 
 1. **Tier 1: Automated API Tests** — Vitest-based, run `pnpm test`. Covers all routes, services, and data integrity.
 2. **Tier 2: Manual UI Testing** — Playwright for browser-based verification.
@@ -47,6 +47,7 @@ The three-tier testing strategy (documented in `specs/ux-ui-recursion-workflow.m
 
 ## See Also
 
-- **[specs/ux-ui-recursion-workflow.md](specs/ux-ui-recursion-workflow.md)** — Full testing strategy
-- **[specs/current-standards/testing/](specs/current-standards/testing/)** — Testing standards
+- **[specs/current-standards/](specs/current-standards/)** — All 38 active standards (flat directory)
+- **[specs/current-standards/028-unified-test-pipeline.md](specs/current-standards/028-unified-test-pipeline.md)** — Unified test pipeline standard
+- **[specs/current-standards/016-mcp-integration-testing.md](specs/current-standards/016-mcp-integration-testing.md)** — MCP integration testing
 - **[engine/tests/](../engine/tests/)** — All test suites

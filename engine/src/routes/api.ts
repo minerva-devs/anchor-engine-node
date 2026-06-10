@@ -21,7 +21,6 @@ import { setupEnhancedRoutes } from './enhanced-api.js';
 import { setupMemoryRoutes } from './v1/memory.js';
 import { setupDistillRoutes } from './v1/distills.js';
 import { setupEncryptionRoutes } from './v1/encryption.js';
-import { setupCompoundsRoutes } from './v1/compounds.js';
 import { setupMoleculesRoutes } from './v1/molecules.js';
 import { registerTestRoutes } from './test-ui.js';
 
@@ -36,8 +35,7 @@ export function setupRoutes(app: Application) {
   // Encryption routes (must be before system routes)
   setupEncryptionRoutes(app);
 
-  // Compounds and molecules routes (new - Standard 051 compatibility)
-  setupCompoundsRoutes(app);
+  // Molecules routes (post-Standard 051 migration)
   setupMoleculesRoutes(app);
 
   // System & admin routes

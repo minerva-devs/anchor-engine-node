@@ -7,10 +7,57 @@
 
 import type { Application, Request, Response } from 'express';
 import { StructuredLogger } from '../../utils/structured-logger.js';
-import { getAllDistills, getDistill, getDistillsBySession, deleteDistill } from '../../services/distillation/distill-manager.js';
+import { getAllDistills, getDistill, getDistillsBySession, deleteDistill, recordDistill } from '../../services/distillation/distill-manager.js';
+import { radialDistill } from '../../services/distillation/radial-distiller-v2.js';
+import type { RadialDistillRequest } from '../../services/distillation/radial-distiller-v2.js';
 import fs from 'fs';
 
 export function setupDistillRoutes(app: Application) {
+  // POST /v1/distills - Trigger a new distillation (delegates to radial distiller)
+  app.post('/v1/distills', async (req: Request, res: Response) => {
+    const startTime = Date.now();
+    try {
+      const body = req.body as RadialDistillRequest;
+      const bodyWithDefaults = { ...body, auto_save: true };
+      const timeoutMs = Math.min((body.timeout_seconds || 30) * 1000, 120000);
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Distillation timed out after ${timeoutMs}ms`)), timeoutMs);
+      });
+
+      const result: any = await Promise.race([
+        radialDistill(bodyWithDefaults),
+        timeoutPromise,
+      ]);
+
+      // Record to DB and cache
+      const distillRecord = {
+        id: `distill-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+        timestamp: new Date().toISOString(),
+        filename: result.output?.path?.split('/').pop() || `distill-${Date.now()}.md`,
+        file_path: result.output?.path || '',
+        line_count: result.stats?.lines_total || 0,
+        lines_unique: result.stats?.lines_unique || 0,
+        compression_ratio: result.stats?.compression_ratio || '0',
+        source_sessions: result.provenance?.source_compounds || [],
+        source_files: result.provenance?.source_compounds || [],
+        parameters: bodyWithDefaults,
+        status: 'complete',
+        progress: 100,
+      };
+      await recordDistill(distillRecord);
+
+      const duration = Date.now() - startTime;
+      StructuredLogger.info('DISTILL_POST_COMPLETE', { id: distillRecord.id, duration_ms: duration });
+
+      res.json({ ...result, distill_id: distillRecord.id, duration_ms: duration });
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : String(err);
+      StructuredLogger.error('DISTILL_POST_ERROR', err instanceof Error ? err : new Error(msg));
+      res.status(500).json({ error: msg });
+    }
+  });
+
   // GET /v1/distills/list - List all distills (newest first)
   app.get('/v1/distills/list', async (req: Request, res: Response) => {
     try {

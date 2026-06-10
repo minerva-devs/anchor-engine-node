@@ -569,10 +569,9 @@
                     if (algo === 'distill') {
                         // Use tag-based mode for full inflated content
                         data = await api.distill({
-                            mode: 'tag-based',
                             seed: { query: q },
                             radius: 2000,
-                            output_format: 'source-grouped'
+                            output_format: 'decision-records'
                         });
                         
                         // Handle distillation results
@@ -662,8 +661,22 @@
                                         ? JSON.parse(fileData.content) 
                                         : fileData.content;
 
+                                    // Check for decision-records format
+                                    if (parsedContent.records && Array.isArray(parsedContent.records)) {
+                                        console.log('[Distill] ✅ Loaded decision-records:', parsedContent.records.length, 'records');
+                                        lines = parsedContent.records.map((rec, idx) => ({
+                                            id: `distill-rec-${idx}-${rec.id?.substring(0,8) || idx}`,
+                                            content: rec.content || rec.summary || rec.title || '',
+                                            source: rec.path || 'Distilled',
+                                            tags: rec.tags || ['distilled', 'decision-record'],
+                                            score: 1.0,
+                                            _algo: '🧪 distill',
+                                            _title: rec.title,
+                                            _summary: rec.summary
+                                        }));
+                                    }
                                     // Check for JSON format (4.8.2)
-                                    if (parsedContent.lines && Array.isArray(parsedContent.lines)) {
+                                    else if (parsedContent.lines && Array.isArray(parsedContent.lines)) {
                                         console.log('[Distill] ✅ Loaded JSON format:', parsedContent.lines.length, 'lines');
                                         lines = parsedContent.lines.map((line, idx) => ({
                                             id: `distill-line-${idx}`,

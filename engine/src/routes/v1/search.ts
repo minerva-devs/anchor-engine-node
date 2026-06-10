@@ -4,6 +4,7 @@ import { StructuredLogger } from '../../utils/structured-logger.js';
 import { smartChatSearch, executeMoleculeSearch } from '../../services/search/search.js';
 import type { SearchRequest } from '../../types/api.js';
 import { executeStreamingSearch, formatSSE } from '../../services/search/streaming-search.js';
+import { incrementSearchCount } from './stats.js';
 
 // Counter for search requests
 let searchCounter = 0;
@@ -15,6 +16,7 @@ export function setupSearchRoutes(app: Application) {
   app.post('/v1/memory/search', validate(schemas.memorySearch), async (req: Request, res: Response) => {
     // Increment search counter
     searchCounter++;
+    incrementSearchCount();
     const startTime = Date.now();
 
     try {
