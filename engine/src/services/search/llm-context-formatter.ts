@@ -12,11 +12,7 @@
  */
 
 import type { SearchResult } from './search-utils.js';
-import { EntityExtractorService } from '../../services/extraction/entity-extractor.js';
 import { KNOWN_PEOPLE } from '../../config/known-entities.js';
-
-// Initialize the service instance for reuse
-const extractorService = new EntityExtractorService();
 
 // ============ Type Definitions ============
 
@@ -90,6 +86,52 @@ export interface LLMContext {
   };
 }
 
+// ============ Entity Extraction Helpers ============
+
+interface ExtractedEntityData {
+  name: string;
+  type: string;
+  mentions: number;
+}
+
+/**
+ * Extract entities from text using KNOWN_PEOPLE registry and common technology patterns.
+ * Replaces the EntityExtractorService dependency with inline extraction.
+ */
+function extractEntities(text: string): ExtractedEntityData[] {
+  if (!text || text.length === 0) return [];
+  const results: ExtractedEntityData[] = [];
+  const lower = text.toLowerCase();
+
+  for (const person of KNOWN_PEOPLE) {
+    const escaped = person.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'gi');
+    const matches = lower.match(regex);
+    if (matches && matches.length > 0) {
+      results.push({ name: person, type: 'person', mentions: matches.length });
+    }
+  }
+
+  const techPatterns = [
+    { name: 'Anchor Engine', type: 'technology' as const },
+    { name: 'PGlite', type: 'technology' as const },
+    { name: 'STAR', type: 'technology' as const },
+    { name: 'WASM', type: 'technology' as const },
+    { name: 'TagWalker', type: 'technology' as const },
+  ];
+
+  for (const { name, type } of techPatterns) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`\\b${escaped}\\b`, 'gi');
+    const matches = lower.match(regex);
+    if (matches && matches.length > 0) {
+      results.push({ name, type, mentions: matches.length });
+    }
+  }
+
+  return results;
+}
+
 // ============ Main Formatter Class ============
 
 export class LLMContextFormatter {
@@ -137,7 +179,7 @@ export class LLMContextFormatter {
       const text = `${atom.content} ${atom.tags?.join(' ') || ''}`;
       
       // Use the centralized service to extract all entities at once
-      const extractionResult = extractorService.extract(text);
+      const extractionResult = extractEntities(text);
       
       // Process extracted entities and add to map
       for (const entity of extractionResult) {

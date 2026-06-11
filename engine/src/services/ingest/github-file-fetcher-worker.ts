@@ -21,7 +21,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as tar from 'tar';
-import fetch from 'node-fetch';
 
 // File exclusion patterns
 const EXCLUDE_PATTERNS = [
