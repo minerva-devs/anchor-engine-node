@@ -9,41 +9,36 @@ export function setupAtomRoutes(app: Application) {
   app.get('/v1/atoms', async (req: Request, res: Response) => {
     try {
       const query = req.query as Record<string, string | undefined>;
-      const limit = parseInt(query.limit || '20', 10);
+      const limit = Math.min(parseInt(query.limit || '20', 10), 100);
       const offset = parseInt(query.offset || '0', 10);
-      let order_by = (query.order_by as string) || 'timestamp'; // default to ascending by timestamp
+      const order_by = (query.order_by as string) || 'timestamp';
 
-      // Build query dynamically based on filters
-      let sqlQuery = 'SELECT id, source_path, timestamp, simhash, embedding, provenance, created_at FROM atoms';
+      // Select only lightweight columns for list view — avoid simhash/embedding
+      // which can contain massive text blobs that choke JSON serialization.
+      let sqlQuery = 'SELECT id, source_path, timestamp, provenance, created_at, content, buckets, tags, type, compound_id FROM atoms';
 
       const params: any[] = [];
-      
-      // Add order by clause (validate to prevent SQL injection)
-      const validOrderBy: string[] = ['id', 'timestamp', 'sequence'];
-      
-      if (validOrderBy.includes(order_by)) {
-        // Use explicit DESC/ASC keywords that PostgreSQL understands
-        sqlQuery += `ORDER BY ${order_by} DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-      } else {
-        // Fallback to default ordering (timestamp descending)
-        sqlQuery += `ORDER BY timestamp DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-      }
+
+      // Validate order_by to prevent SQL injection
+      const validOrderBy = ['id', 'timestamp', 'created_at'];
+      const safeOrder = validOrderBy.includes(order_by) ? order_by : 'timestamp';
+      sqlQuery += ` ORDER BY ${safeOrder} DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
       params.push(limit);
       params.push(offset);
 
-      const result = await db.run(sqlQuery, params); // Add debug logging here
-
-      console.log('DEBUG SQL Query:', sqlQuery);       // Log the generated query
-      console.log('DEBUG Params:', JSON.stringify(params));   // Log parameters
+      const result = await db.run(sqlQuery, params);
 
       const atoms = (result.rows || []).map((row: any) => ({
         id: row.id,
         source_path: row.source_path,
         timestamp: row.timestamp,
-        simhash: row.simhash,
-        embedding: row.embedding,
         provenance: row.provenance,
         created_at: row.created_at,
+        content: row.content,
+        buckets: row.buckets,
+        tags: row.tags,
+        type: row.type,
+        compound_id: row.compound_id,
       }));
 
       // Get total count for pagination
@@ -59,7 +54,7 @@ export function setupAtomRoutes(app: Application) {
       });
     } catch (error: any) {
       console.error('[Atoms API] Error:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || 'Internal server error' });
     }
   });
 
