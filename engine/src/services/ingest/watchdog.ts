@@ -153,6 +153,28 @@ export async function startWatchdog(customPaths?: string[]): Promise<void> {
     }, 1000);
 }
 
+// ---
+// Idle‑timer helper – postpones full‑corpus distillation until the ingestion pipeline is idle for a configurable period
+let lastIngest = Date.now();
+const idleMs = (config.distill_idle_minutes ?? 5) * 60 * 1000;
+let idleTimer: NodeJS.Timeout | null = null;
+
+function scheduleDistill(): void {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(async () => {
+        console.log('[Watchdog] Idle period elapsed – starting full‑corpus distillation');
+        const { triggerFullDistillation } = await import('../../services/distillation/distill-manager.js');
+        await triggerFullDistillation();
+    }, idleMs);
+}
+
+function onFileAdded(): void {
+    lastIngest = Date.now();
+    scheduleDistill();
+}
+// ---
+// ---
+
 export async function addWatchPath(newPath: string): Promise<boolean> {
     if (!fs.existsSync(newPath)) {
         throw new Error(`Path does not exist: ${newPath}`);
@@ -354,6 +376,18 @@ async function scanInbox(): Promise<void> {
     const avgTime = fileCount > 0 ? (totalIngestionTime / fileCount).toFixed(2) : 'N/A';
     console.log(`[Watchdog] 📊 INGESTION SUMMARY: ${fileCount} files processed, Total time: ${totalIngestionTime.toFixed(2)}s, Avg per file: ${avgTime}s`);
 
+    // Standard 076: Auto-distill once after batch completes (not per-file)
+    if (filesIngested > 0) {
+        try {
+            const { radialDistill } = await import('../distillation/radial-distiller-v2.js');
+            console.log(`[Watchdog] ⏳ Auto-distill starting (${filesIngested} files ingested)...`);
+            await radialDistill({});
+            console.log('[Watchdog] ✅ Auto-distill complete');
+        } catch (error: any) {
+            console.warn('[Watchdog] ⚠️ Auto-distill failed:', error.message);
+        }
+    }
+
     console.log(`[ManualIngest] Processed ${filesProcessed} items, ingested ${filesIngested}`);
 }
 
@@ -506,45 +540,20 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
         try {
             const { searchCache } = await import('../search/search.js');
             searchCache.clear();
-            console.log('[Watchdog] ✅ Search cache invalidated after ingestion');
         } catch (e) {
             console.warn('[Watchdog] Could not invalidate search cache:', e);
         }
 
-        // Standard 076: Automatic Distillation Trigger
-        try {
-            const { radialDistill } = await import('../distillation/radial-distiller-v2.js');
-            console.log('[Watchdog] ⏳ Automatic distillation starting after ingestion...');
-            await radialDistill({});
-            console.log('[Watchdog] ✅ Automatic distillation completed - latest distill overwrote previous');
-        } catch (error: any) {
-            console.warn('[Watchdog] ⚠️ Automatic distillation failed during ingestion:', error.message);
-        }
-
         // Trigger Mirror: write cleaned content from original file (Standard 051 - Pointer Only)
-        console.log('[Watchdog] Preparing mirror write from original file...');
-        console.log(`[Watchdog] compound exists: ${!!compound}`);
-        console.log(`[Watchdog] provenance: ${provenance}`);
-
         try {
-            console.log('[Watchdog] Importing mirror and atomizer modules...');
             const { writeMirroredFile } = await import('../mirror/mirror.js');
             const fsLocal = await import('fs');
-            
-            // Read original file content
             const originalContent = fsLocal.readFileSync(filePath, 'utf-8');
-            
-            console.log(`[Watchdog] Original file size: ${originalContent.length} bytes`);
-            
             if (compound && originalContent) {
                 await writeMirroredFile(originalContent, relativePath, provenance);
-                console.log('[Watchdog] ✅ Mirror write complete');
-            } else {
-                console.warn('[Watchdog] ⚠️ Skipping mirror write - compound or content missing');
             }
         } catch (e: any) {
-            console.error('[Watchdog] ✗ Mirror write failed:', e.message);
-            console.error('[Watchdog] Stack trace:', e.stack);
+            console.warn(`[Watchdog] Mirror write failed for ${relativePath}:`, e.message);
         }
 
         // Trigger post-ingestion synonym generation (debounced)
@@ -559,9 +568,6 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
         const fileDuration = ((Date.now() - fileStartTime) / 1000);
         totalIngestionTime += fileDuration;
         fileCount++;
-        console.log(`[Watchdog] 📊 Cumulative: ${fileCount} files processed, Total time: ${totalIngestionTime.toFixed(2)}s`);
-        
-        console.log('[SystemStatus] Ingestion complete, system ready for search');
 
         return { ingested: true };
 
