@@ -1,5 +1,5 @@
 /**
- * Configuration Module for Sovereign Context Engine
+ * Configuration Module for Anchor Engine
  *
  * All configuration is abstracted to ~/.anchor/user_settings.json.
  * No config files live in the project root.
@@ -16,8 +16,16 @@ import { PATHS } from './paths.js';
 // For __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+// Add distill_idle_minutes to Config schema
+// Note: The full ConfigSchema is defined elsewhere; we simply add the missing field.
 
 // === Configuration Schema with Zod Validation ===
+
+// Add distill_idle_minutes to Config schema
+const ConfigSchema = z.object({
+  // existing fields would be added here
+  distill_idle_minutes: z.number().optional(),
+});
 
 // Server Settings Schema
 const ServerSettingsSchema = z.object({
@@ -61,6 +69,7 @@ const SearchSettingsSchema = z.object({
   max_chars_limit: z.number().int().positive().optional(),
   fts_window_size: z.number().int().positive().optional(),
   fts_padding: z.number().int().positive().optional(),
+  max_results_default: z.number().int().positive().default(100).optional(),
 });
 
 // Database Settings Schema
@@ -195,6 +204,8 @@ interface Config {
   CONTEXT_RECENCY_WEIGHT: number;
 
   // Infrastructure
+  distill_idle_minutes: 5,
+
   REDIS: {
     ENABLED: boolean;
     URL: string;
@@ -226,16 +237,17 @@ interface Config {
     max_chars_limit: number;
     fts_window_size: number;
     fts_padding: number;
+    max_results_default: number;
   };
 
   // Cache Settings (LRU Cache Configuration)
   CACHE: {
-    MAX_ENTRIES_SEARCH_RESULT: 500,
-    MAX_ENTRIES_QUERY_PARSE: 500,
-    MAX_ENTRIES_SEMANTIC_EXPANSION: 1000,
-    MAX_ENTRIES_ENGRAM: 200,
-    MEMORY_PRESSURE_THRESHOLD: 88,
-    CRITICAL_MEMORY_THRESHOLD: 95,
+    MAX_ENTRIES_SEARCH_RESULT: 200,      // Reduced from 500 (5% of ~4000 entry budget)
+    MAX_ENTRIES_QUERY_PARSE: 200,        // Reduced from 500 (5% of ~4000 entry budget)
+    MAX_ENTRIES_SEMANTIC_EXPANSION: 400, // Reduced from 1000 (5% of ~8000 entry budget)
+    MAX_ENTRIES_ENGRAM: 100,             // Reduced from 200 (5% of ~2000 entry budget)
+    MEMORY_PRESSURE_THRESHOLD: 80, // Middle ground: evict at 80% to prevent thrashing
+    CRITICAL_MEMORY_THRESHOLD: 92, // Critical only at 92% (was 95%)
     ENABLE_MEMORY_PRESSURE_EVICTION: true,
     SEARCH_RESULT_TTL_MS: 60000,
     QUERY_PARSE_TTL_MS: 300000,
@@ -362,6 +374,15 @@ interface Config {
     TOKEN_BUDGET_DEFAULT: number;
     INGESTION_PROFILE: 'code' | 'notes' | 'chat' | 'default';
   };
+
+  // Density Prefix — tier thresholds for external RAG pipeline dispatch
+  DENSITY: {
+    LIGHT_DOC_THRESHOLD: number;   // mol_count >= this → light tier (well-known concept)
+    MEDIUM_DOC_THRESHOLD: number;  // mol_count >= this → medium tier
+    LIGHT_RAG_LIMIT: number;       // doc limit to pass to external RAG for light tier
+    MEDIUM_RAG_LIMIT: number;      // doc limit for medium tier
+    HEAVY_RAG_LIMIT: number;       // doc limit for heavy tier (0 = all available)
+  };
 }
 
 // Default configuration
@@ -419,6 +440,8 @@ const DEFAULT_CONFIG: Config = {
   CONTEXT_RECENCY_WEIGHT: 0.3,
 
   // Infrastructure
+  distill_idle_minutes: 5,
+
   REDIS: {
     ENABLED: false,
     URL: 'redis://localhost:6379',
@@ -450,16 +473,17 @@ const DEFAULT_CONFIG: Config = {
     max_chars_limit: 20000,    // 20k chars max limit
     fts_window_size: 1500,
     fts_padding: 750,
+    max_results_default: 100,
   },
 
   // Cache Settings (LRU Cache Configuration)
   CACHE: {
-    MAX_ENTRIES_SEARCH_RESULT: 500,
-    MAX_ENTRIES_QUERY_PARSE: 500,
-    MAX_ENTRIES_SEMANTIC_EXPANSION: 1000,
-    MAX_ENTRIES_ENGRAM: 200,
-    MEMORY_PRESSURE_THRESHOLD: 88,
-    CRITICAL_MEMORY_THRESHOLD: 95,
+    MAX_ENTRIES_SEARCH_RESULT: 200,      // Reduced from 500 (5% of ~4000 entry budget)
+    MAX_ENTRIES_QUERY_PARSE: 200,        // Reduced from 500 (5% of ~4000 entry budget)
+    MAX_ENTRIES_SEMANTIC_EXPANSION: 400, // Reduced from 1000 (5% of ~8000 entry budget)
+    MAX_ENTRIES_ENGRAM: 100,             // Reduced from 200 (5% of ~2000 entry budget)
+    MEMORY_PRESSURE_THRESHOLD: 80, // Middle ground: evict at 80% to prevent thrashing
+    CRITICAL_MEMORY_THRESHOLD: 92, // Critical only at 92% (was 95%)
     ENABLE_MEMORY_PRESSURE_EVICTION: true,
     SEARCH_RESULT_TTL_MS: 60000,
     QUERY_PARSE_TTL_MS: 300000,
@@ -512,15 +536,15 @@ const DEFAULT_CONFIG: Config = {
   PATHS: {} as typeof import('./paths.js').PATHS,
 
   // Database Settings
-  // Standard 127: PGlite Memory Optimization - tuned for 31k atoms
-  // Increased from 64/128/8 to 256/512/32 for better cache performance
+  // Standard 127: PGlite Memory Optimization - tuned for ARM64 Windows with limited RAM
+  // Reduced from 256/512/32 to prevent WASM memory access out of bounds errors
   DATABASE: {
     WIPE_ON_STARTUP: true,
     WIPE_ON_SHUTDOWN: true,
-    SHARED_BUFFERS_MB: 256,   // SQLite shared buffer cache for index pages
-    EFFECTIVE_CACHE_SIZE_MB: 512, // OS cache size hint for query planner
-    WORK_MEM_MB: 32,          // In-memory sort buffer (larger = faster complex queries)
-    MAINTENANCE_WORK_MEM_MB: 32,
+    SHARED_BUFFERS_MB: 64,   // SQLite shared buffer cache for index pages (reduced from 128)
+    EFFECTIVE_CACHE_SIZE_MB: 100, // OS cache size hint for query planner (reduced from 200)
+    WORK_MEM_MB: 8,          // In-memory sort buffer (larger = faster complex queries, reduced from 16)
+    MAINTENANCE_WORK_MEM_MB: 8,
     START_TIME: Date.now(),
   },
 
@@ -588,9 +612,25 @@ const DEFAULT_CONFIG: Config = {
     TOKEN_BUDGET_DEFAULT: parseInt(process.env['ANCHOR_TOKEN_BUDGET_DEFAULT'] || '2000', 10),
     INGESTION_PROFILE: (process.env['ANCHOR_INGESTION_PROFILE'] as 'code' | 'notes' | 'chat' | 'default') || 'default',
   },
+
+  // Density Prefix — tier thresholds for external RAG pipeline dispatch
+  DENSITY: {
+    // mol_count >= LIGHT_DOC_THRESHOLD → concept is well-known, external RAG can use light retrieval
+    LIGHT_DOC_THRESHOLD: parseInt(process.env['ANCHOR_DENSITY_LIGHT_THRESHOLD'] || '50', 10),
+    // mol_count >= MEDIUM_DOC_THRESHOLD → moderate, balanced retrieval
+    MEDIUM_DOC_THRESHOLD: parseInt(process.env['ANCHOR_DENSITY_MEDIUM_THRESHOLD'] || '5', 10),
+    // Document limits to pass to external RAG pipeline per tier
+    LIGHT_RAG_LIMIT: parseInt(process.env['ANCHOR_DENSITY_LIGHT_RAG_LIMIT'] || '10', 10),
+    MEDIUM_RAG_LIMIT: parseInt(process.env['ANCHOR_DENSITY_MEDIUM_RAG_LIMIT'] || '25', 10),
+    HEAVY_RAG_LIMIT: parseInt(process.env['ANCHOR_DENSITY_HEAVY_RAG_LIMIT'] || '0', 10), // 0 = all available
+  },
 };
 
 // Configuration loader
+/**
+ * Priority: ~/.anchor/user_settings.json > ~/.anchor/sovereign.yaml > Defaults
+ * All paths are defined in user_settings.json.template (single source of truth) and loaded into ~/.anchor/user_settings.json at runtime.
+ */
 function loadConfig(): Config {
   // Determine config file path
   // Priority: ~/.anchor/user_settings.json > ~/.anchor/sovereign.yaml > Defaults
@@ -745,6 +785,15 @@ function loadConfig(): Config {
         if (userSettings.ingestion.dedup_strength) loadedConfig.INGESTION.DEDUP_STRENGTH = userSettings.ingestion.dedup_strength;
         if (userSettings.ingestion.token_budget_default !== undefined) loadedConfig.INGESTION.TOKEN_BUDGET_DEFAULT = userSettings.ingestion.token_budget_default;
         if (userSettings.ingestion.ingestion_profile) loadedConfig.INGESTION.INGESTION_PROFILE = userSettings.ingestion.ingestion_profile;
+      }
+
+      // Load Density Configuration — tier thresholds for external RAG pipeline dispatch
+      if (userSettings.density) {
+        if (userSettings.density.light_doc_threshold !== undefined) loadedConfig.DENSITY.LIGHT_DOC_THRESHOLD = userSettings.density.light_doc_threshold;
+        if (userSettings.density.medium_doc_threshold !== undefined) loadedConfig.DENSITY.MEDIUM_DOC_THRESHOLD = userSettings.density.medium_doc_threshold;
+        if (userSettings.density.light_rag_limit !== undefined) loadedConfig.DENSITY.LIGHT_RAG_LIMIT = userSettings.density.light_rag_limit;
+        if (userSettings.density.medium_rag_limit !== undefined) loadedConfig.DENSITY.MEDIUM_RAG_LIMIT = userSettings.density.medium_rag_limit;
+        if (userSettings.density.heavy_rag_limit !== undefined) loadedConfig.DENSITY.HEAVY_RAG_LIMIT = userSettings.density.heavy_rag_limit;
       }
 
       // Load Cache Settings (LRU Cache Configuration)

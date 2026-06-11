@@ -125,6 +125,20 @@
       "token_budget_default": 2000,
       "ingestion_profile": "chat"
     },
+    "density": {
+      "_description": "3-tier RAG dispatch thresholds for density: prefix queries. Controls how the external RAG pipeline decides retrieval intensity.",
+      "light_doc_threshold": 50,
+      "medium_doc_threshold": 5,
+      "light_rag_limit": 10,
+      "medium_rag_limit": 25,
+      "heavy_rag_limit": 0,
+      "_light_doc_threshold_help": "Molecule count >= this → light tier (fast retrieval)",
+      "_medium_doc_threshold_help": "Molecule count >= this → medium tier (balanced retrieval)",
+      "_heavy_tier_help": "Molecule count < medium_doc_threshold → heavy tier (exhaustive + radial distillation)",
+      "_light_rag_limit_help": "How many top documents external RAG should retrieve for light tier",
+      "_medium_rag_limit_help": "How many top documents external RAG should retrieve for medium tier",
+      "_heavy_rag_limit_help": "0 = retrieve all available documents"
+    },
     "mcp": {
       "_description": "Model Context Protocol server for AI agent memory",
       "enabled": true,

@@ -1197,6 +1197,12 @@ export async function executeMoleculeSearch(
   // Sort results by score
   allResults.sort((a, b) => b.score - a.score);
 
+  const maxResults = config.SEARCH.max_results_default || 100;
+  if (allResults.length > maxResults) {
+    console.log(`[MoleculeSearch] Capping ${allResults.length} combined results to ${maxResults}`);
+    allResults.length = maxResults;
+  }
+
   console.log(`[MoleculeSearch] Combined results from ${molecules.length} molecules: ${allResults.length} total results`);
 
   // Clean Mode Filtering
@@ -1256,7 +1262,9 @@ export async function runTraditionalSearch(query: string, buckets: string[]): Pr
     )`;
   }
 
-  querySql += ' ORDER BY score DESC';
+  const maxResults = config.SEARCH.max_results_default || 100;
+
+  querySql += ` ORDER BY score DESC LIMIT ${maxResults}`;
 
   try {
     const result = await db.run(querySql, buckets.length > 0 ? [sanitizedQuery, buckets] : [sanitizedQuery]);
@@ -1411,13 +1419,145 @@ export async function iterativeSearch(
  */
 // --- Special Prefix Handlers (Standard 086) ---
 /**
- * Handle special query prefixes like "distill:" for direct distill lookups
+ * Handle special query prefixes for direct lookups and density analysis.
+ * "density:" (no term) → full corpus density map (top atoms + tags by frequency)
+ * "density:<term>" → count occurrences of a term, return density tier (light/medium/heavy)
+ * "density:<term1>,<term2>" → multi-term density analysis
  * "distill:" (no bucket) → list all distills
  * "distill:<bucket>" → query distills table and return full result
  */
 async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars: number = 20000, tags: string[] = []): Promise<any> {
   const prefix = query.trim().toLowerCase();
   
+  if (prefix.startsWith('density:')) {
+    const searchTerm = prefix.substring(8).trim(); // Remove "density:"
+    
+    try {
+      // Parse multiple comma-separated terms
+      const terms = searchTerm ? searchTerm.split(',').map(t => t.trim()).filter(Boolean) : [];
+      
+      if (terms.length === 0) {
+        // "density:" with no term → return full corpus density map (top atoms + tags by frequency)
+        const [topAtoms, topTags] = await Promise.all([
+          db.run('SELECT source_path, COUNT(*) as count FROM atoms GROUP BY source_path ORDER BY count DESC LIMIT 50'),
+          db.run('SELECT tag, bucket, COUNT(*) as count FROM tags GROUP BY tag, bucket ORDER BY count DESC LIMIT 50'),
+        ]);
+        
+        const atomTotal = (topAtoms.rows || []).reduce((sum: number, r: any) => sum + parseInt(r.count || '0'), 0);
+        const tagTotal = (topTags.rows || []).reduce((sum: number, r: any) => sum + parseInt(r.count || '0'), 0);
+        
+        const densityMap = {
+          atoms: (topAtoms.rows || []).map((r: any) => ({
+            source: r.source_path,
+            count: parseInt(r.count || '0'),
+            density_pct: parseFloat((parseInt(r.count || '0') / Math.max(atomTotal, 1) * 100).toFixed(2)),
+          })),
+          tags: (topTags.rows || []).map((r: any) => ({
+            tag: r.tag,
+            bucket: r.bucket,
+            count: parseInt(r.count || '0'),
+            density_pct: parseFloat((parseInt(r.count || '0') / Math.max(tagTotal, 1) * 100).toFixed(2)),
+          })),
+          totals: { unique_atoms: topAtoms.rows?.length || 0, unique_tags: topTags.rows?.length || 0, atom_occurrences: atomTotal, tag_occurrences: tagTotal },
+          rag_thresholds: config.DENSITY,
+        };
+        
+        return {
+          context: `Corpus density map — ${densityMap.totals.unique_atoms} unique atoms (${atomTotal} total), ${densityMap.totals.unique_tags} unique tags (${tagTotal} total).`,
+          results: [densityMap],
+          strategy: 'prefix_density_map',
+          metadata: { query_type: 'density_map', ...densityMap.totals },
+        };
+      }
+      
+      // "density:<term>" or "density:<term1>,<term2>" → count occurrences per term
+      const densityResults = await Promise.all(terms.map(async (term) => {
+        const [atomResult, tagResult, molResult] = await Promise.all([
+          db.run('SELECT COUNT(*) as count FROM atoms WHERE source_path ILIKE $1 OR id ILIKE $1', [`%${term}%`]),
+          db.run('SELECT COUNT(*) as count FROM tags WHERE tag ILIKE $1', [`%${term}%`]),
+          db.run(
+            `SELECT COUNT(DISTINCT m.id) as count FROM molecules m
+             JOIN atoms a ON a.compound_id = m.compound_id
+             WHERE a.source_path ILIKE $1 OR a.id ILIKE $1`,
+            [`%${term}%`]
+          ),
+        ]);
+        
+        const atomCount = parseInt(atomResult.rows?.[0]?.count || '0', 10);
+        const tagCount = parseInt(tagResult.rows?.[0]?.count || '0', 10);
+        const molCount = parseInt(molResult.rows?.[0]?.count || '0', 10);
+        
+        // Use mol_count (actual documents/files) for tier — not noisy atom/tag row counts.
+        // This maps directly to how many documents an external RAG pipeline should consider.
+        const { LIGHT_DOC_THRESHOLD, MEDIUM_DOC_THRESHOLD, LIGHT_RAG_LIMIT, MEDIUM_RAG_LIMIT, HEAVY_RAG_LIMIT } = config.DENSITY;
+        
+        let tier: 'light' | 'medium' | 'heavy';
+        let rag_limit: number;        // How many docs the external RAG should retrieve
+        let rag_mode: string;         // Which mode the external RAG should use
+        
+        if (molCount >= LIGHT_DOC_THRESHOLD) {
+          tier = 'light';
+          rag_limit = LIGHT_RAG_LIMIT;
+          rag_mode = 'fast';
+        } else if (molCount >= MEDIUM_DOC_THRESHOLD) {
+          tier = 'medium';
+          rag_limit = MEDIUM_RAG_LIMIT;
+          rag_mode = 'balanced';
+        } else {
+          tier = 'heavy';
+          rag_limit = HEAVY_RAG_LIMIT;  // 0 = all available
+          rag_mode = 'exhaustive';
+        }
+        
+        return {
+          term,
+          atom_count: atomCount,
+          tag_count: tagCount,
+          molecule_count: molCount,
+          total_hits: atomCount + tagCount,
+          density_tier: tier,
+          // --- Actionable RAG dispatch config ---
+          rag_config: {
+            mode: rag_mode,
+            doc_limit: rag_limit,
+            recommendation: tier === 'light'
+              ? `Well-known concept (${molCount} docs). External RAG: retrieve top ${rag_limit} docs in fast mode.`
+              : tier === 'medium'
+              ? `Moderate concept (${molCount} docs). External RAG: retrieve top ${rag_limit} docs in balanced mode.`
+              : `Rare concept (${molCount} docs). External RAG: exhaustive retrieval${rag_limit > 0 ? ` (up to ${rag_limit} docs)` : ' (all available docs)'} + radial distillation.`,
+          },
+        };
+      }));
+      
+      const summary = densityResults.map(r => 
+        `${r.term}: ${r.molecule_count} docs (${r.density_tier} → ${r.rag_config.mode}, limit ${r.rag_config.doc_limit})`
+      ).join(' | ');
+      
+      return {
+        context: `Density analysis: ${summary}`,
+        results: densityResults,
+        strategy: 'prefix_density_query',
+        metadata: {
+          query_type: 'density_query',
+          terms_analyzed: terms.length,
+          tiers: {
+            light: densityResults.filter(r => r.density_tier === 'light').length,
+            medium: densityResults.filter(r => r.density_tier === 'medium').length,
+            heavy: densityResults.filter(r => r.density_tier === 'heavy').length,
+          },
+        },
+      };
+    } catch (error: any) {
+      console.error('[Search] Density query failed:', error);
+      return {
+        context: `Unable to compute density for "${searchTerm}". Error: ${error.message}`,
+        results: [],
+        strategy: 'prefix_density_error',
+        metadata: { error: error.message },
+      };
+    }
+  }
+
   if (prefix.startsWith('distill:')) {
     const bucketParam = prefix.substring(8).trim(); // Remove "distill:"
     
@@ -1633,6 +1773,14 @@ export async function smartChatSearch(
   });
 
   const mergedResults = Array.from(mergedMap.values());
+
+  // Cap merged results to prevent WASM heap blowout on multi-query searches
+  const maxMergeResults = config.SEARCH.max_results_default || 100;
+  if (mergedResults.length > maxMergeResults) {
+    console.log(`[SmartSearch] Capping ${mergedResults.length} merged results to ${maxMergeResults}`);
+    mergedResults.length = maxMergeResults;
+  }
+
   console.log(`[SmartSearch] Merged Total: ${mergedResults.length} atoms.`);
 
   // 4.5. Context Inflation — Expand each atom with surrounding context (n-1, n+1)
