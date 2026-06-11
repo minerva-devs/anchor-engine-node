@@ -14,7 +14,10 @@ pnpm test
 pnpm --filter anchor-engine test:vitest
 
 # Run live-fire tests (requires running engine)
-node engine/tests/live-fire/run-tests.js
+node engine/tests/live-fire/live-fire.mjs
+
+# LLM autonomous testing workflow
+# See docs/workflows/llm-testing.md for prompt template
 
 # Run a specific test file
 npx vitest run engine/tests/unit/paths-config.test.ts
@@ -26,7 +29,7 @@ npx vitest run engine/tests/unit/paths-config.test.ts
 |----------|----------|-----------|-------------|
 | **Unit Tests** | `engine/tests/unit/` | Vitest | Core logic, utilities, config validation |
 | **Integration Tests** | `engine/tests/integration/` | Vitest | End-to-end pipeline: search, ingest, distill |
-| **Live-Fire Tests** | `engine/tests/live-fire/` | Node.js scripts | Real engine testing with live HTTP requests |
+| **Live-Fire Tests** | `engine/tests/live-fire/` | Node.js (ESM) | Real engine testing with live HTTP requests + live corpus verification |
 | **E2E UI Tests** | `tests/e2e/` | Playwright + Vitest | Browser-based UI verification |
 
 ## Test Architecture
@@ -50,4 +53,5 @@ The three-tier testing strategy:
 - **[specs/current-standards/](specs/current-standards/)** — All 38 active standards (flat directory)
 - **[specs/current-standards/028-unified-test-pipeline.md](specs/current-standards/028-unified-test-pipeline.md)** — Unified test pipeline standard
 - **[specs/current-standards/016-mcp-integration-testing.md](specs/current-standards/016-mcp-integration-testing.md)** — MCP integration testing
+- **[docs/workflows/llm-testing.md](docs/workflows/llm-testing.md)** — LLM autonomous testing workflow (prompt template for local models)
 - **[engine/tests/](../engine/tests/)** — All test suites

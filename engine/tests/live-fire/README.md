@@ -1,156 +1,168 @@
-# Live-Fire Test Suite for Anchor Engine v5.0.0
+# Live-Fire Test Suite for Anchor Engine v5.2.0
 
 ## Overview
 
-This test suite performs end-to-end integration testing by running against a live server instance. It validates:
+This test suite performs end-to-end integration testing against a live Anchor Engine server. It validates the full API surface including the STAR search pipeline, ingestion, schema integrity, density-prefix RAG tiers, and live-corpus data.
 
-- **Search API** - Query parsing, retrieval, response formatting
-- **Ingestion pipeline** - File upload, atom/molecule creation, provenance tracking  
-- **Distillation API** - Radial distillation queries
-- **Migration verification** - Compounds table removal (Standard 051)
+**Canonical runner:** `live-fire.mjs` — the single source of truth.  
+**Deprecated runners:** `run-tests.js` (CJS) and `live-fire-test-suite.mjs` (ESM) — retained for backward compatibility, will be removed.
 
 ## Prerequisites
 
 | Requirement | Details |
 |-------------|---------|
 | Node.js | v18.0.0 or later |
-| pnpm | Global package manager configured |
-| Git CLI | For repository operations |
-| Port 3160 | Available (or use `--port` flag) |
-
-## Setup Options
-
-### Option A: Run Against Existing Server (Recommended)
-
-If the Anchor Engine server is already running, run tests directly:
-
-```bash
-# From project root
-pnpm run live-fire:run
-
-# Or specify a different server URL
-pnpm run live-fire:run --url "http://localhost:3160"
-```
-
-### Option B: Full Integration Test (Starts Server)
-
-This will automatically start the engine, run tests, then optionally stop it:
-
-```bash
-pnpm run live-fire:integration
-```
+| Anchor Engine running | `pnpm start` on port 3160 |
+| Live corpus (optional) | Configure `watcher.extra_paths` in `~/.anchor/user_settings.json` |
 
 ## Quick Start
 
 ```bash
-# 1. Install dependencies
-pnpm install
+# 1. Start the engine (if not running)
+pnpm start
 
-# 2. Run all tests against existing server
-pnpm run live-fire:all
+# 2. Run all live-fire tests
+node engine/tests/live-fire/live-fire.mjs
 ```
 
-## Available Scripts
+## Test Coverage (18 tests)
 
-| Script | Description |
-|--------|-------------|
-| `live-fire:run` | Run tests against existing server (default) |
-| `live-fire:integration` | Start engine, run tests, stop server |
-| `live-fire:search` | Search API tests only |
-| `live-fire:distill` | Distillation API tests only |
-| `live-fire:schema` | Schema verification tests |
+### Core API (8 tests)
+1. **Health check** — `GET /health` returns 200
+2. **Stats endpoint** — `GET /v1/stats` returns 200
+3. **Molecules list + schema** — Verifies `source_path` and `provenance` fields
+4. **Atoms list** — Verifies atoms endpoint responds
+5. **Compounds table removed** — Standard 051 migration: `GET /v1/compounds` returns 404
+6. **Search API** — `POST /v1/memory/search` works
+7. **Exact search API** — `POST /v1/exact/search` works
+8. **Semantic search API** — `POST /v1/semantic/search` works
 
-## Test Coverage
+### Density Prefix (3 tests)
+9. **Density: full map** — `POST /v1/memory/search {"query":"density:"}` returns atom/tag density
+10. **Density: single term** — `POST /v1/memory/search {"query":"density:test"}` returns `density_tier`
+11. **Density: multi-term** — `POST /v1/memory/search {"query":"density:contract,liability"}` returns per-term analysis
 
-### Core Functionality Tests
-1. **Health Check** - Verify server is responding
-2. **Molecules List** - List molecules with provenance fields
-3. **Atoms List** - List atoms structure after migration
-4. **Search Query** - Memory search API functionality
-5. **Compounds Table** - Verify removal (returns 404 or empty)
+### Ingestion Pipeline (2 tests)
+12. **Ingestion pipeline** — `POST /v1/ingest` creates a test document
+13. **Search after ingestion** — Verifies newly ingested content is retrievable
 
-### Ingestion Tests
-6. **File Upload** - Create test document
-7. **Provenance Verification** - Check provenance/molecular_signature fields
-8. **Post-Ingest Query** - Search for newly ingested content
+### Distillation (2 tests)
+14. **Distillation API** — `GET /v1/distills` returns 200
+15. **Radial distillation** — `POST /v1/distillation/radial` works
 
-### API Schema Tests
-9. **Molecules Schema** - Verify columns after migration
-10. **Atoms Schema** - Verify provenance column exists
+### Live Corpus (3 tests)
+16. **Live corpus config** — Reads `~/.anchor/user_settings.json`, enumerates `watcher.extra_paths` and data directories
+17. **Live corpus stats** — Verifies `GET /v1/stats` reflects ingested data counts
+18. **Live corpus density** — Runs `density:` queries against terms likely in live data
 
-## Expected Results
+## Live Corpus Configuration
 
-### Success Criteria
-- All 10 tests pass
-- Server responds within timeout (30s default)
-- No errors in test output
-
-### Known Limitations
-
-The suite currently does NOT run automatically on server start. Instead, use one of the methods above to execute tests manually. This requires manual intervention but gives you full control over when tests run.
-
-## Test Output
-
-Results are logged to:
-- `engine/tests/live-fire/results.json` - Structured test results
-- `engine/tests/live-fire/server.log` - Server output (if started)
-- `engine/tests/live-fire/run-tests.js` - Full execution log
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: Port 3160 in use  
-**Solution**: Use a different port:
-```bash
-set PORT=3161 && pnpm run live-fire:run --url "http://localhost:3161"
-```
-
-**Issue**: Server not responding  
-**Solution**: Ensure engine is running with `node engine/dist/index.js`
-
-**Issue**: Database initialization errors  
-**Solution**: Clean data directory and restart:
-```bash
-rmdir /s /q .anchor && pnpm run live-fire:integration
-```
-
-## Test Results Format
-
-Results are saved to `engine/tests/live-fire/results.json`:
+To use real data in tests, add your PKM or project paths to `watcher.extra_paths` in `~/.anchor/user_settings.json`:
 
 ```json
 {
-  "timestamp": "2026-05-22T03:40:12.000Z",
+  "watcher": {
+    "extra_paths": [
+      "C:/Users/rsbii/Documents/PKM",
+      "C:/Users/rsbii/coding_projects/myapp"
+    ]
+  }
+}
+```
+
+The live-fire runner will:
+1. Read these paths from your config
+2. Count files in each directory
+3. Report total live corpus size
+4. Test `density:` queries against the ingested data
+
+## Test Output
+
+Results are written to:
+- `engine/tests/live-fire/live-fire.log` — Timestamped plain-text log (LLM-parseable)
+- `engine/tests/live-fire/results.json` — Structured JSON summary
+
+### results.json format
+
+```json
+{
+  "timestamp": "2026-06-11T10:24:00.000Z",
   "serverUrl": "http://localhost:3160",
-  "summary": {
-    "total": 10,
-    "passed": 10,
-    "failed": 0
+  "total": 18,
+  "passed": 18,
+  "failed": 0,
+  "duration_ms": 4521,
+  "live_corpus": {
+    "extra_paths": ["C:/Users/rsbii/Documents/PKM"],
+    "total_files": 247
   },
   "tests": [
     {
-      "name": "Server health check",
+      "name": "Health check",
       "status": "pass",
       "duration_ms": 42,
-      "error": null
+      "error": null,
+      "timestamp": "2026-06-11T10:24:00.042Z"
     }
   ]
 }
 ```
 
+### Live-fire.log format (LLM-parseable)
+
+```
+[2026-06-11T10:24:00.000Z] ============================================================
+[2026-06-11T10:24:00.000Z] ANCHOR ENGINE LIVE-FIRE TEST SUITE v5.2.0
+[2026-06-11T10:24:00.000Z] Server: http://localhost:3160
+[2026-06-11T10:24:00.000Z] ============================================================
+[2026-06-11T10:24:00.042Z]   PASS  [Health check] (42ms)
+[2026-06-11T10:24:00.125Z]   PASS  [Molecules list + schema] (83ms)
+[2026-06-11T10:24:00.250Z]   FAIL  [Compounds table removed] — Expected 404, got 200
+...
+[2026-06-11T10:24:05.000Z] ============================================================
+[2026-06-11T10:24:05.000Z] RESULTS SUMMARY
+[2026-06-11T10:24:05.000Z] Total:   18
+[2026-06-11T10:24:05.000Z] Passed:  17
+[2026-06-11T10:24:05.000Z] Failed:  1
+[2026-06-11T10:24:05.000Z] LIVE CORPUS:
+[2026-06-11T10:24:05.000Z]   Extra paths:   C:/Users/rsbii/Documents/PKM
+[2026-06-11T10:24:05.000Z]   Directories:    1
+[2026-06-11T10:24:05.000Z]   Total files:    247
+```
+
+## Troubleshooting
+
+### Port 3160 in use
+```bash
+netstat -ano | findstr :3160
+taskkill /PID <PID> /F
+```
+
+### All tests fail with connection refused
+Engine not running. Start with:
+```bash
+pnpm start
+```
+
+### Live corpus tests show 0 files
+Your `watcher.extra_paths` may be empty or paths invalid. Check `~/.anchor/user_settings.json`.
+
+### Ingestion test fails
+- Database may have been wiped (ephemeral design with `wipe_on_startup: true`)
+- Ensure engine has write access to `~/.anchor/`
+
 ## Migration Verification Checklist
 
-After running the test suite, verify these items:
-
-- [ ] Compounds table endpoint returns 404 or empty response
-- [ ] Molecules have `provenance` and `molecular_signature` fields
-- [ ] Atoms have `provenance` field  
+- [ ] Compounds table endpoint returns 404
+- [ ] Molecules have `source_path` and `provenance` fields
+- [ ] Atoms list endpoint responds correctly
 - [ ] Ingestion creates records in atoms/molecules (not compounds)
 - [ ] Search queries return results without compound table joins
+- [ ] Density prefix returns valid `density_tier` values
+- [ ] Live corpus paths are detected from user config
 
 ## References
 
 - Standard 051: Pointer-only database storage
-- Database Schema Migration documentation (`MIGRATION_COMPLETE.md`)
-- Ingestion Service implementation (`engine/src/services/ingest/`)
+- Standard 031: Search algorithms (density prefix)
+- Live-fire testing in docs/workflows/llm-testing.md

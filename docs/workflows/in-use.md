@@ -113,3 +113,34 @@ taskkill /PID <PID> /F
 Backups are written to: `~/.anchor/distills/` or `~/.anchor/backups/` depending on configuration.
 
 To restore from backup, use the GUI "Restore" feature (coming soon) or API endpoint `/v1/backups/restore`.
+
+---
+
+## LLM Developer Testing
+
+For LLM agents (local or hosted models like Qwen 3.6 27B) that need to autonomously test Anchor Engine, see the self-contained testing workflow:
+
+→ **[docs/workflows/llm-testing.md](llm-testing.md)**
+
+This document includes:
+- A copy-paste prompt template to direct an LLM through all 5 test phases
+- Expected output formats for each phase
+- Structured report template for the LLM to fill in
+- Common failure patterns and troubleshooting
+- Live corpus integration (reads `~/.anchor/user_settings.json` for real data paths)
+
+### Quick LLM Testing Commands
+
+```bash
+# Full automated test suite (LLM-parseable output)
+node engine/tests/live-fire/live-fire.mjs
+
+# Read results
+cat engine/tests/live-fire/live-fire.log
+cat engine/tests/live-fire/results.json | jq '.passed, .failed, .total'
+
+# Density prefix tests (3-tier RAG pipeline)
+curl -s -X POST http://localhost:3160/v1/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"density:contract"}' | jq '.density_tier'
+```
