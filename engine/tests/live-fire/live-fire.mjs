@@ -236,11 +236,16 @@ const testDensityFull = async () => {
     body: JSON.stringify({ query: 'density:' }),
   });
   assert(res.status >= 200 && res.status < 500, `Density full returned ${res.status}`);
-  if (res.json) {
+  // Response shape: { results: [{ atoms: [...], tags: [...], totals: {...}, rag_thresholds: {...} }] }
+  if (res.json && Array.isArray(res.json.results) && res.json.results[0]) {
+    const map = res.json.results[0];
     assert(
-      res.json.atom_density !== undefined || res.json.tag_density !== undefined,
-      `Missing atom_density/tag_density in response: ${JSON.stringify(Object.keys(res.json || {}))}`
+      Array.isArray(map.atoms) || Array.isArray(map.tags),
+      `Missing atoms/tags arrays in density map. Keys: ${JSON.stringify(Object.keys(map))}`
     );
+    if (map.rag_thresholds) {
+      log(`  Density thresholds: light≥${map.rag_thresholds.LIGHT_DOC_THRESHOLD}, medium≥${map.rag_thresholds.MEDIUM_DOC_THRESHOLD}`);
+    }
   }
   recordResult('Density: full map', true, Date.now() - start);
 };
@@ -253,16 +258,30 @@ const testDensityTerm = async () => {
     body: JSON.stringify({ query: 'density:test' }),
   });
   assert(res.status >= 200 && res.status < 500, `Density term returned ${res.status}`);
-  if (res.json) {
-    assert(
-      res.json.density_tier !== undefined,
-      `Missing density_tier. Keys: ${JSON.stringify(Object.keys(res.json || {}))}`
-    );
+  // Response shape: { results: [{ term, density_tier, molecule_count, rag_config: { mode, doc_limit } }] }
+  if (res.json && Array.isArray(res.json.results) && res.json.results[0]) {
+    const d = res.json.results[0];
     const validTiers = ['light', 'medium', 'heavy'];
+    const validModes = ['fast', 'balanced', 'exhaustive'];
     assert(
-      validTiers.includes(res.json.density_tier),
-      `Invalid density_tier "${res.json.density_tier}". Expected one of: ${validTiers.join(', ')}`
+      validTiers.includes(d.density_tier),
+      `Invalid density_tier "${d.density_tier}". Expected one of: ${validTiers.join(', ')}`
     );
+    assert(
+      typeof d.molecule_count === 'number',
+      `Missing or invalid molecule_count: ${d.molecule_count}`
+    );
+    if (d.rag_config) {
+      assert(
+        validModes.includes(d.rag_config.mode),
+        `Invalid rag_config.mode "${d.rag_config.mode}"`
+      );
+      assert(
+        typeof d.rag_config.doc_limit === 'number',
+        `Missing rag_config.doc_limit`
+      );
+      log(`  ${d.term}: tier=${d.density_tier}, ${d.molecule_count} docs → ${d.rag_config.mode} mode, limit ${d.rag_config.doc_limit}`);
+    }
   }
   recordResult('Density: single term', true, Date.now() - start);
 };
@@ -275,11 +294,17 @@ const testDensityMulti = async () => {
     body: JSON.stringify({ query: 'density:contract,liability' }),
   });
   assert(res.status >= 200 && res.status < 500, `Density multi returned ${res.status}`);
-  if (res.json && res.json.terms) {
+  // Response shape: { results: [{ term, density_tier, rag_config }, ...] }
+  if (res.json && Array.isArray(res.json.results)) {
     assert(
-      Array.isArray(res.json.terms),
-      `Terms is not an array: ${typeof res.json.terms}`
+      res.json.results.length >= 1,
+      `Expected at least 1 density result, got ${res.json.results?.length}`
     );
+    for (const d of res.json.results) {
+      assert(typeof d.term === 'string', `Missing term in result: ${JSON.stringify(d)}`);
+      const validTiers = ['light', 'medium', 'heavy'];
+      assert(validTiers.includes(d.density_tier), `Invalid tier for "${d.term}": ${d.density_tier}`);
+    }
   }
   recordResult('Density: multi-term', true, Date.now() - start);
 };
@@ -427,6 +452,7 @@ const testLiveCorpusDensity = async () => {
   const start = Date.now();
   const terms = ['contract', 'code', 'test', 'memory', 'search'];
   let tested = 0;
+  const tiers = { light: 0, medium: 0, heavy: 0 };
 
   for (const term of terms) {
     try {
@@ -434,8 +460,12 @@ const testLiveCorpusDensity = async () => {
         method: 'POST',
         body: JSON.stringify({ query: `density:${term}` }),
       });
-      if (res.status >= 200 && res.status < 500 && res.json?.density_tier) {
-        tested++;
+      if (res.status >= 200 && res.status < 500 && Array.isArray(res.json?.results)) {
+        const d = res.json.results[0];
+        if (d?.density_tier) {
+          tested++;
+          tiers[d.density_tier]++;
+        }
       }
     } catch {
       // Individual term failures are ok — corpus may not have these terms
@@ -443,6 +473,7 @@ const testLiveCorpusDensity = async () => {
   }
 
   log(`  Density tested on ${tested}/${terms.length} terms against live corpus`);
+  log(`  Tier distribution: light=${tiers.light}, medium=${tiers.medium}, heavy=${tiers.heavy}`);
   recordResult('Live corpus density', true, Date.now() - start);
 };
 

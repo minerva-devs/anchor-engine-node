@@ -79,9 +79,10 @@ PHASE 6 — PRODUCE REPORT
       - <test name>: <error/reason>
 
   PHASE 4 — Density Prefix
-    density:: <PASS/FAIL> — <atom_count atoms, tag_count tags>
-    density:test: <PASS/FAIL> — tier=<density_tier>
+    density:: <PASS/FAIL> — <N atoms, N tags>
+    density:test: <PASS/FAIL> — tier=<density_tier> | mol_count=<N> | rag_mode=<fast|balanced|exhaustive>
     density:contract,liability: <PASS/FAIL> — <N> terms analyzed
+    Rag thresholds configured: light≥50 docs, medium≥5 docs
 
   PHASE 5 — Engine Log Health
     Errors found: <N>
@@ -190,13 +191,27 @@ POST /v1/distillation/radial        → Radial distillation query
 ```json
 {
   "term": "contract",
-  "atom_count": 47,
-  "tag_count": 12,
-  "density_tier": "medium",
-  "total_hits": 59,
-  "recommendation": "Medium-density: balanced retrieval recommended."
+  "atom_count": 312,
+  "tag_count": 47,
+  "molecule_count": 89,
+  "total_hits": 359,
+  "density_tier": "light",
+  "rag_config": {
+    "mode": "fast",
+    "doc_limit": 10,
+    "recommendation": "Well-known concept (89 docs). External RAG: retrieve top 10 docs in fast mode."
+  }
 }
 ```
+
+**Tier thresholds (configurable in user_settings.json → density):**
+| Tier | Condition | RAG mode | Doc limit | Meaning |
+|------|-----------|----------|-----------|---------|
+| light | molecule_count ≥ 50 | fast | 10 | Concept is well-covered; light retrieval sufficient |
+| medium | molecule_count ≥ 5 | balanced | 25 | Moderate coverage; balanced retrieval |
+| heavy | molecule_count < 5 | exhaustive | 0 (all) | Rare concept; deep search + radial distillation |
+
+The `rag_config.doc_limit` is the concrete number the external RAG pipeline should use as its document retrieval limit. 0 means retrieve all available documents.
 
 ---
 
