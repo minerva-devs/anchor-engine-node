@@ -11,89 +11,155 @@
 Use this prompt to direct a local 27B LLM agent through testing. Copy the entire block below.
 
 ```
-You are a testing agent for the Anchor Engine project — a deterministic semantic
-memory engine for local-first AI systems. The engine runs on Node.js, uses PGlite
-for storage, and exposes an HTTP API on port 3160.
+You are a testing agent for Anchor Engine — a deterministic semantic memory
+engine for local-first AI systems. It runs on Node.js, uses PGlite, exposes an
+HTTP API on port 3160, and stores all runtime data under ~/.anchor/.
 
 PROJECT PATH: C:\Users\rsbii\.qwenpaw\workspaces\P1\coding_projects\anchor-engine-node
 
-YOUR TASK: Run the complete test suite, collect structured results from logs,
-and report a summary with pass/fail counts, failures, and recommendations.
-
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PHASE 1 — START THE ENGINE
-  1. cd to the project path
-  2. If engine/dist/index.js does not exist, run: pnpm build
-  3. Start the engine in a separate terminal (background it):
-     Windows: start "AnchorEngine" cmd /c "node --expose-gc engine/dist/index.js"
-     Linux/Mac: node --expose-gc engine/dist/index.js &
-     Or use: node scripts/start-engine-bg.mjs
-  4. Wait up to 30 seconds for http://localhost:3160/health to return 200
-  5. If the engine fails to start, report the error and STOP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. cd to the project path
+2. If engine/dist/index.js does not exist, run: pnpm build
+3. Start the engine in a new terminal (keeps it running while you work):
+     start "AnchorEngine" cmd /c "node --expose-gc engine/dist/index.js"
+4. Wait up to 30 seconds, then verify:
+     curl http://localhost:3160/health
+   Should return {"status":"ok"} or similar 200 response.
+5. If it fails, check for port conflicts:
+     netstat -ano | findstr :3160
+     taskkill /PID <PID> /F
+   Then retry step 3.
 
-PHASE 2 — RUN UNIT + INTEGRATION TESTS (Vitest)
-  1. Run: npx vitest run --config engine/vitest.config.ts --reporter=verbose
-  2. Capture STDOUT (the terminal output)
-  3. Count total tests, passed, and failed from the Vitest summary line
-  4. Record all failing test file paths and error messages
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 2 — RUN VITEST (UNIT + INTEGRATION)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Run: npx vitest run --config engine/vitest.config.ts --reporter=verbose
 
-PHASE 3 — RUN LIVE-FIRE TESTS (HTTP / integration)
-  1. Run: node engine/tests/live-fire/live-fire.mjs
-  2. This script writes results to engine/tests/live-fire/live-fire.log and engine/tests/live-fire/results.json
-  3. After it exits, read engine/tests/live-fire/live-fire.log
-  4. Parse the log for PASS and FAIL lines
-  5. Record: total pass count, total fail count, names of failing tests, error messages
+Capture the output. Look for these summary lines at the end:
+  Test Files  N passed (N)
+       Tests  N passed (N)
 
-PHASE 4 — RUN DENSITY PREFIX TESTS
-  1. Send POST to http://localhost:3160/v1/memory/search with body:
-     {"query":"density:"}
-  2. Verify response contains "atom_density" and "tag_density" arrays
-  3. Send POST to http://localhost:3160/v1/memory/search with body:
-     {"query":"density:test"}
-  4. Verify response contains "density_tier" key (light/medium/heavy)
-  5. Send POST to http://localhost:3160/v1/memory/search with body:
-     {"query":"density:contract,liability"}
-  6. Verify response contains "terms" array with per-term density
+Record: total test files, total tests, passed, failed.
+If anything failed, record the test file path and error message.
 
-PHASE 5 — COLLECT ENGINE LOGS
-  1. Read the most recent log file from .anchor/logs/ (if it exists)
-  2. Check for ERROR or WARN lines
-  3. Count distinct error types
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 3 — RUN LIVE-FIRE TESTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Run: node engine/tests/live-fire/live-fire.mjs
 
-PHASE 6 — PRODUCE REPORT
-  Produce a structured report in this exact format:
+This tests every API endpoint against the live server. Exit code 0 = all pass.
+The runner writes results to:
+  engine/tests/live-fire/live-fire.log     (plain text log)
+  engine/tests/live-fire/results.json      (structured JSON)
 
-  ============================================================
-  ANCHOR ENGINE TEST REPORT
-  Date: <ISO timestamp>
-  Server: http://localhost:3160
-  ============================================================
+After it finishes, read BOTH files and record:
+- Total, passed, failed counts
+- Any FAIL lines with error messages
+- Live corpus info (extra paths, total files found)
 
-  PHASE 2 — Vitest (Unit + Integration)
-    Total: <N> | Passed: <N> | Failed: <N>
-    Failures (if any):
-      - <test file>: <error message>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 4 — DENSITY PREFIX TESTS (3-TIER RAG DISPATCH)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Run these curl commands and parse the JSON responses:
 
-  PHASE 3 — Live-Fire (HTTP Integration)
-    Total: <N> | Passed: <N> | Failed: <N>
-    Failures (if any):
-      - <test name>: <error/reason>
+A. Full corpus map + thresholds:
+curl -s -X POST http://localhost:3160/v1/memory/search ^
+  -H "Content-Type: application/json" ^
+  -d "{\"query\":\"density:\"}"
 
-  PHASE 4 — Density Prefix
-    density:: <PASS/FAIL> — <N atoms, N tags>
-    density:test: <PASS/FAIL> — tier=<density_tier> | mol_count=<N> | rag_mode=<fast|balanced|exhaustive>
-    density:contract,liability: <PASS/FAIL> — <N> terms analyzed
-    Rag thresholds configured: light≥50 docs, medium≥5 docs
+Look for: results[0].rag_thresholds — these are the configured tier cutoffs.
+Record: LIGHT_DOC_THRESHOLD, MEDIUM_DOC_THRESHOLD, and the RAG limits.
 
-  PHASE 5 — Engine Log Health
-    Errors found: <N>
-    Warnings found: <N>
-    Distinct error types: <list>
+B. Single term:
+curl -s -X POST http://localhost:3160/v1/memory/search ^
+  -H "Content-Type: application/json" ^
+  -d "{\"query\":\"density:contract\"}"
 
-  OVERALL VERDICT
-    [ALL PASS | PARTIAL FAIL | CRITICAL FAIL]
-    Recommendations: <bullet list>
+Look for: results[0].density_tier, results[0].molecule_count,
+         results[0].rag_config.mode, results[0].rag_config.doc_limit.
 
-  ============================================================
+C. Multi-term:
+curl -s -X POST http://localhost:3160/v1/memory/search ^
+  -H "Content-Type: application/json" ^
+  -d "{\"query\":\"density:contract,liability,damages\"}"
+
+Look for: results[0..N].term, results[0..N].density_tier,
+         results[0..N].rag_config for each term.
+
+Record for each query: tier, molecule_count, rag_mode, doc_limit.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 5 — ENGINE RUNTIME LOG ANALYSIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. Find the most recent log:
+     dir /b /od %USERPROFILE%\.anchor\logs\
+
+2. Read it:
+     type %USERPROFILE%\.anchor\logs\anchor_engine.log
+
+3. Analyze and report these 10 items:
+   a. Total lines in the log
+   b. ERROR count — every line containing "ERROR" or "error"
+   c. WARN count — every line containing "WARN" or "warn"
+   d. Distinct error types — group similar errors, count occurrences of each
+   e. Top 3 most frequent error/warning patterns
+   f. Any crash or OOM indicators (heap exhausted, WASM memory, process.exit)
+   g. Startup duration — time from first log line to "listening" or "server started"
+   h. Ingestion activity — lines mentioning "ingest", "watchdog", "atomize"
+   i. Search activity — lines mentioning "Search", "findAnchors", "PhysicsTagWalker"
+   j. Overall health verdict: HEALTHY | DEGRADED | UNHEALTHY
+
+4. Cross-reference with live-fire log:
+     type engine\tests\live-fire\live-fire.log
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PHASE 6 — FINAL REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Produce this exact format:
+
+============================================================
+ANCHOR ENGINE TEST REPORT
+Date: <ISO timestamp>
+Server: http://localhost:3160
+============================================================
+
+PHASE 2 — Vitest
+  Test Files: <N> | Passed: <N> | Failed: <N>
+  Failures: <list or "none">
+
+PHASE 3 — Live-Fire
+  Total: <N> | Passed: <N> | Failed: <N>
+  Failures: <list or "none">
+  Live Corpus: <N> extra paths, <N> directories, <N> total files
+
+PHASE 4 — Density Prefix
+  Thresholds: light≥<N> docs, medium≥<N> docs
+  density:: <PASS/FAIL>
+  density:contract: tier=<tier>, <N> docs, rag_mode=<mode>, limit=<N>
+  density:contract,liability,damages: <N> terms analyzed, tier summary
+
+PHASE 5 — Engine Runtime Log
+  Log file: <path>
+  Lines: <N> | ERRORs: <N> | WARNs: <N>
+  Distinct error types: <N>
+  Top errors:
+    1. <pattern> (<N> occurrences)
+    2. <pattern> (<N> occurrences)
+    3. <pattern> (<N> occurrences)
+  Startup: <N>ms
+  Ingestion: <N> lines
+  Search: <N> lines
+  Health: HEALTHY | DEGRADED | UNHEALTHY
+
+OVERALL VERDICT
+  [ALL PASS | PARTIAL FAIL | CRITICAL FAIL]
+  Recommendations:
+    - <actionable item>
+    - <actionable item>
+
+============================================================
 ```
 
 ---
@@ -115,7 +181,7 @@ PHASE 6 — PRODUCE REPORT
 |------|-----------|---------|----------------|
 | **Unit + Integration** | Vitest | `npx vitest run --config engine/vitest.config.ts` | Core logic, search algorithms, WASM modules, config validation |
 | **Live-Fire** | Node.js (ESM) | `node engine/tests/live-fire/live-fire.mjs` | Real HTTP: health, molecules, atoms, search, ingestion, density prefix, live corpus, compounds migration (18 tests) |
-| **Density Prefix** | curl/HTTP | `POST /v1/memory/search {"query":"density:..."}` | 3-tier RAG thresholds, multi-term analysis |
+| **Density Prefix** | curl/HTTP | `POST /v1/memory/search {"query":"density:..."}` | 3-tier RAG thresholds, per-term document counts, actionable rag_config dispatch |
 | **E2E UI** | Playwright | `npx playwright test` | Browser UI verification |
 
 ### Key API Endpoints for Testing
@@ -138,7 +204,7 @@ POST /v1/distillation/radial        → Radial distillation query
 |-----|------|--------|
 | Live-fire test results | `engine/tests/live-fire/live-fire.log` | Timestamped plain text |
 | Live-fire structured | `engine/tests/live-fire/results.json` | JSON summary |
-| Engine runtime logs | `.anchor/logs/anchor_engine.log` | Winston daily rotate |
+| Engine runtime logs | `%USERPROFILE%\.anchor\logs\anchor_engine.log` | Winston daily rotate |
 | Vitest output | STDOUT (no file) | Vitest reporter |
 
 ---
@@ -267,6 +333,6 @@ curl -X POST http://localhost:3160/v1/memory/search -H "Content-Type: applicatio
 curl -X POST http://localhost:3160/v1/memory/search -H "Content-Type: application/json" -d "{\"query\":\"density:contract\"}"
 
 # Check logs
-type .anchor\logs\anchor_engine.log | findstr /i "error warn"
+type %USERPROFILE%\.anchor\logs\anchor_engine.log | findstr /i "error warn"
 type engine\tests\live-fire\live-fire.log
 ```
