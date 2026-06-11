@@ -105,7 +105,7 @@ export const DISTILL_DIR = path.resolve(process.env.DISTILL_DIR || userSettings.
 export const DIST_DIR = path.resolve(process.env.DIST_DIR || userSettings.paths?.dist || path.join(DISTILL_DIR, 'output'));
 export const BASE_PATH = PROJECT_ROOT;
 
-// Standard 110: Logs directory under .anchor for centralized logging
+// Standard 110: Logs directory under .anchor for centralized logging (defined in user_settings.json.template)
 export const LOGS_DIR = path.resolve(
   process.env.LOGS_DIR ||
   userSettings.paths?.logs ||
@@ -181,7 +181,7 @@ export const PATHS = {
         fs.writeFileSync(testFile, 'test', { flag: 'w' });
         fs.rmSync(testFile);
       } catch (err) {
-        console.error(`[PATHS] Warning: Cannot write to ${subdirPath}:`, err.message);
+        console.error(`[PATHS] Warning: Cannot write to ${subdirPath}:`, (err as Error).message);
       }
     }
   }
@@ -224,7 +224,7 @@ export const PATHS = {
         fs.writeFileSync(testFile, 'test', { flag: 'w' });
         fs.rmSync(testFile);
       } catch (err) {
-        console.error(`[PATHS] Warning: Cannot write to logs directory ${LOGS_DIR}:`, err.message);
+        console.error(`[PATHS] Warning: Cannot write to logs directory ${LOGS_DIR}:`, (err as Error).message);
       }
     }
   } catch (e) {

@@ -22,6 +22,7 @@ export async function writeContentToMirror(
     // Determine provenance from source path
     const provenance = determineProvenance(originalFilePath);
 
+    // Only log minimal info - never log the actual content
     console.log(`[writeContentToMirror] Writing to mirror:`);
     console.log(`  - Source path: ${originalFilePath}`);
     console.log(`  - Provenance: ${provenance}`);

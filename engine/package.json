@@ -5,8 +5,12 @@
   "description": "Anchor Headless Context Engine & Knowledge Graph",
   "main": "src/index.js",
   "bin": "src/index.js",
+  "env": {
+    "NODE_OPTIONS": "--max-old-space-size=4096"
+  },
   "scripts": {
     "start": "node --expose-gc dist/index.js",
+    "start-with-logging": "node --expose-gc --max-http-header-size=16384 dist/index.js",
     "dev": "node --loader ts-node/esm src/index.ts",
     "migrate": "node src/migrate_history.js",
     "read-all": "node src/read_all.js",
@@ -68,7 +72,7 @@
     }
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.2.0",
+    "@electric-sql/pglite": "^0.5.1",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@rbalchii/anchor-atomizer-wasm": "^1.0.0",
     "@rbalchii/anchor-fingerprint-wasm": "^1.0.0",
@@ -105,6 +109,7 @@
     "@yao-pkg/pkg": "^5.12.0",
     "eslint": "^8.56.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.22.4",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

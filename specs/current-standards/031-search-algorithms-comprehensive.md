@@ -21,6 +21,7 @@ Anchor Engine provides seven distinct search algorithms optimized for different 
 | **Illuminate BFS** | Corpus traversal/narrative | Medium | Medium | Structural | Understanding corpus shape |
 | **Explore BFS** | Concept skeleton discovery | Fast | Low | Structural | LLM orientation, topic mapping |
 | **Tag-Based Distillation** | Concept-centric extraction | Medium | High | Semantic | Knowledge graphs, concept queries |
+| **Density Analysis** | Corpus frequency mapping | Fast | Low | Statistical | 3-tier RAG pipelines, concept prioritization |
 | **Streaming Results** | Memory-efficient delivery | Variable | Low | N/A (delivery mode) | Mobile, large result sets |
 
 ### Quick Decision Guide
@@ -1131,6 +1132,11 @@ interface ExploreRequest {
 | `illuminate:` (empty) | Illuminate Global | `/v1/memory/explore` | Corpus narrative |
 | `illuminate:<query>` | Explore Query-Based | `/v1/memory/explore` | Topic exploration |
 | `explore:<query>` | Explore Query-Based | `/v1/memory/explore` | Same as illuminate with query |
+| `distill:` | Distill List | `/v1/memory/search` | List all distills |
+| `distill:github:<bucket>` | Distill by Bucket | `/v1/memory/search` | Retrieve distill for a specific bucket |
+| `density:` | Density Map | `/v1/memory/search` | Full corpus density map (top atoms + tags by frequency) |
+| `density:<term>` | Density Query | `/v1/memory/search` | Count occurrences of a term, return RAG tier (light/medium/heavy) |
+| `density:<t1>,<t2>` | Multi-Term Density | `/v1/memory/search` | Density analysis for multiple comma-separated terms |
 
 ---
 
@@ -1170,6 +1176,31 @@ curl -X POST http://localhost:3160/v1/memory/search \
 curl -X POST http://localhost:3160/v1/memory/search-max-recall \
   -H "Content-Type: application/json" \
   -d '{"query":"architecture memory optimization"}'
+
+# Distill List (all distills)
+curl -X POST http://localhost:3160/v1/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"distill:"}'
+
+# Distill by Bucket
+curl -X POST http://localhost:3160/v1/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"distill:github:RSBalchII/anchor-engine-node"}'
+
+# Density Map (full corpus)
+curl -X POST http://localhost:3160/v1/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"density:"}'
+
+# Density Query (single term)
+curl -X POST http://localhost:3160/v1/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"density:authentication"}'
+
+# Density Query (multi-term)
+curl -X POST http://localhost:3160/v1/memory/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"density:contract,liability,damages"}'
 
 # Streaming Results
 curl -N -X POST http://localhost:3160/v1/memory/search \

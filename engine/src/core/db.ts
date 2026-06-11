@@ -162,18 +162,21 @@ export class Database {
         
         // Read memory settings from config (with safe defaults)
         const sharedBuffers = `${config.DATABASE?.SHARED_BUFFERS_MB || 64}MB`;
-        const effectiveCache = `${config.DATABASE?.EFFECTIVE_CACHE_SIZE_MB || 128}MB`;
-        const workMem = `${config.DATABASE?.WORK_MEM_MB || 8}MB`;
+        const effectiveCache = `${config.DATABASE?.EFFECTIVE_CACHE_SIZE_MB || 64}MB`;
+        const workMem = `${config.DATABASE?.WORK_MEM_MB || 4}MB`;
         const maintWorkMem = `${config.DATABASE?.MAINTENANCE_WORK_MEM_MB || 32}MB`;
 
         // Initialize PGlite with optimized memory settings (Standard 127)
         // Memory reduction tactics for embedded deployment (phones + laptops)
         this.dbInstance = await new PGlite(dbPath, {
-          // Don't set maxMemory limit - let Node.js GC manage heap (6GB from --max-old-space-size)
+          // Explicitly limit WASM heap to prevent unbounded growth (OOM fix)
+          // 512MB = 536870912 bytes; PGlite uses WebAssembly.Memory with this as initial size
           // OOM prevention is handled by:
           // 1. Search serialization (one search at a time)
           // 2. Memory pressure detection (downgrade max-recall if heap >3.2GB)
           // 3. Forced GC after ingestion and search completion
+          // 4. LRU cache reduced to 5% of WASM max (25.6MB ~ 2560 entries at 10KB each)
+          initialMemory: 536870912, // 512MB - caps WASM linear memory
           relaxedDurability: true, // Skip fsync during ingestion (Standard 059)
           settings: {
             // Reduce PGlite WASM buffer cache from default 1GB
@@ -203,6 +206,18 @@ export class Database {
         await this.dbInstance.exec(`SET effective_cache_size = '${effectiveCache}'`);
         await this.dbInstance.exec(`SET work_mem = '${workMem}'`);
         await this.dbInstance.exec(`SET maintenance_work_mem = '${maintWorkMem}'`);
+
+        // Create pgsql_tmp directory for temporary files (Windows requirement)
+        // PGlite creates temporary files in base/pgsql_tmp/ during queries
+        // This directory must exist on Windows where PGlite doesn't auto-create it
+        const pgsqlTmpDir = path.join(dbPath, 'base', 'pgsql_tmp');
+        try {
+          fs.mkdirSync(pgsqlTmpDir, { recursive: true });
+          console.log(`[DB] Created pgsql_tmp directory: ${pgsqlTmpDir}`);
+        } catch (e: any) {
+          // Directory might already exist, which is fine
+          console.debug(`[DB] pgsql_tmp directory already exists or creation failed: ${e.message}`);
+        }
       } catch (e: any) {
         console.error(`[DB] Failed to initialize PGlite: ${e.message}`);
         throw e;

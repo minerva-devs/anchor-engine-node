@@ -271,11 +271,21 @@ async function* collectCompounds(
         source = row.source_path;
         timestamp = row.timestamp || Date.now();
         
-        StructuredLogger.info('[Distill] Processing molecule', { 
-          id: row.molecule_id, 
-          start_byte: row.start_byte, 
-          end_byte: row.end_byte 
-        });
+        // Log every 1000th molecule for progress tracking, rest at debug level
+        if (i % 1000 === 0) {
+          StructuredLogger.info('[Distill] Processing molecule', { 
+            id: row.molecule_id, 
+            start_byte: row.start_byte, 
+            end_byte: row.end_byte,
+            progress: `${((i + 1) / rows.length * 100).toFixed(1)}%`
+          });
+        } else {
+          StructuredLogger.debug('[Distill] Processing molecule', { 
+            id: row.molecule_id, 
+            start_byte: row.start_byte, 
+            end_byte: row.end_byte 
+          });
+        }
       } else if (row.compound_id && row.source_path) {
         const searchResult = {
           id: row.compound_id,

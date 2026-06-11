@@ -142,6 +142,22 @@ export const tools = [
     },
   },
   {
+    name: 'anchor_density',
+    description: 'Analyze concept density in the corpus. Counts how frequently atoms and tags appear, returning a density tier (light/medium/heavy) for 3-tier RAG pipelines.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        term: { type: 'string', description: 'Term to analyze density for. Omit for full corpus density map. Comma-separate for multiple terms.' },
+      },
+    },
+    async execute(_ctx: ExecuteContext, args: any): Promise<{ content: Array<{ type: 'text', text: string }>; isError?: boolean }> {
+      const query = args?.term ? `density:${args.term}` : 'density:';
+      const response = await callAnchorAPI('/v1/memory/search', { query });
+      const result = JSON.stringify(response.results || response, null, 2);
+      return { content: [{ type: 'text', text: result }] };
+    },
+  },
+  {
     name: 'anchor_list_distills',
     description: 'List all distilled knowledge graphs. Returns recent distills with metadata.',
     inputSchema: {

@@ -190,7 +190,7 @@ if (existsSync(internalFrontendDist)) {
       setUICacheHeaders(res, path);
     },
   }));
-  app.get('*', (req, res, next) => {
+  app.get('/*', (req, res, next) => {
     if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
     setUICacheHeaders(res, 'index.html');
     res.sendFile(path.join(internalFrontendDist, 'index.html'));
@@ -203,7 +203,7 @@ if (existsSync(internalFrontendDist)) {
       setUICacheHeaders(res, path);
     },
   }));
-  app.get('*', (req, res, next) => {
+  app.get('/*', (req, res, next) => {
     if (req.path.startsWith('/v1') || req.path.startsWith('/health') || req.path.startsWith('/monitoring')) return next();
     setUICacheHeaders(res, 'index.html');
     res.sendFile(path.join(externalFrontendDist, 'index.html'));

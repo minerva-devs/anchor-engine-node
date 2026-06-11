@@ -78,6 +78,37 @@ function truncateLogFiles(maxLines: number = MAX_LINES_PER_FILE): void {
 // Truncate all existing logs at startup to MAX_LINES_PER_FILE (500)
 truncateLogFiles(MAX_LINES_PER_FILE);
 
+/**
+ * Clean up old log files, keeping only logs from the last 7 days
+ */
+function cleanupOldLogs(daysToKeep: number = 7): void {
+  try {
+    const files = fs.readdirSync(LOGS_DIR);
+    const today = new Date();
+    const cutoff = new Date(today.getTime() - daysToKeep * 24 * 60 * 60 * 1000);
+
+    for (const file of files) {
+      // Skip audit files and the zipped folder
+      if (file.includes('audit') || file.endsWith('.gz')) continue;
+      if (LOGS_DIR.includes('zipped') || file.endsWith('.gz')) continue;
+
+      const filePath = path.join(LOGS_DIR, file);
+      const stats = fs.statSync(filePath);
+      const fileDate = new Date(stats.mtime);
+
+      if (fileDate < cutoff) {
+        fs.unlinkSync(filePath);
+        console.log(`[Logger] Removed old log file: ${file}`);
+      }
+    }
+  } catch (e: any) {
+    console.error('[Logger] Failed to cleanup old logs:', e.message);
+  }
+}
+
+// Clean up old logs at startup (keep last 7 days)
+cleanupOldLogs(7);
+
 // Custom format for structured logging
 const structuredFormat = winston.format.combine(
   winston.format.timestamp(),
@@ -89,16 +120,16 @@ const structuredFormat = winston.format.combine(
 // Create logger instance
 const logger = winston.createLogger({
   levels: logLevels,
-  level: 'info', // Changed from 'silly' to 'info' to filter out noisy dependency logs
+  level: 'info', // Reduced from 'debug' to avoid excessive HTTP_REQUEST/INFO logs (health-check pings)
   format: structuredFormat,
   transports: [
-    // Main anchor_engine.log file with size-based rotation (10KB)
+    // Main anchor_engine.log file with size-based rotation (5MB) and 5-file cap
     new DailyRotateFile({
       filename: path.join(LOGS_DIR, 'anchor_engine.log'),
       datePattern: 'YYYY-MM-DD',
       zippedArchive: true,
-      maxSize: '10k',
-      maxFiles: '7d',
+      maxSize: '5m',
+      maxFiles: 5, // Keep exactly 5 files; oldest removed automatically when limit exceeded
       format: format.combine(
         format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
         format.errors({ stack: true }),
@@ -109,14 +140,14 @@ const logger = winston.createLogger({
         }),
       ),
     }),
-    // Separate error file
+    // Separate error file (single instance)
     new DailyRotateFile({
       level: 'error',
       filename: path.join(LOGS_DIR, 'anchor_engine_error-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       zippedArchive: true,
-      maxSize: '10k',
-      maxFiles: '14d',
+      maxSize: '5m',
+      maxFiles: 5, // Keep exactly 5 files; oldest removed automatically when limit exceeded
       format: format.combine(
         format.timestamp(),
         format.errors({ stack: true }),
@@ -124,22 +155,6 @@ const logger = winston.createLogger({
         format.json(),
       ),
     }),
-    // Separate error file
-    new DailyRotateFile({
-      level: 'error',
-      filename: path.join(LOGS_DIR, 'anchor_engine_error-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '10k',
-      maxFiles: '14d',
-      format: format.combine(
-        format.timestamp(),
-        format.errors({ stack: true }),
-        format.splat(),
-        format.json(),
-      ),
-    }),
-    // Console transport for development
     new winston.transports.Console({
       format: format.combine(
         format.colorize(),

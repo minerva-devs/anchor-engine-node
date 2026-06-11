@@ -16,6 +16,7 @@ import * as v8 from 'v8';
 import { config } from '../config/index.js';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 // --- Types ---
 
@@ -97,6 +98,7 @@ export class LRUCache<K, V> {
   };
 
   private memoryCheckInterval: NodeJS.Timeout | null = null;
+  private lruLogPath: string; // Log file for cache events
 
   constructor(options: LRUCacheOptions) {
     this.maxEntries = options.maxEntries;
@@ -107,6 +109,10 @@ export class LRUCache<K, V> {
 
     this.cache = new Map();
     this.stats.maxEntries = options.maxEntries;
+
+    // Initialize log file path
+    const anchorRoot = process.env.ANCHOR_ROOT || path.join(os.homedir(), '.anchor');
+    this.lruLogPath = path.join(anchorRoot, 'lru-cache.log');
 
     // Start memory monitoring if enabled
     if (this.enableMemoryPressureEviction) {

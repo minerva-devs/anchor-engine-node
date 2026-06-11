@@ -81,22 +81,32 @@ export async function writeMirroredFile(
     content: string,
     provenance: 'internal' | 'external' | 'quarantine' = 'internal',
 ): Promise<void> {
-    console.log(`[MirrorWrite] Starting write for: ${relativePath}`);
-    console.log(`[MirrorWrite] Content length: ${content?.length || 0} chars`);
-    console.log(`[MirrorWrite] Provenance: ${provenance}`);
-    console.log(`[MirrorWrite] MIRRORED_BRAIN_PATH: ${MIRRORED_BRAIN_PATH}`);
+    const mirrorPath = getMirrorPath(relativePath, provenance);
+    
+    // NEVER log the content itself - only log metadata
+    const contentLength = content?.length || 0;
+    
+    if (process.env.DEBUG_MIRROR === 'true') {
+        console.log(`[MirrorWrite] Starting write for: ${relativePath}`);
+        console.log(`[MirrorWrite] Content length: ${contentLength} chars`);
+        console.log(`[MirrorWrite] Provenance: ${provenance}`);
+        console.log(`[MirrorWrite] Target path: ${mirrorPath}`);
+    }
 
     if (!fs.existsSync(MIRRORED_BRAIN_PATH)) {
-        console.log('[MirrorWrite] Creating mirrored_brain directory...');
+        if (process.env.DEBUG_MIRROR === 'true') {
+            console.log('[MirrorWrite] Creating mirrored_brain directory...');
+        }
         fs.mkdirSync(MIRRORED_BRAIN_PATH, { recursive: true });
-        console.log('[MirrorWrite] ✓ Directory created');
+        if (process.env.DEBUG_MIRROR === 'true') {
+            console.log('[MirrorWrite] ✓ Directory created');
+        }
     }
-    const mirrorPath = getMirrorPath(relativePath, provenance);
-    console.log(`[MirrorWrite] Target path: ${mirrorPath}`);
 
     try {
         await writeFile(mirrorPath, content);
-        console.log(`[MirrorWrite] ✓ SUCCESS: Written ${content?.length || 0} chars to ${mirrorPath}`);
+        // Only log success with minimal info (path and size) - NEVER log content
+        console.log(`[MirrorWrite] ✓ Written ${contentLength} chars to ${relativePath}`);
     } catch (error: any) {
         console.error(`[MirrorWrite] ✗ FAILED: ${error.message}`);
         throw error;

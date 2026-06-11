@@ -14,7 +14,7 @@ import { ContextInflator } from '../search/context-inflator.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { getMirrorPath, MIRRORED_BRAIN_PATH } from '../mirror/mirror.js';
 import { PATHS, DEFAULT_PROVENANCE, NOTEBOOK_DIR } from '../../config/paths.js';
-import { recordDistill } from './distill-manager.js';
+import { recordDistill, isMoleculeProcessed, markMoleculeProcessed, resetProcessedMolecules } from './distill-manager.js';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -173,15 +173,25 @@ async function* collectCompounds(
       let timestamp: number = Date.now();
       
       if (row.molecule_id !== null && row.start_byte !== undefined) {
-        // Use molecule coordinates - we have the actual byte range!
+        // Skip already-processed molecules to avoid duplicate processing
+        if (isMoleculeProcessed(row.molecule_id)) {
+          continue; // Already processed, skip this chunk
+        }
+
+        let content = '';
+        let source: string = 'unknown';
+        let timestamp: number = Date.now();
+        
         content = row.content_preview || '';
         source = row.source_path;
         timestamp = row.timestamp || Date.now();
         
-        StructuredLogger.info('[Distill] Processing molecule', { 
+        // Log only at the start of processing each molecule
+        StructuredLogger.debug('[Distill] Starting molecule processing', { 
           id: row.molecule_id, 
           start_byte: row.start_byte, 
-          end_byte: row.end_byte 
+          end_byte: row.end_byte,
+          source_path: row.source_path
         });
       } else if (row.compound_id && row.source_path) {
         // Compound-level - try to inflate using ContextInflator
@@ -222,6 +232,11 @@ async function* collectCompounds(
       }
 
       if (content) {
+        // Mark this molecule as processed to avoid duplicate chunks
+        if (row.molecule_id !== null) {
+          markMoleculeProcessed(row.molecule_id);
+        }
+
         yield {
           compoundId: row.compound_id || 'unknown',
           content,
@@ -424,6 +439,9 @@ export async function radialDistill(
       output: { format: request.output_format || 'compound', path: outputPath, size_bytes: sizeBytes, compounds_created: compoundsCreated },
       provenance: { source_compounds: sourceCompounds, unique_sources: sourceCompounds.length, distilled_at: new Date().toISOString(), parameters: request },
     };
+
+    // Reset processed molecules after successful distillation
+    resetProcessedMolecules();
 
     return result;
   } catch (error: any) {

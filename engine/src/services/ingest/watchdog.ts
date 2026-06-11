@@ -550,7 +550,8 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
             const fsLocal = await import('fs');
             const originalContent = fsLocal.readFileSync(filePath, 'utf-8');
             if (compound && originalContent) {
-                await writeMirroredFile(originalContent, relativePath, provenance);
+                // NOTE: arguments are (relativePath, content, provenance) - path first, content second
+                await writeMirroredFile(relativePath, originalContent, provenance);
             }
         } catch (e: any) {
             console.warn(`[Watchdog] Mirror write failed for ${relativePath}:`, e.message);

@@ -1,5 +1,5 @@
 #!/usr/bin/env pwsh
-$basedir=Split-Path $MyInvocation.MyCommand.Definition -Parent
+$basedir="C:\nvm4w\nodejs"
 
 $exe=""
 if ($PSVersionTable.PSVersion -lt "6.0" -or $IsWindows) {
