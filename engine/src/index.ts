@@ -144,12 +144,19 @@ if (config.API_KEY.length < 64 && !api_key_strength) {
 StructuredLogger.info('AUTH_CONFIG', { api_key_enabled: true, key_length: config.API_KEY.length });
 
 // Rate limiting — applied after auth so authenticated clients share the same window
-// General limit: 100 requests / minute per IP
+// General limit: 100 requests / minute per IP.
+// Skip UI polling endpoints (/stats, /system/status, /health) — these are
+// local dashboard refreshes, not API abuse. Without this skip, an open browser
+// tab generates ~1,500 429 WARNs per hour.
 const apiLimiter = rateLimit({
   windowMs: 60_000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    const path = req.path || '';
+    return path === '/stats' || path === '/system/status' || path === '/health';
+  },
   message: { error: 'Too many requests', message: 'Rate limit exceeded. Try again in a minute.' },
 });
 // Stricter limit for expensive write operations: 20 / minute per IP
