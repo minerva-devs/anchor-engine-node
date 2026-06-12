@@ -376,17 +376,19 @@ async function scanInbox(): Promise<void> {
     const avgTime = fileCount > 0 ? (totalIngestionTime / fileCount).toFixed(2) : 'N/A';
     console.log(`[Watchdog] 📊 INGESTION SUMMARY: ${fileCount} files processed, Total time: ${totalIngestionTime.toFixed(2)}s, Avg per file: ${avgTime}s`);
 
-    // Standard 076: Auto-distill once after batch completes (not per-file)
-    if (filesIngested > 0) {
-        try {
-            const { radialDistill } = await import('../distillation/radial-distiller-v2.js');
-            console.log(`[Watchdog] ⏳ Auto-distill starting (${filesIngested} files ingested)...`);
-            await radialDistill({});
-            console.log('[Watchdog] ✅ Auto-distill complete');
-        } catch (error: any) {
-            console.warn('[Watchdog] ⚠️ Auto-distill failed:', error.message);
-        }
-    }
+    // Standard 076: Auto-distill disabled — distillation is triggered manually
+    // via the UI or API until the distiller is mature enough for automatic runs.
+    // Re-enable by uncommenting the block below.
+    // if (filesIngested > 0) {
+    //     try {
+    //         const { radialDistill } = await import('../distillation/radial-distiller-v2.js');
+    //         console.log(`[Watchdog] ⏳ Auto-distill starting (${filesIngested} files ingested)...`);
+    //         await radialDistill({});
+    //         console.log('[Watchdog] ✅ Auto-distill complete');
+    //     } catch (error: any) {
+    //         console.warn('[Watchdog] ⚠️ Auto-distill failed:', error.message);
+    //     }
+    // }
 
     console.log(`[ManualIngest] Processed ${filesProcessed} items, ingested ${filesIngested}`);
 }
