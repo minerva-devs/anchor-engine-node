@@ -339,6 +339,55 @@ async function throttleSearchForMemory(): Promise<{ proceed: boolean; delayMs: n
 }
 
 /**
+ * Safely read a slice of a file from disk asynchronously, with size limits to prevent OOM.
+ */
+async function readSliceFromDiskAsync(
+  filePath: string,
+  start?: number,
+  end?: number,
+  maxBytesToRead: number = 100000 // 100KB default cap
+): Promise<string | null> {
+  const fs = await import('fs');
+  let fileHandle: any = null;
+  try {
+    const stats = await fs.promises.stat(filePath);
+    const fileSize = stats.size;
+    if (fileSize === 0) return '';
+
+    // Determine bounds
+    const startByte = start !== undefined && start !== null ? Math.max(0, start) : 0;
+    let endByte = end !== undefined && end !== null ? Math.min(fileSize, end) : fileSize;
+
+    if (startByte >= fileSize) return '';
+    if (endByte > fileSize) endByte = fileSize;
+    if (startByte >= endByte) return '';
+
+    // Cap the bytes to read to prevent massive memory usage
+    let lengthToRead = endByte - startByte;
+    if (lengthToRead > maxBytesToRead) {
+      lengthToRead = maxBytesToRead;
+    }
+
+    const buffer = Buffer.alloc(lengthToRead);
+    fileHandle = await fs.promises.open(filePath, 'r');
+    const { bytesRead } = await fileHandle.read(buffer, 0, lengthToRead, startByte);
+    
+    if (bytesRead === 0) return '';
+    return buffer.toString('utf-8', 0, bytesRead);
+  } catch (err) {
+    return null;
+  } finally {
+    if (fileHandle) {
+      try {
+        await fileHandle.close();
+      } catch (e) {
+        // ignore close error
+      }
+    }
+  }
+}
+
+/**
  * Find Anchors (Direct Hits) - Formerly part of tagWalkerSearch
  * Executes Strategy A (Atom positions) and Strategy B (Molecules FTS)
  */
@@ -786,7 +835,6 @@ export async function findAnchors(
     // For atoms without source files (chat history), keep DB content
 
     const { getMirrorPath } = await import('../mirror/mirror.js');
-    const fs = await import('fs');
 
     // Parallelize mirror reads for performance (non-blocking I/O)
     await Promise.all(anchors.map(async anchor => {
@@ -799,9 +847,14 @@ export async function findAnchors(
         // Calculate Mirror Path
         const mirrorPath = getMirrorPath(anchor.source, anchor.provenance);
 
-        // Check if exists and read async
+        // Check if exists and read async slice to prevent OOM / Event Loop freezes
         try {
-          const liveContent = await fs.promises.readFile(mirrorPath, 'utf-8');
+          const liveContent = await readSliceFromDiskAsync(
+            mirrorPath,
+            anchor.start_byte,
+            anchor.end_byte,
+            100000
+          );
           if (liveContent && liveContent.length > 0) {
             anchor.content = liveContent;
           }
@@ -893,25 +946,10 @@ async function _executeSearchInternal(
     maxChars = Math.min(maxChars, config.SEARCH.max_chars_default);
   }
 
-  // Check if system is busy with ingestion
-  const status = systemStatus.getStatus();
-  if (status.isBusy) {
-    // Wait for ingestion to finish before running search.
-    // Concurrent search+ingestion causes O(N) memory pressure that can exceed the heap limit
-    // (e.g. 207K molecules sharing a compound_id → physics walker cross product crashes at 8GB).
-    const maxWaitMs = 180_000; // 3 minutes
-    const pollMs = 1_000;
-    let waited = 0;
-    console.log(`[Search] System busy (${status.state}), waiting for idle before proceeding...`);
-    while (systemStatus.getStatus().isBusy && waited < maxWaitMs) {
-      await new Promise(r => setTimeout(r, pollMs));
-      waited += pollMs;
-    }
-    if (systemStatus.getStatus().isBusy) {
-      console.warn(`[Search] System still busy after ${waited}ms, proceeding with risk.`);
-    } else {
-      console.log(`[Search] System became idle after ${waited}ms, proceeding with search.`);
-    }
+  // Search runs immediately even during ingestion — partial results are better than a frozen UI.
+  // PGlite serializes all DB ops on its internal queue, so concurrent search + ingest is safe.
+  if (systemStatus.getStatus().isBusy) {
+    console.log(`[Search] Running search during ingestion (partial corpus expected).`);
   }
 
   // 1. Parse & Prepare
@@ -1251,7 +1289,8 @@ export async function runTraditionalSearch(query: string, buckets: string[]): Pr
     SELECT a.id,
            ts_rank(to_tsvector('simple', a.content), plainto_tsquery('simple', $1)) as score,
            a.content, a.source_path as source, a.timestamp,
-           a.buckets, a.tags, 'epoch_placeholder' as epochs, a.provenance
+           a.buckets, a.tags, 'epoch_placeholder' as epochs, a.provenance,
+           a.start_byte, a.end_byte
     FROM atoms a
     WHERE to_tsvector('simple', a.content) @@ plainto_tsquery('simple', $1)
   `;
@@ -1280,6 +1319,8 @@ export async function runTraditionalSearch(query: string, buckets: string[]): Pr
       tags: row.tags,
       epochs: row.epochs,
       provenance: row.provenance,
+      start_byte: row.start_byte,
+      end_byte: row.end_byte,
     }));
 
     await hydrateFromMirror(mappedResults);
@@ -1296,13 +1337,17 @@ export async function runTraditionalSearch(query: string, buckets: string[]): Pr
 async function hydrateFromMirror(results: SearchResult[]) {
   try {
     const { getMirrorPath } = await import('../mirror/mirror.js');
-    const fs = await import('fs');
 
     await Promise.all(results.map(async res => {
       try {
         const mirrorPath = getMirrorPath(res.source, res.provenance);
         try {
-          const content = await fs.promises.readFile(mirrorPath, 'utf-8');
+          const content = await readSliceFromDiskAsync(
+            mirrorPath,
+            res.start_byte,
+            res.end_byte,
+            100000
+          );
           if (content) res.content = content;
         } catch (err) {
           // ignore file not found
@@ -1437,19 +1482,27 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
       const terms = searchTerm ? searchTerm.split(',').map(t => t.trim()).filter(Boolean) : [];
       
       if (terms.length === 0) {
-        // "density:" with no term → return full corpus density map (top atoms + tags by frequency)
-        const [topAtoms, topTags] = await Promise.all([
-          db.run('SELECT source_path, COUNT(*) as count FROM atoms GROUP BY source_path ORDER BY count DESC LIMIT 50'),
+        // "density:" with no term → return full corpus density map
+        // Query 1: Top atoms by concept tag frequency (deduplicated by tag)
+        // Query 2: Top tags by tag/bucket frequency
+        const [topAtomTags, topTags] = await Promise.all([
+          db.run(
+            `SELECT tag, COUNT(*) as count, COUNT(DISTINCT source_path) as source_count
+             FROM atoms, unnest(tags) as tag
+             WHERE tags IS NOT NULL AND array_length(tags, 1) > 0
+             GROUP BY tag ORDER BY count DESC LIMIT 100`
+          ),
           db.run('SELECT tag, bucket, COUNT(*) as count FROM tags GROUP BY tag, bucket ORDER BY count DESC LIMIT 50'),
         ]);
         
-        const atomTotal = (topAtoms.rows || []).reduce((sum: number, r: any) => sum + parseInt(r.count || '0'), 0);
+        const atomTotal = (topAtomTags.rows || []).reduce((sum: number, r: any) => sum + parseInt(r.count || '0'), 0);
         const tagTotal = (topTags.rows || []).reduce((sum: number, r: any) => sum + parseInt(r.count || '0'), 0);
         
         const densityMap = {
-          atoms: (topAtoms.rows || []).map((r: any) => ({
-            source: r.source_path,
+          atoms: (topAtomTags.rows || []).map((r: any) => ({
+            tag: r.tag,
             count: parseInt(r.count || '0'),
+            sources: parseInt(r.source_count || '0'),
             density_pct: parseFloat((parseInt(r.count || '0') / Math.max(atomTotal, 1) * 100).toFixed(2)),
           })),
           tags: (topTags.rows || []).map((r: any) => ({
@@ -1458,12 +1511,12 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
             count: parseInt(r.count || '0'),
             density_pct: parseFloat((parseInt(r.count || '0') / Math.max(tagTotal, 1) * 100).toFixed(2)),
           })),
-          totals: { unique_atoms: topAtoms.rows?.length || 0, unique_tags: topTags.rows?.length || 0, atom_occurrences: atomTotal, tag_occurrences: tagTotal },
+          totals: { unique_concepts: topAtomTags.rows?.length || 0, unique_tags: topTags.rows?.length || 0, total_occurrences: atomTotal, tag_occurrences: tagTotal },
           rag_thresholds: config.DENSITY,
         };
         
         return {
-          context: `Corpus density map — ${densityMap.totals.unique_atoms} unique atoms (${atomTotal} total), ${densityMap.totals.unique_tags} unique tags (${tagTotal} total).`,
+          context: `Corpus density map — ${densityMap.totals.unique_concepts} unique concepts (${atomTotal} total), ${densityMap.totals.unique_tags} unique tags (${tagTotal} total).`,
           results: [densityMap],
           strategy: 'prefix_density_map',
           metadata: { query_type: 'density_map', ...densityMap.totals },
@@ -1685,9 +1738,10 @@ export async function smartChatSearch(
 
   // Check for special prefixes first
   const prefixResult = await handlePrefixQuery(query, buckets, maxChars, tags);
-  if (prefixResult && prefixResult.results.length > 0) {
+  if (prefixResult) {
     return prefixResult as any;
   }
+
 
   const isLongQuery = query.length > 100;
   let initial = { results: [] as SearchResult[], context: '', toAgentString: () => '' };
