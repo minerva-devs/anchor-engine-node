@@ -1471,17 +1471,24 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
       }
       
       // "density:<term>" or "density:<term1>,<term2>" → count occurrences per term
-      const densityResults = await Promise.all(terms.map(async (term) => {
-        const [atomResult, tagResult, molResult] = await Promise.all([
-          db.run('SELECT COUNT(*) as count FROM atoms WHERE source_path ILIKE $1 OR id ILIKE $1', [`%${term}%`]),
-          db.run('SELECT COUNT(*) as count FROM tags WHERE tag ILIKE $1', [`%${term}%`]),
-          db.run(
-            `SELECT COUNT(DISTINCT m.id) as count FROM molecules m
-             JOIN atoms a ON a.compound_id = m.compound_id
-             WHERE a.source_path ILIKE $1 OR a.id ILIKE $1`,
-            [`%${term}%`]
-          ),
-        ]);
+      // Execute sequentially — PGlite is single-connection; Promise.all on multiple
+      // db.run() calls causes "cannot drop active portal" errors.
+      const densityResults = [];
+      for (const term of terms) {
+        const atomResult = await db.run(
+          'SELECT COUNT(*) as count FROM atoms WHERE source_path ILIKE $1 OR id ILIKE $1',
+          [`%${term}%`]
+        );
+        const tagResult = await db.run(
+          'SELECT COUNT(*) as count FROM tags WHERE tag ILIKE $1',
+          [`%${term}%`]
+        );
+        const molResult = await db.run(
+          `SELECT COUNT(DISTINCT m.id) as count FROM molecules m
+           JOIN atoms a ON a.compound_id = m.compound_id
+           WHERE a.source_path ILIKE $1 OR a.id ILIKE $1`,
+          [`%${term}%`]
+        );
         
         const atomCount = parseInt(atomResult.rows?.[0]?.count || '0', 10);
         const tagCount = parseInt(tagResult.rows?.[0]?.count || '0', 10);
@@ -1509,14 +1516,13 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
           rag_mode = 'exhaustive';
         }
         
-        return {
+        const result = {
           term,
           atom_count: atomCount,
           tag_count: tagCount,
           molecule_count: molCount,
           total_hits: atomCount + tagCount,
           density_tier: tier,
-          // --- Actionable RAG dispatch config ---
           rag_config: {
             mode: rag_mode,
             doc_limit: rag_limit,
@@ -1527,7 +1533,8 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
               : `Rare concept (${molCount} docs). External RAG: exhaustive retrieval${rag_limit > 0 ? ` (up to ${rag_limit} docs)` : ' (all available docs)'} + radial distillation.`,
           },
         };
-      }));
+        densityResults.push(result);
+      }
       
       const summary = densityResults.map(r => 
         `${r.term}: ${r.molecule_count} docs (${r.density_tier} → ${r.rag_config.mode}, limit ${r.rag_config.doc_limit})`

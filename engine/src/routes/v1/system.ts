@@ -163,13 +163,12 @@ export function setupSystemRoutes(app: Application) {
     try {
       const startTime = Date.now();
 
-      // Get counts in parallel
-      const [atomsResult, sourcesResult, tagsResult, moleculesResult] = await Promise.all([
-        db.run('SELECT COUNT(*) as count FROM atoms'),
-        db.run('SELECT COUNT(*) as count FROM sources'),
-        db.run('SELECT COUNT(DISTINCT tag) as count FROM tags WHERE tag IS NOT NULL'),
-        db.run('SELECT COUNT(*) as count FROM molecules'),
-      ]);
+      // Get counts sequentially (PGlite is single-connection — concurrent queries
+      // cause "cannot drop active portal" errors under UI polling load)
+      const atomsResult = await db.run('SELECT COUNT(*) as count FROM atoms');
+      const sourcesResult = await db.run('SELECT COUNT(*) as count FROM sources');
+      const tagsResult = await db.run('SELECT COUNT(DISTINCT tag) as count FROM tags WHERE tag IS NOT NULL');
+      const moleculesResult = await db.run('SELECT COUNT(*) as count FROM molecules');
 
       const stats = {
         atoms: parseInt(atomsResult.rows?.[0]?.count || '0'),

@@ -255,6 +255,13 @@ async function* collectCompounds(
 
   queryBase += ' ORDER BY m.timestamp DESC, m.start_byte ASC';
 
+  // Honor max_molecules parameter to prevent OOM on large corpora.
+  // Without this, {max_molecules: 5} still fetches all 87K+ molecules (~1.7GB).
+  if (request.max_molecules && request.max_molecules > 0) {
+    queryBase += ` LIMIT $${effectiveParams.length + 1}`;
+    effectiveParams.push(request.max_molecules);
+  }
+
   const result = await db.run(queryBase, effectiveParams);
   const rows = result.rows as any[];
 
