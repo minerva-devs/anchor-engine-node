@@ -128,6 +128,15 @@ temp.txt
 tmp*.txt
 temp_*.txt
 temp_*.ts
+temp_diff.txt
+temp_index_diff.txt
+engine-start.log
+test-output.txt
+test-results.txt
+vitest-full-output.txt
+vitest-results.log
+LOGGING_CHANGES_SUMMARY.md
+.hermes-tmp.*
 temp_*.js
 tmp_*.json
 ts-sources.txt

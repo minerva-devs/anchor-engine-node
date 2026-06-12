@@ -30,6 +30,15 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `package.json` | Package configuration |
 | `user_settings.json.template` | Configuration template → generates `$HOME/.anchor/user_settings.json` (see Runtime Object Storage) |
 | `validate-json.mjs` | Script to build user_settings.json from template (runs on `pnpm install` + `pnpm start`) |
+| `pnpm-lock.yaml` | PNPM dependency lock file |
+| `pnpm-workspace.yaml` | PNPM monorepo workspace configuration |
+| `pnpm.cmd` | Windows PNPM launcher |
+| `pnpm.ps1` | PowerShell PNPM launcher |
+| `.dockerignore` | Docker build exclusions |
+| `.npmignore` | NPM publish exclusions |
+| `.npmrc` | NPM/PNPM runtime configuration |
+| `.gitattributes` | Git line-ending and diff configuration |
+| `.env` | Environment variables (gitignored, never committed) |
 | `.scratch.md` | **Agent-only exception** - Session notes for AI agents during development (never committed to main) |
 | `user_settings.docker.json` | Docker-specific user settings template |
 | `verify-anchor-config.js` | Script to verify anchor configuration |
@@ -46,6 +55,9 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `scripts/stop-engine.bat` | Batch script to stop engine |
 | `scripts/start-engine-bg.mjs` | Node.js background startup (Standard 014 OPS-005) |
 | `scripts/stop-engine-bg.mjs` | Node.js background shutdown (Standard 014 OPS-005) |
+| `scripts/sync-version.mjs` | Post-version hook — syncs version across package.json files |
+| `scripts/run-engine.bat` | Windows batch launcher for engine |
+| `scripts/start-engine.bat` | Windows batch startup script |
 | `scripts/build.ts` | TypeScript build script |
 | `scripts/engine_server.py` | Python engine server wrapper |
 
