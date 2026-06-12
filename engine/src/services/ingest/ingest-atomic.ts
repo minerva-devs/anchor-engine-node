@@ -6,6 +6,45 @@ import { modulateTags, normalizeTag } from '../../utils/tag-modulation.js';
 
 export class AtomicIngestService {
 
+    async cleanupSourcePath(sourcePath: string) {
+        const likePattern = `${sourcePath}#%`;
+        console.log(`[AtomicIngest] 🧹 Cleaning up database records for: ${sourcePath}`);
+        
+        await db.transaction(async () => {
+            // Delete tags
+            await db.run(
+                `DELETE FROM tags WHERE atom_id IN (SELECT id FROM atoms WHERE source_path = $1 OR source_path LIKE $2)`,
+                [sourcePath, likePattern]
+            );
+            
+            // Delete edges
+            await db.run(
+                `DELETE FROM edges WHERE source_id IN (SELECT id FROM atoms WHERE source_path = $1 OR source_path LIKE $2) 
+                 OR target_id IN (SELECT id FROM atoms WHERE source_path = $1 OR source_path LIKE $2)`,
+                [sourcePath, likePattern]
+            );
+            
+            // Delete atom positions
+            await db.run(
+                `DELETE FROM atom_positions WHERE compound_id IN (SELECT id FROM atoms WHERE source_path = $1 OR source_path LIKE $2)`,
+                [sourcePath, likePattern]
+            );
+            
+            // Delete molecules
+            await db.run(
+                `DELETE FROM molecules WHERE source_path = $1 OR source_path LIKE $2`,
+                [sourcePath, likePattern]
+            );
+            
+            // Delete atoms
+            await db.run(
+                `DELETE FROM atoms WHERE source_path = $1 OR source_path LIKE $2`,
+                [sourcePath, likePattern]
+            );
+        });
+        console.log(`[AtomicIngest] 🧹 Database clean for: ${sourcePath} complete`);
+    }
+
     async ingestResult(
         compound: Compound,
         molecules: Molecule[],
@@ -192,7 +231,9 @@ export class AtomicIngestService {
         const MAX_BATCH_ROWS = 50;
         const MAX_BATCH_BYTES = 512 * 1024; // 512KB per INSERT message (safe margin under PGlite's ~1MB limit)
         const total = molecules.length;
-        const logInterval = Math.max(1000, Math.floor(total / 10));
+        // Batch every 50 items instead of every 10%
+const BATCH_SIZE = 50;
+const logInterval = Math.max(BATCH_SIZE, Math.ceil(total / 20));
         const molStart = Date.now();
         let i = 0;
 
@@ -213,7 +254,7 @@ export class AtomicIngestService {
             if (total > 1000 && i % logInterval === 0 && i > 0) {
                 const elapsed = ((Date.now() - molStart) / 1000).toFixed(1);
                 const rate = Math.round(i / ((Date.now() - molStart) / 1000));
-                console.log(`[AtomicIngest] ⏱️ Molecules: ${((i / total) * 100).toFixed(0)}% (${i}/${total}) - ${elapsed}s elapsed, ${rate} mol/s`);
+                if (i % BATCH_SIZE < BATCH_SIZE && i % BATCH_SIZE === 49) { console.log(`[AtomicIngest] ⏱️ Molecules batch: ${Math.floor(i/BATCH_SIZE)*BATCH_SIZE + 1}-${Math.min(i+1, total)} of ${total}`); }
             }
 
             // Yield to event loop every 500 rows
@@ -348,7 +389,9 @@ export class AtomicIngestService {
 
         const batchSize = 50;
         const total = molecules.length;
-        const logInterval = Math.max(1000, Math.floor(total / 10));
+        // Batch every 50 items instead of every 10%
+const BATCH_SIZE = 50;
+const logInterval = Math.max(BATCH_SIZE, Math.ceil(total / 20));
 
         for (let i = 0; i < molecules.length; i += batchSize) {
             const batch = molecules.slice(i, Math.min(i + batchSize, molecules.length));

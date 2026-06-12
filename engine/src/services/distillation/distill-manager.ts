@@ -19,7 +19,7 @@ function pruneCache() {
 export async function getAllDistills(limit = 50) {
   try {
     const result = await db.run(
-      'SELECT id, timestamp, filename, file_path, line_count, lines_unique, compression_ratio, source_sessions, source_files, parameters FROM distills ORDER BY timestamp DESC LIMIT $1',
+      'SELECT id, timestamp, filename, file_path, line_count, lines_unique, compression_ratio, source_sessions, source_files, parameters, start_byte, end_byte, file_size FROM distills ORDER BY timestamp DESC LIMIT $1',
       [limit]
     );
     return (result.rows || []).map((row: any) => ({
@@ -33,6 +33,9 @@ export async function getAllDistills(limit = 50) {
       source_sessions: row.source_sessions,
       source_files: row.source_files,
       parameters: row.parameters,
+      start_byte: row.start_byte !== undefined && row.start_byte !== null ? row.start_byte : 0,
+      end_byte: row.end_byte !== undefined && row.end_byte !== null ? row.end_byte : 0,
+      file_size: row.file_size !== undefined && row.file_size !== null ? row.file_size : 0,
     }));
   } catch {
     // Fall back to in-memory cache if DB unavailable
@@ -60,6 +63,9 @@ export async function getDistill(id: string) {
         source_sessions: row.source_sessions,
         source_files: row.source_files,
         parameters: row.parameters,
+        start_byte: row.start_byte !== undefined && row.start_byte !== null ? row.start_byte : 0,
+        end_byte: row.end_byte !== undefined && row.end_byte !== null ? row.end_byte : 0,
+        file_size: row.file_size !== undefined && row.file_size !== null ? row.file_size : 0,
       };
     }
   } catch { /* fall through */ }
@@ -85,6 +91,9 @@ export async function getDistillsBySession(session: string) {
       source_sessions: row.source_sessions,
       source_files: row.source_files,
       parameters: row.parameters,
+      start_byte: row.start_byte !== undefined && row.start_byte !== null ? row.start_byte : 0,
+      end_byte: row.end_byte !== undefined && row.end_byte !== null ? row.end_byte : 0,
+      file_size: row.file_size !== undefined && row.file_size !== null ? row.file_size : 0,
     }));
   } catch {
     return Object.values(distillCache).filter((d: any) => d.session === session);
@@ -112,13 +121,16 @@ export async function recordDistill(distill: any) {
   if (distill.status === 'complete' || distill.progress === 100) {
     try {
       await db.run(
-        `INSERT INTO distills (id, timestamp, filename, file_path, line_count, lines_unique, compression_ratio, source_sessions, source_files, parameters)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        `INSERT INTO distills (id, timestamp, filename, file_path, line_count, lines_unique, compression_ratio, source_sessions, source_files, parameters, start_byte, end_byte, file_size)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          ON CONFLICT (id) DO UPDATE SET
            line_count = EXCLUDED.line_count,
            lines_unique = EXCLUDED.lines_unique,
            compression_ratio = EXCLUDED.compression_ratio,
-           source_files = EXCLUDED.source_files`,
+           source_files = EXCLUDED.source_files,
+           start_byte = EXCLUDED.start_byte,
+           end_byte = EXCLUDED.end_byte,
+           file_size = EXCLUDED.file_size`,
         [
           distill.id,
           distill.timestamp || new Date().toISOString(),
@@ -130,6 +142,9 @@ export async function recordDistill(distill: any) {
           JSON.stringify(distill.source_sessions || []),
           JSON.stringify(distill.source_files || []),
           JSON.stringify(distill.parameters || {}),
+          distill.start_byte !== undefined ? distill.start_byte : 0,
+          distill.end_byte !== undefined ? distill.end_byte : (distill.output?.size_bytes || 0),
+          distill.file_size !== undefined ? distill.file_size : (distill.output?.size_bytes || 0),
         ]
       );
       console.log('[distill-manager] Distill recorded to DB:', distill.id);

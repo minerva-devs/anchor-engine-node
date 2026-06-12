@@ -1517,9 +1517,16 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
         
         return {
           context: `Corpus density map — ${densityMap.totals.unique_concepts} unique concepts (${atomTotal} total), ${densityMap.totals.unique_tags} unique tags (${tagTotal} total).`,
-          results: [densityMap],
+          results: (densityMap.atoms || []).map(a => ({
+            id: `density_${a.tag}`,
+            content: `${a.tag}: ${a.count} occurrences across ${a.sources} sources`,
+            source: a.tag,
+            score: a.density_pct / 100,
+            tags: [a.tag],
+            density: { count: a.count, sources: a.sources, pct: a.density_pct },
+          })),
           strategy: 'prefix_density_map',
-          metadata: { query_type: 'density_map', ...densityMap.totals },
+          metadata: { query_type: 'density_map', ...densityMap.totals, rag_thresholds: densityMap.rag_thresholds },
         };
       }
       

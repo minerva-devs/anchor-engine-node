@@ -215,10 +215,11 @@ async function* collectCompounds(
   const maxRadius = request.max_radius || 10000;
   const effectiveRadius = Math.min(radius, maxRadius);
 
-  let conditions: string[] = [];
-  let queryBase = ``;
+  const effectiveParams: any[] = [];
+  const joinClauses: string[] = [];
+  const whereClauses: string[] = [];
 
-  queryBase += `
+  const queryBase_select = `
     SELECT DISTINCT
       m.compound_id AS compound_id,
       m.id AS molecule_id,
@@ -231,26 +232,31 @@ async function* collectCompounds(
     FROM molecules m
   `;
 
-  const params: any[] = [DEFAULT_PROVENANCE];
-
-  const effectiveParams = request.seed ? [...params] : [];
-
+  // compound_ids filter: use ANY($N) for array comparison
   if (request.seed?.compound_ids?.length) {
-    conditions.push(`m.compound_id = $${effectiveParams.length + 1}`);
     effectiveParams.push(request.seed.compound_ids);
+    whereClauses.push(`m.compound_id = ANY($${effectiveParams.length})`);
   }
 
+  // buckets filter: requires JOIN on atoms
   if (request.seed?.buckets?.length) {
-    queryBase += ` JOIN atoms a ON m.compound_id = a.compound_id WHERE EXISTS(SELECT 1 FROM unnest(a.buckets) as bucket WHERE bucket = ANY($${effectiveParams.length + 1})`;
+    joinClauses.push(`JOIN atoms a ON m.compound_id = a.compound_id`);
     effectiveParams.push(request.seed.buckets);
+    whereClauses.push(`EXISTS(SELECT 1 FROM unnest(a.buckets) AS bucket WHERE bucket = ANY($${effectiveParams.length}))`);
   } else if (request.seed?.query) {
+    // query filter: FTS on molecules (m.content) directly
     const tsQuery = request.seed.query.split(/\s+/).filter(t => t.length > 0).join(' | ');
-    queryBase += ` JOIN atoms a ON m.compound_id = a.compound_id WHERE to_tsvector('simple', a.content) @@ to_tsquery('simple', $${effectiveParams.length + 1})`;
     effectiveParams.push(tsQuery);
+    whereClauses.push(`to_tsvector('simple', m.content) @@ to_tsquery('simple', $${effectiveParams.length})`);
   }
 
-  if (conditions.length > 0) {
-    queryBase += ' AND (' + conditions.join(' OR ') + ')';
+  // Assemble the final query
+  let queryBase = queryBase_select;
+  if (joinClauses.length > 0) {
+    queryBase += ' ' + joinClauses.join(' ');
+  }
+  if (whereClauses.length > 0) {
+    queryBase += ' WHERE ' + whereClauses.join(' AND ');
   }
 
   queryBase += ' ORDER BY m.timestamp DESC, m.start_byte ASC';
@@ -258,8 +264,8 @@ async function* collectCompounds(
   // Honor max_molecules parameter to prevent OOM on large corpora.
   // Without this, {max_molecules: 5} still fetches all 87K+ molecules (~1.7GB).
   if (request.max_molecules && request.max_molecules > 0) {
-    queryBase += ` LIMIT $${effectiveParams.length + 1}`;
     effectiveParams.push(request.max_molecules);
+    queryBase += ` LIMIT $${effectiveParams.length}`;
   }
 
   const result = await db.run(queryBase, effectiveParams);
@@ -582,12 +588,16 @@ export async function radialDistill(
       .filter((source, index, arr) => arr.indexOf(source) === index)
       .sort();
 
-    const result: RadialDistillResult = {
+    const result: RadialDistillResult & { stats: { blocks_total?: number; blocks_unique?: number; decision_records?: number } } = {
       stats: {
         compounds_processed: dedupStats.compoundsTotal,
         lines_total: dedupStats.total,
         lines_unique: dedupStats.unique,
         lines_duplicate: dedupStats.duplicate,
+        // Legacy aliases used by memory.ts route and UI
+        blocks_total: dedupStats.total,
+        blocks_unique: dedupStats.unique,
+        decision_records: dedupStats.unique,
         compression_ratio: `${compressionRatio}:1`,
         duration_ms: duration,
         memory_peak_mb: Math.floor(memPeak / 1024 / 1024),

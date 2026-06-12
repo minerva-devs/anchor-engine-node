@@ -320,6 +320,17 @@ export class AutoSynonymGenerator {
   async generateSynonymRings(): Promise<Record<string, string[]>> {
     console.log('[SynonymGenerator] Generating synonym rings from all strategies...');
 
+    try {
+      const countRes = await db.run('SELECT COUNT(*) as total FROM atoms');
+      const total = countRes.rows?.[0]?.total || 0;
+      if (total > 5000) {
+        console.log(`[SynonymGenerator] Database has ${total} atoms. Skipping automatic synonym generation on startup to prevent blocking the event loop.`);
+        return {};
+      }
+    } catch (e: any) {
+      console.warn('[SynonymGenerator] Failed to check database size, proceeding cautiously:', e.message);
+    }
+
     // Run all strategies in parallel
     const [cooccurrence, neighborhood, simhash] = await Promise.all([
       this.mineCooccurrenceSynonyms(),

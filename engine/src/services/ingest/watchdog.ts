@@ -15,6 +15,7 @@ import { ingestAtoms } from './ingest.js';
 import { config } from '../../config/index.js';
 import { pathManager } from '../../utils/path-manager.js';
 import { systemStatus } from '../system-status.js';
+import { needsChunking, chunkFile } from './file-chunker.js';
 
 let watcher: chokidar.FSWatcher | null = null;
 const IGNORE_PATTERNS = /(^|[\/\\])\../; // Ignore dotfiles
@@ -107,8 +108,16 @@ export async function startWatchdog(customPaths?: string[]): Promise<void> {
             processFile(filePath, 'changed');
         });
 
-        watcher.on('unlink', (filePath: string) => {
+        watcher.on('unlink', async (filePath: string) => {
             console.log(`[Watchdog] File removed: ${filePath}`);
+            try {
+                const relativePath = path.relative(NOTEBOOK_DIR, filePath);
+                await atomicIngest.cleanupSourcePath(relativePath);
+                await db.run('DELETE FROM sources WHERE path = $1', [relativePath]);
+                console.log(`[Watchdog] ✅ Cleaned up database records for deleted file: ${relativePath}`);
+            } catch (error: any) {
+                console.error(`[Watchdog] Failed to clean up deleted file ${filePath}:`, error.message);
+            }
         });
 
         watcher.on('error', (error: any) => {
@@ -137,6 +146,18 @@ export async function startWatchdog(customPaths?: string[]): Promise<void> {
             watcherInstance.on('change', (filePath: string) => {
                 console.log(`[Watchdog] File changed: ${filePath}`);
                 processFile(filePath, 'changed');
+            });
+
+            watcherInstance.on('unlink', async (filePath: string) => {
+                console.log(`[Watchdog] File removed: ${filePath}`);
+                try {
+                    const relativePath = path.relative(NOTEBOOK_DIR, filePath);
+                    await atomicIngest.cleanupSourcePath(relativePath);
+                    await db.run('DELETE FROM sources WHERE path = $1', [relativePath]);
+                    console.log(`[Watchdog] ✅ Cleaned up database records for deleted file: ${relativePath}`);
+                } catch (error: any) {
+                    console.error(`[Watchdog] Failed to clean up deleted file ${filePath}:`, error.message);
+                }
             });
 
             if (!watcher) {
@@ -492,33 +513,86 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
             provenance = 'external';
         }
 
-        // 4. ATOMIZE (Legacy Pipeline)
-        const atomizeResult = await atomizer.atomize(
-            content,
-            relativePath,
-            provenance,
-        );
+        // 3.5 Clean up existing database entries for this file and its chunks to avoid duplicates
+        await atomicIngest.cleanupSourcePath(relativePath);
 
-        // Skip ingestion if transient data was detected
-        if (!atomizeResult) {
-            console.log(`[Watchdog] ⚠️ SKIP: ${relativePath} - Transient data, skipping ingestion`);
-            return { ingested: false, reason: 'transient_data' };
-        }
-
-        const { compound, molecules, atoms } = atomizeResult;
-
-        // 5. INGEST (Atomic) with progress tracking
+        let finalCompound: any = null;
+        let totalAtomsCount = 0;
         const filename = relativePath.split(/[/\\]/).pop() || relativePath;
-        
-        await atomicIngest.ingestResult(
-            compound,
-            molecules,
-            atoms,
-            [bucket],
-            (step: number, total: number, description: string) => {
-                systemStatus.setProgress(step, total, `${filename}: ${description}`);
+
+        if (needsChunking(content)) {
+            const chunks = chunkFile(content, relativePath);
+            console.log(`[Watchdog] 🧩 Chunking ${relativePath} into ${chunks.length} chunks`);
+            
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                systemStatus.setProgress(i, chunks.length, `Atomizing chunk ${chunk.index}/${chunk.total}...`);
+                
+                const atomizeResult = await atomizer.atomize(
+                    chunk.content,
+                    chunk.virtualPath,
+                    provenance,
+                );
+                
+                if (!atomizeResult) {
+                    console.log(`[Watchdog] ⚠️ SKIP: ${chunk.virtualPath} - Transient data in chunk, skipping`);
+                    continue;
+                }
+                
+                const { compound, molecules, atoms } = atomizeResult;
+                if (!finalCompound) {
+                    finalCompound = compound; // Use first chunk's compound for mirroring logic
+                }
+                
+                totalAtomsCount += atoms.length;
+                
+                // Ingest chunk result
+                await atomicIngest.ingestResult(
+                    compound,
+                    molecules,
+                    atoms,
+                    [bucket],
+                    (step: number, total: number, description: string) => {
+                        systemStatus.setProgress(
+                            i,
+                            chunks.length,
+                            `Ingesting chunk ${chunk.index}/${chunk.total} (${description})`
+                        );
+                    }
+                );
+                
+                // Yield to the event loop between chunks so that searches/other queries can execute
+                await new Promise(resolve => setTimeout(resolve, 50));
             }
-        );
+        } else {
+            // 4. ATOMIZE (Legacy Pipeline - Non-chunked)
+            const atomizeResult = await atomizer.atomize(
+                content,
+                relativePath,
+                provenance,
+            );
+
+            // Skip ingestion if transient data was detected
+            if (!atomizeResult) {
+                console.log(`[Watchdog] ⚠️ SKIP: ${relativePath} - Transient data, skipping ingestion`);
+                return { ingested: false, reason: 'transient_data' };
+            }
+
+            const { compound, molecules, atoms } = atomizeResult;
+            finalCompound = compound;
+            totalAtomsCount = atoms.length;
+
+            // 5. INGEST (Atomic) with progress tracking
+            await atomicIngest.ingestResult(
+                compound,
+                molecules,
+                atoms,
+                [bucket],
+                (step: number, total: number, description: string) => {
+                    systemStatus.setProgress(step, total, `${filename}: ${description}`);
+                }
+            );
+        }
 
         // 6. Update Source Table
         await db.run(
@@ -531,7 +605,7 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
             [
                 relativePath,
                 fileHash,
-                atoms.length,
+                totalAtomsCount,
                 Date.now(),
             ],
         );
@@ -551,7 +625,7 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
             const { writeMirroredFile } = await import('../mirror/mirror.js');
             const fsLocal = await import('fs');
             const originalContent = fsLocal.readFileSync(filePath, 'utf-8');
-            if (compound && originalContent) {
+            if (finalCompound && originalContent) {
                 // NOTE: arguments are (relativePath, content, provenance) - path first, content second
                 await writeMirroredFile(relativePath, originalContent, provenance);
             }

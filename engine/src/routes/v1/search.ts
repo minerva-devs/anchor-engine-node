@@ -26,11 +26,23 @@ export function setupSearchRoutes(app: Application) {
         return;
       }
 
+      let query = body.query;
+      let strategy = (req.body).strategy || 'standard';
+      let maxChars = body.max_chars || 5000;
+      let cleanMode: 'standard' | 'clean' = body.mode === 'clean' ? 'clean' : 'standard';
+      let isRawSearch = false;
+
+      if (query.startsWith('raw:')) {
+        query = query.substring(4).trim();
+        strategy = 'max-recall';
+        maxChars = 65536;
+        cleanMode = 'standard';
+        isRawSearch = true;
+      }
+
       // Check for non-streaming mode (FRICTIONLESS_SPEC.md section 4.3)
       const streamMode = req.query.stream !== 'false';
       
-      const strategy = (req.body).strategy || 'standard';
-      const maxChars = body.max_chars || 5000;
       const estimatedTokens = maxChars / 4;
       const batchSize = (req.body).batch_size || 20;
 
@@ -41,10 +53,11 @@ export function setupSearchRoutes(app: Application) {
       }
 
       StructuredLogger.info('STREAMING_SEARCH_REQUEST', {
-        query: body.query.substring(0, 100),
+        query: query.substring(0, 100),
         strategy: useMaxRecall ? 'max-recall' : 'standard',
         batchSize,
         streamMode,
+        isRawSearch,
       });
 
       // Handle legacy params
@@ -54,13 +67,10 @@ export function setupSearchRoutes(app: Application) {
       const tags = (req.body).tags || [];
       const provenance = body.provenance || 'all';
 
-      // Get clean mode from request
-      const cleanMode = body.mode === 'clean' ? 'clean' : 'standard';
-
       if (!streamMode) {
         // Non-streaming mode: Return single JSON response with content (FRICTIONLESS_SPEC.md section 4.1)
         const searchResult = await smartChatSearch(
-          body.query,
+          query,
           allBuckets,
           maxChars,
           tags,
@@ -73,11 +83,12 @@ export function setupSearchRoutes(app: Application) {
         const duration = Date.now() - startTime;
 
         // Format results with content (FRICTIONLESS_SPEC.md section 4.1)
-        const formattedResults = searchResult.results.map(r => ({
+        const isPrefix = searchResult.strategy && searchResult.strategy.startsWith('prefix_');
+        const formattedResults = isPrefix ? searchResult.results : searchResult.results.map(r => ({
           uuid: r.id,
           content: r.content,
           source: r.source,
-          timestamp: new Date(r.timestamp).toISOString(),
+          timestamp: r.timestamp ? new Date(r.timestamp).toISOString() : new Date().toISOString(),
           score: r.score,
           tags: r.tags || [],
           buckets: r.buckets || [],
@@ -96,6 +107,10 @@ export function setupSearchRoutes(app: Application) {
           results: formattedResults,
         };
 
+        if (isRawSearch) {
+          response.metadata.prefix = 'raw';
+        }
+
         // Add debug info if requested (FRICTIONLESS_SPEC.md section 4.2)
         if (req.query.debug === 'true') {
           response.debug = {
@@ -109,7 +124,7 @@ export function setupSearchRoutes(app: Application) {
         }
 
         StructuredLogger.info('NON_STREAMING_SEARCH_COMPLETE', {
-          query: body.query.substring(0, 100),
+          query: query.substring(0, 100),
           totalResults: formattedResults.length,
           durationMs: duration,
         });
@@ -120,7 +135,7 @@ export function setupSearchRoutes(app: Application) {
 
       // Streaming mode: Execute streaming search
       const stream = executeStreamingSearch({
-        query: body.query,
+        query: query,
         buckets: allBuckets,
         maxChars,
         tags,
@@ -128,6 +143,7 @@ export function setupSearchRoutes(app: Application) {
         useMaxRecall,
         userContext: body.user_context,
         batchSize,
+        mode: cleanMode,
       });
 
       // Set up SSE headers
@@ -159,18 +175,22 @@ export function setupSearchRoutes(app: Application) {
 
       // Send final completion event with actual result count
       const duration = Date.now() - startTime;
-      res.write(formatSSE({
+      const metadataEvent: any = {
         type: 'metadata',
         strategy: useMaxRecall ? 'max-recall' : 'standard',
         totalResults,
         query: body.query,
         durationMs: duration,
-      }));
+      };
+      if (isRawSearch) {
+        metadataEvent.prefix = 'raw';
+      }
+      res.write(formatSSE(metadataEvent));
 
       res.end();
 
       StructuredLogger.info('STREAMING_SEARCH_COMPLETE', {
-        query: body.query.substring(0, 100),
+        query: query.substring(0, 100),
         durationMs: duration,
       });
 

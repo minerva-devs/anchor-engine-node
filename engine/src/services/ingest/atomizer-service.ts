@@ -440,7 +440,8 @@ export class AtomizerService {
             // we update this context so subsequent atoms inherit it.
             let currentTimestamp = timestamp;
             const totalMolecules = moleculeParts.length;
-            const progressInterval = Math.max(100, Math.floor(totalMolecules / 10)); // Log every 10% or every 100
+            // Log every 50 molecules (or every 1% for small files)
+const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50, min 5% // Log every 10% or every 100
 
             // Process molecules in batches to yield to event loop
             for (let i = 0; i < moleculeParts.length; i++) {

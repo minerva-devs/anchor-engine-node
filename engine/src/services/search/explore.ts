@@ -251,7 +251,7 @@ async function fetchNodes(ids: string[]): Promise<ExploreNode[]> {
 
   return atomRows.map(r => ({
     id: r.id,
-    content: r.content,
+    content: r.content || '',
     source: r.source_path || '',
     tags: tagMap.get(r.id) || [],
     ...(r.timestamp != null && { timestamp: Number(r.timestamp) }),

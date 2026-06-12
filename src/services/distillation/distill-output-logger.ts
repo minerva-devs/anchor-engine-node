@@ -103,7 +103,7 @@ export function logDistillOutput(
     catch {} 
   }
 
-  // Write entry to the batch file
+  // Write entry to the batch file (simulating the requested behavior)
   currentBatchLines.push(entryLine);
   fs.writeFileSync(batchFile, currentBatchLines.join('\n'), 'utf-8');
 
@@ -120,21 +120,16 @@ export function logDistillOutput(
 
   let existingLines: string[] = [];
   if (fs.existsSync(filePath)) {
-    try {
-      existingLines = fs.readFileSync(filePath, 'utf-8').split('\n').filter(l => l.trim());
-    } catch (e) {
-      existingLines = [];
-    }
+    try { existingLines = fs.readFileSync(filePath, 'utf-8').split('\n').filter(l => l.trim()); }
+    catch {}
   }
 
-  // Check if we have deduplicated this output hash already in current file
+  // Deduplicate within the file
   const hasDuplicate = existingLines.some(line => {
     try {
       const entry = JSON.parse(line);
       return entry.outputHash === outputHash && entry.outputPath === outputPath;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   });
 
   if (!hasDuplicate) {

@@ -686,9 +686,11 @@ export function setupSystemRoutes(app: Application) {
       }
 
       // Additional checks: only allow safe file extensions
-      const allowedExts = ['.yaml', '.json', '.md', '.txt', '.yml'];
+      // Note: .decision-records and .compact are allowed because they are distillation output formats
+      // that contain no raw ingested content, only derived decision records.
+      const allowedExts = ['.yaml', '.json', '.md', '.txt', '.yml', '.decision-records', '.compact'];
       const ext = path.extname(realFilePath).toLowerCase();
-      if (!allowedExts.includes(ext) && !realFilePath.match(/\.(yaml|json|md|txt|yml)$/i)) {
+      if (!allowedExts.includes(ext) && !realFilePath.match(/\.(yaml|json|md|txt|yml|decision-records|compact)$/i)) {
         res.status(403).json({ error: 'Access denied: file type not allowed' });
         return;
       }

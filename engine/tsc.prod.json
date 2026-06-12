@@ -1,0 +1,5 @@
+{
+  "extends": "./tsc.json",
+  "include": ["src/**/*.ts"],
+  "exclude": ["**/*.spec.ts", "**/*.test.ts", "**/*.e2e.ts"]
+}

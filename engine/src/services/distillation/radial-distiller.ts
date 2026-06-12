@@ -119,11 +119,12 @@ async function* collectCompounds(
   const maxRadius = request.max_radius || 10000;
   const effectiveRadius = Math.min(radius, maxRadius);
 
-  let conditions: string[] = [];
-  let queryBase = ``;
+  const effectiveParams: any[] = [];
+  const joinClauses: string[] = [];
+  const whereClauses: string[] = [];
 
   // Query molecules directly (Phase 2B: compounds table is now an index layer)
-  queryBase += `
+  const queryBase_select = `
     SELECT DISTINCT
       m.compound_id AS compound_id,
       m.id AS molecule_id,
@@ -136,32 +137,36 @@ async function* collectCompounds(
     FROM molecules m
   `;
 
-  const params: any[] = [DEFAULT_PROVENANCE];
-
-  // Remove DEFAULT_PROVENANCE from params when no seed is provided - return ALL compounds
-  const effectiveParams = request.seed ? [...params] : [];
-
+  // compound_ids filter: use ANY($N) for array comparison
   if (request.seed?.compound_ids?.length) {
-    conditions.push(`m.compound_id = $${effectiveParams.length + 1}`);
     effectiveParams.push(request.seed.compound_ids);
+    whereClauses.push(`m.compound_id = ANY($${effectiveParams.length})`);
   }
 
+  // buckets filter: requires JOIN on atoms
   if (request.seed?.buckets?.length) {
-    queryBase += ` JOIN atoms a ON m.compound_id = a.compound_id WHERE EXISTS(SELECT 1 FROM unnest(a.buckets) as bucket WHERE bucket = ANY($${effectiveParams.length + 1})`;
+    joinClauses.push(`JOIN atoms a ON m.compound_id = a.compound_id`);
     effectiveParams.push(request.seed.buckets);
+    whereClauses.push(`EXISTS(SELECT 1 FROM unnest(a.buckets) AS bucket WHERE bucket = ANY($${effectiveParams.length}))`);
   } else if (request.seed?.query) {
+    // query filter: FTS on molecules (m.content) directly
     const tsQuery = request.seed.query.split(/\s+/).filter(t => t.length > 0).join(' | ');
-    queryBase += ` JOIN atoms a ON m.compound_id = a.compound_id WHERE to_tsvector('simple', a.content) @@ to_tsquery('simple', $${effectiveParams.length + 1})`;
     effectiveParams.push(tsQuery);
+    whereClauses.push(`to_tsvector('simple', m.content) @@ to_tsquery('simple', $${effectiveParams.length})`);
   }
 
-  if (conditions.length > 0) {
-    queryBase += ' AND (' + conditions.join(' OR ') + ')';
+  // Assemble the final query
+  let queryBase = queryBase_select;
+  if (joinClauses.length > 0) {
+    queryBase += ' ' + joinClauses.join(' ');
+  }
+  if (whereClauses.length > 0) {
+    queryBase += ' WHERE ' + whereClauses.join(' AND ');
   }
 
   queryBase += ' ORDER BY m.timestamp DESC, m.start_byte ASC';
 
-  const result = await db.run(queryBase, effectiveParams); // Fixed: use effectiveParams instead of params
+  const result = await db.run(queryBase, effectiveParams);
   const rows = result.rows as any[];
 
   for (let i = 0; i < rows.length; i++) {

@@ -44,6 +44,9 @@ export function setupDistillRoutes(app: Application) {
         parameters: bodyWithDefaults,
         status: 'complete',
         progress: 100,
+        start_byte: 0,
+        end_byte: result.output?.size_bytes || 0,
+        file_size: result.output?.size_bytes || 0,
       };
       await recordDistill(distillRecord);
 

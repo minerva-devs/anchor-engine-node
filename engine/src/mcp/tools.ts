@@ -54,8 +54,8 @@ async function getIngestionProgressBanner(): Promise<string> {
 }
 
 // Helper to wrap MCP response with status banner
-function wrapResponseWithStatus(resultText: string): string {
-  const banner = getIngestionProgressBanner();
+async function wrapResponseWithStatus(resultText: string): Promise<string> {
+  const banner = await getIngestionProgressBanner();
   return banner ? `${banner}\n${resultText}` : resultText;
 }
 
@@ -100,13 +100,13 @@ export const tools = [
       const maxChars = token_budget ? token_budget * 4 : (context_window || 524288);
       const strategy = use_max_recall ? 'max-recall' : 'standard';
       
-      const response = await callAnchorAPI('/v1/memory/search', {
+      const response = await callAnchorAPI('/v1/memory/search?stream=false', {
         query,
         strategy,
         max_chars: maxChars,
       });
       
-      const result = wrapResponseWithStatus(JSON.stringify(response.results, null, 2));
+      const result = await wrapResponseWithStatus(JSON.stringify(response.results, null, 2));
       return { content: [{ type: 'text', text: result }] };
     },
   },
@@ -137,7 +137,7 @@ export const tools = [
       };
       
       const response = await callAnchorAPI('/v1/memory/distill', body);
-      const result = wrapResponseWithStatus(JSON.stringify(response, null, 2));
+      const result = await wrapResponseWithStatus(JSON.stringify(response, null, 2));
       return { content: [{ type: 'text', text: result }] };
     },
   },
@@ -152,7 +152,7 @@ export const tools = [
     },
     async execute(_ctx: ExecuteContext, args: any): Promise<{ content: Array<{ type: 'text', text: string }>; isError?: boolean }> {
       const query = args?.term ? `density:${args.term}` : 'density:';
-      const response = await callAnchorAPI('/v1/memory/search', { query });
+      const response = await callAnchorAPI('/v1/memory/search?stream=false', { query });
       const result = JSON.stringify(response.results || response, null, 2);
       return { content: [{ type: 'text', text: result }] };
     },

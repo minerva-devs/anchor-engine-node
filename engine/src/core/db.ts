@@ -532,10 +532,29 @@ export class Database {
           source_sessions TEXT[],
           source_files TEXT[],
           parameters JSONB,
+          start_byte INTEGER DEFAULT 0,
+          end_byte INTEGER DEFAULT 0,
+          file_size INTEGER DEFAULT 0,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
       console.log("[DB] 'distills' table initialized.");
+
+      // Add missing columns if they don't exist (for existing databases)
+      const distillColumnsToAdd = [
+        { name: 'start_byte', type: 'INTEGER DEFAULT 0' },
+        { name: 'end_byte', type: 'INTEGER DEFAULT 0' },
+        { name: 'file_size', type: 'INTEGER DEFAULT 0' },
+      ];
+
+      for (const col of distillColumnsToAdd) {
+        try {
+          await this.run(`ALTER TABLE distills ADD COLUMN IF NOT EXISTS ${col.name} ${col.type};`);
+        } catch (alterErr: any) {
+          // Column might already exist, which is fine
+          console.debug(`[DB] Column ${col.name} addition on distills:`, alterErr.message);
+        }
+      }
 
       // Create indexes for common queries
       await this.run(`
