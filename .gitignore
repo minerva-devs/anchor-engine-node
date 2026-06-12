@@ -24,7 +24,8 @@ yarn-error.log*
 # --------------------------------------------
 .anchor/
 backup/
-benchmarks/
+/benchmarks/
+!/tests/benchmarks/
 dialog/
 distillation-v2-temp/
 embedding_cache/
