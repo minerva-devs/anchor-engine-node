@@ -61,24 +61,36 @@ app.use(express.json({ limit: jsonLimit }));
 app.use(express.urlencoded({ extended: true }));
 
 // HTTP Request Logging Middleware
+// Skips UI polling noise (/stats, /status, /health) and logs errors at WARN,
+// successful requests at DEBUG to keep engine logs readable.
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
     const status = res.statusCode;
 
-    // Skip logging for health checks and 304 (Not Modified) responses
-    // Health checks poll every minute and create log spam
-    if (status === 304 || req.path === '/health') {
+    // Skip logging for health checks, UI polling, and 304 responses.
+    const isUIPolling = req.path === '/v1/system/status' || req.path === '/v1/stats' || req.path === '/health';
+    if (status === 304 || isUIPolling) {
       return;
     }
 
-    StructuredLogger.info('HTTP_REQUEST', {
-      method: req.method,
-      path: req.path,
-      status,
-      duration_ms: duration,
-    });
+    // Errors at WARN, successful requests at DEBUG.
+    if (status >= 400) {
+      StructuredLogger.warn('HTTP_REQUEST', {
+        method: req.method,
+        path: req.path,
+        status,
+        duration_ms: duration,
+      });
+    } else {
+      StructuredLogger.debug('HTTP_REQUEST', {
+        method: req.method,
+        path: req.path,
+        status,
+        duration_ms: duration,
+      });
+    }
 
     // Mark activity for idle manager (skip static files)
     if (!req.path.startsWith('/static') && !req.path.startsWith('/chat')) {
