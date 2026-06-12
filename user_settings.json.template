@@ -150,7 +150,7 @@
       "max_query_results": 100,
       "restrict_to_localhost": true,
       "server_path": "${project_root}",
-      "mcp_server_binary": "${project_root}/mcp-server/dist/index.js",
+      "mcp_server_binary": "${project_root}/engine/dist/mcp/server.js",
       "allowed_operations": [
         "query",
         "read_file",

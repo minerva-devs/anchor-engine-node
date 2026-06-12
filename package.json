@@ -7,7 +7,7 @@
   "bin": {
     "anchor": "anchor.bat",
     "anchor-engine": "engine/dist/index.js",
-    "anchor-mcp": "mcp-server/dist/index.js"
+    "anchor-mcp": "engine/dist/mcp/server.js"
   },
   "scripts": {
     "setup:vscode-mcp": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-vscode-mcp.ps1 -Mode Setup",
