@@ -300,7 +300,9 @@ erDiagram
     compounds ||--o{ molecules : "contains"
     compounds ||--o{ atom_positions : "tracks"
     
-    note "COMPOUNDS TABLE IS DEPRECATED\nBeing removed in migration Phase 2.\nAll data migrated to atoms/molecules." compounds;
+    note "COMPOUNDS TABLE IS DEPRECATED
+Being removed in migration Phase 2.
+All data migrated to atoms/molecules." compounds;
 ```
 
 ### Table Reference
