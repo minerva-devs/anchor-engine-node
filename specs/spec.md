@@ -572,7 +572,7 @@ See `MIGRATION_PLAN.md` for detailed implementation steps.
 
 ```mermaid
 flowchart TB
-    A[User Query<br/>"Coda C-001 Rob Dory"] --> B{Budget Check<br/>max_chars > 65k?}
+    A[User Query<br/>Coda C-001 Rob Dory] --> B{Budget Check<br/>max_chars > 65k?}
 
     B -->|No| C[Standard Search<br/>70/30 Budget<br/>1-hop<br/>Temporal Decay]
     B -->|Yes| D[Max-Recall Search<br/>Zero Decay<br/>3-hop<br/>200 nodes/hop]
