@@ -578,7 +578,9 @@ export async function radialDistill(
     memAfter = process.memoryUsage();
 
     const duration = Date.now() - startTime;
-    const memPeak = Math.max(memAfter.heapUsed, memBefore.heapUsed);
+    const memBeforeVal = memBefore as NodeJS.MemoryUsage;
+    const memAfterVal = memAfter as NodeJS.MemoryUsage;
+    const memPeak = Math.max(memAfterVal.heapUsed, memBeforeVal.heapUsed);
 
     const compressionRatio = dedupStats.unique > 0
       ? (dedupStats.total / dedupStats.unique).toFixed(2)
@@ -612,8 +614,8 @@ export async function radialDistill(
     StructuredLogger.error('DISTILL_ERROR', error, {
       request: request,
       duration_ms: Date.now() - startTime,
-      memBefore_mb: Math.floor(memBefore.heapUsed / 1024 / 1024),
-      memAfter_mb: memAfter ? Math.floor(memAfter.heapUsed / 1024 / 1024) : 'N/A',
+      memBefore_mb: Math.floor((memBefore as NodeJS.MemoryUsage).heapUsed / 1024 / 1024),
+      memAfter_mb: memAfter ? Math.floor((memAfter as NodeJS.MemoryUsage).heapUsed / 1024 / 1024) : 'N/A',
     });
 
     if (error.code === 'ERR_MODULE_NOT_FOUND') {
@@ -623,7 +625,9 @@ export async function radialDistill(
       StructuredLogger.error('DISTILL_FILE_ERROR', error, { path: error.path, details: error.message });
       throw new Error('Output directory not writable. Check permissions.');
     } else if (error.message?.includes('Memory') || error.code === 'ERR_OUT_OF_RANGE') {
-      StructuredLogger.error('DISTILL_MEMORY_ERROR', error, { usedHeap: memAfter?.heapUsed || 0 });
+      const memBeforeVal = memBefore as NodeJS.MemoryUsage;
+      const memAfterVal = memAfter ? memAfter as NodeJS.MemoryUsage : null;
+      StructuredLogger.error('DISTILL_MEMORY_ERROR', error, { usedHeap: memAfterVal?.heapUsed || 0 });
       throw new Error('Out of memory. Reduce the corpus size or increase memory limits.');
     } else if (error.name === 'ValidationError' || error.message?.includes('validation') || error.message?.includes('invalid')) {
       StructuredLogger.error('DISTILL_VALIDATION_ERROR', error, { input: request, error: error.message });

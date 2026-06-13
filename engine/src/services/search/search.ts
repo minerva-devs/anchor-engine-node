@@ -861,7 +861,7 @@ export async function findAnchors(
         } catch (err) {
           // Ignore ENOENT (file missing) or other read errors
         }
-      } catch (e: any) {
+      } catch {
         // Fail silently -> Keep DB content
       }
     }));
@@ -1005,8 +1005,8 @@ async function _executeSearchInternal(
         if (primaryAnchors.length > 0) {
           await enrichAtomsWithMoleculeTags(primaryAnchors);
         }
-      } catch (e: any) {
-        console.warn('[Search] Tag-aware fallback failed', e);
+      } catch {
+        // Tag-aware fallback failed; continue with primary anchors only
       }
     }
   }
@@ -1051,8 +1051,8 @@ async function _executeSearchInternal(
           [virtualCompoundIds],
         );
         if (res.rows) resolvedMolIds = res.rows.map((r: any) => String(r.id));
-      } catch (e: any) {
-        console.warn('[Search] Failed to resolve virtual compound IDs:', e.message);
+      } catch {
+        // Failed to resolve virtual compound IDs; continue with real atoms only
       }
     }
 
@@ -1100,8 +1100,8 @@ async function _executeSearchInternal(
     } else {
       console.log('[Search] No valid anchor IDs for Physics Walker');
     }
-  } catch (e: any) {
-    console.log(`[Search] Physics Walker failed, skipping: ${e.message}`);
+  } catch {
+    // Physics Walker failed; continue with primary anchors only
     walkerResults = [];
   }
 
@@ -1517,7 +1517,7 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
         
         return {
           context: `Corpus density map — ${densityMap.totals.unique_concepts} unique concepts (${atomTotal} total), ${densityMap.totals.unique_tags} unique tags (${tagTotal} total).`,
-          results: (densityMap.atoms || []).map(a => ({
+          results: (densityMap.atoms || []).map((a: { tag: string; count: number; sources: number; density_pct: number }) => ({
             id: `density_${a.tag}`,
             content: `${a.tag}: ${a.count} occurrences across ${a.sources} sources`,
             source: a.tag,
@@ -1614,13 +1614,13 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
           },
         },
       };
-    } catch (error: any) {
-      console.error('[Search] Density query failed:', error);
+    } catch {
+      // Density query failed; return safe error response without leaking internals
       return {
-        context: `Unable to compute density for "${searchTerm}". Error: ${error.message}`,
+        context: `Unable to compute density for "${searchTerm}"`,
         results: [],
         strategy: 'prefix_density_error',
-        metadata: { error: error.message },
+        metadata: {},
       };
     }
   }
@@ -1644,13 +1644,13 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
             total_distills: distills.rows?.length || 0,
           },
         };
-      } catch (error: any) {
-        console.error('[Search] Failed to list distills:', error);
+      } catch {
+        // Failed to list distills; return safe error response without leaking internals
         return {
           context: 'Unable to list distills. Please try again later.',
           results: [],
           strategy: 'prefix_distill_error',
-          metadata: { error: error.message },
+          metadata: {},
         };
       }
     } else if (bucketParam.startsWith('github:')) {
@@ -1695,8 +1695,8 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
               },
             };
           }
-        } catch (readError: any) {
-          console.error('[Search] Failed to read distill file:', readError);
+        } catch {
+          // Failed to read distill file; continue without this file
         }
         
         return {
@@ -1708,13 +1708,13 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
             distills_found: bucketDistills.length,
           },
         };
-      } catch (error: any) {
-        console.error('[Search] Failed to query distills for bucket:', error);
+      } catch {
+        // Failed to query distills for bucket; return safe error response without leaking internals
         return {
           context: `Unable to search distills for "${bucketParam}". Please try again later.`,
           results: [],
           strategy: 'prefix_distill_error',
-          metadata: { bucket: bucketParam, error: error.message },
+          metadata: { bucket: bucketParam },
         };
       }
     }

@@ -63,7 +63,8 @@ export async function getAllDistills(limit = 50) {
 /** Get a single distill by ID — checks cache first, then DB */
 export async function getDistill(id: string) {
   // Check cache first (for recently completed distills)
-  if (distillCache[id]) return distillCache[id];
+  const cached = distillCache.get(id);
+  if (cached) return cached;
 
   try {
     const result = await db.run('SELECT * FROM distills WHERE id = $1', [id]);
@@ -123,7 +124,8 @@ export async function getDistillsBySession(session: string) {
 
 /** Delete a distill from DB */
 export async function deleteDistill(id: string) {
-  delete distillCache[id];
+  const cached = distillCache.get(id);
+  if (cached) distillCache.delete(id);
   try {
     const result = await db.run('DELETE FROM distills WHERE id = $1 RETURNING id', [id]);
     return (result.rows?.length || 0) > 0;
@@ -139,7 +141,8 @@ export async function recordDistill(distill: DistillMetadata) {
   pruneCache();
 
   // Write metadata to distills table (pointers only, not full content)
-  if (distill.status === 'complete' || distill.progress === 100) {
+  const d = distill as DistillMetadata & { status?: string; progress?: number };
+  if (d.status === 'complete' || d.progress === 100) {
     try {
       await db.run(
         `INSERT INTO distills (id, timestamp, filename, file_path, line_count, lines_unique, compression_ratio, source_sessions, source_files, parameters, start_byte, end_byte, file_size)

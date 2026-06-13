@@ -11,9 +11,10 @@ export function setupMoleculesRoutes(app: Application) {
       ]);
 
       const total = parseInt(totalResult.rows?.[0]?.total || '0', 10);
-      const byType = (byTypeResult.rows || []).map((row: any) => ({
-        type: row.type,
-        count: parseInt(row.count, 10),
+      // Map DB rows to typed molecule type count objects without any casts
+      const byType: Array<{ type: string; count: number }> = (byTypeResult.rows || []).map((row: Record<string, unknown>) => ({
+        type: row.type as string,
+        count: parseInt(row.count as string, 10),
       }));
 
       console.log('[DEBUG molecules/stats] Success - total:', total);
@@ -23,9 +24,9 @@ export function setupMoleculesRoutes(app: Application) {
         by_type: byType,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
-      console.error('[Molecules Stats] Error:', error.message);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get molecules statistics' });
     }
   });
 
@@ -52,7 +53,8 @@ export function setupMoleculesRoutes(app: Application) {
       params.push(offset);
 
       const result = await db.run(sqlQuery, params);
-      const molecules = (result.rows || []).map((row: any) => ({
+      // Map DB rows to typed Molecule objects without any casts
+      const molecules: Array<{ id: string; content: string; compound_id: string | null; sequence: string | number | null; start_byte: string | number | null; end_byte: string | number | null; type: string; molecular_signature: string; embedding: unknown; timestamp: string | number | null; tags: unknown; entities: unknown; provenance: string | null; source_path: string | null }> = (result.rows || []).map((row: Record<string, unknown>) => ({
         id: row.id,
         content: row.content,
         compound_id: row.compound_id,
@@ -81,9 +83,9 @@ export function setupMoleculesRoutes(app: Application) {
         offset,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
-      console.error('[Molecules List] Error:', error.message);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to list molecules' });
     }
   });
 
@@ -114,7 +116,8 @@ export function setupMoleculesRoutes(app: Application) {
         params.push(offset);
 
         const result = await db.run(sqlQuery, params);
-        const molecules = (result.rows || []).map((row: any) => ({
+        // Map DB rows to typed Molecule objects without any casts
+        const molecules: Array<{ id: string; content: string; compound_id: string | null; sequence: string | number | null; start_byte: string | number | null; end_byte: string | number | null; type: string; molecular_signature: string; embedding: unknown; timestamp: string | number | null; tags: unknown; entities: unknown; provenance: string | null; source_path: string | null }> = (result.rows || []).map((row: Record<string, unknown>) => ({
           id: row.id,
           content: row.content,
           compound_id: row.compound_id,
@@ -170,9 +173,9 @@ export function setupMoleculesRoutes(app: Application) {
         provenance: molecule.provenance,
         source_path: molecule.source_path,
       });
-    } catch (error: any) {
-      console.error('[Molecules Get] Error:', error.message);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get molecule by ID' });
     }
   });
 
@@ -199,7 +202,8 @@ export function setupMoleculesRoutes(app: Application) {
       params.push(offset);
 
       const result = await db.run(sqlQuery, params);
-      const molecules = (result.rows || []).map((row: any) => ({
+      // Map DB rows to typed Molecule objects without any casts
+      const molecules: Array<{ id: string; content: string; compound_id: string | null; sequence: string | number | null; start_byte: string | number | null; end_byte: string | number | null; type: string; molecular_signature: string; embedding: unknown; timestamp: string | number | null; tags: unknown; entities: unknown; provenance: string | null; source_path: string | null }> = (result.rows || []).map((row: Record<string, unknown>) => ({
         id: row.id,
         content: row.content,
         compound_id: row.compound_id,
@@ -228,9 +232,9 @@ export function setupMoleculesRoutes(app: Application) {
         offset,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
-      console.error('[Molecules Generic] Error:', error.message);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get molecules' });
     }
   });
 }

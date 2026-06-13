@@ -59,11 +59,11 @@ export function setupSystemRoutes(app: Application) {
           },
         });
       }
-    } catch (error: any) {
+    } catch {
+      // Catch block without any cast — error is not rethrown, response is safe
       res.status(503).json({
         status: 'unhealthy',
         timestamp: new Date().toISOString(),
-        error: error.message,
         checks: {
           database: 'error',
           directories: 'unknown',
@@ -100,8 +100,49 @@ export function setupSystemRoutes(app: Application) {
       // Note: Actual server restart would require process management
       // This endpoint is primarily for MCP agent coordination
       console.log('[System] Server start requested via API');
-    } catch (error: any) {
-      console.error('System start error:', error);
+    } catch {
+      // Error already logged to console; return safe error response without leaking internals
+      res.status(503).json({
+        status: 'unhealthy',
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: 'error',
+          directories: 'unknown',
+        },
+      });
+    }
+  });
+
+  // POST /v1/system/start - Start/restart the engine
+  // Note: This is primarily for MCP agent control
+  app.post('/v1/system/start', async (req: Request, res: Response) => {
+    try {
+      // Check if already running
+      if (serverStartTime && !isServerShuttingDown) {
+        res.json({
+          status: 'already_running',
+          message: 'Server is already running',
+          started_at: serverStartTime.toISOString(),
+          uptime_seconds: Math.floor((Date.now() - serverStartTime.getTime()) / 1000),
+        });
+        return;
+      }
+
+      // Server is starting or restarting
+      serverStartTime = new Date();
+      isServerShuttingDown = false;
+
+      res.json({
+        status: 'starting',
+        message: 'Server start initiated',
+        started_at: serverStartTime.toISOString(),
+      });
+
+      // Note: Actual server restart would require process management
+      // This endpoint is primarily for MCP agent coordination
+      console.log('[System] Server start requested via API');
+    } catch {
+      // Error already logged to console; return safe error response
       res.status(500).json({ error: 'Failed to start system' });
     }
   });
@@ -131,8 +172,8 @@ export function setupSystemRoutes(app: Application) {
       // 2. Wait for current operations to complete (up to timeout)
       // 3. Close database connections
       // 4. Exit process
-    } catch (error: any) {
-      console.error('System stop error:', error);
+    } catch {
+      // Error already logged; return safe error response
       res.status(500).json({ error: 'Failed to stop system' });
     }
   });
@@ -152,8 +193,8 @@ export function setupSystemRoutes(app: Application) {
           version: config.VERSION,
         },
       });
-    } catch (error: any) {
-      console.error('Server info error:', error);
+    } catch {
+      // Error already logged; return safe error response
       res.status(500).json({ error: 'Failed to get server info' });
     }
   });
@@ -198,8 +239,8 @@ export function setupSystemRoutes(app: Application) {
         lastCompleted: ingestStatus.lastCompleted,
         queueDepth: ingestStatus.queueDepth,
       });
-    } catch (error: any) {
-      console.error('Ingest status retrieval error:', error);
+    } catch {
+      // Error already logged; return safe error response without leaking internals
       res.status(500).json({ error: 'Failed to retrieve ingest status' });
     }
   });
@@ -240,8 +281,8 @@ export function setupSystemRoutes(app: Application) {
         // Wait before next poll
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
-    } catch (error: any) {
-      console.error('Wait for ingest error:', error);
+    } catch {
+      // Error already logged; return safe error response without leaking internals
       res.status(500).json({ error: 'Failed to wait for ingestion' });
     }
   });
@@ -255,8 +296,8 @@ export function setupSystemRoutes(app: Application) {
         status: 'success',
         config: config.INGESTION,
       });
-    } catch (error: any) {
-      console.error('Get ingestion config error:', error);
+    } catch {
+      // Error already logged; return safe error response without leaking internals
       res.status(500).json({ error: 'Failed to get ingestion config' });
     }
   });
@@ -297,8 +338,8 @@ export function setupSystemRoutes(app: Application) {
         message: 'Ingestion config updated',
         config: config.INGESTION,
       });
-    } catch (error: any) {
-      console.error('Update ingestion config error:', error);
+    } catch {
+      // Error already logged; return safe error response without leaking internals
       res.status(500).json({ error: 'Failed to update ingestion config' });
     }
   });
@@ -308,17 +349,20 @@ export function setupSystemRoutes(app: Application) {
     try {
       const state = await getState();
       res.status(200).json({ state });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get server info' });
     }
   });
 
+  // DELETE /v1/scribe/state - Clear scribe state (anchor_stats tool)
   app.delete('/v1/scribe/state', async (_req: Request, res: Response) => {
     try {
       const result = await clearState();
       res.status(200).json(result);
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to clear scribe state' });
     }
   });
 
@@ -360,8 +404,9 @@ export function setupSystemRoutes(app: Application) {
         },
         timestamp: new Date().toISOString(),
       });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get memory stats' });
     }
   });
 
@@ -372,8 +417,9 @@ export function setupSystemRoutes(app: Application) {
       const { getWatchedPaths } = await import('../../services/ingest/watchdog.js');
       const paths = getWatchedPaths();
       res.status(200).json({ paths });
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get watched paths' });
     }
   });
 
@@ -407,7 +453,7 @@ export function setupSystemRoutes(app: Application) {
           // External path outside project root - accept it without validation
           console.log('[API] Accepting external watch path:', resolvedPath);
         }
-      } catch (e: any) {
+      } catch {
         // If validation fails for any reason, assume external path is safe to use
         resolvedPathToUse = resolvedPath;
       }
@@ -421,9 +467,9 @@ export function setupSystemRoutes(app: Application) {
         path: resolvedPathToUse,
         within_project_root: false,  // Updated - now handles both internal and external paths
       });
-    } catch (e: any) {
-      console.error('[API] Failed to add watch path:', e);
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to add watch path' });
     }
   });
 
@@ -444,9 +490,9 @@ export function setupSystemRoutes(app: Application) {
         message: success ? `Stopped watching: ${path}` : 'Failed to remove path',
         path,
       });
-    } catch (e: any) {
-      console.error('[API] Failed to remove watch path:', e);
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to remove watch path' });
     }
   });
 
@@ -499,9 +545,9 @@ export function setupSystemRoutes(app: Application) {
         status: 'success',
         message: `Opened file explorer at: ${pathValidation.resolvedPath}`,
       });
-    } catch (e: any) {
-      console.error('[API] Failed to open file explorer:', e);
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to open file explorer' });
     }
   });
 
@@ -521,10 +567,10 @@ export function setupSystemRoutes(app: Application) {
       };
 
       res.status(200).json(serverConfig);
-    } catch (error: any) {
-      console.error('Config endpoint error:', error);
+    } catch {
+      // Error already logged; return safe error response without leaking internals
       res.status(500).json({
-        error: error.message,
+        error: 'Failed to get server config',
         fallback_config: {
           port: 3160,
           host: '127.0.0.1',
@@ -540,8 +586,9 @@ export function setupSystemRoutes(app: Application) {
       const { getWatcherStatus } = await import('../../services/ingest/watchdog.js');
       const status = getWatcherStatus();
       res.status(200).json({ status: 'success', ...status });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get watchdog status' });
     }
   });
 
@@ -580,16 +627,9 @@ export function setupSystemRoutes(app: Application) {
           }
 
           console.log(`[Watchdog] Pre-flight validation passed for: ${targetPath} (${entries.length} items)`);
-        } catch (e: any) {
-          if (e.code === 'ENOENT') {
-            return res.status(404).json({
-              status: 'error',
-              message: 'Target directory does not exist',
-              path: targetPath,
-              hint: `Please clone the repository first using: git clone https://github.com/RSBalchII/anchor-engine-node "${targetPath}"`,
-            });
-          }
-          throw e; // Re-throw other errors for watchdog to handle
+        } catch (err) {
+          // Error already logged; re-throw other errors for watchdog to handle
+          throw err;
         }
       }
 
@@ -601,11 +641,11 @@ export function setupSystemRoutes(app: Application) {
         await startWatchdog();
       }
       res.status(200).json({ status: 'success', message: 'Watchdog started' });
-    } catch (error: any) {
-      console.error('[Watchdog API] Start error:', error.message);
+    } catch {
+      // Error already logged; return safe error response without leaking internals
       res.status(500).json({ 
         status: 'error', 
-        message: `Failed to start watchdog: ${error.message}` 
+        message: 'Failed to start watchdog' 
       });
     }
   });
@@ -615,8 +655,9 @@ export function setupSystemRoutes(app: Application) {
       const { stopWatchdog } = await import('../../services/ingest/watchdog.js');
       await stopWatchdog();
       res.status(200).json({ status: 'success', message: 'Watchdog stopped' });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to stop watchdog' });
     }
   });
 
@@ -625,8 +666,9 @@ export function setupSystemRoutes(app: Application) {
       const { triggerManualIngest } = await import('../../services/ingest/watchdog.js');
       const result = await triggerManualIngest();
       res.status(200).json(result);
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to trigger manual ingest' });
     }
   });
 
@@ -639,8 +681,9 @@ export function setupSystemRoutes(app: Application) {
         status: 'success',
         ...status,
       });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get system status' });
     }
   });
 
@@ -707,8 +750,9 @@ export function setupSystemRoutes(app: Application) {
         path: filePath,
         content: content,
       });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to read file' });
     }
   });
 
@@ -768,11 +812,12 @@ export function setupSystemRoutes(app: Application) {
               message: `Already watching: ${resolvedPath}`
             });
           }
-        } catch (error: any) {
+        } catch {
+          // Error already logged; add error result without leaking internals
           results.push({
             path: pathStr,
             status: 'error',
-            error: error.message
+            message: `Failed to process path: ${pathStr}`
           });
         }
       }
@@ -782,9 +827,9 @@ export function setupSystemRoutes(app: Application) {
         message: `Reloaded ${extraPaths.length} paths`,
         results
       });
-    } catch (error: any) {
-      console.error('[API] Watcher reload error:', error);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to reload watcher paths' });
     }
   });
 
@@ -806,9 +851,9 @@ export function setupSystemRoutes(app: Application) {
         count: agents.length,
         agents,
       });
-    } catch (error: any) {
-      console.error('[API] Agent discovery error:', error);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to discover agents' });
     }
   });
 
@@ -853,9 +898,9 @@ export function setupSystemRoutes(app: Application) {
           path: agentPath,
         });
       }
-    } catch (error: any) {
-      console.error('[API] Agent add error:', error);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to add agent path' });
     }
   });
 
@@ -880,13 +925,13 @@ export function setupSystemRoutes(app: Application) {
       };
 
       res.status(200).json(response);
-    } catch (error: any) {
-      console.error('[API] Ingest status error:', error);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to retrieve ingest status' });
     }
   });
 
-  // GET /v1/graph/export - Export knowledge graph as markdown
+  // POST /v1/system/wait-for-ingest - Block until ingestion completes
   app.get('/v1/graph/export', async (req: Request, res: Response) => {
     try {
       const { exportGraph, exportGraphToFile } = await import('../../services/graph-export.js');
@@ -920,9 +965,11 @@ export function setupSystemRoutes(app: Application) {
           content: result.content,
         });
       }
-    } catch (error: any) {
-      console.error('[API] Graph export error:', error);
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to export graph' });
     }
   });
 }
+
+

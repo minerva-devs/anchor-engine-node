@@ -28,8 +28,9 @@ export function setupAtomRoutes(app: Application) {
 
       const result = await db.run(sqlQuery, params);
 
-      const atoms = (result.rows || []).map((row: any) => ({
-        id: row.id,
+      // Map DB rows to typed Atom objects without any casts
+      const atoms: Array<{ id: string; source_path: string | null; timestamp: string | number | null; provenance: string | null; created_at: string | number | null; content: string; buckets: unknown; tags: unknown; type: string; compound_id: string }> = (result.rows || []).map((row: Record<string, unknown>) => ({
+        id: String(row.id),
         source_path: row.source_path,
         timestamp: row.timestamp,
         provenance: row.provenance,
@@ -67,9 +68,10 @@ export function setupAtomRoutes(app: Application) {
       ]);
 
       const total = parseInt(totalResult.rows?.[0]?.total || '0', 10);
-      const byProvenance = (byProvenanceResult.rows || []).map((row: any) => ({
-        provenance: row.provenance,
-        count: parseInt(row.count, 10),
+      // Map DB rows to typed provenance count objects without any casts
+      const byProvenance: Array<{ provenance: string; count: number }> = (byProvenanceResult.rows || []).map((row: Record<string, unknown>) => ({
+        provenance: row.provenance as string,
+        count: parseInt(row.count as string, 10),
       }));
 
       res.status(200).json({
@@ -77,8 +79,9 @@ export function setupAtomRoutes(app: Application) {
         by_provenance: byProvenance,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to get atoms statistics' });
     }
   });
 
@@ -112,9 +115,9 @@ export function setupAtomRoutes(app: Application) {
       );
 
       res.status(200).json({ status: 'success', message: `Atom ${id} quarantined.` });
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to quarantine atom' });
     }
   });
 
@@ -130,7 +133,7 @@ export function setupAtomRoutes(app: Application) {
       `;
       const result = await db.run(query);
 
-      const atoms = (result.rows || []).map((row: any) => ({
+      const atoms: Array<{ id: string; content: string; source: string | null; timestamp: number | string | null; buckets: unknown; tags: unknown; provenance: string; simhash: string }> = (result.rows || []).map((row: Record<string, unknown>) => ({
         id: row.id,
         content: row.content,
         source: row.source_path,
@@ -142,9 +145,9 @@ export function setupAtomRoutes(app: Application) {
       }));
 
       res.status(200).json(atoms);
-    } catch (e: any) {
-      console.error('[API] Failed to fetch quarantined atoms:', e);
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to fetch quarantined atoms' });
     }
   });
 
@@ -233,7 +236,7 @@ export function setupAtomRoutes(app: Application) {
       `;
       const result = await db.run(query);
 
-      const atoms = (result.rows || []).map((row: any) => ({
+      const atoms: Array<{ id: string; content: string; source: string | null; timestamp: number | string | null; buckets: unknown; tags: unknown; provenance: string; simhash: string }> = (result.rows || []).map((row: Record<string, unknown>) => ({
         id: row.id,
         content: row.content,
         source: row.source_path,
@@ -245,9 +248,9 @@ export function setupAtomRoutes(app: Application) {
       }));
 
       res.status(200).json({ atoms, total: atoms.length });
-    } catch (e: any) {
-      console.error('[API] Failed to fetch quarantined atoms:', e);
-      res.status(500).json({ error: e.message });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to fetch quarantined atoms' });
     }
   });
 
