@@ -332,10 +332,9 @@ export async function runSideChannel(
       }
     };
     targetWorker.on('message', handler);
-    const { onToken, ...workerOptions } = options;
     targetWorker.postMessage({
       type: 'chat',
-      data: { prompt, options: { ...workerOptions, systemPrompt: systemInstruction } },
+      data: { prompt, options: { ...options, systemPrompt: systemInstruction } },
     });
   });
 }

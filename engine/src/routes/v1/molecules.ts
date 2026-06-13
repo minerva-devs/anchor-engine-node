@@ -39,7 +39,7 @@ export function setupMoleculesRoutes(app: Application) {
       const source_path = query.source_path;
 
       let sqlQuery = 'SELECT id, content, compound_id, sequence, start_byte, end_byte, type, molecular_signature, embedding, timestamp, tags, entities, provenance FROM molecules';
-      const params: any[] = [];
+      const params: (string | number | boolean)[] = [];
       let whereClause = '';
 
       if (source_path) {
@@ -102,7 +102,7 @@ export function setupMoleculesRoutes(app: Application) {
         const source_path = query.source_path;
 
         let sqlQuery = 'SELECT id, content, compound_id, sequence, start_byte, end_byte, type, molecular_signature, embedding, timestamp, tags, entities, provenance FROM molecules';
-        const params: any[] = [];
+        const params: (string | number | boolean)[] = [];
         let whereClause = '';
 
         if (source_path) {
@@ -188,7 +188,7 @@ export function setupMoleculesRoutes(app: Application) {
       const source_path = query.source_path;
 
       let sqlQuery = 'SELECT id, content, compound_id, sequence, start_byte, end_byte, type, molecular_signature, embedding, timestamp, tags, entities, provenance FROM molecules';
-      const params: any[] = [];
+      const params: (string | number | boolean)[] = [];
       let whereClause = '';
 
       if (source_path) {

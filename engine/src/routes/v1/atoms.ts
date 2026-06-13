@@ -17,7 +17,7 @@ export function setupAtomRoutes(app: Application) {
       // which can contain massive text blobs that choke JSON serialization.
       let sqlQuery = 'SELECT id, source_path, timestamp, provenance, created_at, content, buckets, tags, type, compound_id FROM atoms';
 
-      const params: any[] = [];
+      const params: (string | number | boolean)[] = [];
 
       // Validate order_by to prevent SQL injection
       const validOrderBy = ['id', 'timestamp', 'created_at'];
@@ -53,9 +53,9 @@ export function setupAtomRoutes(app: Application) {
         offset,
         timestamp: new Date().toISOString(),
       });
-    } catch (error: any) {
-      console.error('[Atoms API] Error:', error);
-      res.status(500).json({ error: error.message || 'Internal server error' });
+    } catch (err) {
+      console.error('[Atoms API] Error:', err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) || 'Internal server error' });
     }
   });
 
@@ -180,9 +180,9 @@ export function setupAtomRoutes(app: Application) {
 
       res.status(200).json({ status: 'success', message: `Atom ${id} updated.` });
 
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -216,9 +216,9 @@ export function setupAtomRoutes(app: Application) {
       );
 
       res.status(200).json({ status: 'success', message: `Atom ${id} restored to Graph.` });
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -284,9 +284,9 @@ export function setupAtomRoutes(app: Application) {
       );
 
       res.status(200).json({ status: 'success', message: `Atom ${id} restored to Graph.` });
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -300,9 +300,9 @@ export function setupAtomRoutes(app: Application) {
       await db.run('DELETE FROM atoms WHERE id = $1', [id]);
 
       res.status(200).json({ status: 'deleted', id });
-    } catch (e: any) {
-      console.error(e);
-      res.status(500).json({ error: e.message });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
     }
   });
 }

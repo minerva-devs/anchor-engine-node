@@ -31,7 +31,7 @@ export interface ChatRequest {
  * Initialize the inference engine with the specified model
  * Uses the Provider's initAutoLoad or specific loadModel mechanism.
  */
-export async function initializeInference(modelPath?: string, options: InferenceOptions = {}): Promise<{ success: boolean; message: string; model?: any }> {
+export async function initializeInference(modelPath?: string, options: InferenceOptions = {}): Promise<{ success: boolean; message: string; model?: string }> {
   try {
     console.log('[InferenceService] Initializing via Provider...');
 
@@ -51,11 +51,11 @@ export async function initializeInference(modelPath?: string, options: Inference
       message: 'Inference engine initialized successfully (Worker Backend)',
       model: 'Worker',
     };
-  } catch (error: any) {
-    console.error(`[InferenceService] Initialization failed: ${error.message}`);
+  } catch (err) {
+    console.error(`[InferenceService] Initialization failed: ${err instanceof Error ? err.message : String(err)}`);
     return {
       success: false,
-      message: `Failed to initialize inference engine: ${error.message}`,
+      message: `Failed to initialize inference engine: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
 }
@@ -65,7 +65,7 @@ export async function initializeInference(modelPath?: string, options: Inference
  * We use runSideChannel for non-streaming agentic thoughts to avoid clogging the main chat worker if possible,
  * OR we reuse the main chat worker if that's the only one loaded.
  */
-export async function runChatCompletion(request: ChatRequest): Promise<{ success: boolean; response?: any; error?: string }> {
+export async function runChatCompletion(request: ChatRequest): Promise<{ success: boolean; response?: { role: string; content: string }; error?: string }> {
   try {
     // Construct the prompt for the side channel
     // runSideChannel expects a string prompt, but also supports raw chat if the worker handles it.
@@ -116,10 +116,10 @@ export async function runChatCompletion(request: ChatRequest): Promise<{ success
         content: responseText,
       },
     };
-  } catch (error: any) {
+  } catch (err) {
     return {
       success: false,
-      error: error.message,
+      error: err instanceof Error ? err.message : String(err),
     };
   }
 }
@@ -142,10 +142,10 @@ export async function runCompletion(prompt: string, options: InferenceOptions = 
         error: 'Unknown error occurred',
       };
     }
-  } catch (error: any) {
+  } catch (err) {
     return {
       success: false,
-      error: error.message,
+      error: err instanceof Error ? err.message : String(err),
     };
   }
 }

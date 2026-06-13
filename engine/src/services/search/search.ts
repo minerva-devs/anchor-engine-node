@@ -58,7 +58,7 @@ import { LRUCache, searchResultCache as lruSearchCache } from '../../utils/lru-c
 import { DEFAULT_ARTIFACT_PATTERNS, stripArtifacts, validateCleanContent, preprocessCleanResult } from '../../types/search.js';
 
 export interface CacheEntry {
-  results: { context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string };
+  results: { context: string; results: SearchResult[]; attempt: number; metadata?: Record<string, unknown>; toAgentString: () => string };
   timestamp: number;
 }
 
@@ -104,7 +104,7 @@ const HIGH_MEMORY_THRESHOLD = 70; // Percentage
 const CRITICAL_MEMORY_THRESHOLD = 85; // Percentage
 
 // Import resource manager for memory-aware cache eviction
-let resourceManager: any = null;
+let resourceManager: unknown = null;
 try {
   const resourceManagerModule = await import('../../utils/resource-manager.js');
   resourceManager = resourceManagerModule.resourceManager;
@@ -490,7 +490,7 @@ export async function findAnchors(
         WHERE to_tsvector('simple', m.content) @@ to_tsquery('simple', $1)
     `;
 
-    const moleculeParams: any[] = [tsQueryString];
+    const moleculeParams: (string | number | string[] | null)[] = [tsQueryString];
 
     if (buckets.length > 0) {
       moleculeQuery += ` AND EXISTS (
@@ -536,24 +536,24 @@ export async function findAnchors(
           molResult = await db.run(orQuery, orParams);
         }
       }
-      const molecules = (molResult.rows || []).map((row: any) => ({
-        id: row.id,
-        content: row.content,
-        source: row.source,
-        timestamp: row.timestamp,
-        buckets: row.buckets,
-        tags: row.tags,
-        epochs: row.epochs,
-        provenance: row.provenance,
-        score: row.score,
-        sequence: row.sequence,
-        molecular_signature: row.molecular_signature,
-        start_byte: row.start_byte,
-        end_byte: row.end_byte,
-        type: row.type,
-        numeric_value: row.numeric_value,
-        numeric_unit: row.numeric_unit,
-        compound_id: row.compound_id,
+      const molecules = (molResult.rows || []).map((row: Record<string, unknown>) => ({
+        id: String(row.id),
+        content: row.content as string,
+        source: row.source as string,
+        timestamp: Number(row.timestamp),
+        buckets: Array.isArray(row.buckets) ? row.buckets : [],
+        tags: Array.isArray(row.tags) ? row.tags : [],
+        epochs: typeof row.epochs === 'string' ? row.epochs : '',
+        provenance: row.provenance as string,
+        score: Number(row.score ?? 0),
+        sequence: Number(row.sequence ?? 0),
+        molecular_signature: row.molecular_signature as string | undefined,
+        start_byte: Number(row.start_byte ?? 0),
+        end_byte: Number(row.end_byte ?? 0),
+        type: row.type as string | undefined,
+        numeric_value: row.numeric_value as number | string | undefined,
+        numeric_unit: row.numeric_unit as string | undefined,
+        compound_id: String(row.compound_id),
       }));
 
       // Merge atom and molecule results
@@ -901,7 +901,7 @@ export async function executeSearch(
   useMaxRecall: boolean = false,
   userContext?: UserContext,
   mode?: string,
-): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
+): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: Record<string, unknown> }> {
   console.log(`[Search] executeSearch (Physics Engine V2) called with provenance: ${provenance}`);
   const startTime = Date.now();
 
@@ -929,7 +929,7 @@ async function _executeSearchInternal(
   useMaxRecall: boolean = false,
   userContext?: UserContext,
   startTime: number = Date.now(),
-): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
+): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: Record<string, unknown> }> {
   // Memory-aware throttling: slow down or reject searches based on memory pressure
   const throttleResult = await throttleSearchForMemory();
   if (!throttleResult.proceed) {
@@ -982,21 +982,21 @@ async function _executeSearchInternal(
                       LIMIT 20
                   `, [fbTag]);
           if (tagRes.rows && tagRes.rows.length > 0) {
-            tagRes.rows.forEach((row: any) => {
+            tagRes.rows.forEach((row: Record<string, unknown>) => {
               primaryAnchors.push({
                 id: String(row.id),
-                content: row.content,
-                source: row.source_path,
-                timestamp: row.timestamp || Date.now(),
+                content: row.content as string,
+                source: row.source_path as string,
+                timestamp: Number(row.timestamp ?? Date.now()),
                 buckets: typeof row.buckets === 'string' ? JSON.parse(row.buckets) : (row.buckets || []),
                 tags: typeof row.tags === 'string' ? JSON.parse(row.tags) : (row.tags || []),
                 epochs: '',
-                provenance: row.provenance,
+                provenance: row.provenance as string,
                 score: 0.8, // fallback constant score
-                compound_id: row.compound_id,
-                start_byte: row.start_byte,
-                end_byte: row.end_byte,
-                molecular_signature: String(row.simhash),
+                compound_id: String(row.compound_id),
+                start_byte: Number(row.start_byte ?? 0),
+                end_byte: Number(row.end_byte ?? 0),
+                molecular_signature: String(row.simhash ?? ''),
               });
             });
           }
@@ -1027,7 +1027,7 @@ async function _executeSearchInternal(
   });
 
   // 3. Physics Walker (Moons) - Use TypeScript PhysicsTagWalker
-  let walkerResults: any[] = [];
+  let walkerResults: import('./physics-tag-walker.js').PhysicsResult[] = [];
   try {
     // Separate real DB IDs from virtual in-memory molecules created by ContextInflator.
     // Virtual IDs (any prefix starting with 'virtual') have no row in atoms/molecules tables.
@@ -1050,7 +1050,7 @@ async function _executeSearchInternal(
           'SELECT id FROM molecules WHERE compound_id = ANY($1) ORDER BY timestamp DESC LIMIT 100',
           [virtualCompoundIds],
         );
-        if (res.rows) resolvedMolIds = res.rows.map((r: any) => String(r.id));
+        if (res.rows) resolvedMolIds = res.rows.map((r: Record<string, unknown>) => String(r.id));
       } catch {
         // Failed to resolve virtual compound IDs; continue with real atoms only
       }
@@ -1152,7 +1152,7 @@ async function _executeSearchInternal(
     Math.max(200, Math.ceil(maxChars / 200)),
   );
   const cappedResults = combinedResults
-    .sort((a: any, b: any) => (b.score || 0) - (a.score || 0))
+    .sort((a: SearchResult, b: SearchResult) => (b.score || 0) - (a.score || 0))
     .slice(0, maxResultsForBudget);
 
   // Apply context provenance formatting with coalescing (Standard 108)
@@ -1188,7 +1188,7 @@ export async function executeMoleculeSearch(
   explicitTags: string[] = [],
   userContext?: UserContext,
   mode: 'standard' | 'clean' = 'standard',
-): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: any }> {
+): Promise<{ context: string; results: SearchResult[]; toAgentString: () => string; metadata?: Record<string, unknown> }> {
   // Memory-aware throttling
   const throttleResult = await throttleSearchForMemory();
   if (!throttleResult.proceed) {
@@ -1309,18 +1309,18 @@ export async function runTraditionalSearch(query: string, buckets: string[]): Pr
     const result = await db.run(querySql, buckets.length > 0 ? [sanitizedQuery, buckets] : [sanitizedQuery]);
     if (!result.rows) return [];
 
-    const mappedResults = result.rows.map((row: any) => ({
-      id: row.id,
-      score: row.score,
-      content: row.content,
-      source: row.source,
-      timestamp: row.timestamp,
-      buckets: row.buckets,
-      tags: row.tags,
-      epochs: row.epochs,
-      provenance: row.provenance,
-      start_byte: row.start_byte,
-      end_byte: row.end_byte,
+    const mappedResults = result.rows.map((row: Record<string, unknown>) => ({
+      id: String(row.id),
+      score: Number(row.score ?? 0),
+      content: row.content as string,
+      source: row.source as string,
+      timestamp: Number(row.timestamp ?? 0),
+      buckets: Array.isArray(row.buckets) ? row.buckets : [],
+      tags: Array.isArray(row.tags) ? row.tags : [],
+      epochs: typeof row.epochs === 'string' ? row.epochs : '',
+      provenance: row.provenance as string,
+      start_byte: Number(row.start_byte ?? 0),
+      end_byte: Number(row.end_byte ?? 0),
     }));
 
     await hydrateFromMirror(mappedResults);
@@ -1372,7 +1372,7 @@ export async function iterativeSearch(
   useMaxRecall: boolean = false,
   userContext?: UserContext,
   mode: 'standard' | 'clean' = 'standard',
-): Promise<{ context: string; results: SearchResult[]; attempt: number; metadata?: any; toAgentString: () => string }> {
+): Promise<{ context: string; results: SearchResult[]; attempt: number; metadata?: Record<string, unknown>; toAgentString: () => string }> {
   // Memory-aware throttling
   const throttleResult = await throttleSearchForMemory();
   if (!throttleResult.proceed) {
@@ -1412,10 +1412,10 @@ export async function iterativeSearch(
   console.log('[IterativeSearch] Strategy 2: Strict Nouns/Dates');
   const temporalContext = extractTemporalContext(query);
   const doc = nlp.readDoc(query);
-  const nouns = doc.tokens().filter((t: any) => {
-    const tag = t.out(nlp.its.pos);
-    return tag === 'NOUN' || tag === 'PROPN';
-  }).out((nlp as any).its.text);
+  const nouns = doc.tokens().filter((t) => {
+    const token = t as unknown as Record<string, string>;
+    return (token.pos as string) === 'NOUN' || (token.pos as string) === 'PROPN';
+  }).out(nlp.its.normal) as string[];
 
   const uniqueTokens = new Set([...nouns, ...temporalContext]);
   if (uniqueTokens.size > 0) {
@@ -1432,7 +1432,7 @@ export async function iterativeSearch(
   // Strategy 3: "Just the Dates" (If query heavily implies time)
   // Sometimes "2025" is the only anchor we have if keywords fail.
   // Or maybe just "Proper Nouns" (Entities).
-  const propNouns = doc.tokens().filter((t: any) => t.out(nlp.its.pos) === 'PROPN').out((nlp as any).its.text);
+  const propNouns = doc.tokens().filter((t) => (t as unknown as Record<string, string>).pos === 'PROPN').out(nlp.its.normal) as string[];
 
   // Re-inject scope tags
   const entityQuery = [...new Set([...propNouns, ...temporalContext])].join(' ') + ' ' + tagsString;
@@ -1495,21 +1495,21 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
           db.run('SELECT tag, bucket, COUNT(*) as count FROM tags GROUP BY tag, bucket ORDER BY count DESC LIMIT 50'),
         ]);
         
-        const atomTotal = (topAtomTags.rows || []).reduce((sum: number, r: any) => sum + parseInt(r.count || '0'), 0);
-        const tagTotal = (topTags.rows || []).reduce((sum: number, r: any) => sum + parseInt(r.count || '0'), 0);
+        const atomTotal = (topAtomTags.rows || []).reduce((sum: number, r: Record<string, unknown>) => sum + parseInt(String(r.count) || '0'), 0);
+        const tagTotal = (topTags.rows || []).reduce((sum: number, r: Record<string, unknown>) => sum + parseInt(String(r.count) || '0'), 0);
         
         const densityMap = {
-          atoms: (topAtomTags.rows || []).map((r: any) => ({
-            tag: r.tag,
-            count: parseInt(r.count || '0'),
-            sources: parseInt(r.source_count || '0'),
-            density_pct: parseFloat((parseInt(r.count || '0') / Math.max(atomTotal, 1) * 100).toFixed(2)),
+          atoms: (topAtomTags.rows || []).map((r: Record<string, unknown>) => ({
+            tag: String(r.tag),
+            count: parseInt(String(r.count) || '0'),
+            sources: parseInt(String(r.source_count) || '0'),
+            density_pct: parseFloat((parseInt(String(r.count) || '0') / Math.max(atomTotal, 1) * 100).toFixed(2)),
           })),
-          tags: (topTags.rows || []).map((r: any) => ({
-            tag: r.tag,
-            bucket: r.bucket,
-            count: parseInt(r.count || '0'),
-            density_pct: parseFloat((parseInt(r.count || '0') / Math.max(tagTotal, 1) * 100).toFixed(2)),
+          tags: (topTags.rows || []).map((r: Record<string, unknown>) => ({
+            tag: String(r.tag),
+            bucket: String(r.bucket),
+            count: parseInt(String(r.count) || '0'),
+            density_pct: parseFloat((parseInt(String(r.count) || '0') / Math.max(tagTotal, 1) * 100).toFixed(2)),
           })),
           totals: { unique_concepts: topAtomTags.rows?.length || 0, unique_tags: topTags.rows?.length || 0, total_occurrences: atomTotal, tag_occurrences: tagTotal },
           rag_thresholds: config.DENSITY,
@@ -1741,7 +1741,7 @@ export async function smartChatSearch(
   useMaxRecall: boolean = false,
   userContext?: UserContext,
   mode: 'standard' | 'clean' = 'standard',
-): Promise<{ context: string; results: SearchResult[]; strategy: string; splitQueries?: string[]; metadata?: any; toAgentString: () => string }> {
+): Promise<{ context: string; results: SearchResult[]; strategy: string; splitQueries?: string[]; metadata?: Record<string, unknown>; toAgentString: () => string }> {
 
   // Check for special prefixes first
   const prefixResult = await handlePrefixQuery(query, buckets, maxChars, tags);
@@ -1787,20 +1787,17 @@ export async function smartChatSearch(
     // Get Proper Nouns (Entities) and regular Nouns
     // We prioritize PROPN (High Value)
     let entities: string[] = [];
-    entities = doc.tokens()
-      .filter((t: any) => t.out(nlp.its.pos) === 'PROPN')
-      .out(nlp.its.normal, nlp.as.freqTable)
-      .map((e: any) => e[0])
-      .slice(0, 3); // Top 3 Entities
+    entities = (doc.tokens()
+      .filter((t) => (t as unknown as Record<string, string>).pos === 'PROPN')
+      .out(nlp.its.normal, nlp.as.freqTable)) as any;
+    entities = entities.map((e: any) => e[0]).slice(0, 3); // Top 3 Entities
 
     // If no entities, try Nouns
     if (entities.length === 0) {
       const nouns = doc.tokens()
-        .filter((t: any) => t.out(nlp.its.pos) === 'NOUN')
-        .out(nlp.its.normal, nlp.as.freqTable)
-        .map((e: any) => e[0])
-        .slice(0, 3);
-      entities.push(...nouns);
+        .filter((t) => (t as unknown as Record<string, string>).pos === 'NOUN')
+        .out(nlp.its.normal, nlp.as.freqTable);
+      entities.push(...(nouns as any).map((e: any) => e[0]).slice(0, 3));
     }
     splitQueries = entities;
   }

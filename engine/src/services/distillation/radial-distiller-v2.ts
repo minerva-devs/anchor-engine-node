@@ -610,30 +610,30 @@ export async function radialDistill(
     };
 
     return result;
-  } catch (error: any) {
-    StructuredLogger.error('DISTILL_ERROR', error, {
+  } catch (err) {
+    StructuredLogger.error('DISTILL_ERROR', err as Error, {
       request: request,
       duration_ms: Date.now() - startTime,
       memBefore_mb: Math.floor((memBefore as NodeJS.MemoryUsage).heapUsed / 1024 / 1024),
       memAfter_mb: memAfter ? Math.floor((memAfter as NodeJS.MemoryUsage).heapUsed / 1024 / 1024) : 'N/A',
     });
 
-    if (error.code === 'ERR_MODULE_NOT_FOUND') {
-      StructuredLogger.error('DISTILL_MODULE_ERROR', error, { module: error.code, details: error.message });
+    if ((err as Error & { code?: string; path?: string }).code === 'ERR_MODULE_NOT_FOUND') {
+      StructuredLogger.error('DISTILL_MODULE_ERROR', err as Error, { module: (err as Error & { code?: string; path?: string }).code, details: String(err) });
       throw new Error('Failed to load distiller service. Please restart the server.');
-    } else if (error.code === 'ENOENT') {
-      StructuredLogger.error('DISTILL_FILE_ERROR', error, { path: error.path, details: error.message });
+    } else if ((err as Error & { code?: string; path?: string }).code === 'ENOENT') {
+      StructuredLogger.error('DISTILL_FILE_ERROR', err as Error, { path: (err as Error & { code?: string; path?: string }).path, details: String(err) });
       throw new Error('Output directory not writable. Check permissions.');
-    } else if (error.message?.includes('Memory') || error.code === 'ERR_OUT_OF_RANGE') {
+    } else if (String(err).includes('Memory') || String((err as Error & { code?: string }).code) === 'ERR_OUT_OF_RANGE') {
       const memBeforeVal = memBefore as NodeJS.MemoryUsage;
       const memAfterVal = memAfter ? memAfter as NodeJS.MemoryUsage : null;
-      StructuredLogger.error('DISTILL_MEMORY_ERROR', error, { usedHeap: memAfterVal?.heapUsed || 0 });
+      StructuredLogger.error('DISTILL_MEMORY_ERROR', err as Error, { usedHeap: memAfterVal?.heapUsed || 0 });
       throw new Error('Out of memory. Reduce the corpus size or increase memory limits.');
-    } else if (error.name === 'ValidationError' || error.message?.includes('validation') || error.message?.includes('invalid')) {
-      StructuredLogger.error('DISTILL_VALIDATION_ERROR', error, { input: request, error: error.message });
-      throw new Error(`Invalid input: ${error.message}`);
+    } else if ((err as Error).name === 'ValidationError' || String(err).includes('validation') || String(err).includes('invalid')) {
+      StructuredLogger.error('DISTILL_VALIDATION_ERROR', err as Error, { input: request, error: String(err) });
+      throw new Error(`Invalid input: ${String(err)}`);
     } else {
-      throw error;
+      throw err;
     }
   }
 }
