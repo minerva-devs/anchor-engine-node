@@ -656,6 +656,9 @@ function loadConfig(): Config {
   if (fs.existsSync(anchorSettingsPath) && fs.statSync(anchorSettingsPath).isFile()) {
     try {
       const userSettings = JSON.parse(fs.readFileSync(anchorSettingsPath, 'utf8'));
+      // Validate against schema — throws ZodError on type mismatches (wrong port type, etc.)
+      _UserSettingsSchema.parse(userSettings);
+      console.log(`[Config] Loaded settings from ${anchorSettingsPath}`);
       console.log(`[Config] Loaded settings from ${anchorSettingsPath}`);
 
       // Load LLM Settings (Provider + Model paths — single consolidated block)
