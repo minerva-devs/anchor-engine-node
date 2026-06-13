@@ -391,7 +391,7 @@ const DEFAULT_CONFIG: Config = {
   PORT: 3160,
   HOST: '0.0.0.0',
   API_KEY: '', // REQUIRED
-  VERSION: '4.8.2', // Engine version - can be overridden in user_settings.json
+  VERSION: '5.3.0', // Engine version - can be overridden in user_settings.json
   GITHUB_TOKEN: '', // Optional: GitHub PAT for repo ingestion: Must be set in user_settings.json -> server.api_key
   LOG_LEVEL: 'INFO',
   OVERLAY_PORT: 3002,
