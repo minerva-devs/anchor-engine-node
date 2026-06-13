@@ -245,3 +245,4 @@ update_clean_mode.js
 update_search_calls.js
 distilled_output.yaml
 ecosystem.config.js
+test-mcp-search.js  
