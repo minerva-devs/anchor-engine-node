@@ -128,7 +128,6 @@ User Query → API Route → Zod Validation → Search Service → PGlite Query 
 
 | Module | Purpose | Location |
 |--------|---------|----------|
-| Context Engine | Core reasoning loop | `engine/context/` |
 | PGlite DB | In-memory PostgreSQL-compatible store | `engine/src/core/db.ts` |
 | Search (STAR) | Physics-inspired graph retrieval | `engine/src/services/search/` |
 | Distillation | Summarization & extraction (Radial v2) | `engine/src/services/distillation/` |
@@ -468,7 +467,7 @@ High-level summary nodes created by the "Dreamer" abstraction layer. These repre
 
 ---
 
-#### `github_repos` - GitHub Repository Tracking (Standard 115)
+#### `github_repos` - GitHub Repository Tracking
 
 Tracks ingested GitHub repositories for incremental sync and status monitoring.
 
@@ -543,7 +542,7 @@ Stores synonym mappings for search query expansion. Helps improve recall by expa
 | `sources` | ✅ Active | Source tracking |
 | `atom_positions` | ✅ Active | Position indexing |
 | `summary_nodes` | ✅ Active | Dreamer abstractions |
-| `github_repos` | ✅ Active | GitHub ingestion (Standard 115) |
+| `github_repos` | ✅ Active | GitHub ingestion |
 | `distills` | ✅ Active | Distillation metadata (Standard 031) |
 | `engrams` | ✅ Active | Key-value store |
 | `synonyms` | ✅ Active | Query expansion |
@@ -761,7 +760,7 @@ flowchart TB
 ```mermaid
 flowchart LR
     A[Startup: ~500MB] --> B{Large File?}
-    B -->|Yes 90MB+| C[Peak: ~1.6GB<br/>Standard 109]
+    B -->|Yes 90MB+| C[Peak: ~1.6GB]
     B -->|No| D[Steady: ~500MB]
     C --> E[Idle: 5min]
     D --> E
