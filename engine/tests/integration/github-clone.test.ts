@@ -2,11 +2,13 @@
  * GitHub Clone Integration Test
  * 
  * Tests the GitHub repository cloning functionality.
- * Validates that repositories are cloned correctly to the external inbox.
+ * Validates that repositories are cloned correctly to a temporary directory,
+ * and that runtime objects (logs, results) are written to proper user_settings.json paths.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { exec, spawn } from 'child_process';
+import { exec, execSync } from 'child_process';
+import * as os from 'os';
 import { promisify } from 'util';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -15,32 +17,19 @@ import { existsSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'fs';
 const execAsync = promisify(exec);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..', '..');
-const RESULTS_DIR = join(PROJECT_ROOT, '.anchor', 'results');
-const EXTERNAL_INBOX = join(PROJECT_ROOT, '.anchor', 'notebook', 'external-inbox');
 
-const execSync = (cmd: string, options?: any) => {
-  try {
-    const output = execSync(cmd, { ...options, encoding: 'utf-8' });
-    return output;
-  } catch (error: any) {
-    throw new Error(`Command failed: ${error.message}\n${error.stdout?.toString()}`);
-  }
-};
+// Import PATHS from config module — all runtime paths must come from here, not be constructed manually
+import { PATHS } from '../../src/config/paths.js';
 
-// Test configuration
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
 const GITHUB_REPO = 'RSBalchII/anchor-engine-node';
 
 describe('GitHub Clone Integration Tests', () => {
-  let serverProcess: ReturnType<typeof spawn> | null = null;
-  let serverStarted = false;
+  let serverProcess: ReturnType<typeof import('child_process').spawn> | null = null;
+  let tempCloneDir: string | null = null;
 
   beforeAll(async () => {
     console.log('🔧 [GitHub Clone] Setting up test environment...');
-
-    // Ensure directories exist
-    mkdirSync(RESULTS_DIR, { recursive: true });
-    mkdirSync(EXTERNAL_INBOX, { recursive: true });
 
     // Check if server is already running
     try {
@@ -85,21 +74,53 @@ describe('GitHub Clone Integration Tests', () => {
       await new Promise((resolve) => serverProcess?.on('exit', resolve));
       console.log('✅ Server stopped');
     }
-  });
 
-  it('should clone a public repository', async () => {
-    const repoName = 'test-repo-clone';
-    const cloneDir = join(EXTERNAL_INBOX, repoName);
-
-    // Clean up if exists
-    if (existsSync(cloneDir)) {
-      rmSync(cloneDir, { recursive: true, force: true });
-      console.log(`🗑️  Removed existing clone: ${cloneDir}`);
+    // Clean up temp clone directory — never pollute external-inbox with test artifacts
+    if (tempCloneDir && existsSync(tempCloneDir)) {
+      try {
+        rmSync(tempCloneDir, { recursive: true, force: true });
+        console.log(`🗑️  Removed temporary clone dir: ${tempCloneDir}`);
+      } catch (err) {
+        console.warn(`⚠️  Failed to remove temp dir: ${err.message}`);
+      }
     }
 
-    console.log(`\n📦 Cloning ${GITHUB_REPO}...`);
+    // Clean up any test result files that were written during tests
+    if (PATHS.DISTILLS_DIR && existsSync(PATHS.DISTILLS_DIR)) {
+      const resultFile = join(PATHS.DISTILLS_DIR, 'github-clone.json');
+      if (existsSync(resultFile)) {
+        rmSync(resultFile, { force: true });
+        console.log(`🗑️  Removed test result file: ${resultFile}`);
+      }
+    }
 
-    const cloneCommand = `git clone --depth 1 https://github.com/${GITHUB_REPO}.git "${cloneDir}"`;
+    // Clean up logs written during tests
+    if (PATHS.LOGS_DIR && existsSync(PATHS.LOGS_DIR)) {
+      const logFile = join(PATHS.LOGS_DIR, 'github-clone-test.log');
+      if (existsSync(logFile)) {
+        rmSync(logFile, { force: true });
+        console.log(`🗑️  Removed test log file: ${logFile}`);
+      }
+    }
+  });
+
+  it('should clone a public repository to temp directory', async () => {
+    const repoName = 'test-repo-clone';
+
+    // Clone to TEMPORARY directory, NOT external-inbox (which is runtime user data)
+    const testTempDir = join(os.tmpdir(), 'anchor-test-clones');
+    mkdirSync(testTempDir, { recursive: true });
+    tempCloneDir = join(testTempDir, repoName);
+
+    // Clean up if exists from previous runs
+    if (existsSync(tempCloneDir)) {
+      rmSync(tempCloneDir, { recursive: true, force: true });
+      console.log(`🗑️  Removed existing clone: ${tempCloneDir}`);
+    }
+
+    console.log(`\n📦 Cloning ${GITHUB_REPO} to temp dir...`);
+
+    const cloneCommand = `git clone --depth 1 https://github.com/${GITHUB_REPO}.git "${tempCloneDir}"`;
 
     try {
       const { stdout, stderr } = await execAsync(cloneCommand, {
@@ -111,21 +132,26 @@ describe('GitHub Clone Integration Tests', () => {
       console.log(`   Output: ${stdout.trim()}`);
 
       // Validate clone
-      expect(existsSync(cloneDir)).toBe(true);
-      expect(existsSync(join(cloneDir, 'engine/package.json'))).toBe(true); // package.json is in engine/ subdirectory
-      expect(existsSync(join(cloneDir, 'README.md'))).toBe(true);
+      expect(existsSync(tempCloneDir)).toBe(true);
+      expect(existsSync(join(tempCloneDir, 'engine/package.json'))).toBe(true); // package.json is in engine/ subdirectory
+      expect(existsSync(join(tempCloneDir, 'README.md'))).toBe(true);
 
-      // Log results
+      // Log results to proper runtime path — use PATHS.LOGS_DIR for test output
       const result = {
         timestamp: new Date().toISOString(),
         repo: GITHUB_REPO,
-        cloneDir,
-        files: getDirectoryContents(cloneDir),
+        cloneDir: tempCloneDir,
+        files: getDirectoryContents(tempCloneDir),
       };
 
-      const resultFile = join(RESULTS_DIR, 'github-clone.json');
-      writeFileSync(resultFile, JSON.stringify(result, null, 2));
-      console.log(`📝 Results logged to: ${resultFile}`);
+      // Write results to LOGS_DIR (not hardcoded .anchor/results)
+      if (PATHS.LOGS_DIR && existsSync(PATHS.LOGS_DIR)) {
+        const resultFile = join(PATHS.LOGS_DIR, 'github-clone-test.json');
+        writeFileSync(resultFile, JSON.stringify(result, null, 2));
+        console.log(`📝 Results logged to: ${resultFile}`);
+      } else {
+        console.warn('⚠️  LOGS_DIR not available — results not persisted');
+      }
 
     } catch (error: any) {
       console.error(`❌ Clone failed: ${error.message}`);
@@ -134,11 +160,11 @@ describe('GitHub Clone Integration Tests', () => {
   }, 120_000);
 
   it('should verify repository structure', async () => {
-    const repoName = 'test-repo-clone';
-    const cloneDir = join(EXTERNAL_INBOX, repoName);
+    // Use the temp clone from previous test if available, otherwise skip
+    const cloneDir = tempCloneDir || join(os.tmpdir(), 'anchor-test-clones', 'test-repo-clone');
 
     if (!existsSync(cloneDir)) {
-      throw new Error('Clone directory does not exist');
+      throw new Error('Clone directory does not exist — run clone test first');
     }
 
     console.log(`\n📁 Verifying repository structure...`);
@@ -171,7 +197,11 @@ describe('GitHub Clone Integration Tests', () => {
 
   it('should handle shallow clone', async () => {
     const repoName = 'shallow-clone-test';
-    const cloneDir = join(EXTERNAL_INBOX, repoName);
+    
+    // Clone to TEMPORARY directory, NOT external-inbox
+    const testTempDir = join(os.tmpdir(), 'anchor-test-clones');
+    mkdirSync(testTempDir, { recursive: true });
+    const cloneDir = join(testTempDir, repoName);
 
     // Clean up
     if (existsSync(cloneDir)) {
@@ -194,6 +224,10 @@ describe('GitHub Clone Integration Tests', () => {
       const head = readFileSync(join(cloneDir, '.git', 'HEAD'), 'utf-8').trim();
       expect(head).toBe('ref: refs/heads/main');
 
+      // Clean up this shallow clone since it's test-only data
+      rmSync(cloneDir, { recursive: true, force: true });
+      console.log(`🗑️  Removed temporary shallow clone`);
+
     } catch (error: any) {
       console.error(`❌ Shallow clone failed: ${error.message}`);
       throw error;
@@ -203,7 +237,11 @@ describe('GitHub Clone Integration Tests', () => {
   it('should handle repository with submodules', async () => {
     // This test checks if the clone handles submodules correctly
     const repoName = 'submodule-test';
-    const cloneDir = join(EXTERNAL_INBOX, repoName);
+
+    // Clone to TEMPORARY directory, NOT external-inbox
+    const testTempDir = join(os.tmpdir(), 'anchor-test-clones');
+    mkdirSync(testTempDir, { recursive: true });
+    const cloneDir = join(testTempDir, repoName);
 
     // Clean up
     if (existsSync(cloneDir)) {
@@ -223,6 +261,10 @@ describe('GitHub Clone Integration Tests', () => {
       console.log(`✅ Clone complete with submodules`);
       console.log(`   Output: ${stdout.trim()}`);
 
+      // Clean up after test
+      rmSync(cloneDir, { recursive: true, force: true });
+      console.log('🗑️  Removed temporary submodule clone');
+
     } catch (error: any) {
       console.error(`❌ Clone with submodules failed: ${error.message}`);
       // This might fail if submodules aren't configured, which is OK
@@ -231,11 +273,10 @@ describe('GitHub Clone Integration Tests', () => {
   }, 120_000);
 
   it('should verify git history', async () => {
-    const repoName = 'test-repo-clone';
-    const cloneDir = join(EXTERNAL_INBOX, repoName);
+    const cloneDir = tempCloneDir || join(os.tmpdir(), 'anchor-test-clones', 'test-repo-clone');
 
     if (!existsSync(cloneDir)) {
-      throw new Error('Clone directory does not exist');
+      throw new Error('Clone directory does not exist — run clone test first');
     }
 
     console.log(`\n📜 Checking git history...`);
@@ -253,11 +294,10 @@ describe('GitHub Clone Integration Tests', () => {
   });
 
   it('should verify README content', async () => {
-    const repoName = 'test-repo-clone';
-    const cloneDir = join(EXTERNAL_INBOX, repoName);
+    const cloneDir = tempCloneDir || join(os.tmpdir(), 'anchor-test-clones', 'test-repo-clone');
 
     if (!existsSync(cloneDir)) {
-      throw new Error('Clone directory does not exist');
+      throw new Error('Clone directory does not exist — run clone test first');
     }
 
     console.log(`\n📄 Reading README.md...`);
@@ -283,4 +323,6 @@ describe('GitHub Clone Integration Tests', () => {
       return [];
     }
   }
+
+  let serverStarted = false;
 });
