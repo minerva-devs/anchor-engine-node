@@ -553,10 +553,11 @@
             };
 
             const handleSearch = async () => {
-                if (!query.trim()) return;
+                const { algo, q } = parseQuery(query);
+                // Guard: skip if no query text (except illuminate which can run on global corpus)
+                if (!q.trim() && algo !== 'illuminate') { setLoading(false); return; }
                 setLoading(true);
                 setResults([]);
-                const { algo, q } = parseQuery(query);
 
                 // Clear cached distill when running non-distill searches
                 if (algo !== 'distill') {

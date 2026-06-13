@@ -18,6 +18,20 @@ export function setupDistillRoutes(app: Application) {
     const startTime = Date.now();
     try {
       const body = req.body as RadialDistillRequest;
+
+      // Validate seed query is non-empty (P1: prevent empty-seed distillation)
+      if (!body.seed?.query || typeof body.seed.query !== 'string' || !body.seed.query.trim()) {
+        StructuredLogger.warn('DISTILL_VALIDATION', {
+          message: 'Rejected distill with empty/missing seed query',
+          seed: body.seed,
+        });
+        res.status(400).json({
+          error: 'Invalid request',
+          message: 'seed.query is required and must be a non-empty string',
+        });
+        return;
+      }
+
       const bodyWithDefaults = { ...body, auto_save: true };
       const timeoutMs = Math.min((body.timeout_seconds || 30) * 1000, 120000);
 
