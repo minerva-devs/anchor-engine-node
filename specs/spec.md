@@ -1,6 +1,6 @@
 # Anchor Engine - System Specification
 
-**Version:** 5.2.0 | **Status:** Production Ready + v5.2.0 Streaming & Observability | **Updated:** June 10, 2026
+**Version:** 5.3.0 | **Status:** Production Ready | **Updated:** June 13, 2026
 
 ## Quick Reference
 
@@ -16,7 +16,7 @@
 
 ---
 
-## Recent Changes (v5.2.0 — May 2026)
+## Recent Changes (v5.3.0 — June 2026)
 
 ### Streaming Architecture
 - [x] **Streaming Search** (`/v1/memory/search/stream`) - SSE-based progressive results
@@ -780,7 +780,7 @@ flowchart LR
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| **UI** | `packages/anchor-ui/dist/` | React frontend |
+| **UI** | `engine/public/index.html` | React frontend |
 | **Engine** | `engine/dist/` | Compiled TypeScript |
 | **Database** | `~/.anchor/context_data/` | PGlite files (disposable) |
 | **Mirror** | `~/.anchor/mirrored_brain/` | Source of truth (gitignored) |
@@ -791,7 +791,7 @@ flowchart LR
 
 ---
 
-## Project History (July 2025 - May 2026)
+## Project History (July 2025 - June 2026)
 
 | Phase | Date | Milestone |
 |-------|------|-----------|
@@ -803,6 +803,7 @@ flowchart LR
 | **Standards Consolidation** | Feb 2026 | Unified 29 standards (001-029) |
 | **Security Hardening** | Apr 2026 | Path traversal, SQL injection, auth bypass, API key strength |
 | **Streaming & Observability** | May 2026 | v5.2.0: Streaming search/ingest, Zod validation, performance monitoring |
+| **Documentation Drift Repair** | Jun 2026 | v5.3.0: Renumbered standards 001-038, removed deprecated packages/, cleaned root dead code |
 
 ---
 
@@ -822,10 +823,11 @@ anchor-engine-node/
 │   └── current-standards/ # Active architecture standards (001-029)
 ├── engine/                # Core engine source
 │   ├── src/
-│   │   ├── config/        # Zod validation schemas (v5.0.0)
+│   │   ├── config/        # Zod validation schemas
 │   │   ├── services/      # Core services
-│   │   └── routes/v1/     # API endpoints
-├── packages/              # Monorepo packages
+│   │   ├── routes/v1/     # API endpoints
+│   │   └── public/        # React frontend (CDN-based)
+├── mcp-server/            # MCP server (optional)
 └── user_settings.json.template  # Version source (generates ~/.anchor/user_settings.json)
 ```
 
@@ -835,22 +837,28 @@ anchor-engine-node/
 
 ### Test Suite Structure
 
-The test suite is organized into four categories, following a unified pipeline approach:
+The test suite is organized across two locations:
 
+**Primary test suite** (`engine/tests/`):
+```
+engine/tests/
+├── unit/              # Unit tests for individual components (*.test.ts, *.vitest.ts)
+├── integration/       # Integration tests for cross-component workflows
+├── live-fire/         # End-to-end smoke tests
+├── benchmarks/        # Performance benchmark tests
+├── helpers/           # Shared test utilities and mocks
+└── setup.ts           # Vitest global setup
+```
+
+**Legacy/runner test suite** (`tests/`):
 ```
 tests/
-├── unit/              # Unit tests for individual components (*.test.ts)
-│   ├── ast-parser.test.ts
-│   ├── search-utils.test.ts
-│   └── ...
-├── integration/       # Integration tests for component interactions
-│   ├── search-pipeline.test.ts
-│   ├── radial-distiller.test.ts
-│   └── live-fire.test.ts  # End-to-end smoke test
-├── e2e/              # End-to-end tests (full workflow)
-│   └── (populated from legacy/)
+├── benchmarks/        # Benchmark runner scripts
+├── e2e/              # End-to-end test workflows
+├── fixtures/         # Test data and fixtures
+├── framework/        # Test framework utilities
 ├── legacy/           # Deprecated Jest-based tests (migrating to vitest)
-└── benchmarks/       # Performance benchmark tests
+└── run-tests-with-logger.js  # Unified test runner
 ```
 
 ### Test Framework Decision Matrix
@@ -939,40 +947,48 @@ GET  /v1/tags                    # List tags
 
 ---
 
-## Active Standards (Unified: 001-030)
+## Active Standards (Unified: 001-038)
 
 | # | Name | Status |
 |---|------|--------|
 | **001** | Memory-Safe Ingestion | 10MB file limit, 10,000 molecule limit | ✅ |
 | **002** | Reproducible Benchmarking | Standardized test framework | ✅ |
 | **003** | MCP Tool Interface | Model Context Protocol integration | ✅ |
-| **004** | Streaming Search | SSE-based result streaming | ✅ v5.0.0 |
+| **004** | Streaming Search | SSE-based result streaming | ✅ |
 | **005** | Adaptive Concurrency Control | Memory-aware search pacing | ✅ |
 | **006** | Mobile Search Optimization | Low-memory device support | ✅ |
 | **007** | PGlite Memory Optimization | WASM buffer tuning | ✅ |
-| **008** | Radial Distillation | Knowledge compression | ✅ v2.0 |
+| **008** | Radial Distillation | Knowledge compression | ✅ |
 | **009** | Illuminate BFS Traversal | Graph exploration | ✅ |
 | **010** | Radial Distillation v2 | Decision Records output | ✅ |
 | **011** | Security Hardening | API key validation | ✅ |
 | **012** | Data Integrity | Source tracking | ✅ |
 | **013** | WASM Fallback | Rust WASM fallbacks for performance-critical operations | ✅ |
-| **014** | Operational Visibility | System status endpoints | ✅ v5.0.0 |
-| **015** | Configuration Management | Path/setting management | ✅ |
-| **016** | MCP Integration Testing | Tool validation | ✅ |
-| **017** | Dependency Validation | Package verification | ✅ |
-| **018** | Configuration Validation | Zod schema validation | ✅ v5.0.0 |
-| **019** | Code Analysis | ESLint integration | ✅ |
-| **020** | Ephemeral Database | Disposable PGlite index | ✅ |
-| **021** | Pointer-Only Storage | Byte-offset indexing | ✅ |
-| **022** | Documentation Hygiene | Standard updates | ✅ |
-| **023** | Auth Bypass Prevention | Test endpoint removal | ✅ P0 |
-| **024** | API Key Strength | 32-128 chars, mixed case | ✅ P0 |
-| **025** | Path Traversal Prevention | Input validation | ✅ P0 |
-| **026** | Zero-Copy Deduplication | SHA-256 before UTF-8 | ✅ P1 |
-| **027** | Pain Point Logging | Operational logging | ✅ |
-| **028** | Unified Test Pipeline | Test orchestration | ✅ |
-| **029** | Path Usage Validation | Runtime path verification | ✅ |
-| **030** | Search Algorithm Testing | Hardest→easiest methodology | ✅ New 2026-05-18 |
+| **014** | Circuit Breaker Pattern | Resilience pattern for external calls | ✅ |
+| **015** | Operational Visibility | System status endpoints | ✅ |
+| **016** | Search Algorithm Testing | Hardest→easiest methodology | ✅ |
+| **017** | Configuration Management | Path/setting management | ✅ |
+| **018** | MCP Integration Testing | Tool validation | ✅ |
+| **019** | Dependency Validation | Package verification | ✅ |
+| **020** | AST Parser WASM | Tree-sitter WASM integration | ✅ |
+| **021** | Configuration Validation | Zod schema validation | ✅ |
+| **022** | Code Analysis | ESLint integration | ✅ |
+| **023** | Test Environment Consistency | Reproducible test environments | ✅ |
+| **024** | Ephemeral Database | Disposable PGlite index | ✅ |
+| **025** | Pointer-Only Storage | Byte-offset indexing | ✅ |
+| **026** | Documentation Hygiene | Standard updates | ✅ |
+| **027** | Auth Bypass Prevention | Test endpoint removal | ✅ P0 |
+| **028** | API Key Strength | 32-128 chars, mixed case | ✅ P0 |
+| **029** | Path Traversal Prevention | Input validation | ✅ P0 |
+| **030** | Zero-Copy Deduplication | SHA-256 before UTF-8 | ✅ P1 |
+| **031** | Distillation Output Storage | Metadata pointers in DB | ✅ |
+| **032** | Pain Point Logging | Operational logging | ✅ |
+| **033** | Self-Contamination Prevention | Avoid ingesting own output | ✅ |
+| **034** | Unified Test Pipeline | Test orchestration | ✅ |
+| **035** | Path Usage Validation | Runtime path verification | ✅ |
+| **036** | Tag-Based Distillation | Tag-driven knowledge compression | ✅ |
+| **037** | Search Algorithms Comprehensive | Full search methodology | ✅ |
+| **038** | API Error Handling Standard | Consistent error responses | ✅ |
 
 All active standards live in `specs/current-standards/`.
 
@@ -987,7 +1003,6 @@ All routes served from `http://localhost:3160/v1/`. Route files live in `engine/
 | `admin.ts` | `/v1/admin/*` | Administrative operations |
 | `atoms.ts` | `/v1/atoms` | Atom (entity/keyword) queries |
 | `backup.ts` | `/v1/backup/*` | Database backup and restore |
-| `compounds.ts` | `/v1/compounds` | Source document management |
 | `distills.ts` | `/v1/distills/list`, `/v1/distills/:id`, `/v1/distills/:id/stream` | Distillation output access |
 | `encryption.ts` | `/v1/encrypt/*` | Content encryption/decryption |
 | `git.ts` | `/v1/git/clone` | GitHub repository cloning |
@@ -1012,7 +1027,7 @@ All routes served from `http://localhost:3160/v1/`. Route files live in `engine/
 ## Documentation
 
 - **[README.md](../README.md)** - Quick start, API examples, troubleshooting
-- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (v5.0.0)
+- **[CHANGELOG.md](../CHANGELOG.md)** - Version history (v5.3.0+)
 - **[docs/whitepaper.md](../docs/whitepaper.md)** | The Sovereign Context Protocol
 - **[specs/current-standards/](current-standards/)** - 38 active architecture standards (flat directory)
 
@@ -1020,4 +1035,4 @@ All routes served from `http://localhost:3160/v1/`. Route files live in `engine/
 
 **Repository:** https://github.com/RSBalchII/anchor-engine-node
 **License:** AGPL-3.0
-**Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v5.0.0 Streaming & Observability
+**Production Status:** ✅ Ready (February 20, 2026) | Security Hardening Complete | v5.3.0 Documentation Drift Repair

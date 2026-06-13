@@ -11,7 +11,7 @@
 **Start here:**
 1. [**Documentation Policy**](./specs/doc_policy.md) - Required read (abstractions, paths, conventions)
 2. [**Project Specs**](./specs/spec.md) - Architecture, API, data model, test framework
-3. [**Current Standards**](./specs/current-standards/) - Active architecture standards (001-034)
+3. [**Current Standards**](./specs/current-standards/) - Active architecture standards (001-038)
 
 **Quick reference:**
 - [**Test Framework**](./specs/spec.md#test-framework-architecture) - How to test (P0, Vitest, integration, operational)
@@ -192,4 +192,4 @@ These files may contain private information and should never be shared. The `.gi
 
 **Repository:** https://github.com/RSBalchII/anchor-engine-node  
 **License:** AGPL-3.0  
-**Version:** 5.2.0 | **Production:** ✅ Ready
+**Version:** 5.3.0 | **Production:** ✅ Ready

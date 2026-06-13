@@ -85,7 +85,7 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `DATA-MODEL.md` | Data model: Compound → Molecule → Atom → Tag hierarchy |
 
 **Subdirectories:**
-- `current-standards/` - 38 active architecture standards (flat directory, numbered 001–032)
+- `current-standards/` - 38 active architecture standards (flat directory, numbered 001–038)
 - `INTEGRATIONS/` - Integration specifications (MCP)
 
 **PROHIBITED in specs root:**
@@ -107,9 +107,12 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `code-patterns.md` | Code patterns used throughout the codebase |
 | `design-patterns.md` | Design patterns and architectural decisions |
 | `star-algebra-reference.md` | STAR algebra reference and search algorithm details |
+| `benchmarks.md` | Performance benchmark documentation |
+| `process-pipeline-refactor.md` | Processing pipeline refactoring notes |
+| `DOC_AUDIT_REPORT.md` | Latest documentation audit report (June 2026) |
 
 **Subdirectories:**
-- `workflows/` - User workflow guides (`in-use.md`, `ideas.md`)
+- `workflows/` - User workflow guides (`in-use.md`, `ideas.md`, `llm-testing.md`)
 - `integrations/` - Integration guides (`CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`)
 
 **PROHIBITED in docs root:**
@@ -238,7 +241,7 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 **Current State:**
 - `specs/` contains 5 core files: `spec.md`, `plan.md`, `tasks.md`, `doc_policy.md`, `DATA-MODEL.md`
-- `specs/current-standards/` has 38 active standards in a flat directory (numbered 001–032)
+- `specs/current-standards/` has 38 active standards in a flat directory (numbered 001–038)
 - Architecture diagrams merged into `spec.md` (removed standalone `ARCHITECTURE.md`)
 - Decision records merged into relevant standards (removed `decisions/` directory)
 
@@ -271,6 +274,7 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.4 | 2026-06-13 | Renumbered standards 001-038 (unique), removed dead root core/services, dropped packages/, updated docs/ inventory, synced all versions to 5.3.0 |
 | 2.3 | 2026-06-10 | Flattened standards (38, no subdirectories), merged ARCHITECTURE.md into spec.md, removed archive-legacy and decisions references, updated docs/ section to match reality, added restored docs files, dropped PM2, switched to pnpm-only |
 | 2.2 | 2026-06-05 | Cleaned WASM/NAPI references, fixed duplicate sections, updated standards count |
 | 2.1 | 2026-05-25 | Updated version to 2.1 |
@@ -279,6 +283,6 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 ---
 
-**Last Updated:** June 10, 2026
-**Version:** 2.3
+**Last Updated:** June 13, 2026
+**Version:** 2.4
 **Status:** ✅ Active
