@@ -1,6 +1,6 @@
 # Anchor Engine — Automated Testing Quick Reference
 
-**Version:** 5.2.0 | **Updated:** June 10, 2026
+**Version:** 5.3.0 | **Updated:** June 13, 2026
 
 ---
 
@@ -51,7 +51,7 @@ The three-tier testing strategy:
 ## See Also
 
 - **[specs/current-standards/](specs/current-standards/)** — All 38 active standards (flat directory)
-- **[specs/current-standards/028-unified-test-pipeline.md](specs/current-standards/028-unified-test-pipeline.md)** — Unified test pipeline standard
-- **[specs/current-standards/016-mcp-integration-testing.md](specs/current-standards/016-mcp-integration-testing.md)** — MCP integration testing
+- **[specs/current-standards/034-unified-test-pipeline.md](specs/current-standards/034-unified-test-pipeline.md)** — Unified test pipeline standard
+- **[specs/current-standards/018-mcp-integration-testing.md](specs/current-standards/018-mcp-integration-testing.md)** — MCP integration testing
 - **[docs/workflows/llm-testing.md](docs/workflows/llm-testing.md)** — LLM autonomous testing workflow (prompt template for local models)
 - **[engine/tests/](../engine/tests/)** — All test suites

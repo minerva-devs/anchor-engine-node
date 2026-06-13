@@ -1,6 +1,6 @@
 # Anchor Engine — Documentation Index
 
-**Version:** 5.2.0 | **Updated:** June 10, 2026 | **Status:** ✅ Production Ready
+**Version:** 5.3.0 | **Updated:** June 13, 2026 | **Status:** ✅ Production Ready
 
 ---
 
@@ -8,7 +8,7 @@
 
 ### Getting Started
 - **[README.md](../README.md)** — Quick start, installation, usage guide
-- **[CHANGELOG.md](../CHANGELOG.md)** — Version history (latest: v5.2.0)
+- **[CHANGELOG.md](../CHANGELOG.md)** — Version history (latest: v5.3.0)
 - **[settings-configs.md](settings-configs.md)** — Consolidated settings and configurations
 
 ### Core Documentation (`docs/`)
@@ -81,7 +81,7 @@
 
 ---
 
-## 📊 Key Metrics (v5.2.0)
+## 📊 Key Metrics (v5.3.0)
 
 | Metric | Value | Status |
 |--------|-------|--------|
@@ -100,7 +100,7 @@
 ```
 anchor-engine-node/
 ├── README.md                          # Start here — quick start & usage
-├── CHANGELOG.md                       # Version history (v5.2.0)
+├── CHANGELOG.md                       # Version history (v5.3.0)
 ├── LICENSE                            # AGPL-3.0
 ├── user_settings.json.template        # Configuration template → $HOME/.anchor/
 │
@@ -148,7 +148,13 @@ anchor-engine-node/
 
 ---
 
-## 🔬 Recent Updates (v5.2.0)
+## 🔬 Recent Updates (v5.3.0)
+
+### Documentation Drift Repair (June 2026)
+- **Renumbered standards**: All 38 standards now uniquely numbered 001-038 (was 001-032 with duplicates)
+- **Removed dead code**: Deleted orphaned `core/` and `services/` at root (6,597 lines duplicated from engine/src/)
+- **Deprecated `packages/` removed**: References cleaned from pnpm-workspace.yaml and spec
+- **Synced versions**: All files now consistently say 5.3.0
 
 ### Documentation Consolidation (June 2026)
 - **Flattened standards**: All 38 active standards now live in `specs/current-standards/` as a flat directory
@@ -163,10 +169,10 @@ anchor-engine-node/
 - Old C++ N-API modules (`engine/src/native/`) fully removed
 
 ### Security Hardening
-- Path Traversal Prevention (Standard 025)
-- Auth Bypass Prevention (Standard 023)
-- API Key Strength Validation (Standard 024)
-- Zero-Copy Deduplication (Standard 026)
+- Path Traversal Prevention (Standard 029)
+- Auth Bypass Prevention (Standard 027)
+- API Key Strength Validation (Standard 028)
+- Zero-Copy Deduplication (Standard 030)
 
 ---
 
@@ -179,6 +185,6 @@ anchor-engine-node/
 
 ---
 
-**Last Updated:** June 10, 2026
-**Version:** 5.2.0
+**Last Updated:** June 13, 2026
+**Version:** 5.3.0
 **Status:** ✅ Production Ready

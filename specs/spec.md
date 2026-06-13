@@ -36,9 +36,9 @@
 - [x] `user_settings.json.template` generates `user_settings.json` at `$HOME/.anchor/` on `pnpm install` + `pnpm start`
 
 ### Security Hardening (April 2026)
-- [x] API key validation: 32-128 chars with mixed case/digits (Standard 024)
-- [x] Path traversal prevention (Standard 025)
-- [x] Auth bypass prevention - removed /v1/test/* endpoints (Standard 023)
+- [x] API key validation: 32-128 chars with mixed case/digits (Standard 028)
+- [x] Path traversal prevention (Standard 029)
+- [x] Auth bypass prevention - removed /v1/test/* endpoints (Standard 027)
 - [x] Rate limiting for MCP server (60 req/min)
 - [x] Write operations opt-in with bucket validation
 
@@ -128,7 +128,7 @@ User Query → API Route → Zod Validation → Search Service → PGlite Query 
 
 | Module | Purpose | Location |
 |--------|---------|----------|
-| Context Engine | Core reasoning loop | `engine/src/context/` |
+| Context Engine | Core reasoning loop | `engine/context/` |
 | PGlite DB | In-memory PostgreSQL-compatible store | `engine/src/core/db.ts` |
 | Search (STAR) | Physics-inspired graph retrieval | `engine/src/services/search/` |
 | Distillation | Summarization & extraction (Radial v2) | `engine/src/services/distillation/` |
@@ -149,7 +149,7 @@ User Query → API Route → Zod Validation → Search Service → PGlite Query 
 
 ---
 
-## Streaming Architecture (v5.2.0)
+## Streaming Architecture
 
 ### Streaming Search (`/v1/memory/search/stream`)
 
@@ -489,7 +489,7 @@ Tracks ingested GitHub repositories for incremental sync and status monitoring.
 
 ---
 
-#### `distills` - Distillation Output Tracking (Standard 016)
+#### `distills` - Distillation Output Tracking (Standard 031)
 
 Stores metadata pointers to distillation output files on disk. Does not store the actual content.
 
@@ -544,7 +544,7 @@ Stores synonym mappings for search query expansion. Helps improve recall by expa
 | `atom_positions` | ✅ Active | Position indexing |
 | `summary_nodes` | ✅ Active | Dreamer abstractions |
 | `github_repos` | ✅ Active | GitHub ingestion (Standard 115) |
-| `distills` | ✅ Active | Distillation metadata (Standard 016) |
+| `distills` | ✅ Active | Distillation metadata (Standard 031) |
 | `engrams` | ✅ Active | Key-value store |
 | `synonyms` | ✅ Active | Query expansion |
 
@@ -560,7 +560,7 @@ Stores synonym mappings for search query expansion. Helps improve recall by expa
 
 **Phase 3 (Pending):** Update ingestion pipeline to skip compound creation during normal operations.
 
-See `MIGRATION_PLAN.md` for detailed implementation steps.
+Migration to pointer-only storage is tracked via the schema migration process described above. The `compounds` table has been removed and all data now flows through `atoms`/`molecules` tables with direct `source_path` references.
 
 ---
 
@@ -628,7 +628,7 @@ Where:
 
 ---
 
-## Deduplication Pipeline (v5.2.0)
+## Deduplication Pipeline
 
 ### 5-Layer Dedup Strategy
 
@@ -737,7 +737,7 @@ flowchart TB
 
 ---
 
-## Performance Benchmarks (v5.2.0)
+## Performance Benchmarks
 
 ### Search Performance
 
@@ -773,6 +773,15 @@ flowchart LR
 - **Peak:** ~1.6GB (during 90MB file ingestion)
 - **Idle:** ~650MB (after 5min timeout + GC)
 - **Reduction:** 60% memory savings after idle cleanup
+
+### Key Metrics
+
+| Metric | Result | Target | Status |
+|--------|--------|--------|--------|
+| **90MB Ingestion** | ~178s | <200s | ✅ |
+| **Memory Peak** | ~1.6GB | <2GB | ✅ |
+| **Search Latency (p95)** | ~150ms | <200s | ✅ |
+| **SimHash Speed** | ~2ms/atom | <5ms | ✅
 
 ---
 
@@ -812,7 +821,7 @@ flowchart LR
 ```
 anchor-engine-node/
 ├── README.md              # Quick start & overview
-├── CHANGELOG.md           # Version history (v5.0.0 latest)
+├── CHANGELOG.md           # Version history
 ├── docs/
 │   ├── whitepaper.md      # The Sovereign Context Protocol (95% compliance)
 │   └── INDEX.md           # Documentation navigation hub
@@ -820,14 +829,15 @@ anchor-engine-node/
 │   ├── spec.md            # This file
 │   ├── tasks.md           # Current sprint tasks
 │   ├── plan.md            # Roadmap
-│   └── current-standards/ # Active architecture standards (001-029)
+│   └── current-standards/ # Active architecture standards (001-038)
 ├── engine/                # Core engine source
 │   ├── src/
 │   │   ├── config/        # Zod validation schemas
 │   │   ├── services/      # Core services
 │   │   ├── routes/v1/     # API endpoints
-│   │   └── public/        # React frontend (CDN-based)
-├── mcp-server/            # MCP server (optional)
+│   ├── public/            # React frontend (CDN-based)
+│   ├── context/           # Context engine runtime data
+│   └── tests/             # Test suites
 └── user_settings.json.template  # Version source (generates ~/.anchor/user_settings.json)
 ```
 
@@ -920,30 +930,20 @@ Tests cover both unseeded and seeded distillation scenarios:
 
 ---
 
-## API Endpoints (v5.0.0)
+## API Endpoints
 
 ```bash
 GET  /health                     # System status
 POST /v1/ingest                  # Ingest content
-POST /v1/ingest/streaming        # Stream large file ingestion (v5.0.0)
+POST /v1/ingest/streaming        # Stream large file ingestion
 POST /v1/memory/search           # Search memory
-POST /v1/memory/search/stream    # Streaming search with SSE results (v5.0.0)
+POST /v1/memory/search/stream    # Streaming search with SSE results
 POST /v1/memory/explore          # BFS graph traversal (illuminate)
 GET  /v1/buckets                 # List buckets
 GET  /v1/tags                    # List tags
 ```
 
 
-
----
-## Performance Benchmarks (v5.2.0)
-
-| Metric | Result | Target | Status |
-|--------|--------|--------|--------|
-| **90MB Ingestion** | ~178s | <200s | ✅ |
-| **Memory Peak** | ~1.6GB | <2GB | ✅ |
-| **Search Latency (p95)** | ~150ms | <200ms | ✅ |
-| **SimHash Speed** | ~2ms/atom | <5ms | ✅ |
 
 ---
 

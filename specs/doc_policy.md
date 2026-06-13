@@ -53,8 +53,8 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `docker-compose.yml` | Docker Compose orchestration file |
 | `scripts/start-engine.ps1` | PowerShell script to start engine |
 | `scripts/stop-engine.bat` | Batch script to stop engine |
-| `scripts/start-engine-bg.mjs` | Node.js background startup (Standard 014 OPS-005) |
-| `scripts/stop-engine-bg.mjs` | Node.js background shutdown (Standard 014 OPS-005) |
+| `scripts/start-engine-bg.mjs` | Node.js background startup (Standard 015) |
+| `scripts/stop-engine-bg.mjs` | Node.js background shutdown (Standard 015) |
 | `scripts/sync-version.mjs` | Post-version hook — syncs version across package.json files |
 | `scripts/run-engine.bat` | Windows batch launcher for engine |
 | `scripts/start-engine.bat` | Windows batch startup script |

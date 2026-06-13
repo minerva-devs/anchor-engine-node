@@ -97,15 +97,17 @@ All four WASM packages should have a `.wasm` file in their respective `node_modu
 engine/src/
 ├── index.ts                    # Entry point, server startup
 ├── config/                     # Configuration management
-│   ├── index.ts               # Config loader
+│   ├── index.ts               # Config loader (Zod validation)
 │   ├── paths.ts               # Path management
-│   ├── schema.ts              # Config validation (Zod)
-│   └── max-recall-config.ts   # Max-recall mode settings
+│   ├── encryption-config.ts   # Encryption settings
+│   ├── max-recall-config.ts   # Max-recall mode settings
+│   └── known-entities.ts      # Known entity mappings
 │
 ├── core/                       # Core functionality
 │   ├── db.ts                  # PGlite database layer
 │   ├── batch.ts               # Batch processing
-│   ├── vector.ts              # Vector operations
+│   ├── provenance-utils.ts    # Provenance tracking utilities
+│   ├── schema-migration.sql   # Database schema migration
 │   └── inference/             # LLM inference (optional)
 │
 ├── services/                   # Business logic
@@ -374,6 +376,6 @@ This source tree embodies the core principles:
 
 ## Support
 
-- **API Docs:** [`docs/API.md`](../../docs/API.md)
+- **API Docs:** [`specs/spec.md#api-endpoints`](../../specs/spec.md#api-endpoints)
 - **Standards:** [`specs/current-standards/`](../../specs/current-standards/)
 - **Issues:** https://github.com/RSBalchII/anchor-engine-node/issues

@@ -23,7 +23,7 @@
 
 **Start here:**
 1. [**Whitepaper**](./docs/whitepaper.md) - The STAR Context Protocol (conceptual, no code)
-2. [**API Examples**](./README.md#api-examples) - How to use the engine
+2. [**API Endpoints**](./specs/spec.md#api-endpoints) - Available API routes and usage
 3. [**Architecture Overview**](./specs/spec.md#architecture-overview) - How it works (high-level)
 
 **For deeper knowledge:**
@@ -66,7 +66,7 @@ pnpm test
 pnpm start
 
 # Run operational verification
-python test_us006.py
+python tests/test_us006.py
 ```
 
 ---
@@ -181,7 +181,7 @@ These files may contain private information and should never be shared. The `.gi
 
 ### For Users
 - [Whitepaper](./docs/whitepaper.md)
-- [API Examples](./README.md)
+- [API Endpoints](./specs/spec.md#api-endpoints)
 - [Architecture Overview](./specs/spec.md#architecture-overview)
 
 ### For Everyone

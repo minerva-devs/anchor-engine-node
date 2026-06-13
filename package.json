@@ -5,21 +5,17 @@
   "main": "engine/dist/index.js",
   "type": "module",
   "bin": {
-    "anchor": "anchor.bat",
     "anchor-engine": "engine/dist/index.js",
     "anchor-mcp": "engine/dist/mcp/server.js"
   },
   "scripts": {
-    "setup:vscode-mcp": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-vscode-mcp.ps1 -Mode Setup",
-    "verify:vscode-mcp": "powershell -ExecutionPolicy Bypass -File ./scripts/setup-vscode-mcp.ps1 -Mode Verify",
     "test:vitest": "npx vitest run --config engine/vitest.config.ts --reporter=verbose",
     "start": "node --expose-gc engine/dist/index.js",
     "dev": "pnpm --filter anchor-engine dev",
     "build": "pnpm build:all",
     "build:all": "pnpm --filter anchor-engine build",
     "build:engine": "pnpm --filter anchor-engine build",
-    "clean": "rimraf dist engine/dist",
-    "clean:ui-dist": "rimraf packages/anchor-ui/dist",
+    "clean": "rimraf engine/dist",
     "postinstall": "node setup-user-config.mjs && pnpm build:all",
     "start-with-logging": "node --expose-gc engine/dist/index.js > %USERPROFILE%\\.anchor\\logs\\anchor_engine.log 2>&1",
     "postversion": "node scripts/sync-version.mjs && git add engine/package.json README.md && git commit --amend --no-edit",
@@ -117,10 +113,6 @@
   "files": [
     "engine/dist/",
     "engine/package.json",
-    "mcp-server/dist/",
-    "mcp-server/package.json",
-    "mcp-server/README.md",
-    "anchor.bat",
     "LICENSE",
     "README.md",
     "docs/"
