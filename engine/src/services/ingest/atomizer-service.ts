@@ -854,6 +854,56 @@ const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50
     private cachedKeywordRegex: RegExp | null = null;
     private cachedKeywordMap: Map<string, string> | null = null;
 
+    /**
+     * Extract keywords from corpus content when no sovereign keyword file exists.
+     * Uses statistical term frequency with stop-word filtering to identify
+     * domain-relevant terms from the ingested text.
+     */
+    public extractKeywordsFromContent(content: string): string[] {
+        const MIN_FREQ = 3;
+        const MIN_LENGTH = 3;
+        const MAX_KEYWORDS = 200;
+
+        const words = content.toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter(w => w.length >= MIN_LENGTH && !this.isCommonWord(w) && !/^\d+$/.test(w));
+
+        const freq = new Map<string, number>();
+        for (const w of words) {
+            freq.set(w, (freq.get(w) || 0) + 1);
+        }
+
+        const scored = Array.from(freq.entries())
+            .filter(([, count]) => count >= MIN_FREQ)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, MAX_KEYWORDS);
+
+        const bigramFreq = new Map<string, number>();
+        const tokens = content.toLowerCase().split(/[^a-z0-9]+/);
+        for (let i = 0; i < tokens.length - 1; i++) {
+            const w1 = tokens[i];
+            const w2 = tokens[i + 1];
+            if (w1.length >= MIN_LENGTH && w2.length >= MIN_LENGTH &&
+                !this.isCommonWord(w1) && !this.isCommonWord(w2)) {
+                const bigram = `${w1}-${w2}`;
+                bigramFreq.set(bigram, (bigramFreq.get(bigram) || 0) + 1);
+            }
+        }
+
+        const bigrams = Array.from(bigramFreq.entries())
+            .filter(([, count]) => count >= 2)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 100);
+
+        const merged = new Set<string>();
+        for (const [w] of scored) merged.add(w);
+        for (const [bg] of bigrams) merged.add(bg);
+
+        const result = Array.from(merged).slice(0, MAX_KEYWORDS);
+        console.log(`[Atomizer] Corpus keyword extraction: ${result.length} keywords from ${words.length} tokens`);
+        return result;
+    }
+
     private getKeywordRegex(): RegExp | null {
         if (this.cachedKeywordRegex !== null) return this.cachedKeywordRegex;
         const keywords = this.loadSovereignKeywords();
@@ -876,16 +926,24 @@ const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50
         return this.cachedKeywordMap;
     }
 
+    /**
+     * Set keywords directly (used by watchdog after corpus extraction).
+     * Overrides file-based keyword loading and busts all keyword caches.
+     */
+    public setKeywords(keywords: string[]): void {
+        this.cachedKeywords = keywords;
+        this.cachedKeywordRegex = null;
+        this.cachedKeywordMap = null;
+        console.log(`[Atomizer] Keywords set from corpus: ${keywords.length} terms`);
+    }
+
     private loadSovereignKeywords(): string[] {
         if (this.cachedKeywords) return this.cachedKeywords;
         try {
-            // Check likely locations for internal_tags.json
             const possiblePaths = [
                 path.join(process.cwd(), 'engine', 'context', 'internal_tags.json'),
                 path.join(process.cwd(), '..', 'engine', 'context', 'internal_tags.json'),
-                // engine/src/services/ingest -> ../../../../engine/context
                 path.join(__dirname, '../../../../engine/context/internal_tags.json'),
-                // Fallback to old location
                 path.join(process.cwd(), 'context', 'internal_tags.json'),
             ];
 
@@ -893,13 +951,13 @@ const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50
                 if (fs.existsSync(p)) {
                     const content = fs.readFileSync(p, 'utf-8');
                     const json = JSON.parse(content);
-                    if (Array.isArray(json.keywords)) {
+                    if (Array.isArray(json.keywords) && json.keywords.length > 0) {
                         this.cachedKeywords = json.keywords;
                         return json.keywords;
                     }
                 }
             }
-            this.cachedKeywords = [];
+            // Don't cache empty — allow corpus-extracted keywords to be injected later
             return [];
         } catch (e) {
             console.error('[Atomizer] Failed to load internal_tags.json', e);

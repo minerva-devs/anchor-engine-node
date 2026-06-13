@@ -520,6 +520,13 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
         let totalAtomsCount = 0;
         const filename = relativePath.split(/[/\\]/).pop() || relativePath;
 
+        // Auto-populate keyword list from corpus content when no keyword file exists
+        // This enables tag-based search without manual keyword configuration
+        const keywords = atomizer.extractKeywordsFromContent(content);
+        if (keywords.length > 0) {
+            atomizer.setKeywords(keywords);
+        }
+
         if (needsChunking(content)) {
             const chunks = chunkFile(content, relativePath);
             console.log(`[Watchdog] 🧩 Chunking ${relativePath} into ${chunks.length} chunks`);

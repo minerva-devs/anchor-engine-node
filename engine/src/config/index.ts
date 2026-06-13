@@ -663,29 +663,30 @@ function loadConfig(): Config {
       // Load LLM Settings (Provider + Model paths — single consolidated block)
       if (parsed.llm) {
         // Provider settings
-        if (parsed.llm.provider) loadedConfig.LLM_PROVIDER = parsed.llm.provider;
-        if (parsed.llm.remote_url) loadedConfig.REMOTE_LLM_URL = parsed.llm.remote_url;
-        if (parsed.llm.remote_model) loadedConfig.REMOTE_MODEL_NAME = parsed.llm.remote_model;
-        if (parsed.llm.model_dir) loadedConfig.LLM_MODEL_DIR = parsed.llm.model_dir;
+        const llm = parsed.llm as any;
+        if (llm.provider) loadedConfig.LLM_PROVIDER = llm.provider;
+        if (llm.remote_url) loadedConfig.REMOTE_LLM_URL = llm.remote_url;
+        if (llm.remote_model) loadedConfig.REMOTE_MODEL_NAME = llm.remote_model;
+        if (llm.model_dir) loadedConfig.LLM_MODEL_DIR = llm.model_dir;
 
         // Main model
-        if (parsed.llm.chat_model) loadedConfig.MODELS.MAIN.PATH = parsed.llm.chat_model;
-        if (parsed.llm.gpu_layers !== undefined) loadedConfig.MODELS.MAIN.GPU_LAYERS = parsed.llm.gpu_layers;
-        if (parsed.llm.ctx_size !== undefined) loadedConfig.MODELS.MAIN.CTX_SIZE = parsed.llm.ctx_size;
-        if (parsed.llm.max_tokens !== undefined) loadedConfig.MODELS.MAIN.MAX_TOKENS = parsed.llm.max_tokens;
+        if (llm.chat_model) loadedConfig.MODELS.MAIN.PATH = llm.chat_model;
+        if (llm.gpu_layers !== undefined) loadedConfig.MODELS.MAIN.GPU_LAYERS = llm.gpu_layers;
+        if (llm.ctx_size !== undefined) loadedConfig.MODELS.MAIN.CTX_SIZE = llm.ctx_size;
+        if (llm.max_tokens !== undefined) loadedConfig.MODELS.MAIN.MAX_TOKENS = llm.max_tokens;
 
         // Orchestrator model
-        if (parsed.llm.task_model) loadedConfig.MODELS.ORCHESTRATOR.PATH = parsed.llm.task_model;
-        if (parsed.llm.orchestrator_ctx_size !== undefined) loadedConfig.MODELS.ORCHESTRATOR.CTX_SIZE = parsed.llm.orchestrator_ctx_size;
-        if (parsed.llm.orchestrator_gpu_layers !== undefined) loadedConfig.MODELS.ORCHESTRATOR.GPU_LAYERS = parsed.llm.orchestrator_gpu_layers;
-        if (parsed.llm.orchestrator_max_tokens !== undefined) loadedConfig.MODELS.ORCHESTRATOR.MAX_TOKENS = parsed.llm.orchestrator_max_tokens;
+        if (llm.task_model) loadedConfig.MODELS.ORCHESTRATOR.PATH = llm.task_model;
+        if (llm.orchestrator_ctx_size !== undefined) loadedConfig.MODELS.ORCHESTRATOR.CTX_SIZE = llm.orchestrator_ctx_size;
+        if (llm.orchestrator_gpu_layers !== undefined) loadedConfig.MODELS.ORCHESTRATOR.GPU_LAYERS = llm.orchestrator_gpu_layers;
+        if (llm.orchestrator_max_tokens !== undefined) loadedConfig.MODELS.ORCHESTRATOR.MAX_TOKENS = llm.orchestrator_max_tokens;
 
         // Vision model
-        if (parsed.llm.vision_model) loadedConfig.MODELS.VISION.PATH = parsed.llm.vision_model;
-        if (parsed.llm.vision_projector) loadedConfig.MODELS.VISION.PROJECTOR = parsed.llm.vision_projector;
-        if (parsed.llm.vision_ctx_size !== undefined) loadedConfig.MODELS.VISION.CTX_SIZE = parsed.llm.vision_ctx_size;
-        if (parsed.llm.vision_gpu_layers !== undefined) loadedConfig.MODELS.VISION.GPU_LAYERS = parsed.llm.vision_gpu_layers;
-        if (parsed.llm.vision_max_tokens !== undefined) loadedConfig.MODELS.VISION.MAX_TOKENS = parsed.llm.vision_max_tokens;
+        if (llm.vision_model) loadedConfig.MODELS.VISION.PATH = llm.vision_model;
+        if (llm.vision_projector) loadedConfig.MODELS.VISION.PROJECTOR = llm.vision_projector;
+        if (llm.vision_ctx_size !== undefined) loadedConfig.MODELS.VISION.CTX_SIZE = llm.vision_ctx_size;
+        if (llm.vision_gpu_layers !== undefined) loadedConfig.MODELS.VISION.GPU_LAYERS = llm.vision_gpu_layers;
+        if (llm.vision_max_tokens !== undefined) loadedConfig.MODELS.VISION.MAX_TOKENS = llm.vision_max_tokens;
       }
 
       // Load Search Settings (single consolidated block)
@@ -701,11 +702,17 @@ function loadConfig(): Config {
 
       // Load Server Settings
       if (parsed.server) {
-        if (parsed.server.host) loadedConfig.HOST = parsed.server.host;
-        if (parsed.server.port) loadedConfig.PORT = parsed.server.port;
-        if (parsed.server.api_key !== undefined) loadedConfig.API_KEY = parsed.server.api_key;
-        if (parsed.server.version !== undefined) loadedConfig.VERSION = parsed.server.version;
-        if (parsed.github?.token !== undefined) loadedConfig.GITHUB_TOKEN = parsed.github.token;
+        const srv = parsed.server as any;
+        if (srv.host) loadedConfig.HOST = srv.host;
+        if (srv.port) loadedConfig.PORT = srv.port;
+        if (srv.api_key !== undefined) loadedConfig.API_KEY = srv.api_key;
+        if (srv.version !== undefined) loadedConfig.VERSION = srv.version;
+      }
+
+      // Load GitHub Settings
+      if (parsed.github) {
+        const gh = parsed.github as any;
+        if (gh.token !== undefined) loadedConfig.GITHUB_TOKEN = gh.token;
       }
 
       // Load Resource Management Settings
@@ -728,95 +735,101 @@ function loadConfig(): Config {
 
       // Load Context Relevance Settings
       if (parsed.context) {
-        if (parsed.context.relevance_weight !== undefined) loadedConfig.CONTEXT_RELEVANCE_WEIGHT = parsed.context.relevance_weight;
-        if (parsed.context.recency_weight !== undefined) loadedConfig.CONTEXT_RECENCY_WEIGHT = parsed.context.recency_weight;
+        const ctx = parsed.context as any;
+        if (ctx.relevance_weight !== undefined) loadedConfig.CONTEXT_RELEVANCE_WEIGHT = ctx.relevance_weight;
+        if (ctx.recency_weight !== undefined) loadedConfig.CONTEXT_RECENCY_WEIGHT = ctx.recency_weight;
       }
 
       // Load Service Settings
       if (parsed.services) {
-        if (parsed.services.vision_server_port !== undefined) loadedConfig.SERVICES.VISION_SERVER_PORT = parsed.services.vision_server_port;
-        if (userSettings.services.chat_server_port !== undefined) loadedConfig.SERVICES.CHAT_SERVER_PORT = userSettings.services.chat_server_port;
-        if (userSettings.services.tag_infector_unload_timeout !== undefined) loadedConfig.SERVICES.TAG_INFECTOR_UNLOAD_TIMEOUT = userSettings.services.tag_infector_unload_timeout;
-        if (userSettings.services.tag_gliner_check_interval !== undefined) loadedConfig.SERVICES.TAG_GLINER_CHECK_INTERVAL = userSettings.services.tag_gliner_check_interval;
+        const svc = parsed.services as any;
+        if (svc.vision_server_port !== undefined) loadedConfig.SERVICES.VISION_SERVER_PORT = svc.vision_server_port;
+        if (svc.chat_server_port !== undefined) loadedConfig.SERVICES.CHAT_SERVER_PORT = svc.chat_server_port;
+        if (svc.tag_infector_unload_timeout !== undefined) loadedConfig.SERVICES.TAG_INFECTOR_UNLOAD_TIMEOUT = svc.tag_infector_unload_timeout;
+        if (svc.tag_gliner_check_interval !== undefined) loadedConfig.SERVICES.TAG_GLINER_CHECK_INTERVAL = svc.tag_gliner_check_interval;
       }
 
       // Load Database Settings
-      if (userSettings.database) {
-        if (userSettings.database.wipe_on_startup !== undefined) loadedConfig.DATABASE.WIPE_ON_STARTUP = userSettings.database.wipe_on_startup;
-        if (userSettings.database.wipe_on_shutdown !== undefined) loadedConfig.DATABASE.WIPE_ON_SHUTDOWN = userSettings.database.wipe_on_shutdown;
-        if (userSettings.database.shared_buffers_mb !== undefined) loadedConfig.DATABASE.SHARED_BUFFERS_MB = userSettings.database.shared_buffers_mb;
-        if (userSettings.database.effective_cache_size_mb !== undefined) loadedConfig.DATABASE.EFFECTIVE_CACHE_SIZE_MB = userSettings.database.effective_cache_size_mb;
-        if (userSettings.database.work_mem_mb !== undefined) loadedConfig.DATABASE.WORK_MEM_MB = userSettings.database.work_mem_mb;
-        if (userSettings.database.maintenance_work_mem_mb !== undefined) loadedConfig.DATABASE.MAINTENANCE_WORK_MEM_MB = userSettings.database.maintenance_work_mem_mb;
+      if (parsed.database) {
+        if (parsed.database.wipe_on_startup !== undefined) loadedConfig.DATABASE.WIPE_ON_STARTUP = parsed.database.wipe_on_startup;
+        if (parsed.database.wipe_on_shutdown !== undefined) loadedConfig.DATABASE.WIPE_ON_SHUTDOWN = parsed.database.wipe_on_shutdown;
+        if (parsed.database.shared_buffers_mb !== undefined) loadedConfig.DATABASE.SHARED_BUFFERS_MB = parsed.database.shared_buffers_mb;
+        if (parsed.database.effective_cache_size_mb !== undefined) loadedConfig.DATABASE.EFFECTIVE_CACHE_SIZE_MB = parsed.database.effective_cache_size_mb;
+        if (parsed.database.work_mem_mb !== undefined) loadedConfig.DATABASE.WORK_MEM_MB = parsed.database.work_mem_mb;
+        if (parsed.database.maintenance_work_mem_mb !== undefined) loadedConfig.DATABASE.MAINTENANCE_WORK_MEM_MB = parsed.database.maintenance_work_mem_mb;
       }
 
       // Load Limits and Thresholds
-      if (userSettings.limits) {
-        if (userSettings.limits.max_file_size_bytes !== undefined) loadedConfig.LIMITS.MAX_FILE_SIZE_BYTES = userSettings.limits.max_file_size_bytes;
-        if (userSettings.limits.max_content_length_chars !== undefined) loadedConfig.LIMITS.MAX_CONTENT_LENGTH_CHARS = userSettings.limits.max_content_length_chars;
-        if (userSettings.limits.max_chunk_size_chars !== undefined) loadedConfig.LIMITS.MAX_CHUNK_SIZE_CHARS = userSettings.limits.max_chunk_size_chars;
-        if (userSettings.limits.max_summary_length_chars !== undefined) loadedConfig.LIMITS.MAX_SUMMARY_LENGTH_CHARS = userSettings.limits.max_summary_length_chars;
-        if (userSettings.limits.date_extractor_scan_limit !== undefined) loadedConfig.LIMITS.DATE_EXTRACTOR_SCAN_LIMIT = userSettings.limits.date_extractor_scan_limit;
+      if (parsed.limits) {
+        if (parsed.limits.max_file_size_bytes !== undefined) loadedConfig.LIMITS.MAX_FILE_SIZE_BYTES = parsed.limits.max_file_size_bytes;
+        if (parsed.limits.max_content_length_chars !== undefined) loadedConfig.LIMITS.MAX_CONTENT_LENGTH_CHARS = parsed.limits.max_content_length_chars;
+        if (parsed.limits.max_chunk_size_chars !== undefined) loadedConfig.LIMITS.MAX_CHUNK_SIZE_CHARS = parsed.limits.max_chunk_size_chars;
+        if (parsed.limits.max_summary_length_chars !== undefined) loadedConfig.LIMITS.MAX_SUMMARY_LENGTH_CHARS = parsed.limits.max_summary_length_chars;
+        if (parsed.limits.date_extractor_scan_limit !== undefined) loadedConfig.LIMITS.DATE_EXTRACTOR_SCAN_LIMIT = parsed.limits.date_extractor_scan_limit;
       }
 
       // Load Memory Management Settings (Standard 127/134/135)
-      if (userSettings.memory) {
-        if (userSettings.memory.heap_pressure_mb !== undefined) loadedConfig.MEMORY.HEAP_PRESSURE_MB = userSettings.memory.heap_pressure_mb;
-        if (userSettings.memory.throttle_start_mb !== undefined) loadedConfig.MEMORY.THROTTLE_START_MB = userSettings.memory.throttle_start_mb;
-        if (userSettings.memory.throttle_max_mb !== undefined) loadedConfig.MEMORY.THROTTLE_MAX_MB = userSettings.memory.throttle_max_mb;
-        if (userSettings.memory.emergency_stop_mb !== undefined) loadedConfig.MEMORY.EMERGENCY_STOP_MB = userSettings.memory.emergency_stop_mb;
-        if (userSettings.memory.search_results_batch_size !== undefined) loadedConfig.MEMORY.SEARCH_RESULTS_BATCH_SIZE = userSettings.memory.search_results_batch_size;
-        if (userSettings.memory.enable_streaming_results !== undefined) loadedConfig.MEMORY.ENABLE_STREAMING_RESULTS = userSettings.memory.enable_streaming_results;
+      if (parsed.memory) {
+        if (parsed.memory.heap_pressure_mb !== undefined) loadedConfig.MEMORY.HEAP_PRESSURE_MB = parsed.memory.heap_pressure_mb;
+        if (parsed.memory.throttle_start_mb !== undefined) loadedConfig.MEMORY.THROTTLE_START_MB = parsed.memory.throttle_start_mb;
+        if (parsed.memory.throttle_max_mb !== undefined) loadedConfig.MEMORY.THROTTLE_MAX_MB = parsed.memory.throttle_max_mb;
+        if (parsed.memory.emergency_stop_mb !== undefined) loadedConfig.MEMORY.EMERGENCY_STOP_MB = parsed.memory.emergency_stop_mb;
+        if (parsed.memory.search_results_batch_size !== undefined) loadedConfig.MEMORY.SEARCH_RESULTS_BATCH_SIZE = parsed.memory.search_results_batch_size;
+        if (parsed.memory.enable_streaming_results !== undefined) loadedConfig.MEMORY.ENABLE_STREAMING_RESULTS = parsed.memory.enable_streaming_results;
       }
 
       // Load Low-Resource Mode Settings (Standard 136)
-      if (userSettings.low_resource) {
-        if (userSettings.low_resource.enabled !== undefined) loadedConfig.LOW_RESOURCE.ENABLED = userSettings.low_resource.enabled;
-        if (userSettings.low_resource.max_recall_low !== undefined) loadedConfig.LOW_RESOURCE.MAX_RECALL_LOW = userSettings.low_resource.max_recall_low;
-        if (userSettings.low_resource.max_recall_high !== undefined) loadedConfig.LOW_RESOURCE.MAX_RECALL_HIGH = userSettings.low_resource.max_recall_high;
-        if (userSettings.low_resource.max_concurrency !== undefined) loadedConfig.LOW_RESOURCE.MAX_CONCURRENCY = userSettings.low_resource.max_concurrency;
-        if (userSettings.low_resource.search_batch_size !== undefined) loadedConfig.LOW_RESOURCE.SEARCH_BATCH_SIZE = userSettings.low_resource.search_batch_size;
-        if (userSettings.low_resource.ingest_batch_size !== undefined) loadedConfig.LOW_RESOURCE.INGEST_BATCH_SIZE = userSettings.low_resource.ingest_batch_size;
-        if (userSettings.low_resource.vector_ingest_batch !== undefined) loadedConfig.LOW_RESOURCE.VECTOR_INGEST_BATCH = userSettings.low_resource.vector_ingest_batch;
+      if (parsed.low_resource) {
+        if (parsed.low_resource.enabled !== undefined) loadedConfig.LOW_RESOURCE.ENABLED = parsed.low_resource.enabled;
+        if (parsed.low_resource.max_recall_low !== undefined) loadedConfig.LOW_RESOURCE.MAX_RECALL_LOW = parsed.low_resource.max_recall_low;
+        if (parsed.low_resource.max_recall_high !== undefined) loadedConfig.LOW_RESOURCE.MAX_RECALL_HIGH = parsed.low_resource.max_recall_high;
+        if (parsed.low_resource.max_concurrency !== undefined) loadedConfig.LOW_RESOURCE.MAX_CONCURRENCY = parsed.low_resource.max_concurrency;
+        if (parsed.low_resource.search_batch_size !== undefined) loadedConfig.LOW_RESOURCE.SEARCH_BATCH_SIZE = parsed.low_resource.search_batch_size;
+        if (parsed.low_resource.ingest_batch_size !== undefined) loadedConfig.LOW_RESOURCE.INGEST_BATCH_SIZE = parsed.low_resource.ingest_batch_size;
+        if (parsed.low_resource.vector_ingest_batch !== undefined) loadedConfig.LOW_RESOURCE.VECTOR_INGEST_BATCH = parsed.low_resource.vector_ingest_batch;
       }
 
       // Load Ingestion Configuration (Agent-Controlled)
-      if (userSettings.ingestion) {
-        if (userSettings.ingestion.concept_density) loadedConfig.INGESTION.CONCEPT_DENSITY = userSettings.ingestion.concept_density;
-        if (userSettings.ingestion.tag_threshold !== undefined) loadedConfig.INGESTION.TAG_THRESHOLD = userSettings.ingestion.tag_threshold;
-        if (userSettings.ingestion.dedup_strength) loadedConfig.INGESTION.DEDUP_STRENGTH = userSettings.ingestion.dedup_strength;
-        if (userSettings.ingestion.token_budget_default !== undefined) loadedConfig.INGESTION.TOKEN_BUDGET_DEFAULT = userSettings.ingestion.token_budget_default;
-        if (userSettings.ingestion.ingestion_profile) loadedConfig.INGESTION.INGESTION_PROFILE = userSettings.ingestion.ingestion_profile;
+      if (parsed.ingestion) {
+        const igs = parsed.ingestion as any;
+        if (igs.concept_density) loadedConfig.INGESTION.CONCEPT_DENSITY = igs.concept_density;
+        if (igs.tag_threshold !== undefined) loadedConfig.INGESTION.TAG_THRESHOLD = igs.tag_threshold;
+        if (igs.dedup_strength) loadedConfig.INGESTION.DEDUP_STRENGTH = igs.dedup_strength;
+        if (igs.token_budget_default !== undefined) loadedConfig.INGESTION.TOKEN_BUDGET_DEFAULT = igs.token_budget_default;
+        if (igs.ingestion_profile) loadedConfig.INGESTION.INGESTION_PROFILE = igs.ingestion_profile;
       }
 
       // Load Density Configuration — tier thresholds for external RAG pipeline dispatch
-      if (userSettings.density) {
-        if (userSettings.density.light_doc_threshold !== undefined) loadedConfig.DENSITY.LIGHT_DOC_THRESHOLD = userSettings.density.light_doc_threshold;
-        if (userSettings.density.medium_doc_threshold !== undefined) loadedConfig.DENSITY.MEDIUM_DOC_THRESHOLD = userSettings.density.medium_doc_threshold;
-        if (userSettings.density.light_rag_limit !== undefined) loadedConfig.DENSITY.LIGHT_RAG_LIMIT = userSettings.density.light_rag_limit;
-        if (userSettings.density.medium_rag_limit !== undefined) loadedConfig.DENSITY.MEDIUM_RAG_LIMIT = userSettings.density.medium_rag_limit;
-        if (userSettings.density.heavy_rag_limit !== undefined) loadedConfig.DENSITY.HEAVY_RAG_LIMIT = userSettings.density.heavy_rag_limit;
+      if (parsed.density) {
+        const dy = parsed.density as any;
+        if (dy.light_doc_threshold !== undefined) loadedConfig.DENSITY.LIGHT_DOC_THRESHOLD = dy.light_doc_threshold;
+        if (dy.medium_doc_threshold !== undefined) loadedConfig.DENSITY.MEDIUM_DOC_THRESHOLD = dy.medium_doc_threshold;
+        if (dy.light_rag_limit !== undefined) loadedConfig.DENSITY.LIGHT_RAG_LIMIT = dy.light_rag_limit;
+        if (dy.medium_rag_limit !== undefined) loadedConfig.DENSITY.MEDIUM_RAG_LIMIT = dy.medium_rag_limit;
+        if (dy.heavy_rag_limit !== undefined) loadedConfig.DENSITY.HEAVY_RAG_LIMIT = dy.heavy_rag_limit;
       }
 
       // Load Cache Settings (LRU Cache Configuration)
-      if (userSettings.cache) {
-        if (userSettings.cache.max_entries_search_result !== undefined) loadedConfig.CACHE.MAX_ENTRIES_SEARCH_RESULT = userSettings.cache.max_entries_search_result;
-        if (userSettings.cache.max_entries_query_parse !== undefined) loadedConfig.CACHE.MAX_ENTRIES_QUERY_PARSE = userSettings.cache.max_entries_query_parse;
-        if (userSettings.cache.max_entries_semantic_expansion !== undefined) loadedConfig.CACHE.MAX_ENTRIES_SEMANTIC_EXPANSION = userSettings.cache.max_entries_semantic_expansion;
-        if (userSettings.cache.max_entries_engram !== undefined) loadedConfig.CACHE.MAX_ENTRIES_ENGRAM = userSettings.cache.max_entries_engram;
-        if (userSettings.cache.memory_pressure_threshold !== undefined) loadedConfig.CACHE.MEMORY_PRESSURE_THRESHOLD = userSettings.cache.memory_pressure_threshold;
-        if (userSettings.cache.critical_memory_threshold !== undefined) loadedConfig.CACHE.CRITICAL_MEMORY_THRESHOLD = userSettings.cache.critical_memory_threshold;
-        if (userSettings.cache.enable_memory_pressure_eviction !== undefined) loadedConfig.CACHE.ENABLE_MEMORY_PRESSURE_EVICTION = userSettings.cache.enable_memory_pressure_eviction;
-        if (userSettings.cache.search_result_ttl_ms !== undefined) loadedConfig.CACHE.SEARCH_RESULT_TTL_MS = userSettings.cache.search_result_ttl_ms;
-        if (userSettings.cache.query_parse_ttl_ms !== undefined) loadedConfig.CACHE.QUERY_PARSE_TTL_MS = userSettings.cache.query_parse_ttl_ms;
-        if (userSettings.cache.semantic_expansion_ttl_ms !== undefined) loadedConfig.CACHE.SEMANTIC_EXPANSION_TTL_MS = userSettings.cache.semantic_expansion_ttl_ms;
-        if (userSettings.cache.engram_ttl_ms !== undefined) loadedConfig.CACHE.ENGRAM_TTL_MS = userSettings.cache.engram_ttl_ms;
+      if (parsed.cache) {
+        const c = parsed.cache as any;
+        if (c.max_entries_search_result !== undefined) loadedConfig.CACHE.MAX_ENTRIES_SEARCH_RESULT = c.max_entries_search_result;
+        if (c.max_entries_query_parse !== undefined) loadedConfig.CACHE.MAX_ENTRIES_QUERY_PARSE = c.max_entries_query_parse;
+        if (c.max_entries_semantic_expansion !== undefined) loadedConfig.CACHE.MAX_ENTRIES_SEMANTIC_EXPANSION = c.max_entries_semantic_expansion;
+        if (c.max_entries_engram !== undefined) loadedConfig.CACHE.MAX_ENTRIES_ENGRAM = c.max_entries_engram;
+        if (c.memory_pressure_threshold !== undefined) loadedConfig.CACHE.MEMORY_PRESSURE_THRESHOLD = c.memory_pressure_threshold;
+        if (c.critical_memory_threshold !== undefined) loadedConfig.CACHE.CRITICAL_MEMORY_THRESHOLD = c.critical_memory_threshold;
+        if (c.enable_memory_pressure_eviction !== undefined) loadedConfig.CACHE.ENABLE_MEMORY_PRESSURE_EVICTION = c.enable_memory_pressure_eviction;
+        if (c.search_result_ttl_ms !== undefined) loadedConfig.CACHE.SEARCH_RESULT_TTL_MS = c.search_result_ttl_ms;
+        if (c.query_parse_ttl_ms !== undefined) loadedConfig.CACHE.QUERY_PARSE_TTL_MS = c.query_parse_ttl_ms;
+        if (c.semantic_expansion_ttl_ms !== undefined) loadedConfig.CACHE.SEMANTIC_EXPANSION_TTL_MS = c.semantic_expansion_ttl_ms;
+        if (c.engram_ttl_ms !== undefined) loadedConfig.CACHE.ENGRAM_TTL_MS = c.engram_ttl_ms;
       }
 
       // Load Distiller Configuration (v2.1)
-      if (userSettings.distiller) {
-        if (userSettings.distiller.similarity_threshold !== undefined) loadedConfig.DISTILLER.SIMILARITY_THRESHOLD = userSettings.distiller.similarity_threshold;
-        if (userSettings.distiller.output_format) loadedConfig.DISTILLER.OUTPUT_FORMAT = userSettings.distiller.output_format;
+      if (parsed.distiller) {
+        const d = parsed.distiller as any;
+        if (d.similarity_threshold !== undefined) loadedConfig.DISTILLER.SIMILARITY_THRESHOLD = d.similarity_threshold;
+        if (d.output_format) loadedConfig.DISTILLER.OUTPUT_FORMAT = d.output_format;
       }
 
     } catch (e: any) {
