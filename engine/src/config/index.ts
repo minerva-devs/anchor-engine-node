@@ -655,87 +655,86 @@ function loadConfig(): Config {
 
   if (fs.existsSync(anchorSettingsPath) && fs.statSync(anchorSettingsPath).isFile()) {
     try {
-      const userSettings = JSON.parse(fs.readFileSync(anchorSettingsPath, 'utf8'));
+      const rawConfig = JSON.parse(fs.readFileSync(anchorSettingsPath, 'utf8'));
       // Validate against schema — throws ZodError on type mismatches (wrong port type, etc.)
-      _UserSettingsSchema.parse(userSettings);
-      console.log(`[Config] Loaded settings from ${anchorSettingsPath}`);
-      console.log(`[Config] Loaded settings from ${anchorSettingsPath}`);
+      const parsed = _UserSettingsSchema.parse(rawConfig);
+      console.log(`[Config] Loaded and validated settings from ${anchorSettingsPath}`);
 
       // Load LLM Settings (Provider + Model paths — single consolidated block)
-      if (userSettings.llm) {
+      if (parsed.llm) {
         // Provider settings
-        if (userSettings.llm.provider) loadedConfig.LLM_PROVIDER = userSettings.llm.provider;
-        if (userSettings.llm.remote_url) loadedConfig.REMOTE_LLM_URL = userSettings.llm.remote_url;
-        if (userSettings.llm.remote_model) loadedConfig.REMOTE_MODEL_NAME = userSettings.llm.remote_model;
-        if (userSettings.llm.model_dir) loadedConfig.LLM_MODEL_DIR = userSettings.llm.model_dir;
+        if (parsed.llm.provider) loadedConfig.LLM_PROVIDER = parsed.llm.provider;
+        if (parsed.llm.remote_url) loadedConfig.REMOTE_LLM_URL = parsed.llm.remote_url;
+        if (parsed.llm.remote_model) loadedConfig.REMOTE_MODEL_NAME = parsed.llm.remote_model;
+        if (parsed.llm.model_dir) loadedConfig.LLM_MODEL_DIR = parsed.llm.model_dir;
 
         // Main model
-        if (userSettings.llm.chat_model) loadedConfig.MODELS.MAIN.PATH = userSettings.llm.chat_model;
-        if (userSettings.llm.gpu_layers !== undefined) loadedConfig.MODELS.MAIN.GPU_LAYERS = userSettings.llm.gpu_layers;
-        if (userSettings.llm.ctx_size !== undefined) loadedConfig.MODELS.MAIN.CTX_SIZE = userSettings.llm.ctx_size;
-        if (userSettings.llm.max_tokens !== undefined) loadedConfig.MODELS.MAIN.MAX_TOKENS = userSettings.llm.max_tokens;
+        if (parsed.llm.chat_model) loadedConfig.MODELS.MAIN.PATH = parsed.llm.chat_model;
+        if (parsed.llm.gpu_layers !== undefined) loadedConfig.MODELS.MAIN.GPU_LAYERS = parsed.llm.gpu_layers;
+        if (parsed.llm.ctx_size !== undefined) loadedConfig.MODELS.MAIN.CTX_SIZE = parsed.llm.ctx_size;
+        if (parsed.llm.max_tokens !== undefined) loadedConfig.MODELS.MAIN.MAX_TOKENS = parsed.llm.max_tokens;
 
         // Orchestrator model
-        if (userSettings.llm.task_model) loadedConfig.MODELS.ORCHESTRATOR.PATH = userSettings.llm.task_model;
-        if (userSettings.llm.orchestrator_ctx_size !== undefined) loadedConfig.MODELS.ORCHESTRATOR.CTX_SIZE = userSettings.llm.orchestrator_ctx_size;
-        if (userSettings.llm.orchestrator_gpu_layers !== undefined) loadedConfig.MODELS.ORCHESTRATOR.GPU_LAYERS = userSettings.llm.orchestrator_gpu_layers;
-        if (userSettings.llm.orchestrator_max_tokens !== undefined) loadedConfig.MODELS.ORCHESTRATOR.MAX_TOKENS = userSettings.llm.orchestrator_max_tokens;
+        if (parsed.llm.task_model) loadedConfig.MODELS.ORCHESTRATOR.PATH = parsed.llm.task_model;
+        if (parsed.llm.orchestrator_ctx_size !== undefined) loadedConfig.MODELS.ORCHESTRATOR.CTX_SIZE = parsed.llm.orchestrator_ctx_size;
+        if (parsed.llm.orchestrator_gpu_layers !== undefined) loadedConfig.MODELS.ORCHESTRATOR.GPU_LAYERS = parsed.llm.orchestrator_gpu_layers;
+        if (parsed.llm.orchestrator_max_tokens !== undefined) loadedConfig.MODELS.ORCHESTRATOR.MAX_TOKENS = parsed.llm.orchestrator_max_tokens;
 
         // Vision model
-        if (userSettings.llm.vision_model) loadedConfig.MODELS.VISION.PATH = userSettings.llm.vision_model;
-        if (userSettings.llm.vision_projector) loadedConfig.MODELS.VISION.PROJECTOR = userSettings.llm.vision_projector;
-        if (userSettings.llm.vision_ctx_size !== undefined) loadedConfig.MODELS.VISION.CTX_SIZE = userSettings.llm.vision_ctx_size;
-        if (userSettings.llm.vision_gpu_layers !== undefined) loadedConfig.MODELS.VISION.GPU_LAYERS = userSettings.llm.vision_gpu_layers;
-        if (userSettings.llm.vision_max_tokens !== undefined) loadedConfig.MODELS.VISION.MAX_TOKENS = userSettings.llm.vision_max_tokens;
+        if (parsed.llm.vision_model) loadedConfig.MODELS.VISION.PATH = parsed.llm.vision_model;
+        if (parsed.llm.vision_projector) loadedConfig.MODELS.VISION.PROJECTOR = parsed.llm.vision_projector;
+        if (parsed.llm.vision_ctx_size !== undefined) loadedConfig.MODELS.VISION.CTX_SIZE = parsed.llm.vision_ctx_size;
+        if (parsed.llm.vision_gpu_layers !== undefined) loadedConfig.MODELS.VISION.GPU_LAYERS = parsed.llm.vision_gpu_layers;
+        if (parsed.llm.vision_max_tokens !== undefined) loadedConfig.MODELS.VISION.MAX_TOKENS = parsed.llm.vision_max_tokens;
       }
 
       // Load Search Settings (single consolidated block)
-      if (userSettings.search) {
-        if (userSettings.search.strategy) loadedConfig.SEARCH.strategy = userSettings.search.strategy;
-        if (userSettings.search.hide_years_in_tags !== undefined) loadedConfig.SEARCH.hide_years_in_tags = userSettings.search.hide_years_in_tags;
-        if (userSettings.search.whitelist) loadedConfig.SEARCH.whitelist = userSettings.search.whitelist;
-        if (userSettings.search.max_chars_default !== undefined) loadedConfig.SEARCH.max_chars_default = userSettings.search.max_chars_default;
-        if (userSettings.search.max_chars_limit !== undefined) loadedConfig.SEARCH.max_chars_limit = userSettings.search.max_chars_limit;
-        if (userSettings.search.fts_window_size !== undefined) loadedConfig.SEARCH.fts_window_size = userSettings.search.fts_window_size;
-        if (userSettings.search.fts_padding !== undefined) loadedConfig.SEARCH.fts_padding = userSettings.search.fts_padding;
+      if (parsed.search) {
+        if (parsed.search.strategy) loadedConfig.SEARCH.strategy = parsed.search.strategy;
+        if (parsed.search.hide_years_in_tags !== undefined) loadedConfig.SEARCH.hide_years_in_tags = parsed.search.hide_years_in_tags;
+        if (parsed.search.whitelist) loadedConfig.SEARCH.whitelist = parsed.search.whitelist;
+        if (parsed.search.max_chars_default !== undefined) loadedConfig.SEARCH.max_chars_default = parsed.search.max_chars_default;
+        if (parsed.search.max_chars_limit !== undefined) loadedConfig.SEARCH.max_chars_limit = parsed.search.max_chars_limit;
+        if (parsed.search.fts_window_size !== undefined) loadedConfig.SEARCH.fts_window_size = parsed.search.fts_window_size;
+        if (parsed.search.fts_padding !== undefined) loadedConfig.SEARCH.fts_padding = parsed.search.fts_padding;
       }
 
       // Load Server Settings
-      if (userSettings.server) {
-        if (userSettings.server.host) loadedConfig.HOST = userSettings.server.host;
-        if (userSettings.server.port) loadedConfig.PORT = userSettings.server.port;
-        if (userSettings.server.api_key !== undefined) loadedConfig.API_KEY = userSettings.server.api_key;
-        if (userSettings.server.version !== undefined) loadedConfig.VERSION = userSettings.server.version;
-        if (userSettings.github?.token !== undefined) loadedConfig.GITHUB_TOKEN = userSettings.github.token;
+      if (parsed.server) {
+        if (parsed.server.host) loadedConfig.HOST = parsed.server.host;
+        if (parsed.server.port) loadedConfig.PORT = parsed.server.port;
+        if (parsed.server.api_key !== undefined) loadedConfig.API_KEY = parsed.server.api_key;
+        if (parsed.server.version !== undefined) loadedConfig.VERSION = parsed.server.version;
+        if (parsed.github?.token !== undefined) loadedConfig.GITHUB_TOKEN = parsed.github.token;
       }
 
       // Load Resource Management Settings
-      if (userSettings.resource_management) {
-        if (userSettings.resource_management.gc_cooldown_ms !== undefined) loadedConfig.GC_COOLDOWN_MS = userSettings.resource_management.gc_cooldown_ms;
-        if (userSettings.resource_management.max_atoms_in_memory !== undefined) loadedConfig.MAX_ATOMS_IN_MEMORY = userSettings.resource_management.max_atoms_in_memory;
-        if (userSettings.resource_management.monitoring_interval_ms !== undefined) loadedConfig.MONITORING_INTERVAL_MS = userSettings.resource_management.monitoring_interval_ms;
-        if (userSettings.resource_management.cache_ttl_ms !== undefined) loadedConfig.CACHE_TTL_MS = userSettings.resource_management.cache_ttl_ms;
-        if (userSettings.resource_management.max_cache_size !== undefined) loadedConfig.MAX_CACHE_SIZE = userSettings.resource_management.max_cache_size;
+      if (parsed.resource_management) {
+        if (parsed.resource_management.gc_cooldown_ms !== undefined) loadedConfig.GC_COOLDOWN_MS = parsed.resource_management.gc_cooldown_ms;
+        if (parsed.resource_management.max_atoms_in_memory !== undefined) loadedConfig.MAX_ATOMS_IN_MEMORY = parsed.resource_management.max_atoms_in_memory;
+        if (parsed.resource_management.monitoring_interval_ms !== undefined) loadedConfig.MONITORING_INTERVAL_MS = parsed.resource_management.monitoring_interval_ms;
+        if (parsed.resource_management.cache_ttl_ms !== undefined) loadedConfig.CACHE_TTL_MS = parsed.resource_management.cache_ttl_ms;
+        if (parsed.resource_management.max_cache_size !== undefined) loadedConfig.MAX_CACHE_SIZE = parsed.resource_management.max_cache_size;
       }
 
       // Load Watcher Settings
-      if (userSettings.watcher) {
-        if (userSettings.watcher.debounce_ms !== undefined) loadedConfig.WATCHER_DEBOUNCE_MS = userSettings.watcher.debounce_ms;
-        if (userSettings.watcher.stability_threshold_ms !== undefined) loadedConfig.WATCHER_STABILITY_THRESHOLD_MS = userSettings.watcher.stability_threshold_ms;
-        if (userSettings.watcher.extra_paths) loadedConfig.WATCHER_EXTRA_PATHS = userSettings.watcher.extra_paths;
-        if (userSettings.watcher.auto_start !== undefined) loadedConfig.WATCHER_AUTO_START = userSettings.watcher.auto_start;
-        if (userSettings.watcher.wipe_mirrored_brain_on_shutdown !== undefined) loadedConfig.WATCHER_WIPE_MIRRORED_BRAIN_ON_SHUTDOWN = userSettings.watcher.wipe_mirrored_brain_on_shutdown;
+      if (parsed.watcher) {
+        if (parsed.watcher.debounce_ms !== undefined) loadedConfig.WATCHER_DEBOUNCE_MS = parsed.watcher.debounce_ms;
+        if (parsed.watcher.stability_threshold_ms !== undefined) loadedConfig.WATCHER_STABILITY_THRESHOLD_MS = parsed.watcher.stability_threshold_ms;
+        if (parsed.watcher.extra_paths) loadedConfig.WATCHER_EXTRA_PATHS = parsed.watcher.extra_paths;
+        if (parsed.watcher.auto_start !== undefined) loadedConfig.WATCHER_AUTO_START = parsed.watcher.auto_start;
+        if (parsed.watcher.wipe_mirrored_brain_on_shutdown !== undefined) loadedConfig.WATCHER_WIPE_MIRRORED_BRAIN_ON_SHUTDOWN = parsed.watcher.wipe_mirrored_brain_on_shutdown;
       }
 
       // Load Context Relevance Settings
-      if (userSettings.context) {
-        if (userSettings.context.relevance_weight !== undefined) loadedConfig.CONTEXT_RELEVANCE_WEIGHT = userSettings.context.relevance_weight;
-        if (userSettings.context.recency_weight !== undefined) loadedConfig.CONTEXT_RECENCY_WEIGHT = userSettings.context.recency_weight;
+      if (parsed.context) {
+        if (parsed.context.relevance_weight !== undefined) loadedConfig.CONTEXT_RELEVANCE_WEIGHT = parsed.context.relevance_weight;
+        if (parsed.context.recency_weight !== undefined) loadedConfig.CONTEXT_RECENCY_WEIGHT = parsed.context.recency_weight;
       }
 
       // Load Service Settings
-      if (userSettings.services) {
-        if (userSettings.services.vision_server_port !== undefined) loadedConfig.SERVICES.VISION_SERVER_PORT = userSettings.services.vision_server_port;
+      if (parsed.services) {
+        if (parsed.services.vision_server_port !== undefined) loadedConfig.SERVICES.VISION_SERVER_PORT = parsed.services.vision_server_port;
         if (userSettings.services.chat_server_port !== undefined) loadedConfig.SERVICES.CHAT_SERVER_PORT = userSettings.services.chat_server_port;
         if (userSettings.services.tag_infector_unload_timeout !== undefined) loadedConfig.SERVICES.TAG_INFECTOR_UNLOAD_TIMEOUT = userSettings.services.tag_infector_unload_timeout;
         if (userSettings.services.tag_gliner_check_interval !== undefined) loadedConfig.SERVICES.TAG_GLINER_CHECK_INTERVAL = userSettings.services.tag_gliner_check_interval;
