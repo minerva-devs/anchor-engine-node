@@ -215,7 +215,8 @@ async function* collectCompounds(
   const maxRadius = request.max_radius || 10000;
   const effectiveRadius = Math.min(radius, maxRadius);
 
-  const effectiveParams: any[] = [];
+  // Use unknown for DB query parameters — cast to specific types at usage time
+  const effectiveParams: unknown[] = [];
   const joinClauses: string[] = [];
   const whereClauses: string[] = [];
 
@@ -568,7 +569,7 @@ export async function radialDistill(
 ): Promise<RadialDistillResult> {
   const startTime = Date.now();
   const memBefore = process.memoryUsage();
-  let memAfter: any = null;
+  let memAfter: unknown = null;
 
   try {
     const compoundGenerator = collectCompounds(request);
@@ -634,8 +635,8 @@ export async function radialDistill(
 }
 
 // Export for Task 3 integration (memory node assembly) and clean mode support
-export function preprocessCleanResult(result: any): SearchResult {
+export function preprocessCleanResult(result: SearchResult): SearchResult {
   // Strip artifacts from content if present
   result.content = stripArtifacts(result.content || '');
-  return result as SearchResult;
+  return result;
 }

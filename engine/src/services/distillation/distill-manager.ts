@@ -1,17 +1,34 @@
 import { db } from '../../core/db.js';
 
+// Distill metadata interface for type safety
+export interface DistillMetadata {
+  id: string;
+  timestamp: string;
+  filename: string;
+  file_path: string;
+  line_count: number;
+  lines_unique: number;
+  compression_ratio: string;
+  source_sessions: string[];
+  source_files: string[];
+  parameters: Record<string, unknown>;
+  start_byte: number;
+  end_byte: number;
+  file_size: number;
+}
+
 // Track processed molecules to prevent duplicate processing
 const processedMolecules = new Set<string>();
 
 // In-memory cache of recently completed distills (quick lookup for UI polling)
-const distillCache: Record<string, any> = {};
+const distillCache = new Map<string, DistillMetadata>();
 const MAX_CACHE_SIZE = 100;
 
 function pruneCache() {
-  const keys = Object.keys(distillCache);
+  const keys = Array.from(distillCache.keys());
   if (keys.length > MAX_CACHE_SIZE) {
     const oldest = keys.slice(0, keys.length - MAX_CACHE_SIZE);
-    oldest.forEach(k => delete distillCache[k]);
+    oldest.forEach(k => distillCache.delete(k));
   }
 }
 
@@ -22,20 +39,20 @@ export async function getAllDistills(limit = 50) {
       'SELECT id, timestamp, filename, file_path, line_count, lines_unique, compression_ratio, source_sessions, source_files, parameters, start_byte, end_byte, file_size FROM distills ORDER BY timestamp DESC LIMIT $1',
       [limit]
     );
-    return (result.rows || []).map((row: any) => ({
-      id: row.id,
-      timestamp: row.timestamp,
-      filename: row.filename,
-      file_path: row.file_path,
-      line_count: row.line_count,
-      lines_unique: row.lines_unique,
-      compression_ratio: row.compression_ratio,
-      source_sessions: row.source_sessions,
-      source_files: row.source_files,
-      parameters: row.parameters,
-      start_byte: row.start_byte !== undefined && row.start_byte !== null ? row.start_byte : 0,
-      end_byte: row.end_byte !== undefined && row.end_byte !== null ? row.end_byte : 0,
-      file_size: row.file_size !== undefined && row.file_size !== null ? row.file_size : 0,
+    return (result.rows || []).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      timestamp: row.timestamp as string,
+      filename: row.filename as string,
+      file_path: row.file_path as string,
+      line_count: Number(row.line_count),
+      lines_unique: Number(row.lines_unique),
+      compression_ratio: String(row.compression_ratio),
+      source_sessions: Array.isArray(row.source_sessions) ? row.source_sessions as string[] : [],
+      source_files: Array.isArray(row.source_files) ? row.source_files as string[] : [],
+      parameters: (row.parameters as Record<string, unknown>) || {},
+      start_byte: Number((row.start_byte ?? 0) as number),
+      end_byte: Number((row.end_byte ?? 0) as number),
+      file_size: Number((row.file_size ?? 0) as number),
     }));
   } catch {
     // Fall back to in-memory cache if DB unavailable
@@ -80,23 +97,27 @@ export async function getDistillsBySession(session: string) {
       "SELECT * FROM distills WHERE source_sessions ? $1 ORDER BY timestamp DESC",
       [session]
     );
-    return (result.rows || []).map((row: any) => ({
-      id: row.id,
-      timestamp: row.timestamp,
-      filename: row.filename,
-      file_path: row.file_path,
-      line_count: row.line_count,
-      lines_unique: row.lines_unique,
-      compression_ratio: row.compression_ratio,
-      source_sessions: row.source_sessions,
-      source_files: row.source_files,
-      parameters: row.parameters,
-      start_byte: row.start_byte !== undefined && row.start_byte !== null ? row.start_byte : 0,
-      end_byte: row.end_byte !== undefined && row.end_byte !== null ? row.end_byte : 0,
-      file_size: row.file_size !== undefined && row.file_size !== null ? row.file_size : 0,
+    return (result.rows || []).map((row: Record<string, unknown>) => ({
+      id: row.id as string,
+      timestamp: row.timestamp as string,
+      filename: row.filename as string,
+      file_path: row.file_path as string,
+      line_count: Number(row.line_count),
+      lines_unique: Number(row.lines_unique),
+      compression_ratio: String(row.compression_ratio),
+      source_sessions: Array.isArray(row.source_sessions) ? row.source_sessions as string[] : [],
+      source_files: Array.isArray(row.source_files) ? row.source_files as string[] : [],
+      parameters: (row.parameters as Record<string, unknown>) || {},
+      start_byte: Number((row.start_byte ?? 0) as number),
+      end_byte: Number((row.end_byte ?? 0) as number),
+      file_size: Number((row.file_size ?? 0) as number),
     }));
   } catch {
-    return Object.values(distillCache).filter((d: any) => d.session === session);
+    return Object.values(distillCache).filter((d: DistillMetadata) => {
+      // Check if session matches any of the stored source_sessions
+      const sessions = Array.isArray(d.source_sessions) ? d.source_sessions : [];
+      return sessions.includes(session);
+    });
   }
 }
 
@@ -112,9 +133,9 @@ export async function deleteDistill(id: string) {
 }
 
 /** Record a completed distill — writes metadata to DB and cache */
-export async function recordDistill(distill: any) {
+export async function recordDistill(distill: DistillMetadata) {
   // Always update cache for quick UI polling
-  distillCache[distill.id] = distill;
+  distillCache.set(distill.id, distill);
   pruneCache();
 
   // Write metadata to distills table (pointers only, not full content)
@@ -136,15 +157,15 @@ export async function recordDistill(distill: any) {
           distill.timestamp || new Date().toISOString(),
           distill.filename || `distill-${distill.id}.md`,
           distill.file_path || '',
-          distill.line_count || distill.stats?.lines_total || 0,
-          distill.lines_unique || distill.stats?.lines_unique || 0,
-          distill.compression_ratio || distill.stats?.compression_ratio || '0',
-          JSON.stringify(distill.source_sessions || []),
-          JSON.stringify(distill.source_files || []),
-          JSON.stringify(distill.parameters || {}),
-          distill.start_byte !== undefined ? distill.start_byte : 0,
-          distill.end_byte !== undefined ? distill.end_byte : (distill.output?.size_bytes || 0),
-          distill.file_size !== undefined ? distill.file_size : (distill.output?.size_bytes || 0),
+          distill.line_count || 0,
+          distill.lines_unique || 0,
+          distill.compression_ratio || '0',
+          JSON.stringify(distill.source_sessions),
+          JSON.stringify(distill.source_files),
+          JSON.stringify(distill.parameters),
+          distill.start_byte ?? 0,
+          distill.end_byte ?? 0,
+          distill.file_size ?? 0,
         ]
       );
       console.log('[distill-manager] Distill recorded to DB:', distill.id);
