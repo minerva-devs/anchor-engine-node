@@ -12,7 +12,6 @@
     <script src="https://unpkg.com/@babel/standalone@7.26.0/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://unpkg.com/lucide@latest/icons/github.js" type="module"></script>
     <script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
     <style>
         :root {
@@ -277,7 +276,7 @@
                         <h1 className="text-lg font-semibold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                             Anchor Engine
                         </h1>
-                        <p className="text-xs text-gray-500 font-mono">v5.0.0</p>
+                        <p className="text-xs text-gray-500 font-mono">v5.3.0</p>
                     </div>
                     {isDbEmpty && (
                         <div className="ml-4 flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/30">
@@ -416,7 +415,7 @@
                         <h1 className="text-base font-semibold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
                             Anchor Engine
                         </h1>
-                        <p className="text-xs text-gray-500 font-mono">v5.0.0</p>
+                        <p className="text-xs text-gray-500 font-mono">v5.3.0</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1085,8 +1084,6 @@
                 if (resultsContainer) {
                     resultsContainer.scrollTop = 0;
                 }
-                // Refresh lucide icons
-                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 50);
             };
 
             const nextPage = () => goToPage(currentPage + 1);
@@ -3437,7 +3434,10 @@
             }, []);
 
             useEffect(() => {
-                setTimeout(() => { try { lucide?.createIcons(); } catch(e) {} }, 100);
+                const id = requestAnimationFrame(() => {
+                    try { lucide?.createIcons(); } catch(e) {}
+                });
+                return () => cancelAnimationFrame(id);
             }, [route, showResearch, showGithub, isDrawerOpen]);
 
             if (isLoading) {
