@@ -96,6 +96,9 @@ export async function startWatchdog(customPaths?: string[]): Promise<void> {
         watcher = chokidar.watch([inbox, externalInbox], {
             ignored: IGNORE_PATTERNS,
             ignoreInitial: true,
+            usePolling: true,
+            interval: 1000,
+            followSymlinks: false,
         });
 
         watcher.on('add', (filePath: string) => {

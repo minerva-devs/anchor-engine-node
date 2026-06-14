@@ -429,6 +429,9 @@ export class AtomizerService {
             const molecules: Molecule[] = [];
             const allAtomsMap = new Map<string, Atom>();
 
+            // Yield after split to give event loop a chance
+            await new Promise(resolve => setImmediate(resolve));
+
             // Add System Atoms to global map
             systemAtoms.forEach(a => allAtomsMap.set(a.id, a));
 
@@ -444,16 +447,18 @@ export class AtomizerService {
 const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50, min 5% // Log every 10% or every 100
 
             // Process molecules in batches to yield to event loop
+            // Yield every 10 molecules for large files to prevent event loop starvation
+            const yieldInterval = totalMolecules > 1000 ? 10 : 100;
             for (let i = 0; i < moleculeParts.length; i++) {
                 const part = moleculeParts[i];
                 const { content: text, start, end, timestamp: partTimestamp } = part;
 
-                // Progress logging and yield every 100 molecules
+                // Progress logging and yield every N molecules
                 if (i % progressInterval === 0 && i > 0) {
                     const pct = ((i / totalMolecules) * 100).toFixed(0);
                     console.log(`[Atomizer] ⏱️ Enriching: ${pct}% (${i}/${totalMolecules}) - ${((Date.now() - enrichStart) / 1000).toFixed(1)}s`);
                 }
-                if (i % 100 === 0) {
+                if (i % yieldInterval === 0) {
                     await new Promise(resolve => setImmediate(resolve));
                 }
 
@@ -1255,8 +1260,8 @@ const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50
         if (filePath.endsWith('.csv') || filePath.endsWith('.json') || filePath.endsWith('.yaml') || filePath.endsWith('.yml')) return 'data';
         if (filePath.match(/\.(ts|js|py|rs|go|cpp|h|c)$/)) return 'code';
 
-        // 2. Large file safety: treat files > 5MB as data to avoid regex timeout
-        if (text.length > 5 * 1024 * 1024) {
+        // 2. Large file safety: treat files >= 1MB as data to avoid regex timeout (chunks already split)
+        if (text.length >= 1 * 1024 * 1024) {
             console.log(`[Atomizer] Large file (${(text.length / (1024 * 1024)).toFixed(1)}MB) - using data strategy for performance`);
             return 'data';
         }
