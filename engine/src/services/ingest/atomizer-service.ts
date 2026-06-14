@@ -868,8 +868,12 @@ const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50
         const MIN_FREQ = 3;
         const MIN_LENGTH = 3;
         const MAX_KEYWORDS = 200;
+        const SAMPLE_LIMIT = 1024 * 1024; // Sample first 1MB to avoid blocking on giant files
 
-        const words = content.toLowerCase()
+        // Sample from the beginning of the file — representative for keyword extraction
+        const sample = content.length > SAMPLE_LIMIT ? content.substring(0, SAMPLE_LIMIT) : content;
+
+        const words = sample.toLowerCase()
             .split(/[^a-z0-9]+/)
             .filter(w => w.length >= MIN_LENGTH && !this.isCommonWord(w) && !/^\d+$/.test(w));
 
@@ -884,7 +888,7 @@ const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50
             .slice(0, MAX_KEYWORDS);
 
         const bigramFreq = new Map<string, number>();
-        const tokens = content.toLowerCase().split(/[^a-z0-9]+/);
+        const tokens = sample.toLowerCase().split(/[^a-z0-9]+/);
         for (let i = 0; i < tokens.length - 1; i++) {
             const w1 = tokens[i];
             const w2 = tokens[i + 1];
