@@ -19,21 +19,19 @@ export function setupDistillRoutes(app: Application) {
     try {
       const body = req.body as RadialDistillRequest;
 
-      // Validate seed query is non-empty (P1: prevent empty-seed distillation)
-      if (!body.seed?.query || typeof body.seed.query !== 'string' || !body.seed.query.trim()) {
-        StructuredLogger.warn('DISTILL_VALIDATION', {
-          message: 'Rejected distill with empty/missing seed query',
-          seed: body.seed,
-        });
-        res.status(400).json({
-          error: 'Invalid request',
-          message: 'seed.query is required and must be a non-empty string',
-        });
-        return;
-      }
+      // When no seed query: distill across the entire corpus rather than
+      // rejecting. The dedup pipeline produces ~3x compression (per benchmarks:
+      // 222K molecules → 34.5K unique lines at 3.78:1 ratio). Full-corpus
+      // distillation takes ~200s for a ~300K-molecule corpus — the timeout
+      // reflects this. Callers can pass max_molecules to limit scope.
+      const isSeedless = !body.seed?.query || !body.seed.query.trim();
 
       const bodyWithDefaults = { ...body, auto_save: true };
-      const timeoutMs = Math.min((body.timeout_seconds || 30) * 1000, 120000);
+      // Full-corpus (seedless) distillation can legitimately take minutes.
+      // Benchmarks: 222K molecules distilled in 197s (docs/benchmarks.md).
+      // Use the caller's timeout if provided, otherwise 300s for full corpus.
+      const defaultTimeout = isSeedless ? 300 : 120;
+      const timeoutMs = Math.min((body.timeout_seconds || defaultTimeout) * 1000, 600000);
 
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error(`Distillation timed out after ${timeoutMs}ms`)), timeoutMs);

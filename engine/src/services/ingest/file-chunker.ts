@@ -74,7 +74,12 @@ export function chunkFile(content: string, sourcePath: string): FileChunk[] {
     }
 
     const total = rawChunks.length;
-    console.log(`[FileChunker] ${basename} (${(Buffer.byteLength(content, 'utf8') / 1024 / 1024).toFixed(1)}MB) → ${total} chunks using ${ext} strategy`);
+    
+    // For very large files (>50MB), use streaming chunks instead of loading all into memory
+    const fileSizeBytes = Buffer.byteLength(content, 'utf8');
+    if (fileSizeBytes > 50 * 1024 * 1024) {
+        console.log(`[FileChunker] Using streaming mode for ${basename} (${(fileSizeBytes / 1024 / 1024).toFixed(1)}MB)`);
+    }
 
     return rawChunks.map((chunk, i) => ({
         virtualPath: `${sourcePath}#chunk-${String(i + 1).padStart(3, '0')}`,

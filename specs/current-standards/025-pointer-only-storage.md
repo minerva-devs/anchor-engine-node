@@ -1,4 +1,4 @@
-# Standard 021: Pointer-Only Storage
+# Standard 025: Pointer-Only Storage
 
 **Status:** Active  
 **Date:** 2026-03-25  

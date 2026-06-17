@@ -96,10 +96,11 @@
       "date_extractor_scan_limit": 2000
     },
     "database": {
-      "wipe_on_startup": true,
+      "wipe_on_startup": false,
       "shared_buffers_mb": 256,
       "effective_cache_size_mb": 512,
-      "work_mem_mb": 16
+      "work_mem_mb": 16,
+      "maintenance_work_mem_mb": 256
     },
     "memory": {
       "heap_pressure_mb": 3000,
@@ -175,5 +176,55 @@
       "structured": true,
       "log_to_file": true,
       "log_dir": "${anchor_root}/logs"
+    },
+    "streaming": {
+      "_description": "Streaming ingestion for large files (>10 MB). Reads files in windows instead of loading entire content into memory, keeping the event loop free for API requests during ingestion.",
+      "enabled": true,
+      "stream_threshold_bytes": 10485760,
+      "window_bytes": 1048576,
+      "lookahead_bytes": 65536,
+      "yield_interval_ms": 0,
+      "_stream_threshold_help": "Files larger than this use streaming path (default 10 MB)",
+      "_window_help": "Bytes to read per window from disk (default 1 MB)",
+      "_lookahead_help": "Extra bytes past window to find sentence boundary (default 64 KB)",
+      "_yield_help": "Milliseconds to yield event loop between windows (0 = setImmediate)"
+    },
+    "worker_threads": {
+      "_description": "Offload CPU-heavy ingestion to a separate thread so the main thread stays 100% responsive. Currently experimental — streaming path handles most cases.",
+      "enabled": false,
+      "max_workers": 1,
+      "ingest_queue_max": 100,
+      "_max_workers_help": "Number of worker threads for ingestion (1 is sufficient for most cases)",
+      "_ingest_queue_help": "Max files to queue before backpressure is applied"
+    },
+    "cron": {
+      "_description": "Scheduled tasks for periodic maintenance and data refresh.",
+      "enabled": false,
+      "daily_scrape_hour": 3,
+      "synonym_regeneration_hour": 4,
+      "db_vacuum_hour": 5,
+      "cache_prune_interval_minutes": 60,
+      "_daily_scrape_help": "Hour of day (0-23) to run the daily web scraper for external-inbox sources",
+      "_synonym_help": "Hour of day to regenerate synonym rings from corpus",
+      "_db_vacuum_help": "Hour of day to VACUUM ANALYZE the PGlite database",
+      "_cache_prune_help": "How often to prune stale entries from LRU caches"
     }
+  },
+  "distiller": {
+    "similarity_threshold": 0.85,
+    "output_format": "decision-records"
+  },
+  "distillation": {
+    "_description": "Full-corpus distillation batch processing. The batch size is auto-tuned: min(config.batch_size, heap * heap_fraction / bytes_per_molecule, batch_ceiling).",
+    "batch_size": 5000,
+    "_batch_size_help": "Target molecules per batch query (default 5000 ≈ 10MB heap)",
+    "batch_ceiling": 20000,
+    "_batch_ceiling_help": "Hard upper limit regardless of available heap (prevents OOM on very large heaps)",
+    "heap_fraction": 0.25,
+    "_heap_fraction_help": "Fraction of available V8 heap to allocate to distillation (0.25 = 25%)",
+    "bytes_per_molecule": 2048,
+    "_bytes_per_molecule_help": "Estimated heap bytes per molecule during context inflation (2048 = 2KB)",
+    "batch_floor": 1000,
+    "_batch_floor_help": "Minimum batch size even on very constrained heaps (prevents infinite loops)"
   }
+}

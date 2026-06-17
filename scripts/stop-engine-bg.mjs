@@ -17,10 +17,10 @@
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import net from 'net';
 
-const PROJECT_ROOT = process.cwd();
-const LOGS_DIR = path.join(PROJECT_ROOT, '.anchor', 'logs');
+const LOGS_DIR = path.join(os.homedir(), '.anchor', 'logs');
 const DEFAULT_PORT = 3160;
 
 // Ensure logs directory exists

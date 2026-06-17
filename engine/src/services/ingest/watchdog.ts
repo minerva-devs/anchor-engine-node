@@ -16,6 +16,7 @@ import { config } from '../../config/index.js';
 import { pathManager } from '../../utils/path-manager.js';
 import { systemStatus } from '../system-status.js';
 import { needsChunking, chunkFile } from './file-chunker.js';
+import { streamFileIntoChunks, STREAM_THRESHOLD_BYTES } from './streaming-file-chunker.js';
 
 let watcher: chokidar.FSWatcher | null = null;
 const IGNORE_PATTERNS = /(^|[\/\\])\../; // Ignore dotfiles
@@ -40,30 +41,42 @@ interface IngestionRecord {
 const ingestionLog: IngestionRecord[] = [];
 let totalIngestionTime = 0;
 let fileCount = 0;
+let streamingFileWasProcessed = false; // prevent post-ingestion synonym generation on large corpora
 
 async function triggerPostIngestionSynonyms() {
+    // Skip entirely if a streaming file was processed in this session.
+    // The synonym generator scans ALL atoms and blocks the event loop for
+    // minutes on 184K+ atom corpora — safe to defer to next restart.
+    if (streamingFileWasProcessed) {
+        console.log('[Watchdog] Synonym generation skipped (streaming file processed this session)');
+        return;
+    }
     // Clear any pending timeout
     if (ingestionTimeout) {
         clearTimeout(ingestionTimeout);
     }
 
-    // Set new timeout to generate synonyms after ingestion stops
-    ingestionTimeout = setTimeout(async () => {
-        console.log('[Watchdog] Post-ingestion synonym generation starting...');
-        try {
-            const { AutoSynonymGenerator } = await import('../synonyms/auto-synonym-generator.js');
-            const generator = new AutoSynonymGenerator();
-            const synonyms = await generator.generateSynonymRings();
-            const synonymDir = path.join(pathManager.getDatabasePath(), 'synonyms');
-            if (!fs.existsSync(synonymDir)) {
-                fs.mkdirSync(synonymDir, { recursive: true });
+    // Set new timeout to generate synonyms after ingestion stops.
+    // Wrapped in setImmediate so the current ingestion response can complete
+    // before the heavy synonym computation begins, keeping the engine responsive.
+    ingestionTimeout = setTimeout(() => {
+        setImmediate(async () => {
+            console.log('[Watchdog] Post-ingestion synonym generation starting...');
+            try {
+                const { AutoSynonymGenerator } = await import('../synonyms/auto-synonym-generator.js');
+                const generator = new AutoSynonymGenerator();
+                const synonyms = await generator.generateSynonymRings();
+                const synonymDir = path.join(pathManager.getDatabasePath(), 'synonyms');
+                if (!fs.existsSync(synonymDir)) {
+                    fs.mkdirSync(synonymDir, { recursive: true });
+                }
+                const synonymPath = path.join(synonymDir, 'synonym-ring-auto.json');
+                await generator.saveSynonymRings(synonyms, synonymPath);
+                console.log(`[Watchdog] ✅ Post-ingestion synonym rings saved to ${synonymPath}`);
+            } catch (error: any) {
+                console.warn('[Watchdog] Post-ingestion synonym generation failed:', error.message);
             }
-            const synonymPath = path.join(synonymDir, 'synonym-ring-auto.json');
-            await generator.saveSynonymRings(synonyms, synonymPath);
-            console.log(`[Watchdog] ✅ Post-ingestion synonym rings saved to ${synonymPath}`);
-        } catch (error: any) {
-            console.warn('[Watchdog] Post-ingestion synonym generation failed:', error.message);
-        }
+        });
     }, INGESTION_DEBOUNCE_MS);
 }
 
@@ -447,34 +460,32 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
     systemStatus.setState('ingesting', `Processing: ${path.basename(filePath)}`);
 
     try {
-        const buffer = await fs.promises.readFile(filePath);
-        if (buffer.length === 0) return { ingested: false, reason: 'empty_file' };
+        const stat = fs.statSync(filePath);
+        if (stat.size === 0) return { ingested: false, reason: 'empty_file' };
 
-        // 1. Calculate File Hash (Raw)
-        const fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
         const relativePath = path.relative(NOTEBOOK_DIR, filePath);
-        const content = buffer.toString('utf8');
 
-        // 2. Check Source Table (Change Detection)
+        // Lightweight dedup for large streaming files — avoids reading the
+        // entire file just for a hash. Uses mtime + size as a fingerprint.
+        // Small files still use full SHA-256 hash for precision.
+        const USE_STREAMING = stat.size > STREAM_THRESHOLD_BYTES && config.STREAMING?.ENABLED !== false;
+        if (USE_STREAMING) streamingFileWasProcessed = true;
+        let fileHash: string;
+
+        if (USE_STREAMING) {
+            fileHash = `stream:${stat.mtimeMs}:${stat.size}`;
+        } else {
+            const buffer = await fs.promises.readFile(filePath);
+            fileHash = crypto.createHash('sha256').update(buffer).digest('hex');
+        }
+
+        // --- Change Detection ---
         const sourceQuery = 'SELECT path, hash FROM sources WHERE path = $1';
         const sourceResult = await db.run(sourceQuery, [relativePath]);
 
-        // Handle potential null result
-        if (!sourceResult || !sourceResult.rows) {
-            console.log(`[Watchdog] No existing record for path: ${relativePath}`);
-        }
-
-        if (sourceResult && sourceResult.rows && sourceResult.rows.length > 0) {
+        if (sourceResult?.rows?.length > 0) {
             const row = sourceResult.rows[0];
-            // Handle both array and object formats that PGlite might return
-            let existingHash;
-            if (Array.isArray(row)) {
-                // Row is in array format [path, hash]
-                existingHash = row[1];
-            } else {
-                // Row is in object format {path, hash}
-                existingHash = row.hash;
-            }
+            const existingHash = Array.isArray(row) ? row[1] : row.hash;
             if (existingHash === fileHash) {
                 console.log(`[Watchdog] File unchanged (hash match): ${relativePath}`);
                 systemStatus.setState('idle');
@@ -482,7 +493,7 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
             }
         }
 
-        console.log(`[Watchdog] Processing Pipeline: ${relativePath}`);
+        console.log(`[Watchdog] Processing Pipeline: ${relativePath} (${(stat.size / 1024 / 1024).toFixed(1)}MB${USE_STREAMING ? ', streaming' : ''})`);
         systemStatus.setProgress(0, 100, 'Starting ingestion...');
 
         // 3. DETERMINE METADATA
@@ -523,85 +534,156 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
         let totalAtomsCount = 0;
         const filename = relativePath.split(/[/\\]/).pop() || relativePath;
 
-        // Auto-populate keyword list from corpus content when no keyword file exists
-        // This enables tag-based search without manual keyword configuration
-        const keywords = atomizer.extractKeywordsFromContent(content);
-        if (keywords.length > 0) {
-            atomizer.setKeywords(keywords);
+        // Extract keywords from first chunk(s) of content for tag-based search.
+        // For streaming files: sample first 1MB. For non-streaming: use full content.
+        if (!USE_STREAMING) {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            const keywords = atomizer.extractKeywordsFromContent(content);
+            if (keywords.length > 0) atomizer.setKeywords(keywords);
         }
 
-        if (needsChunking(content)) {
-            const chunks = chunkFile(content, relativePath);
-            console.log(`[Watchdog] 🧩 Chunking ${relativePath} into ${chunks.length} chunks`);
-            
-            for (let i = 0; i < chunks.length; i++) {
-                const chunk = chunks[i];
-                systemStatus.setProgress(i, chunks.length, `Atomizing chunk ${chunk.index}/${chunk.total}...`);
-                
+        // ─── Streaming path (files > 10 MB) ───────────────────────────
+        if (USE_STREAMING) {
+            console.log(`[Watchdog] 🌊 Streaming ingestion: ${filename}`);
+            const ingestStart = Date.now();
+            let keywordsExtracted = false;
+
+            for await (const chunk of streamFileIntoChunks(
+                filePath,
+                (progress) => {
+                    systemStatus.setProgress(
+                        progress.bytesRead,
+                        progress.totalBytes,
+                        `Streaming: ${progress.percentComplete}% (${progress.chunksEmitted} chunks)`,
+                    );
+                },
+            )) {
+                // Extract keywords from first chunk only (avoids scanning GBs)
+                if (!keywordsExtracted) {
+                    const kw = atomizer.extractKeywordsFromContent(chunk.content);
+                    if (kw.length > 0) atomizer.setKeywords(kw);
+                    keywordsExtracted = true;
+                }
+
                 const atomizeResult = await atomizer.atomize(
                     chunk.content,
                     chunk.virtualPath,
                     provenance,
                 );
-                
+
                 if (!atomizeResult) {
                     console.log(`[Watchdog] ⚠️ SKIP: ${chunk.virtualPath} - Transient data in chunk, skipping`);
                     continue;
                 }
-                
+
                 const { compound, molecules, atoms } = atomizeResult;
-                if (!finalCompound) {
-                    finalCompound = compound; // Use first chunk's compound for mirroring logic
-                }
-                
+                if (!finalCompound) finalCompound = compound;
+
                 totalAtomsCount += atoms.length;
-                
-                // Ingest chunk result
+
                 await atomicIngest.ingestResult(
                     compound,
                     molecules,
                     atoms,
                     [bucket],
-                    (step: number, total: number, description: string) => {
+                    (step, total, desc) => {
                         systemStatus.setProgress(
-                            i,
-                            chunks.length,
-                            `Ingesting chunk ${chunk.index}/${chunk.total} (${description})`
+                            chunk.index,
+                            chunk.total,
+                            `Ingesting chunk ${chunk.index}/${chunk.total} (${desc})`,
                         );
-                    }
+                    },
                 );
-                
-                // Yield to the event loop between chunks so that searches/other queries can execute
-                await new Promise(resolve => setTimeout(resolve, 50));
-            }
-        } else {
-            // 4. ATOMIZE (Legacy Pipeline - Non-chunked)
-            const atomizeResult = await atomizer.atomize(
-                content,
-                relativePath,
-                provenance,
-            );
 
-            // Skip ingestion if transient data was detected
-            if (!atomizeResult) {
-                console.log(`[Watchdog] ⚠️ SKIP: ${relativePath} - Transient data, skipping ingestion`);
-                return { ingested: false, reason: 'transient_data' };
-            }
+                // Yield to event loop between chunks — keeps API responsive
+                await new Promise(resolve => setImmediate(resolve));
 
-            const { compound, molecules, atoms } = atomizeResult;
-            finalCompound = compound;
-            totalAtomsCount = atoms.length;
-
-            // 5. INGEST (Atomic) with progress tracking
-            await atomicIngest.ingestResult(
-                compound,
-                molecules,
-                atoms,
-                [bucket],
-                (step: number, total: number, description: string) => {
-                    systemStatus.setProgress(step, total, `${filename}: ${description}`);
+                // Force GC + PGlite checkpoint every 10 chunks to prevent WASM heap OOM.
+                // Without this, the WASM linear memory fills up after ~70 chunks (~70MB
+                // of raw text → hundreds of thousands of persisted rows) and crashes with
+                // "memory access out of bounds".
+                if (chunk.index % 10 === 0) {
+                    try {
+                        await db.run('CHECKPOINT');
+                        if (typeof (global as any).gc === 'function') (global as any).gc();
+                        console.log(`[Watchdog] 🧹 GC + checkpoint after chunk ${chunk.index}`);
+                    } catch {}
                 }
-            );
+            }
+
+            const elapsed = ((Date.now() - ingestStart) / 1000).toFixed(1);
+            console.log(`[Watchdog] ✅ Streaming complete: ${totalAtomsCount} atoms in ${elapsed}s`);
+        } else {
+            // ─── Small-file path (≤ 10 MB) — existing behavior ─────────
+            const content = fs.readFileSync(filePath, 'utf-8');
+
+            if (needsChunking(content)) {
+                const chunks = chunkFile(content, relativePath);
+                console.log(`[Watchdog] 🧩 Chunking ${relativePath} into ${chunks.length} chunks`);
+
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunk = chunks[i];
+                    systemStatus.setProgress(i, chunks.length, `Atomizing chunk ${chunk.index}/${chunk.total}...`);
+
+                    const atomizeResult = await atomizer.atomize(
+                        chunk.content,
+                        chunk.virtualPath,
+                        provenance,
+                    );
+
+                    if (!atomizeResult) {
+                        console.log(`[Watchdog] ⚠️ SKIP: ${chunk.virtualPath} - Transient data in chunk, skipping`);
+                        continue;
+                    }
+
+                    const { compound, molecules, atoms } = atomizeResult;
+                    if (!finalCompound) finalCompound = compound;
+
+                    totalAtomsCount += atoms.length;
+
+                    await atomicIngest.ingestResult(
+                        compound,
+                        molecules,
+                        atoms,
+                        [bucket],
+                        (step, total, desc) => {
+                            systemStatus.setProgress(
+                                i,
+                                chunks.length,
+                                `Ingesting chunk ${chunk.index}/${chunk.total} (${desc})`,
+                            );
+                        },
+                    );
+
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+            } else {
+                // Single-file atomize (no chunking needed)
+                const atomizeResult = await atomizer.atomize(
+                    content,
+                    relativePath,
+                    provenance,
+                );
+
+                if (!atomizeResult) {
+                    console.log(`[Watchdog] ⚠️ SKIP: ${relativePath} - Transient data, skipping ingestion`);
+                    return { ingested: false, reason: 'transient_data' };
+                }
+
+                const { compound, molecules, atoms } = atomizeResult;
+                finalCompound = compound;
+                totalAtomsCount = atoms.length;
+
+                await atomicIngest.ingestResult(
+                    compound,
+                    molecules,
+                    atoms,
+                    [bucket],
+                    (step, total, desc) => {
+                        systemStatus.setProgress(step, total, `${filename}: ${desc}`);
+                    },
+                );
+            }
         }
 
         // 6. Update Source Table
@@ -630,21 +712,34 @@ async function processFile(filePath: string, event: string): Promise<{ ingested:
             console.warn('[Watchdog] Could not invalidate search cache:', e);
         }
 
-        // Trigger Mirror: write cleaned content from original file (Standard 051 - Pointer Only)
+        // Mirror write: for streaming files, skip — the content was already processed
+        // from the original file chunk-by-chunk. Trying to read the full 237MB file
+        // again with readFileSync blocks the event loop after ingestion completes.
+        // Small files still get the mirror treatment for sanitized copies.
         try {
-            const { writeMirroredFile } = await import('../mirror/mirror.js');
-            const fsLocal = await import('fs');
-            const originalContent = fsLocal.readFileSync(filePath, 'utf-8');
-            if (finalCompound && originalContent) {
-                // NOTE: arguments are (relativePath, content, provenance) - path first, content second
-                await writeMirroredFile(relativePath, originalContent, provenance);
+            if (!USE_STREAMING) {
+                const { writeMirroredFile } = await import('../mirror/mirror.js');
+                const content = fs.readFileSync(filePath, 'utf-8');
+                if (finalCompound && content) {
+                    await writeMirroredFile(relativePath, content, provenance);
+                }
+            } else {
+                console.log(`[Watchdog] Skipping mirror write for streaming file (chunks processed from original)`);
             }
         } catch (e: any) {
             console.warn(`[Watchdog] Mirror write failed for ${relativePath}:`, e.message);
         }
 
-        // Trigger post-ingestion synonym generation (debounced)
-        triggerPostIngestionSynonyms();
+        // Trigger post-ingestion synonym generation (debounced).
+        // Skip entirely when streaming was used anywhere in this processFile
+        // call — the small inbox files processed after a large streaming file
+        // would otherwise trigger synonym generation against the full 184K+
+        // atom corpus, blocking the event loop for minutes.
+        if (!USE_STREAMING) {
+            triggerPostIngestionSynonyms();
+        } else {
+            console.log(`[Watchdog] Skipping synonym generation (streaming file — deferred to next restart)`);
+        }
 
         // Reset system status to idle after ingestion completes
         if (typeof (global as any).gc === 'function') (global as any).gc();

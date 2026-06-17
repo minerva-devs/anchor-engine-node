@@ -209,4 +209,4 @@ Tasks are complete when:
 
 **Repository:** https://github.com/RSBalchII/anchor-engine-node  
 **Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)  
-**Standards:** [specs/current-standards/](current-standards/) — 34 active standards
+**Standards:** [specs/current-standards/](current-standards/) — 38 active standards

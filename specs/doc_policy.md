@@ -85,7 +85,7 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `DATA-MODEL.md` | Data model: Compound → Molecule → Atom → Tag hierarchy |
 
 **Subdirectories:**
-- `current-standards/` - 38 active architecture standards (flat directory, numbered 001–038)
+- `current-standards/` - 38 active architecture standards (flat directory, numbered 001–038). **README.md is allowed here as a quick-reference index for the standards.**
 - `INTEGRATIONS/` - Integration specifications (MCP)
 
 **PROHIBITED in specs root:**
@@ -109,6 +109,7 @@ Documentation in Anchor Engine must be **concise**, **accurate**, and **maintain
 | `star-algebra-reference.md` | STAR algebra reference and search algorithm details |
 | `benchmarks.md` | Performance benchmark documentation |
 | `process-pipeline-refactor.md` | Processing pipeline refactoring notes |
+| `streaming-ingestion-test-plan.md` | Streaming ingestion test plan for local agents |
 | `DOC_AUDIT_REPORT.md` | Latest documentation audit report (June 2026) |
 
 **Subdirectories:**
@@ -274,6 +275,8 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 | Version | Date | Changes |
 |---------|------|---------|
+|| 2.6 | 2026-06-16 | Allowed README.md as quick-reference index in current-standards/. Removed agent-skills directory — consolidated skills into existing specs/standards structure. Streamlined policy by removing redundant agent skill documentation. |
+| 2.4 | 2026-06-14 | Added streaming ingestion architecture (streaming-file-chunker.ts), removed stale schema-migration.sql, added streaming/worker_threads/cron to user_settings template, fixed ghost Standard 110/111→024 references, enabled empty-seed full-corpus distillation, added docs/streaming-ingestion-test-plan.md, deleted root clutter (0, build_errors.txt) |
 | 2.4 | 2026-06-13 | Renumbered standards 001-038 (unique), removed dead root core/services, dropped packages/, updated docs/ inventory, synced all versions to 5.3.0 |
 | 2.3 | 2026-06-10 | Flattened standards (38, no subdirectories), merged ARCHITECTURE.md into spec.md, removed archive-legacy and decisions references, updated docs/ section to match reality, added restored docs files, dropped PM2, switched to pnpm-only |
 | 2.2 | 2026-06-05 | Cleaned WASM/NAPI references, fixed duplicate sections, updated standards count |
@@ -283,6 +286,6 @@ Move root-level documentation to appropriate `docs/` subdirectories:
 
 ---
 
-**Last Updated:** June 13, 2026
-**Version:** 2.4
+**Last Updated:** June 16, 2026
+**Version:** 2.6
 **Status:** ✅ Active

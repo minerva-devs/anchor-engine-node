@@ -1,4 +1,4 @@
-# Standard 020: Ephemeral Database Architecture
+# Standard 024: Ephemeral Database Architecture
 
 **Status:** Active  
 **Date:** 2026-03-23  
@@ -412,7 +412,7 @@ pnpm restart
 
 - Standard 007: PGlite Memory Optimization
 - Standard 012: Data Integrity (Operation State Machine)
-- Standard 110: Mirror Protocol (referenced in code comments)
+- Standard 024 (this document): Mirror Protocol and ephemeral database wipe/rebuild
 - `engine/src/core/db.ts`: Database initialization and wipe logic
 - `engine/src/services/mirror/mirror.ts`: Mirror Protocol implementation
 - `docs/TROUBLESHOOTING.md`: Operational troubleshooting guide

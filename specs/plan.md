@@ -547,7 +547,7 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 - ✅ README - Quick start works
 - ✅ Whitepaper - Architecture explained
-- ✅ Standards - 34 active standards in `specs/current-standards/`
+- ✅ Standards - 38 active standards in `specs/current-standards/`
 - ✅ Examples - Usage examples provided
 
 ---
@@ -566,5 +566,5 @@ The anchor-engine-node repository is **security-conscious** with robust validati
 
 **Repository:** https://github.com/RSBalchII/anchor-engine-node
 **Whitepaper:** [docs/whitepaper.md](../docs/whitepaper.md)
-**Standards:** [specs/current-standards/](current-standards/) — 34 active standards
+**Standards:** [specs/current-standards/](current-standards/) — 38 active standards
 **Production Status:** ✅ Ready (February 20, 2026) + Security Hardening Complete + v5.2.0 Streaming & Observability

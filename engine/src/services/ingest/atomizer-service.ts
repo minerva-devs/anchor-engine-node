@@ -420,7 +420,9 @@ export class AtomizerService {
             const splitStart = Date.now();
             const type = this.detectMoleculeType(cleanContent, sourcePath); // Determine main type
 
-            // Pass type to optimize splitting strategy
+            // Log chunk count and content size before splitting for diagnostics
+            console.log(`[Atomizer] ⏱️ Splitting ${(cleanContent.length / (1024 * 1024)).toFixed(2)}MB into molecules (${type} strategy)`);
+            
             const moleculeParts = this.splitIntoMolecules(cleanContent, type);
             console.log(`[Atomizer] ⏱️ Split into ${moleculeParts.length} molecules: ${((Date.now() - splitStart) / 1000).toFixed(2)}s`);
 
@@ -447,8 +449,8 @@ export class AtomizerService {
 const progressInterval = Math.min(50, Math.ceil(totalMolecules / 20)); // Max 50, min 5% // Log every 10% or every 100
 
             // Process molecules in batches to yield to event loop
-            // Yield every 10 molecules for large files to prevent event loop starvation
-            const yieldInterval = totalMolecules > 1000 ? 10 : 100;
+            // Yield every 5 molecules for large files (>1M molecules) to prevent event loop starvation
+            const yieldInterval = totalMolecules > 1000 ? Math.min(10, Math.max(5, Math.ceil(totalMolecules / 1000))) : 100;
             for (let i = 0; i < moleculeParts.length; i++) {
                 const part = moleculeParts[i];
                 const { content: text, start, end, timestamp: partTimestamp } = part;

@@ -1,4 +1,4 @@
-# Standard 133: Radial Distillation v2.0 — Decision Record Output
+# Standard 010: Radial Distillation v2.0 — Decision Record Output
 
 **Status:** ✅ IMPLEMENTED | **Version:** 2.0 | **Date:** 2026-03-14
 **Introduced:** v4.8.0 | **Supersedes:** Standard 008 (Legacy line-level distillation)
@@ -302,12 +302,52 @@ output_format: 'yaml'  // Uses original line-level distiller
 ## 9. Related Standards
 
 - **Standard 008:** Legacy Radial Distillation (line-level)
-- **Standard 110:** Ephemeral Index (disposable database)
-- **Standard 116:** Phoenix Protocol (mirrored_brain architecture)
-- **Standard 126:** Pointer-Only Index
+- **Standard 024:** Ephemeral Index (disposable database)
+- **Standard 025:** Pointer-Only Storage
+- **Standard 031:** Distillation Output Storage
 
 ---
 
-**Introduced:** v4.8.0
+## 10. v5.3.0 Batch Iteration (June 2026)
+
+Full-corpus distillation (empty seed → compress everything) was previously
+limited to a single query fetching all molecules, causing OOM on 200K+
+molecule corpora. The fix replaces the single-pass `collectCompounds` call
+with a batch iteration loop in `radialDistill`:
+
+```typescript
+// radial-distiller-v2.ts
+let offset = 0;
+while (true) {
+  const batchRequest = { ...request, _offset: offset };
+  const { uniqueLines, stats } = await deduplicateLines(
+    collectCompounds(batchRequest), request
+  );
+  // Merge unique lines into accumulated map
+  // Stop when batch returns fewer than BATCH_SIZE
+  offset += stats.total;
+}
+```
+
+**Adaptive batch sizing:** The batch size is the minimum of three factors:
+1. `config.DISTILLATION.BATCH_SIZE` (user_settings, default 5000)
+2. 25% of available V8 heap / 2 KB per molecule (memory safety)
+3. Hard ceiling of 20,000 molecules per batch
+
+**Empty seed behavior:** Previously rejected with 400 error. Now runs full
+corpus compression with a 300s default timeout (vs 120s for filtered).
+Target compression ratio: ~3x on large corpora (per docs/benchmarks.md:
+222K molecules → 34.5K unique lines at 3.78:1).
+
+**Configuration** (`user_settings.json.template`):
+```json
+"distillation": {
+  "batch_size": 5000
+}
+```
+
+---
+
+**Introduced:** v4.8.0 | **Updated:** v5.3.0 (batch iteration)
 **Owner:** Anchor Engine Team
 **Status:** ✅ IMPLEMENTED

@@ -29,7 +29,7 @@ const ANCHOR_ROOT = path.resolve(
   path.join(homedir(), '.anchor')
 );
 
-// Define local-data directory under .anchor (Standard 110 compliance)
+// Define local-data directory under .anchor (Standard 024 compliance)
 const LOCAL_DATA_DIR = path.join(ANCHOR_ROOT, 'local-data');
 
 // Windows reserved names that cannot be used in paths
@@ -105,7 +105,7 @@ export const DISTILL_DIR = path.resolve(process.env.DISTILL_DIR || userSettings.
 export const DIST_DIR = path.resolve(process.env.DIST_DIR || userSettings.paths?.dist || path.join(DISTILL_DIR, 'output'));
 export const BASE_PATH = PROJECT_ROOT;
 
-// Standard 110: Logs directory under .anchor for centralized logging (defined in user_settings.json.template)
+// Standard 024: Logs directory under .anchor for centralized logging (defined in user_settings.json.template)
 export const LOGS_DIR = path.resolve(
   process.env.LOGS_DIR ||
   userSettings.paths?.logs ||
@@ -147,7 +147,7 @@ export const PATHS = {
   USER_SETTINGS: path.join(ANCHOR_ROOT, 'user_settings.json'),
   DATABASE_FILE: path.join(CONTEXT_DIR, 'context.db'),
   NOTEBOOK_DIR,
-  // Standard 110: Centralized user data paths under local-data/
+  // Standard 024: Centralized user data paths under local-data/
   INBOX_DIR: path.resolve(process.env.INBOX_DIR || userSettings.paths?.inbox || path.join(LOCAL_DATA_DIR, 'inbox')),
   EXTERNAL_INBOX_DIR: path.resolve(process.env.EXTERNAL_INBOX_DIR || userSettings.paths?.external_inbox || path.join(LOCAL_DATA_DIR, 'external-inbox')),
   INTERNAL_INBOX_DIR: path.resolve(process.env.INTERNAL_INBOX_DIR || userSettings.paths?.internal_inbox || path.join(NOTEBOOK_DIR, 'internal-inbox')),

@@ -22,30 +22,30 @@ This directory contains **38 active architecture standards** for Anchor Engine.
 | 012 | Data Integrity | [012-data-integrity.md](012-data-integrity.md) |
 | 013 | WASM Fallback | [013-wasm-fallback.md](013-wasm-fallback.md) |
 | 014 | Circuit Breaker Pattern | [014-circuit-breaker-pattern.md](014-circuit-breaker-pattern.md) |
-| 014 | Operational Visibility | [014-operational-visibility.md](014-operational-visibility.md) |
-| 014 | Search Algorithm Testing | [014-search-algorithm-testing.md](014-search-algorithm-testing.md) |
-| 015 | Configuration Management | [015-configuration-management.md](015-configuration-management.md) |
-| 016 | MCP Integration Testing | [016-mcp-integration-testing.md](016-mcp-integration-testing.md) |
-| 017 | Dependency Validation | [017-dependency-validation.md](017-dependency-validation.md) |
-| 018 | AST Parser WASM | [018-ast-parser-wasm.md](018-ast-parser-wasm.md) |
-| 018 | Configuration Validation | [018-configuration-validation.md](018-configuration-validation.md) |
-| 019 | Code Analysis | [019-code-analysis.md](019-code-analysis.md) |
-| 019 | Test Environment Consistency | [019-test-environment-consistency.md](019-test-environment-consistency.md) |
-| 020 | Ephemeral Database | [020-ephemeral-database.md](020-ephemeral-database.md) |
-| 021 | Pointer-Only Storage | [021-pointer-only-storage.md](021-pointer-only-storage.md) |
-| 022 | Documentation Hygiene | [022-documentation-hygiene.md](022-documentation-hygiene.md) |
-| 023 | Auth Bypass Prevention | [023-auth-bypass-prevention.md](023-auth-bypass-prevention.md) |
-| 024 | API Key Strength Validation | [024-api-key-strength-validation.md](024-api-key-strength-validation.md) |
-| 025 | Path Traversal Prevention | [025-path-traversal-prevention.md](025-path-traversal-prevention.md) |
-| 026 | Zero-Copy Deduplication | [026-zero-copy-dedup.md](026-zero-copy-dedup.md) |
-| 027 | Distillation Output Storage | [027-distillation-output-storage.md](027-distillation-output-storage.md) |
-| 027 | Pain Point Logging | [027-pain-point-logging.md](027-pain-point-logging.md) |
-| 028 | Self-Contamination Prevention | [028-self-contamination-prevention.md](028-self-contamination-prevention.md) |
-| 028 | Unified Test Pipeline | [028-unified-test-pipeline.md](028-unified-test-pipeline.md) |
-| 029 | Path Usage Validation | [029-path-usage-validation.md](029-path-usage-validation.md) |
-| 029 | Tag-Based Distillation | [029-tag-based-distillation.md](029-tag-based-distillation.md) |
-| 031 | Search Algorithms Comprehensive | [031-search-algorithms-comprehensive.md](031-search-algorithms-comprehensive.md) |
-| 032 | API Error Handling | [032-api-error-handling-standard.md](032-api-error-handling-standard.md) |
+| 015 | Operational Visibility | [015-operational-visibility.md](015-operational-visibility.md) |
+| 016 | Search Algorithm Testing | [016-search-algorithm-testing.md](016-search-algorithm-testing.md) |
+| 017 | Configuration Management | [017-configuration-management.md](017-configuration-management.md) |
+| 018 | MCP Integration Testing | [018-mcp-integration-testing.md](018-mcp-integration-testing.md) |
+| 019 | Dependency Validation | [019-dependency-validation.md](019-dependency-validation.md) |
+| 020 | AST Parser WASM | [020-ast-parser-wasm.md](020-ast-parser-wasm.md) |
+| 021 | Configuration Validation | [021-configuration-validation.md](021-configuration-validation.md) |
+| 022 | Code Analysis | [022-code-analysis.md](022-code-analysis.md) |
+| 023 | Test Environment Consistency | [023-test-environment-consistency.md](023-test-environment-consistency.md) |
+| 024 | Ephemeral Database | [024-ephemeral-database.md](024-ephemeral-database.md) |
+| 025 | Pointer-Only Storage | [025-pointer-only-storage.md](025-pointer-only-storage.md) |
+| 026 | Documentation Hygiene | [026-documentation-hygiene.md](026-documentation-hygiene.md) |
+| 027 | Auth Bypass Prevention | [027-auth-bypass-prevention.md](027-auth-bypass-prevention.md) |
+| 028 | API Key Strength Validation | [028-api-key-strength-validation.md](028-api-key-strength-validation.md) |
+| 029 | Path Traversal Prevention | [029-path-traversal-prevention.md](029-path-traversal-prevention.md) |
+| 030 | Zero-Copy Deduplication | [030-zero-copy-dedup.md](030-zero-copy-dedup.md) |
+| 031 | Distillation Output Storage | [031-distillation-output-storage.md](031-distillation-output-storage.md) |
+| 032 | Pain Point Logging | [032-pain-point-logging.md](032-pain-point-logging.md) |
+| 033 | Self-Contamination Prevention | [033-self-contamination-prevention.md](033-self-contamination-prevention.md) |
+| 034 | Unified Test Pipeline | [034-unified-test-pipeline.md](034-unified-test-pipeline.md) |
+| 035 | Path Usage Validation | [035-path-usage-validation.md](035-path-usage-validation.md) |
+| 036 | Tag-Based Distillation | [036-tag-based-distillation.md](036-tag-based-distillation.md) |
+| 037 | Search Algorithms Comprehensive | [037-search-algorithms-comprehensive.md](037-search-algorithms-comprehensive.md) |
+| 038 | API Error Handling | [038-api-error-handling-standard.md](038-api-error-handling-standard.md) |
 
 ---
 
@@ -74,5 +74,5 @@ Each standard follows this structure:
 
 ---
 
-**Last Updated:** June 10, 2026
+**Last Updated:** June 14, 2026
 **Total Standards:** 38

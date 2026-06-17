@@ -14,8 +14,8 @@ import {
   isPathSafe
 } from '../../src/utils/security.js';
 
-// Get absolute paths for test fixtures
-const PROJECT_ROOT = process.cwd();
+// Use realpath'd cwd to handle environments where the workspace is symlinked
+const PROJECT_ROOT = fs.realpathSync(process.cwd());
 
 describe('Security Utilities', () => {
   describe('validatePathSafety', () => {
@@ -131,7 +131,9 @@ describe('Security Utilities', () => {
 
   describe('getSafePath', () => {
     it('should return safe path for valid input', async () => {
-      const testFile = path.join(process.cwd(), 'package.json');
+      // Use a path under PROJECT_ROOT directly — avoid process.cwd() which
+      // may resolve through symlinks/junctions on some environments.
+      const testFile = path.join(PROJECT_ROOT, 'package.json');
       const safePath = await getSafePath(testFile, [PROJECT_ROOT]);
       expect(safePath.endsWith('package.json')).toBe(true);
     });

@@ -1485,15 +1485,17 @@ async function handlePrefixQuery(query: string, buckets: string[] = [], maxChars
         // "density:" with no term → return full corpus density map
         // Query 1: Top atoms by concept tag frequency (deduplicated by tag)
         // Query 2: Top tags by tag/bucket frequency
-        const [topAtomTags, topTags] = await Promise.all([
-          db.run(
-            `SELECT tag, COUNT(*) as count, COUNT(DISTINCT source_path) as source_count
-             FROM atoms, unnest(tags) as tag
-             WHERE tags IS NOT NULL AND array_length(tags, 1) > 0
-             GROUP BY tag ORDER BY count DESC LIMIT 100`
-          ),
-          db.run('SELECT tag, bucket, COUNT(*) as count FROM tags GROUP BY tag, bucket ORDER BY count DESC LIMIT 50'),
-        ]);
+        // Execute sequentially — PGlite is single-connection; Promise.all on
+        // multiple db.run() calls corrupts connection state (deadlocks subsequent queries).
+        const topAtomTags = await db.run(
+          `SELECT tag, COUNT(*) as count, COUNT(DISTINCT source_path) as source_count
+           FROM atoms, unnest(tags) as tag
+           WHERE tags IS NOT NULL AND array_length(tags, 1) > 0
+           GROUP BY tag ORDER BY count DESC LIMIT 100`
+        );
+        const topTags = await db.run(
+          'SELECT tag, bucket, COUNT(*) as count FROM tags GROUP BY tag, bucket ORDER BY count DESC LIMIT 50'
+        );
         
         const atomTotal = (topAtomTags.rows || []).reduce((sum: number, r: Record<string, unknown>) => sum + parseInt(String(r.count) || '0'), 0);
         const tagTotal = (topTags.rows || []).reduce((sum: number, r: Record<string, unknown>) => sum + parseInt(String(r.count) || '0'), 0);

@@ -149,37 +149,45 @@ export class AtomicIngestService {
     }
 
     private async batchWriteAtoms(atoms: Atom[], provenanceType: 'internal' | 'external') {
-        const chunkSize = 50;
+        const BATCH = 50;
 
-        for (let i = 0; i < atoms.length; i += chunkSize) {
-            const chunk = atoms.slice(i, i + chunkSize);
-            // Yield to event loop
+        for (let i = 0; i < atoms.length; i += BATCH) {
+            const batch = atoms.slice(i, i + BATCH);
             if (i % 500 === 0 && i > 0) await new Promise(resolve => setImmediate(resolve));
 
-            for (const atom of chunk) {
-                await db.run(
-                    `INSERT INTO atoms (id, source_path, timestamp, simhash, embedding, provenance, buckets, tags)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-                     ON CONFLICT (id) DO UPDATE SET
-                       source_path = EXCLUDED.source_path,
-                       timestamp = EXCLUDED.timestamp,
-                       simhash = EXCLUDED.simhash,
-                       embedding = EXCLUDED.embedding,
-                       provenance = EXCLUDED.provenance,
-                       buckets = EXCLUDED.buckets,
-                       tags = EXCLUDED.tags`,
-                    [
-                        atom.id,
-                        'atom_source', // source_path
-                        Date.now(), // timestamp
-                        '0', // simhash
-                        JSON.stringify(this.zeroVector()), // embedding
-                        provenanceType, // provenance
-                        ['atoms'], // buckets
-                        [normalizeTag(atom.label) || atom.label], // tags - ensure # prefix at ingestion time
-                    ],
+            const placeholders: string[] = [];
+            const values: any[] = [];
+            const now = Date.now();
+            const zeroVec = JSON.stringify(this.zeroVector());
+            let p = 1;
+
+            for (const atom of batch) {
+                placeholders.push(`($${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++}, $${p++})`);
+                values.push(
+                    atom.id,
+                    'atom_source',
+                    now,
+                    '0',
+                    zeroVec,
+                    provenanceType,
+                    ['atoms'],
+                    [normalizeTag(atom.label) || atom.label],
                 );
             }
+
+            await db.run(
+                `INSERT INTO atoms (id, source_path, timestamp, simhash, embedding, provenance, buckets, tags)
+                 VALUES ${placeholders.join(', ')}
+                 ON CONFLICT (id) DO UPDATE SET
+                   source_path = EXCLUDED.source_path,
+                   timestamp = EXCLUDED.timestamp,
+                   simhash = EXCLUDED.simhash,
+                   embedding = EXCLUDED.embedding,
+                   provenance = EXCLUDED.provenance,
+                   buckets = EXCLUDED.buckets,
+                   tags = EXCLUDED.tags`,
+                values,
+            );
         }
     }
 
@@ -318,23 +326,29 @@ const logInterval = Math.max(BATCH_SIZE, Math.ceil(total / 20));
     }
 
     private async batchWriteEdges(compoundId: string, atomIds: string[]) {
-        const chunkSize = 50;
+        const BATCH = 50;
 
-        for (let i = 0; i < atomIds.length; i += chunkSize) {
-            const chunk = atomIds.slice(i, i + chunkSize);
-            // Yield if processing many edges
+        for (let i = 0; i < atomIds.length; i += BATCH) {
+            const batch = atomIds.slice(i, i + BATCH);
             if (i % 500 === 0 && i > 0) await new Promise(resolve => setImmediate(resolve));
 
-            for (const atomId of chunk) {
-                await db.run(
-                    `INSERT INTO edges (source_id, target_id, weight, relation)
-                     VALUES ($1, $2, $3, $4)
-                     ON CONFLICT (source_id, target_id, relation) DO UPDATE SET
-                       weight = EXCLUDED.weight,
-                       relation = EXCLUDED.relation`,
-                    [compoundId, atomId, 1.0, 'has_tag'],
-                );
+            const placeholders: string[] = [];
+            const values: any[] = [];
+            let p = 1;
+
+            for (const atomId of batch) {
+                placeholders.push(`($${p++}, $${p++}, $${p++}, $${p++})`);
+                values.push(compoundId, atomId, 1.0, 'has_tag');
             }
+
+            await db.run(
+                `INSERT INTO edges (source_id, target_id, weight, relation)
+                 VALUES ${placeholders.join(', ')}
+                 ON CONFLICT (source_id, target_id, relation) DO UPDATE SET
+                   weight = EXCLUDED.weight,
+                   relation = EXCLUDED.relation`,
+                values,
+            );
         }
     }
 
@@ -353,7 +367,10 @@ const logInterval = Math.max(BATCH_SIZE, Math.ceil(total / 20));
         molecularSignature: string,
         provenanceType: 'internal' | 'external',
     ) {
-        // 1. Write Compound Row (pointer-only, no content) — uses molecule-level signature/provenance
+        // 1. Write Compound Row (pointer-only, no content)
+        // Guard against NaN/invalid timestamps from atomizer extraction
+        const safeTimestamp = (typeof compound.timestamp === 'number' && !isNaN(compound.timestamp))
+            ? compound.timestamp : Date.now();
         await db.run(
             `INSERT INTO atoms (id, source_path, timestamp, simhash, embedding, provenance, buckets, tags, compound_id, start_byte, end_byte)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -371,7 +388,7 @@ const logInterval = Math.max(BATCH_SIZE, Math.ceil(total / 20));
             [
                 compound.id,
                 compound.path,
-                compound.timestamp,
+                safeTimestamp,
                 molecularSignature || '0',
                 JSON.stringify(this.zeroVector()),
                 provenanceType,
@@ -379,7 +396,7 @@ const logInterval = Math.max(BATCH_SIZE, Math.ceil(total / 20));
                 atoms.map(a => a.label),
                 compound.id,
                 0,
-                0, // end_byte - not applicable for compound-level atom entry
+                0,
             ],
         );
 

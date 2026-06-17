@@ -9,14 +9,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
 
-// Standard 110: Use .anchor/user_settings.json for centralized configuration
+// Standard 024: Use .anchor/user_settings.json for centralized configuration
 const PROJECT_ROOT = process.env.PROJECT_ROOT || process.cwd();
 const ANCHOR_ROOT = path.join(PROJECT_ROOT, '.anchor');
 const SETTINGS_PATH = path.join(ANCHOR_ROOT, 'user_settings.json');
 
 export async function loadVersion(): Promise<string> {
   try {
-    // Try .anchor/user_settings.json first (Standard 110)
+    // Try .anchor/user_settings.json first (Standard 024)
     if (fs.existsSync(SETTINGS_PATH)) {
       const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
       const version = settings.server?.version || settings.anchorEngine?.version || '5.0.0';

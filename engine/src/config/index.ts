@@ -112,6 +112,31 @@ const LimitsSchema = z.object({
   date_extractor_scan_limit: z.number().int().positive().optional(),
 });
 
+// Streaming Ingestion Schema
+const StreamingSchema = z.object({
+  enabled: z.boolean().optional(),
+  stream_threshold_bytes: z.number().int().positive().optional(),
+  window_bytes: z.number().int().positive().optional(),
+  lookahead_bytes: z.number().int().positive().optional(),
+  yield_interval_ms: z.number().int().min(0).optional(),
+});
+
+// Worker Threads Schema (experimental)
+const WorkerThreadsSchema = z.object({
+  enabled: z.boolean().optional(),
+  max_workers: z.number().int().min(1).max(16).optional(),
+  ingest_queue_max: z.number().int().min(1).optional(),
+});
+
+// Cron Scheduler Schema
+const CronSchema = z.object({
+  enabled: z.boolean().optional(),
+  daily_scrape_hour: z.number().int().min(0).max(23).optional(),
+  synonym_regeneration_hour: z.number().int().min(0).max(23).optional(),
+  db_vacuum_hour: z.number().int().min(0).max(23).optional(),
+  cache_prune_interval_minutes: z.number().int().min(1).optional(),
+});
+
 // User Settings Schema (all optional, with defaults applied)
 const _UserSettingsSchema = z.object({
   server: ServerSettingsSchema.optional(),
@@ -139,6 +164,9 @@ const _UserSettingsSchema = z.object({
   }).optional(),
 
   // Allow additional properties for backward compatibility
+  streaming: StreamingSchema.optional(),
+  worker_threads: WorkerThreadsSchema.optional(),
+  cron: CronSchema.optional(),
 }).passthrough();
 
 // Type inference from schema (used for type checking in loadConfig)
@@ -190,6 +218,15 @@ interface Config {
   DISTILLER: {
     SIMILARITY_THRESHOLD: number;
     OUTPUT_FORMAT: string;
+  };
+
+  // Distillation batch processing (v5.3.0)
+  DISTILLATION: {
+    BATCH_SIZE: number;
+    BATCH_CEILING: number;
+    HEAP_FRACTION: number;
+    BYTES_PER_MOLECULE: number;
+    BATCH_FLOOR: number;
   };
 
   // Watcher Settings
@@ -383,6 +420,31 @@ interface Config {
     MEDIUM_RAG_LIMIT: number;      // doc limit for medium tier
     HEAVY_RAG_LIMIT: number;       // doc limit for heavy tier (0 = all available)
   };
+
+  // Streaming Ingestion (Standard 024)
+  STREAMING: {
+    ENABLED: boolean;
+    STREAM_THRESHOLD_BYTES: number;
+    WINDOW_BYTES: number;
+    LOOKAHEAD_BYTES: number;
+    YIELD_INTERVAL_MS: number;
+  };
+
+  // Worker Threads (experimental)
+  WORKER_THREADS: {
+    ENABLED: boolean;
+    MAX_WORKERS: number;
+    INGEST_QUEUE_MAX: number;
+  };
+
+  // Cron Scheduler
+  CRON: {
+    ENABLED: boolean;
+    DAILY_SCRAPE_HOUR: number;
+    SYNONYM_REGENERATION_HOUR: number;
+    DB_VACUUM_HOUR: number;
+    CACHE_PRUNE_INTERVAL_MINUTES: number;
+  };
 }
 
 // Default configuration
@@ -420,6 +482,15 @@ const DEFAULT_CONFIG: Config = {
   DISTILLER: {
     SIMILARITY_THRESHOLD: 0.85,
     OUTPUT_FORMAT: 'decision-records',
+  },
+
+  // Distillation batch processing
+  DISTILLATION: {
+    BATCH_SIZE: parseInt(process.env['ANCHOR_DISTILL_BATCH_SIZE'] || '5000', 10),
+    BATCH_CEILING: parseInt(process.env['ANCHOR_DISTILL_CEILING'] || '20000', 10),
+    HEAP_FRACTION: parseFloat(process.env['ANCHOR_DISTILL_HEAP_FRAC'] || '0.25'),
+    BYTES_PER_MOLECULE: parseInt(process.env['ANCHOR_DISTILL_BYTES_PER_MOL'] || '2048', 10),
+    BATCH_FLOOR: parseInt(process.env['ANCHOR_DISTILL_FLOOR'] || '1000', 10),
   },
 
   // Watcher Settings
@@ -624,6 +695,31 @@ const DEFAULT_CONFIG: Config = {
     MEDIUM_RAG_LIMIT: parseInt(process.env['ANCHOR_DENSITY_MEDIUM_RAG_LIMIT'] || '25', 10),
     HEAVY_RAG_LIMIT: parseInt(process.env['ANCHOR_DENSITY_HEAVY_RAG_LIMIT'] || '0', 10), // 0 = all available
   },
+
+  // Streaming Ingestion (Standard 024) — window-based file reading for >10 MB files
+  STREAMING: {
+    ENABLED: process.env['ANCHOR_STREAMING_ENABLED'] !== 'false',
+    STREAM_THRESHOLD_BYTES: parseInt(process.env['ANCHOR_STREAM_THRESHOLD_BYTES'] || String(10 * 1024 * 1024), 10),
+    WINDOW_BYTES: parseInt(process.env['ANCHOR_STREAM_WINDOW_BYTES'] || String(1 * 1024 * 1024), 10),
+    LOOKAHEAD_BYTES: parseInt(process.env['ANCHOR_STREAM_LOOKAHEAD_BYTES'] || String(64 * 1024), 10),
+    YIELD_INTERVAL_MS: parseInt(process.env['ANCHOR_STREAM_YIELD_MS'] || '0', 10),
+  },
+
+  // Worker Threads — experimental off-main-thread ingestion
+  WORKER_THREADS: {
+    ENABLED: process.env['ANCHOR_WORKER_ENABLED'] === 'true',
+    MAX_WORKERS: parseInt(process.env['ANCHOR_WORKER_MAX'] || '1', 10),
+    INGEST_QUEUE_MAX: parseInt(process.env['ANCHOR_WORKER_QUEUE'] || '100', 10),
+  },
+
+  // Cron Scheduler — periodic maintenance tasks
+  CRON: {
+    ENABLED: process.env['ANCHOR_CRON_ENABLED'] === 'true',
+    DAILY_SCRAPE_HOUR: parseInt(process.env['ANCHOR_CRON_SCRAPE_HOUR'] || '3', 10),
+    SYNONYM_REGENERATION_HOUR: parseInt(process.env['ANCHOR_CRON_SYNONYM_HOUR'] || '4', 10),
+    DB_VACUUM_HOUR: parseInt(process.env['ANCHOR_CRON_VACUUM_HOUR'] || '5', 10),
+    CACHE_PRUNE_INTERVAL_MINUTES: parseInt(process.env['ANCHOR_CRON_CACHE_PRUNE_MIN'] || '60', 10),
+  },
 };
 
 // Configuration loader
@@ -825,11 +921,49 @@ function loadConfig(): Config {
         if (c.engram_ttl_ms !== undefined) loadedConfig.CACHE.ENGRAM_TTL_MS = c.engram_ttl_ms;
       }
 
+      // Load Streaming Configuration
+      if (parsed.streaming) {
+        const s = parsed.streaming as any;
+        if (s.enabled !== undefined) loadedConfig.STREAMING.ENABLED = s.enabled;
+        if (s.stream_threshold_bytes !== undefined) loadedConfig.STREAMING.STREAM_THRESHOLD_BYTES = s.stream_threshold_bytes;
+        if (s.window_bytes !== undefined) loadedConfig.STREAMING.WINDOW_BYTES = s.window_bytes;
+        if (s.lookahead_bytes !== undefined) loadedConfig.STREAMING.LOOKAHEAD_BYTES = s.lookahead_bytes;
+        if (s.yield_interval_ms !== undefined) loadedConfig.STREAMING.YIELD_INTERVAL_MS = s.yield_interval_ms;
+      }
+
+      // Load Worker Threads Configuration
+      if (parsed.worker_threads) {
+        const w = parsed.worker_threads as any;
+        if (w.enabled !== undefined) loadedConfig.WORKER_THREADS.ENABLED = w.enabled;
+        if (w.max_workers !== undefined) loadedConfig.WORKER_THREADS.MAX_WORKERS = w.max_workers;
+        if (w.ingest_queue_max !== undefined) loadedConfig.WORKER_THREADS.INGEST_QUEUE_MAX = w.ingest_queue_max;
+      }
+
+      // Load Cron Configuration
+      if (parsed.cron) {
+        const cr = parsed.cron as any;
+        if (cr.enabled !== undefined) loadedConfig.CRON.ENABLED = cr.enabled;
+        if (cr.daily_scrape_hour !== undefined) loadedConfig.CRON.DAILY_SCRAPE_HOUR = cr.daily_scrape_hour;
+        if (cr.synonym_regeneration_hour !== undefined) loadedConfig.CRON.SYNONYM_REGENERATION_HOUR = cr.synonym_regeneration_hour;
+        if (cr.db_vacuum_hour !== undefined) loadedConfig.CRON.DB_VACUUM_HOUR = cr.db_vacuum_hour;
+        if (cr.cache_prune_interval_minutes !== undefined) loadedConfig.CRON.CACHE_PRUNE_INTERVAL_MINUTES = cr.cache_prune_interval_minutes;
+      }
+
       // Load Distiller Configuration (v2.1)
       if (parsed.distiller) {
         const d = parsed.distiller as any;
         if (d.similarity_threshold !== undefined) loadedConfig.DISTILLER.SIMILARITY_THRESHOLD = d.similarity_threshold;
         if (d.output_format) loadedConfig.DISTILLER.OUTPUT_FORMAT = d.output_format;
+      }
+
+      // Load Distillation batch processing config
+      if (parsed.distillation) {
+        const ds = parsed.distillation as any;
+        if (ds.batch_size !== undefined) loadedConfig.DISTILLATION.BATCH_SIZE = ds.batch_size;
+        if (ds.batch_ceiling !== undefined) loadedConfig.DISTILLATION.BATCH_CEILING = ds.batch_ceiling;
+        if (ds.heap_fraction !== undefined) loadedConfig.DISTILLATION.HEAP_FRACTION = ds.heap_fraction;
+        if (ds.bytes_per_molecule !== undefined) loadedConfig.DISTILLATION.BYTES_PER_MOLECULE = ds.bytes_per_molecule;
+        if (ds.batch_floor !== undefined) loadedConfig.DISTILLATION.BATCH_FLOOR = ds.batch_floor;
       }
 
     } catch (e: any) {

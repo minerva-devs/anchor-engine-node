@@ -14,7 +14,7 @@
  *    • /home/user/projects/my-app/docs
  * ✅ MCP server: ready on stdio
  * ✅ API key: set (bolt-memory-secret)
- * ✅ Health: http://localhost:3161/health
+ * ✅ Health: http://localhost:3160/health
  * ⏱️  Startup complete in 7.4s
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */

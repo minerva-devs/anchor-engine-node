@@ -9,7 +9,6 @@ import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
 import path from 'path';
 import fs from 'fs';
-import { createHash } from 'crypto';
 import { format } from 'winston';
 import { fileURLToPath } from 'url';
 import { PATHS } from '../config/paths.js';
@@ -19,14 +18,59 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '../../..');
 
-// Create logs directory at .anchor/logs
-const LOGS_DIR = PATHS.LOGS_DIR;
+// Create logs directory at .anchor/logs (with fallback to project-local logs)
+const LOGS_DIR = PATHS.LOGS_DIR || path.join(PROJECT_ROOT, '.anchor', 'logs');
 
-// Import MAX_LINES_PER_FILE from unified test logger (default 500)
-import { MAX_LINES_PER_FILE } from '../services/unified-test-logger.js';
 if (!fs.existsSync(LOGS_DIR)) {
   fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
+
+// Winston Logger Configuration with Debug-Level Filtering
+const logger = winston.createLogger({
+  level: 'info', // Accept debug and above - keeps detailed logs
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'anchor-engine' },
+  transports: [
+    new DailyRotateFile({
+      filename: path.join(LOGS_DIR, 'anchor_engine.log.%DATE%.log'),
+      datePattern: 'YYYY-MM-DD',
+      maxFiles: 7, // Keep logs for 7 days (numeric value required by TypeScript)
+      maxSize: 20 as any, // Max 20MB per file - cast to bypass strict type checking
+      zippedArchive: true, // Compress old logs
+      format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.errors({ stack: true }),
+        winston.format.json()
+      ),
+      level: 'info' // Accept debug and above in files too
+    }),
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.printf((info) => {
+          const timestamp = info.timestamp || '';
+          const level = info.level?.toUpperCase() || 'INFO';
+          const message = typeof info.message === 'string' ? info.message : JSON.stringify(info.message);
+          return `[${timestamp}] [${level.padEnd(5)}] ${message}`;
+        })
+      ),
+      level: 'info' // Console also accepts debug level
+    }),
+    new winston.transports.File({
+      filename: path.join(LOGS_DIR, 'anchor_engine_errors.log'),
+      level: 'error', // Only errors in error log file
+      maxFiles: 7, // Keep 7 days of error logs (numeric value)
+      maxsize: 10, // Max 10MB per error log file (in MB) - lowercase to satisfy TypeScript
+      zippedArchive: true
+    })
+  ]
+});
+
+export { logger };
 
 const logLevels = {
   error: 0,
@@ -41,7 +85,7 @@ const logLevels = {
  * Truncate log files to last N lines to prevent unbounded growth.
  * Runs at startup and on each new test run.
  */
-function truncateLogFiles(maxLines: number = MAX_LINES_PER_FILE): void {
+function truncateLogFiles(maxLines: number = 500): void {
   try {
     const files = fs.readdirSync(LOGS_DIR);
     let totalTruncated = 0;
@@ -63,20 +107,20 @@ function truncateLogFiles(maxLines: number = MAX_LINES_PER_FILE): void {
         const truncated = lines.slice(-maxLines).join('\n');
         fs.writeFileSync(filePath, truncated, 'utf-8');
         totalTruncated++;
-        console.log(`[Logger] Truncated ${file} from ${lines.length} to ${maxLines} lines`);
+        logger.info(`[Logger] Truncated ${file} from ${lines.length} to ${maxLines} lines`);
       }
     }
 
     if (totalTruncated > 0) {
-      console.log(`[Logger] Truncated ${totalTruncated} log files to ${maxLines} lines max`);
+      logger.info(`[Logger] Truncated ${totalTruncated} log files to ${maxLines} lines max`);
     }
   } catch (e: any) {
-    console.error('[Logger] Failed to truncate logs:', e.message);
+    logger.error('[Logger] Failed to truncate logs:', e.message);
   }
 }
 
 // Truncate all existing logs at startup to MAX_LINES_PER_FILE (500)
-truncateLogFiles(MAX_LINES_PER_FILE);
+truncateLogFiles(500);
 
 /**
  * Clean up old log files, keeping only logs from the last 7 days
@@ -98,11 +142,11 @@ function cleanupOldLogs(daysToKeep: number = 7): void {
 
       if (fileDate < cutoff) {
         fs.unlinkSync(filePath);
-        console.log(`[Logger] Removed old log file: ${file}`);
+        logger.info(`[Logger] Removed old log file: ${file}`);
       }
     }
   } catch (e: any) {
-    console.error('[Logger] Failed to cleanup old logs:', e.message);
+    logger.error('[Logger] Failed to cleanup old logs:', e.message);
   }
 }
 
@@ -117,60 +161,9 @@ const structuredFormat = winston.format.combine(
   winston.format.json(),
 );
 
-// Create logger instance
-const logger = winston.createLogger({
-  levels: logLevels,
-  level: 'info', // Reduced from 'debug' to avoid excessive HTTP_REQUEST/INFO logs (health-check pings)
-  format: structuredFormat,
-  transports: [
-    // Main anchor_engine.log file with size-based rotation (5MB) and 5-file cap
-    new DailyRotateFile({
-      filename: path.join(LOGS_DIR, 'anchor_engine.log'),
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '5m',
-      maxFiles: 5, // Keep exactly 5 files; oldest removed automatically when limit exceeded
-      format: format.combine(
-        format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        format.errors({ stack: true }),
-        format.splat(),
-        format.printf(({ timestamp, level, message, ...metadata }) => {
-          const metaStr = Object.keys(metadata).length > 0 ? ` ${JSON.stringify(metadata)}` : '';
-          return `[${timestamp}] [${level.toUpperCase()}] ${message}${metaStr}`;
-        }),
-      ),
-    }),
-    // Separate error file (single instance)
-    new DailyRotateFile({
-      level: 'error',
-      filename: path.join(LOGS_DIR, 'anchor_engine_error-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '5m',
-      maxFiles: 5, // Keep exactly 5 files; oldest removed automatically when limit exceeded
-      format: format.combine(
-        format.timestamp(),
-        format.errors({ stack: true }),
-        format.splat(),
-        format.json(),
-      ),
-    }),
-    new winston.transports.Console({
-      format: format.combine(
-        format.colorize(),
-        format.printf(({ level, message, timestamp, ...metadata }) => {
-          let msg = `${timestamp} [${level}] ${message}`;
-          if (Object.keys(metadata).length > 0) {
-            msg += ` ${JSON.stringify(metadata)}`;
-          }
-          return msg;
-        }),
-      ),
-    }),
-  ],
-});
-
-// Performance metrics tracker
+/**
+ * Performance metrics tracker
+ */
 class MetricsTracker {
   private metrics: Map<string, { count: number; total: number; min: number; max: number; last: number }>;
   private startTime: number;
@@ -232,24 +225,20 @@ class MetricsTracker {
 
   /**
    * Prune old metrics to free memory (called during idle cleanup)
-   * Removes metrics older than TTL and enforces maximum size limit
    */
   pruneOldMetrics(): void {
     const METRIC_TTL_MS = 10 * 60 * 1000; // 10 minutes TTL
     const MAX_METRICS = 500; // Maximum number of metrics to keep
     const now = Date.now();
     
-    // Remove metrics that haven't been updated in TTL period
     let prunedCount = 0;
     for (const [key, metric] of this.metrics.entries()) {
-      // If last operation was more than TTL ago, remove it
       if (metric.last && (now - metric.last) > METRIC_TTL_MS) {
         this.metrics.delete(key);
         prunedCount++;
       }
     }
     
-    // Enforce hard limit if still too many metrics
     if (this.metrics.size > MAX_METRICS) {
       const keys = Array.from(this.metrics.keys());
       const toDelete = keys.slice(0, keys.length - MAX_METRICS);
@@ -260,7 +249,7 @@ class MetricsTracker {
     }
     
     if (prunedCount > 0) {
-      console.log(`[StructuredLogger] Pruned ${prunedCount} old metrics (${this.metrics.size} remaining)`);
+      logger.info(`[StructuredLogger] Pruned ${prunedCount} old metrics (${this.metrics.size} remaining)`);
     }
   }
 }
@@ -268,15 +257,17 @@ class MetricsTracker {
 // Initialize metrics tracker
 const metricsTracker = new MetricsTracker();
 
-// Enhanced logging functions with metrics
+/**
+ * Enhanced logging functions with metrics
+ */
 export const logWithContext = {
-  /**
-   * Log an info message with context and metrics
-   */
+  /** Log an info message with context and metrics */
   info: (message: string, context?: Record<string, any>) => {
     if (context && context.metrics) {
-      for (const [name, value] of Object.entries(context.metrics)) {
-        metricsTracker.recordMetric(name, value as number);
+      for (const [name, value] of Object.entries(context)) {
+        if (typeof value === 'number') {
+          metricsTracker.recordMetric(name, value);
+        }
       }
     }
 
@@ -287,9 +278,7 @@ export const logWithContext = {
     });
   },
 
-  /**
-   * Log a warning with context
-   */
+  /** Log a warning with context */
   warn: (message: string, context?: Record<string, any>) => {
     logger.warn(message, {
       context,
@@ -298,9 +287,7 @@ export const logWithContext = {
     });
   },
 
-  /**
-   * Log an error with context
-   */
+  /** Log an error with context */
   error: (message: string, error?: Error | string, context?: Record<string, any>) => {
     logger.error(message, {
       error: error instanceof Error ? { message: error.message, stack: error.stack } : error,
@@ -310,9 +297,7 @@ export const logWithContext = {
     });
   },
 
-  /**
-   * Log a debug message with context
-   */
+  /** Log a debug message with context */
   debug: (message: string, context?: Record<string, any>) => {
     logger.debug(message, {
       context,
@@ -321,9 +306,7 @@ export const logWithContext = {
     });
   },
 
-  /**
-   * Log a silly/verbose message with context
-   */
+  /** Log a silly/verbose message with context */
   silly: (message: string, context?: Record<string, any>) => {
     logger.silly(message, {
       context,
@@ -332,9 +315,7 @@ export const logWithContext = {
     });
   },
 
-  /**
-   * Log a performance metric
-   */
+  /** Log a performance metric */
   performance: (operation: string, duration: number, context?: Record<string, any>) => {
     metricsTracker.recordMetric(operation, duration);
 
@@ -348,23 +329,17 @@ export const logWithContext = {
     });
   },
 
-  /**
-   * Start a timed operation
-   */
+  /** Start a timed operation */
   startTimer: (operation: string) => {
     return metricsTracker.startTimer(operation);
   },
 
-  /**
-   * Get current metrics
-   */
+  /** Get current metrics */
   getMetrics: () => {
     return metricsTracker.getAllMetrics();
   },
 
-  /**
-   * Log ingestion event
-   */
+  /** Log ingestion event */
   ingestion: (status: 'success' | 'partial' | 'failed', details: Record<string, any>) => {
     metricsTracker.recordMetric('ingestion_attempts', 1);
     if (status === 'success') {
@@ -382,9 +357,7 @@ export const logWithContext = {
     });
   },
 
-  /**
-   * Log search event
-   */
+  /** Log search event */
   search: (query: string, resultCount: number, duration: number, context?: Record<string, any>) => {
     metricsTracker.recordMetric('search_queries', 1);
     metricsTracker.recordMetric('search_results', resultCount);
@@ -401,9 +374,7 @@ export const logWithContext = {
     });
   },
 
-  /**
-   * Log system health event
-   */
+  /** Log system health event */
   health: (status: 'healthy' | 'degraded' | 'unhealthy', details: Record<string, any>) => {
     logger.info('HEALTH_EVENT', {
       event: 'health-check',
@@ -416,16 +387,13 @@ export const logWithContext = {
 };
 
 // Export the base logger as well
-export { logger, metricsTracker };
+export { metricsTracker };
 
 // Export a function to get formatted metrics for monitoring endpoints
 export function getFormattedMetrics(): string {
   const metrics = metricsTracker.getAllMetrics();
   return JSON.stringify(metrics, null, 2);
 }
-
-// Export the MAX_LINES_PER_FILE constant so other modules can use it
-export { MAX_LINES_PER_FILE };
 
 // Export alias for backward compatibility
 export const StructuredLogger = logWithContext;

@@ -1,136 +1,136 @@
 {
-  "timestamp": "2026-06-12T02:34:06.218Z",
+  "timestamp": "2026-06-15T04:48:01.838Z",
   "serverUrl": "http://localhost:3160",
   "total": 18,
   "passed": 18,
   "failed": 0,
-  "duration_ms": 5655,
+  "duration_ms": 5331,
   "tests": [
     {
       "name": "Health check",
       "status": "pass",
-      "duration_ms": 150,
+      "duration_ms": 121,
       "error": null,
-      "timestamp": "2026-06-12T02:34:00.731Z"
+      "timestamp": "2026-06-15T04:47:56.644Z"
     },
     {
       "name": "Stats endpoint",
       "status": "pass",
-      "duration_ms": 40,
+      "duration_ms": 160,
       "error": null,
-      "timestamp": "2026-06-12T02:34:00.772Z"
+      "timestamp": "2026-06-15T04:47:56.805Z"
     },
     {
       "name": "Molecules list + schema",
       "status": "pass",
-      "duration_ms": 60,
+      "duration_ms": 87,
       "error": null,
-      "timestamp": "2026-06-12T02:34:00.834Z"
+      "timestamp": "2026-06-15T04:47:56.894Z"
     },
     {
       "name": "Atoms list",
       "status": "pass",
-      "duration_ms": 33,
+      "duration_ms": 61,
       "error": null,
-      "timestamp": "2026-06-12T02:34:00.867Z"
+      "timestamp": "2026-06-15T04:47:56.956Z"
     },
     {
       "name": "Compounds table removed",
       "status": "pass",
-      "duration_ms": 55,
+      "duration_ms": 21,
       "error": null,
-      "timestamp": "2026-06-12T02:34:00.926Z"
+      "timestamp": "2026-06-15T04:47:56.979Z"
     },
     {
       "name": "Search API",
       "status": "pass",
-      "duration_ms": 880,
+      "duration_ms": 893,
       "error": null,
-      "timestamp": "2026-06-12T02:34:01.807Z"
+      "timestamp": "2026-06-15T04:47:57.873Z"
     },
     {
       "name": "Exact search API",
       "status": "pass",
-      "duration_ms": 21,
+      "duration_ms": 9,
       "error": null,
-      "timestamp": "2026-06-12T02:34:01.829Z"
+      "timestamp": "2026-06-15T04:47:57.883Z"
     },
     {
       "name": "Semantic search API",
       "status": "pass",
-      "duration_ms": 8,
+      "duration_ms": 6,
       "error": null,
-      "timestamp": "2026-06-12T02:34:01.838Z"
+      "timestamp": "2026-06-15T04:47:57.891Z"
     },
     {
       "name": "Density: full map",
       "status": "pass",
-      "duration_ms": 34,
+      "duration_ms": 210,
       "error": null,
-      "timestamp": "2026-06-12T02:34:01.873Z"
+      "timestamp": "2026-06-15T04:47:58.103Z"
     },
     {
       "name": "Density: single term",
       "status": "pass",
-      "duration_ms": 41,
+      "duration_ms": 65,
       "error": null,
-      "timestamp": "2026-06-12T02:34:01.915Z"
+      "timestamp": "2026-06-15T04:47:58.169Z"
     },
     {
       "name": "Density: multi-term",
       "status": "pass",
-      "duration_ms": 68,
+      "duration_ms": 175,
       "error": null,
-      "timestamp": "2026-06-12T02:34:01.985Z"
+      "timestamp": "2026-06-15T04:47:58.345Z"
     },
     {
       "name": "Ingestion pipeline",
       "status": "pass",
-      "duration_ms": 186,
+      "duration_ms": 108,
       "error": null,
-      "timestamp": "2026-06-12T02:34:02.172Z"
+      "timestamp": "2026-06-15T04:47:58.453Z"
     },
     {
       "name": "Search after ingestion",
       "status": "pass",
-      "duration_ms": 3805,
+      "duration_ms": 2888,
       "error": null,
-      "timestamp": "2026-06-12T02:34:05.978Z"
+      "timestamp": "2026-06-15T04:48:01.342Z"
     },
     {
       "name": "Distillation API",
       "status": "pass",
-      "duration_ms": 17,
+      "duration_ms": 5,
       "error": null,
-      "timestamp": "2026-06-12T02:34:05.996Z"
+      "timestamp": "2026-06-15T04:48:01.348Z"
     },
     {
       "name": "Radial distillation",
       "status": "pass",
-      "duration_ms": 10,
+      "duration_ms": 4,
       "error": null,
-      "timestamp": "2026-06-12T02:34:06.008Z"
+      "timestamp": "2026-06-15T04:48:01.354Z"
     },
     {
       "name": "Live corpus config",
       "status": "pass",
-      "duration_ms": 6,
+      "duration_ms": 7,
       "error": null,
-      "timestamp": "2026-06-12T02:34:06.016Z"
+      "timestamp": "2026-06-15T04:48:01.362Z"
     },
     {
       "name": "Live corpus stats",
       "status": "pass",
-      "duration_ms": 25,
+      "duration_ms": 35,
       "error": null,
-      "timestamp": "2026-06-12T02:34:06.042Z"
+      "timestamp": "2026-06-15T04:48:01.398Z"
     },
     {
       "name": "Live corpus density",
       "status": "pass",
-      "duration_ms": 171,
+      "duration_ms": 431,
       "error": null,
-      "timestamp": "2026-06-12T02:34:06.214Z"
+      "timestamp": "2026-06-15T04:48:01.829Z"
     }
   ]
 }

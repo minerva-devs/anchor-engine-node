@@ -375,11 +375,12 @@ async function startServer() {
         const envAutoStart = process.env.AUTO_START_WATCHDOG === 'true';
         
         // Fall back to settings file
-        const settingsAutoStart = config.WATCHER?.AUTO_START === true;
+        const settingsAutoStart = config.WATCHER_AUTO_START === true;
 
         if (envAutoStart || settingsAutoStart) {
-            console.log('[Services] Watchdog: auto-starting (AUTO_START_WATCHDOG=true or watcher.auto_start=true)...');
-            await startWatchdog();
+            const extraPaths = config.WATCHER_EXTRA_PATHS || [];
+            console.log(`[Services] Watchdog: auto-starting ${envAutoStart ? '(AUTO_START_WATCHDOG=true)' : '(watcher.auto_start=true)'} with extra_paths=${JSON.stringify(extraPaths)}`);
+            await startWatchdog(extraPaths);
             console.log('[Services] ✅ Watchdog auto-started successfully');
             watchdogEnabled = true;
         } else {
@@ -393,17 +394,17 @@ async function startServer() {
     console.log('[Services] All service start commands queued');
 
     // ============================================
-    // Standard 110: Regenerate Derived Data
+    // Standard 024: Regenerate Derived Data
     // ============================================
     // On startup: regenerate all derived data from inbox/ (source of truth)
 
     // 1. Create mirror from inbox/ files
-    console.log('[Startup] Regenerating mirrored_brain/ from inbox/ (Standard 110)...');
+    console.log('[Startup] Regenerating mirrored_brain/ from inbox/ (Standard 024)...');
     const { createMirror } = await import('./services/mirror/mirror.js');
     await createMirror();
 
     // 2. Generate synonym rings automatically (Standard 111)
-    console.log('[Startup] Auto-generating synonym rings from data (Standard 111)...');
+    console.log('[Startup] Auto-generating synonym rings from data...');
     try {
       const { AutoSynonymGenerator } = await import('./services/synonyms/auto-synonym-generator.js');
       const generator = new AutoSynonymGenerator();
@@ -476,7 +477,7 @@ process.on('SIGINT', async () => {
     console.log('[Shutdown] Closing database connection...');
     await db.close();
 
-    // Standard 110: Ephemeral Index Architecture — Unconditional wipe on shutdown
+    // Standard 024: Ephemeral Index Architecture — Unconditional wipe on shutdown
     // All PGlite tables (atoms, molecules, sources, distills) must be cleared
     // so each engine start rebuilds fresh from inbox/ (source of truth)
     

@@ -163,7 +163,7 @@ export class Database {
         // Read memory settings from config (with safe defaults)
         const sharedBuffers = `${config.DATABASE?.SHARED_BUFFERS_MB || 64}MB`;
         const effectiveCache = `${config.DATABASE?.EFFECTIVE_CACHE_SIZE_MB || 64}MB`;
-        const workMem = `${config.DATABASE?.WORK_MEM_MB || 4}MB`;
+        const workMem = `${config.DATABASE?.WORK_MEM_MB || 16}MB`;
         const maintWorkMem = `${config.DATABASE?.MAINTENANCE_WORK_MEM_MB || 32}MB`;
 
         // Initialize PGlite with optimized memory settings (Standard 127)
@@ -176,7 +176,7 @@ export class Database {
           // 2. Memory pressure detection (downgrade max-recall if heap >3.2GB)
           // 3. Forced GC after ingestion and search completion
           // 4. LRU cache reduced to 5% of WASM max (25.6MB ~ 2560 entries at 10KB each)
-          initialMemory: 536870912, // 512MB - caps WASM linear memory
+          initialMemory: 1073741824, // 1GB — PGlite WASM Memory constraint (safe default)
           relaxedDurability: true, // Skip fsync during ingestion (Standard 059)
           settings: {
             // Reduce PGlite WASM buffer cache from default 1GB

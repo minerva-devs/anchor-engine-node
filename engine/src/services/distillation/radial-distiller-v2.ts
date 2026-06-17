@@ -14,6 +14,7 @@ import { ContextInflator } from '../search/context-inflator.js';
 import { StructuredLogger } from '../../utils/structured-logger.js';
 import { getMirrorPath, MIRRORED_BRAIN_PATH } from '../mirror/mirror.js';
 import { PATHS, DEFAULT_PROVENANCE, NOTEBOOK_DIR } from '../../config/paths.js';
+import { config } from '../../config/index.js';
 import { recordDistill } from './distill-manager.js';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -43,7 +44,8 @@ export interface RadialDistillRequest {
   output_path?: string;
   export_to_inbox?: boolean; // For CLI compatibility
   max_molecules?: number;    // Added for memory route compatibility
-  timeout_seconds?: number;   // Added for memory route compatibility  
+  timeout_seconds?: number;   // Added for memory route compatibility
+  _offset?: number;           // Internal: pagination offset for batch iteration
 }
 
 export interface DistillLine {
@@ -262,11 +264,23 @@ async function* collectCompounds(
 
   queryBase += ' ORDER BY m.timestamp DESC, m.start_byte ASC';
 
-  // Honor max_molecules parameter to prevent OOM on large corpora.
-  // Without this, {max_molecules: 5} still fetches all 87K+ molecules (~1.7GB).
-  if (request.max_molecules && request.max_molecules > 0) {
-    effectiveParams.push(request.max_molecules);
-    queryBase += ` LIMIT $${effectiveParams.length}`;
+  // Dynamic batch size: auto-tuned from config to stay within WASM heap.
+  // All values configurable via user_settings.json → distillation section.
+  const cfg = config.DISTILLATION;
+  const heapMB = (process.memoryUsage().heapTotal / 1024 / 1024) | 0;
+  const maxByHeap = Math.max(cfg.BATCH_FLOOR, Math.floor((heapMB * cfg.HEAP_FRACTION) / (cfg.BYTES_PER_MOLECULE / 1024)));
+  const BATCH_SIZE = Math.min(cfg.BATCH_SIZE, maxByHeap, cfg.BATCH_CEILING);
+
+  const offset = request._offset || 0;
+  const requestedLimit = request.max_molecules && request.max_molecules > 0
+    ? Math.min(request.max_molecules, BATCH_SIZE)
+    : BATCH_SIZE;
+
+  effectiveParams.push(requestedLimit);
+  queryBase += ` LIMIT $${effectiveParams.length}`;
+  if (offset > 0) {
+    effectiveParams.push(offset);
+    queryBase += ` OFFSET $${effectiveParams.length}`;
   }
 
   const result = await db.run(queryBase, effectiveParams);
@@ -569,38 +583,91 @@ export async function radialDistill(
 ): Promise<RadialDistillResult> {
   const startTime = Date.now();
   const memBefore = process.memoryUsage();
-  let memAfter: unknown = null;
 
   try {
-    const compoundGenerator = collectCompounds(request);
-    const { uniqueLines, stats: dedupStats } = await deduplicateLines(compoundGenerator, request);
-    const { outputPath, sizeBytes, compoundsCreated } = await reassembleCompounds(uniqueLines, request);
-    memAfter = process.memoryUsage();
+    // ── Batch-iterate through the full corpus ──────────────────────
+    // Auto-tuned batch size: min(config.batch_size, heap * fraction / bytes_per_mol, ceiling)
+    // All values configurable via user_settings.json → distillation section.
+    const cfg = config.DISTILLATION;
+    const heapMB = (process.memoryUsage().heapTotal / 1024 / 1024) | 0;
+    const maxByHeap = Math.max(cfg.BATCH_FLOOR, Math.floor((heapMB * cfg.HEAP_FRACTION) / (cfg.BYTES_PER_MOLECULE / 1024)));
+    const BATCH_SIZE = Math.min(cfg.BATCH_SIZE, maxByHeap, cfg.BATCH_CEILING);
 
+    let offset = 0;
+    let totalLines = 0;
+    let totalUnique = 0;
+    let totalDuplicates = 0;
+    let compoundsTotal = 0;
+    const allSourceCompounds = new Set<string>();
+    const accumulatedUnique = new Map<string, import('./radial-distiller-v2.js').DistillLine>();
+
+    while (true) {
+      const batchRequest = { ...request, _offset: offset, max_molecules: BATCH_SIZE };
+      const compoundGenerator = collectCompounds(batchRequest);
+      const { uniqueLines, stats: batchStats } = await deduplicateLines(compoundGenerator, request);
+
+      // Merge unique lines from this batch
+      for (const [hash, line] of uniqueLines) {
+        if (!accumulatedUnique.has(hash)) {
+          accumulatedUnique.set(hash, line);
+        } else {
+          // Merge provenance from duplicate across batches
+          const existing = accumulatedUnique.get(hash)!;
+          for (const p of line.provenance) {
+            if (!existing.provenance.includes(p)) existing.provenance.push(p);
+          }
+        }
+      }
+
+      totalLines += batchStats.total;
+      totalDuplicates += batchStats.duplicate;
+      compoundsTotal += batchStats.compoundsTotal;
+
+      // Collect source compounds from unique lines in this batch
+      for (const line of uniqueLines.values()) {
+        for (const p of line.provenance) allSourceCompounds.add(p);
+      }
+
+      const newlyUnique = uniqueLines.size;
+      totalUnique = accumulatedUnique.size;
+      console.log(`[Distill] Batch at offset ${offset}: ${batchStats.total} lines, ${newlyUnique} new unique (${totalUnique} total)`);
+
+      // Stop when batch returns fewer molecules than BATCH_SIZE (last page)
+      if (batchStats.total < BATCH_SIZE) break;
+      if (batchStats.total === 0) break;
+      // Advance offset by the number of molecules requested (BATCH_SIZE),
+      // not by line count — the query paginates molecules, not lines.
+      offset += BATCH_SIZE;
+    }
+
+    // ── Reassemble accumulated unique lines ─────────────────────────
+    const { outputPath, sizeBytes, compoundsCreated } = await reassembleCompounds(
+      accumulatedUnique,
+      request,
+    );
+
+    const memAfter = process.memoryUsage();
     const duration = Date.now() - startTime;
-    const memBeforeVal = memBefore as NodeJS.MemoryUsage;
-    const memAfterVal = memAfter as NodeJS.MemoryUsage;
-    const memPeak = Math.max(memAfterVal.heapUsed, memBeforeVal.heapUsed);
+    const memPeak = Math.max(
+      (memAfter as NodeJS.MemoryUsage).heapUsed,
+      (memBefore as NodeJS.MemoryUsage).heapUsed,
+    );
 
-    const compressionRatio = dedupStats.unique > 0
-      ? (dedupStats.total / dedupStats.unique).toFixed(2)
+    const compressionRatio = totalUnique > 0
+      ? (totalLines / totalUnique).toFixed(2)
       : '1.00';
 
-    const sourceCompounds = Array.from(uniqueLines.values())
-      .flatMap(line => line.provenance)
-      .filter((source, index, arr) => arr.indexOf(source) === index)
-      .sort();
+    const sourceCompounds = Array.from(allSourceCompounds).sort();
 
     const result: RadialDistillResult & { stats: { blocks_total?: number; blocks_unique?: number; decision_records?: number } } = {
       stats: {
-        compounds_processed: dedupStats.compoundsTotal,
-        lines_total: dedupStats.total,
-        lines_unique: dedupStats.unique,
-        lines_duplicate: dedupStats.duplicate,
-        // Legacy aliases used by memory.ts route and UI
-        blocks_total: dedupStats.total,
-        blocks_unique: dedupStats.unique,
-        decision_records: dedupStats.unique,
+        compounds_processed: compoundsTotal,
+        lines_total: totalLines,
+        lines_unique: totalUnique,
+        lines_duplicate: totalDuplicates,
+        blocks_total: totalLines,
+        blocks_unique: totalUnique,
+        decision_records: totalUnique,
         compression_ratio: `${compressionRatio}:1`,
         duration_ms: duration,
         memory_peak_mb: Math.floor(memPeak / 1024 / 1024),
@@ -609,32 +676,16 @@ export async function radialDistill(
       provenance: { source_compounds: sourceCompounds, unique_sources: sourceCompounds.length, distilled_at: new Date().toISOString(), parameters: request },
     };
 
+    console.log(`[Distill] Full corpus: ${totalLines} lines → ${totalUnique} unique (${compressionRatio}:1) in ${(duration / 1000).toFixed(1)}s, ${Math.floor(memPeak / 1024 / 1024)}MB peak`);
     return result;
+
   } catch (err) {
     StructuredLogger.error('DISTILL_ERROR', err as Error, {
-      request: request,
+      request,
       duration_ms: Date.now() - startTime,
       memBefore_mb: Math.floor((memBefore as NodeJS.MemoryUsage).heapUsed / 1024 / 1024),
-      memAfter_mb: memAfter ? Math.floor((memAfter as NodeJS.MemoryUsage).heapUsed / 1024 / 1024) : 'N/A',
     });
-
-    if ((err as Error & { code?: string; path?: string }).code === 'ERR_MODULE_NOT_FOUND') {
-      StructuredLogger.error('DISTILL_MODULE_ERROR', err as Error, { module: (err as Error & { code?: string; path?: string }).code, details: String(err) });
-      throw new Error('Failed to load distiller service. Please restart the server.');
-    } else if ((err as Error & { code?: string; path?: string }).code === 'ENOENT') {
-      StructuredLogger.error('DISTILL_FILE_ERROR', err as Error, { path: (err as Error & { code?: string; path?: string }).path, details: String(err) });
-      throw new Error('Output directory not writable. Check permissions.');
-    } else if (String(err).includes('Memory') || String((err as Error & { code?: string }).code) === 'ERR_OUT_OF_RANGE') {
-      const memBeforeVal = memBefore as NodeJS.MemoryUsage;
-      const memAfterVal = memAfter ? memAfter as NodeJS.MemoryUsage : null;
-      StructuredLogger.error('DISTILL_MEMORY_ERROR', err as Error, { usedHeap: memAfterVal?.heapUsed || 0 });
-      throw new Error('Out of memory. Reduce the corpus size or increase memory limits.');
-    } else if ((err as Error).name === 'ValidationError' || String(err).includes('validation') || String(err).includes('invalid')) {
-      StructuredLogger.error('DISTILL_VALIDATION_ERROR', err as Error, { input: request, error: String(err) });
-      throw new Error(`Invalid input: ${String(err)}`);
-    } else {
-      throw err;
-    }
+    throw err;
   }
 }
 

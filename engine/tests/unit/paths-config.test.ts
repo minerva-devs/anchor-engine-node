@@ -1,75 +1,16 @@
 /**
  * PATHS Configuration Tests
  *
- * Verifies that path configuration is correct and consistent
- * across the Anchor Engine system. Updated to handle cross-platform paths.
- * 
- * All tests are logged with full execution flow for deep debugging.
+ * Verifies path configuration is correct per Standard 024 (Ephemeral Database
+ * Architecture) and doc_policy §5: all runtime data routes to $HOME/.anchor/.
  */
 
 import { test, expect } from 'vitest';
 import { PATHS, PROJECT_ROOT } from '../../src/config/paths.js';
 import * as path from 'path';
+import { homedir } from 'os';
 
-// Cross-platform path normalization utility function for test comparisons
-function normalizePath(pathStr: string): string {
-  // Convert Windows-style paths (C:\Users\...) to Unix-style (/local-data/...)
-  const normalized = pathStr.replace(/\\/g, '/');
-  
-  // For Windows absolute paths like C:\Users\rsbiiw\Projects\aen, convert to /aen format for consistency checks
-  if (normalized.startsWith('c:/') || normalized.startsWith('C:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('d:/') || normalized.startsWith('D:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('e:/') || normalized.startsWith('E:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('f:/') || normalized.startsWith('F:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('g:/') || normalized.startsWith('G:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('h:/') || normalized.startsWith('H:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('i:/') || normalized.startsWith('I:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('j:/') || normalized.startsWith('J:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('k:/') || normalized.startsWith('K:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('l:/') || normalized.startsWith('L:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('m:/') || normalized.startsWith('M:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('n:/') || normalized.startsWith('N:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('o:/') || normalized.startsWith('O:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('p:/') || normalized.startsWith('P:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('q:/') || normalized.startsWith('Q:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('r:/') || normalized.startsWith('R:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('s:/') || normalized.startsWith('S:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('t:/') || normalized.startsWith('T:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('u:/') || normalized.startsWith('U:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('v:/') || normalized.startsWith('V:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('w:/') || normalized.startsWith('W:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('x:/') || normalized.startsWith('X:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('y:/') || normalized.startsWith('Y:/')) {
-    return '/projects/aen';
-  } else if (normalized.startsWith('z:/') || normalized.startsWith('Z:/')) {
-    return '/projects/aen';
-  }
-  
-  // Unix-style paths already in correct format for comparison
-  return normalized;
-}
+const ANCHOR_ROOT = path.resolve(homedir(), '.anchor');
 
 describe('PATHS Configuration', () => {
   describe('PROJECT_ROOT', () => {
@@ -84,108 +25,39 @@ describe('PATHS Configuration', () => {
   });
 
   describe('INBOX_DIR', () => {
-    it('should be under .anchor/local-data/inbox or notebook/inbox', () => {
-      // Standard 110: Uses local-data structure under .anchor for consistent data organization
-      const normalizedPath = PATHS.INBOX_DIR.replace(/\\/g, '/');
-      
-      // Check if inbox is either under .anchor/local-data/ or in /aen/notebook/ (backward compat)
-      let isInCorrectLocation = false;
-      try {
-        isInCorrectLocation = 
-          (normalizedPath.includes('/.anchor/') && normalizedPath.includes('/inbox')) ||
-          (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('notebook') && normalizedPath.includes('inbox'));
-      } catch (e) {}
-      
-      expect(isInCorrectLocation).toBe(true);
+    it('should be under .anchor/', () => {
+      // Standard 024: all runtime data under $HOME/.anchor/
+      const normalized = PATHS.INBOX_DIR.replace(/\\/g, '/');
+      const anchorNormalized = ANCHOR_ROOT.replace(/\\/g, '/');
+      expect(normalized.startsWith(anchorNormalized)).toBe(true);
     });
 
     it('should be an absolute path', () => {
       expect(path.isAbsolute(PATHS.INBOX_DIR)).toBe(true);
     });
-
-    it('should be a subdirectory of PROJECT_ROOT or ANCHOR_ROOT', () => {
-      const inboxNormalized = PATHS.INBOX_DIR.replace(/\\/g, '/');
-      const rootNormalized = PROJECT_ROOT.replace(/\\/g, '/');
-      
-      // Check if inbox is under projects/aen/ or .anchor/local-data/inbox structure
-      let isInRoot = false;
-      try {
-        isInRoot = 
-          (inboxNormalized.startsWith(rootNormalized + '/') && inboxNormalized.includes('/inbox')) ||
-          (inboxNormalized.includes('/.anchor/') && inboxNormalized.includes('/local-data') && inboxNormalized.includes('/inbox'));
-      } catch (e) {}
-      
-      expect(isInRoot).toBe(true);
-    });
   });
 
   describe('EXTERNAL_INBOX_DIR', () => {
-    it('should be under .anchor/local-data/external-inbox or notebook/external-inbox', () => {
-      // Standard 110: Uses local-data structure under .anchor for consistent data organization
-      const normalizedPath = PATHS.EXTERNAL_INBOX_DIR.replace(/\\/g, '/');
-      
-      // Check if external-inbox is either under .anchor/local-data/ or in /aen/notebook/ (backward compat)
-      let isInCorrectLocation = false;
-      try {
-        isInCorrectLocation = 
-          (normalizedPath.includes('/.anchor/') && normalizedPath.includes('/external-inbox')) ||
-          (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('notebook') && normalizedPath.includes('external-inbox'));
-      } catch (e) {}
-      
-      expect(isInCorrectLocation).toBe(true);
+    it('should be under .anchor/', () => {
+      const normalized = PATHS.EXTERNAL_INBOX_DIR.replace(/\\/g, '/');
+      const anchorNormalized = ANCHOR_ROOT.replace(/\\/g, '/');
+      expect(normalized.startsWith(anchorNormalized)).toBe(true);
     });
 
     it('should be an absolute path', () => {
       expect(path.isAbsolute(PATHS.EXTERNAL_INBOX_DIR)).toBe(true);
     });
-
-    it('should be a subdirectory of PROJECT_ROOT or ANCHOR_ROOT', () => {
-      const extInboxNormalized = PATHS.EXTERNAL_INBOX_DIR.replace(/\\/g, '/');
-      
-      // Check if external-inbox is under projects/aen/ or .anchor/local-data/external-inbox structure
-      let isInRoot = false;
-      try {
-        isInRoot = 
-          (extInboxNormalized.startsWith(PROJECT_ROOT + '/') && extInboxNormalized.includes('/external-inbox')) ||
-          (extInboxNormalized.includes('/.anchor/') && extInboxNormalized.includes('/local-data') && extInboxNormalized.includes('/external-inbox'));
-      } catch (e) {}
-      
-      expect(isInRoot).toBe(true);
-    });
   });
 
   describe('MIRRORED_BRAIN_DIR', () => {
-    it('should be under .anchor/local-data/mirrored_brain or notebook/mirrored_brain', () => {
-      // Standard 110: Uses local-data structure under .anchor for consistent data organization
-      const normalizedPath = PATHS.MIRRORED_BRAIN_DIR.replace(/\\/g, '/');
-      
-      // Check if mirrored brain is either under .anchor/local-data/ or in /aen/notebook/ (backward compat)
-      let isInCorrectLocation = false;
-      try {
-        isInCorrectLocation = 
-          (normalizedPath.includes('/.anchor/') && normalizedPath.includes('/mirrored_brain')) ||
-          (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('notebook') && normalizedPath.includes('mirrored_brain'));
-      } catch (e) {}
-      
-      expect(isInCorrectLocation).toBe(true);
+    it('should be under .anchor/', () => {
+      const normalized = PATHS.MIRRORED_BRAIN_DIR.replace(/\\/g, '/');
+      const anchorNormalized = ANCHOR_ROOT.replace(/\\/g, '/');
+      expect(normalized.startsWith(anchorNormalized)).toBe(true);
     });
 
     it('should be an absolute path', () => {
       expect(path.isAbsolute(PATHS.MIRRORED_BRAIN_DIR)).toBe(true);
-    });
-
-    it('should be a subdirectory of PROJECT_ROOT or ANCHOR_ROOT', () => {
-      const brainNormalized = PATHS.MIRRORED_BRAIN_DIR.replace(/\\/g, '/');
-      
-      // Check if mirrored brain is under projects/aen/ or .anchor/local-data/mirrored_brain structure
-      let isInRoot = false;
-      try {
-        isInRoot = 
-          (brainNormalized.startsWith(PROJECT_ROOT + '/') && brainNormalized.includes('/mirrored_brain')) ||
-          (brainNormalized.includes('/.anchor/') && brainNormalized.includes('/local-data') && brainNormalized.includes('/mirrored_brain'));
-      } catch (e) {}
-      
-      expect(isInRoot).toBe(true);
     });
   });
 
@@ -204,39 +76,14 @@ describe('PATHS Configuration', () => {
   });
 
   describe('Data Directory Structure', () => {
-    it('should have all data directories under .anchor/local-data/ or notebook/', () => {
+    it('should have all data directories under .anchor/', () => {
       const dataPaths = [PATHS.INBOX_DIR, PATHS.EXTERNAL_INBOX_DIR, PATHS.MIRRORED_BRAIN_DIR];
+      const anchorNormalized = ANCHOR_ROOT.replace(/\\/g, '/');
 
-      dataPaths.forEach(p => {
-        // Standard 110: Uses local-data structure under .anchor for consistent data organization
-        const normalizedPath = p.replace(/\\/g, '/');
-        
-        // Check if path is either under .anchor/ (with local-data subdirectory) or in /aen/notebook/
-        let hasCorrectStructure = false;
-        try {
-          hasCorrectStructure = 
-            (normalizedPath.includes('/.anchor/') && normalizedPath.includes('local-data')) ||
-            (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('notebook'));
-        } catch (e) {}
-        
-        expect(hasCorrectStructure).toBe(true);
-      });
-    });
-
-    it('should maintain proper hierarchy', () => {
-      [PATHS.INBOX_DIR, PATHS.EXTERNAL_INBOX_DIR, PATHS.MIRRORED_BRAIN_DIR].forEach(p => {
-        const normalizedPath = p.replace(/\\/g, '/');
-        
-        // Check if paths are under projects/aen/ or .anchor/local-data structure
-        let isUnderAnchor = false;
-        try {
-          isUnderAnchor = 
-            (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('/inbox')) ||
-            (normalizedPath.includes('/.anchor/') && normalizedPath.includes('/local-data'));
-        } catch (e) {}
-        
-        expect(isUnderAnchor).toBe(true);
-      });
+      for (const p of dataPaths) {
+        const normalized = p.replace(/\\/g, '/');
+        expect(normalized.startsWith(anchorNormalized)).toBe(true);
+      }
     });
   });
 
@@ -258,34 +105,16 @@ describe('PATHS Configuration', () => {
   });
 
   describe('Provenance Detection Compatibility', () => {
-    it('inbox paths should be detectable as internal (under .anchor/local-data/inbox)', () => {
+    it('inbox paths should be detectable as internal', () => {
       const testPath = path.join(PATHS.INBOX_DIR, 'test.md');
-      const normalizedPath = testPath.replace(/\\/g, '/');
-
-      // Check if inbox is under .anchor/ or projects/aen/notebook/ structure
-      let isInInternalInbox = false;
-      try {
-        isInInternalInbox =
-          (normalizedPath.includes('/.anchor/') && normalizedPath.includes('/inbox')) ||
-          (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('notebook') && normalizedPath.includes('inbox'));
-      } catch (e) {}
-
-      expect(isInInternalInbox).toBe(true);
+      const normalized = testPath.replace(/\\/g, '/');
+      expect(normalized.includes('/inbox/') || normalized.endsWith('/inbox')).toBe(true);
     });
 
     it('external-inbox paths should be detectable as external', () => {
       const testPath = path.join(PATHS.EXTERNAL_INBOX_DIR, 'test.md');
-      const normalizedPath = testPath.replace(/\\/g, '/');
-
-      // Check if external-inbox is under .anchor/ or projects/aen/notebook/ structure
-      let isInExternalInbox = false;
-      try {
-        isInExternalInbox =
-          (normalizedPath.includes('/.anchor/') && normalizedPath.includes('/external-inbox')) ||
-          (normalizedPath.startsWith(PROJECT_ROOT + '/') && normalizedPath.includes('notebook') && normalizedPath.includes('external-inbox'));
-      } catch (e) {}
-
-      expect(isInExternalInbox).toBe(true);
+      const normalized = testPath.replace(/\\/g, '/');
+      expect(normalized.includes('/external-inbox/') || normalized.endsWith('/external-inbox')).toBe(true);
     });
   });
 });

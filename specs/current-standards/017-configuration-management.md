@@ -84,3 +84,21 @@ const MIRRORED_BRAIN_DIR = path.join(__dirname, '../../mirrored_brain');
 - Configuration loading in `engine/src/config/index.ts`
 - Settings schema documented in `user_settings.json` comments
 - MCP reads settings in `engine/src/mcp/server.ts`
+
+### v5.3.0 Configuration Additions (June 2026)
+
+Three new sections added to `user_settings.json.template`:
+
+| Section | Purpose | Key settings |
+|---------|---------|-------------|
+| `streaming` | GB-scale ingestion control | `window_bytes` (1 MB), `stream_threshold_bytes` (10 MB), `yield_interval_ms` (0), `enabled` (true) |
+| `worker_threads` | Experimental off-main-thread ingestion | `enabled` (false), `max_workers` (1), `ingest_queue_max` (100) |
+| `cron` | Scheduled maintenance tasks | `daily_scrape_hour` (3), `synonym_regeneration_hour` (4), `db_vacuum_hour` (5), `cache_prune_interval_minutes` (60) |
+
+Additional settings on existing sections:
+
+| Section | Addition | Purpose |
+|---------|----------|---------|
+| `distillation` | `batch_size` (5000) | Molecules per batch query during full-corpus distillation |
+| `database` | `work_mem_mb` (16, was 4) | Per-sort memory for large join operations during ingestion |
+| `database` | `maintenance_work_mem_mb` (256) | Memory for VACUUM, CREATE INDEX during maintenance |

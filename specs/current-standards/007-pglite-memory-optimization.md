@@ -108,5 +108,48 @@ speedup during large file ingestion is significant (~10-50x, per Standard 119).
 
 ---
 
+## 9. v5.3.0 Streaming Ingestion Memory Management (June 2026)
+
+Large file ingestion (237 MB+) exposed additional OOM paths beyond the initial
+buffer allocation:
+
+### WASM Heap Exhaustion During Streaming
+
+Even with `shared_buffers` at 256MB, the WASM linear memory fills up after
+~70-80 chunks (~70MB of raw text → hundreds of thousands of persisted rows)
+because PGlite accumulates WAL pages in the heap until a CHECKPOINT is issued.
+
+**Fix:** Force a `CHECKPOINT` SQL command every 10 chunks during streaming
+ingestion, followed by a V8 GC (`global.gc()`). This releases accumulated
+WAL pages back to the WASM allocator. The engine must be started with
+`--expose-gc` for the GC call to succeed.
+
+```typescript
+// watchdog.ts — streaming ingestion loop
+if (chunk.index % 10 === 0) {
+    await db.run('CHECKPOINT');
+    if (typeof (global as any).gc === 'function') (global as any).gc();
+}
+```
+
+### Heap Size Increase
+
+The `initialMemory` parameter was increased from 512 MB to 2 GB
+(`2147483648` bytes) to accommodate 200K+ molecule corpora. Windows ARM64
+has a practical ceiling of ~2GB for WASM linear memory.
+
+### Batch Insert Optimization
+
+Atoms and edges were converted from per-row `db.run()` to multi-row INSERTs
+(batches of 50). This reduces PGlite round-trips per chunk from ~400 to ~9,
+cutting the persistence bottleneck from 400-1500ms to ~50-100ms per chunk.
+
+### start-engine-bg.mjs
+
+The startup script now passes `--expose-gc` to Node.js so the in-loop GC calls
+function. The script spawns with `detached: true` and `proc.unref()` so the
+engine process survives tool-call timeouts.
+
+---
 **Approved by:** OOM Prevention Sprint, March 2026
 **Review Date:** September 2026 (or upon corpus size doubling)
