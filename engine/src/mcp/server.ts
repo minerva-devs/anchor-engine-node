@@ -350,6 +350,20 @@ const TOOLS = [
       properties: {},
     },
   },
+  {
+    name: 'anchor_remove_path',
+    description: 'Remove a watched path and purge ALL associated database content (hot slotting). This is the full cleanup operation — removes watch config AND deletes all atoms, molecules, tags, edges, and sources from that path.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: {
+          type: 'string',
+          description: 'Absolute path to remove from watching and purge from database',
+        },
+      },
+      required: ['path'],
+    },
+  },
 ];
 
 // Handle tool list request

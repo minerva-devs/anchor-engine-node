@@ -45,6 +45,68 @@ export class AtomicIngestService {
         console.log(`[AtomicIngest] 🧹 Database clean for: ${sourcePath} complete`);
     }
 
+    /**
+     * Hot Slotting Purge — Remove ALL database records associated with a directory.
+     * This is the "un-ingest" operation for removing watched paths.
+     */
+    async purgeDirectory(dirPath: string): Promise<{ path: string; atoms: number; molecules: number; edges: number; tags: number; sources: number }> {
+        const likePattern = `${dirPath.replace(/\\/g, '/')}/%`;
+        const summary = { path: dirPath, atoms: 0, molecules: 0, edges: 0, tags: 0, sources: 0 };
+
+        await db.transaction(async () => {
+            // Step 1: Get all atoms under this directory (needed for edge/position deletion)
+            const atoms = await db.run(
+                `SELECT id FROM atoms WHERE source_path LIKE $1`,
+                [likePattern]
+            );
+            const atomIds = Array.isArray(atoms?.results) ? atoms.results.map((a: any) => a.id) : [];
+
+            // Step 2: Delete edges referencing those atoms (both directions)
+            if (atomIds.length) {
+                const placeholders = atomIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+                await db.run(`DELETE FROM edges WHERE source_id IN (${placeholders}) OR target_id IN (${placeholders})`, atomIds.concat(atomIds));
+                summary.edges = atomIds.length; // rough count based on atoms
+            }
+
+            // Step 3: Delete atom_positions (via molecules/compounds)
+            if (atomIds.length) {
+                const placeholders = atomIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+                await db.run(`DELETE FROM atom_positions WHERE compound_id IN (${placeholders})`, atomIds);
+            }
+
+            // Step 4: Delete tags (via atoms)
+            const tagsResult = await db.run(
+                `DELETE FROM tags WHERE atom_id IN (SELECT id FROM atoms WHERE source_path LIKE $1)`,
+                [likePattern]
+            );
+            summary.tags = tagsResult?.changes ?? 0;
+
+            // Step 5: Delete molecules
+            const moleculesResult = await db.run(
+                `DELETE FROM molecules WHERE source_path LIKE $1`,
+                [likePattern]
+            );
+            summary.molecules = moleculesResult.changes ?? 0;
+
+            // Step 6: Delete atoms
+            const atomsResult = await db.run(
+                `DELETE FROM atoms WHERE source_path LIKE $1`,
+                [likePattern]
+            );
+            summary.atoms = atomsResult.changes ?? 0;
+
+            // Step 7: Delete source records (path trackers)
+            const sourcesResult = await db.run(
+                `DELETE FROM sources WHERE path LIKE $1`,
+                [likePattern]
+            );
+            summary.sources = sourcesResult.changes ?? 0;
+        });
+
+        console.log(`[AtomicIngest] 🧹 Purged directory "${dirPath}": ${summary.atoms} atoms, ${summary.molecules} molecules, ${summary.edges} edges, ${summary.tags} tags`);
+        return summary;
+    }
+
     async ingestResult(
         compound: Compound,
         molecules: Molecule[],
