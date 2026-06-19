@@ -3,6 +3,8 @@ import { config } from '../../config/index.js';
 import type { Atom, Molecule, Compound } from '../../types/atomic.js';
 import { filterTags } from '../../utils/tag-filter.js';
 import { modulateTags, normalizeTag } from '../../utils/tag-modulation.js';
+import { getMirrorPath } from '../mirror.js';
+import * as fs from 'fs';
 
 export class AtomicIngestService {
 
@@ -49,9 +51,9 @@ export class AtomicIngestService {
      * Hot Slotting Purge — Remove ALL database records associated with a directory.
      * This is the "un-ingest" operation for removing watched paths.
      */
-    async purgeDirectory(dirPath: string): Promise<{ path: string; atoms: number; molecules: number; edges: number; tags: number; sources: number }> {
+    async purgeDirectory(dirPath: string): Promise<{ path: string; atoms: number; molecules: number; edges: number; tags: number; sources: number; files_cleaned: number }> {
         const likePattern = `${dirPath.replace(/\\/g, '/')}/%`;
-        const summary = { path: dirPath, atoms: 0, molecules: 0, edges: 0, tags: 0, sources: 0 };
+        const summary = { path: dirPath, atoms: 0, molecules: 0, edges: 0, tags: 0, sources: 0, files_cleaned: 0 };
 
         await db.transaction(async () => {
             // Step 1: Get all atoms under this directory (needed for edge/position deletion)
@@ -103,9 +105,58 @@ export class AtomicIngestService {
             summary.sources = sourcesResult.changes ?? 0;
         });
 
-        console.log(`[AtomicIngest] 🧹 Purged directory "${dirPath}": ${summary.atoms} atoms, ${summary.molecules} molecules, ${summary.edges} edges, ${summary.tags} tags`);
+        // 🔥 FILESYSTEM CLEANUP: Remove mirrored_brain/ files for this path
+        summary.files_cleaned = await this.cleanupMirroredFiles(dirPath);
+
+        console.log(`[AtomicIngest] 🧹 Purged directory "${dirPath}": ${summary.atoms} atoms, ${summary.molecules} molecules, ${summary.files_cleaned} mirrored files`);
         return summary;
     }
+
+    /**
+     * Filesystem Cleanup — Delete all mirrored_brain/ files associated with a source path.
+     * This ensures complete cleanup of the "tangible knowledge graph" alongside database purge.
+     */
+    private async cleanupMirroredFiles(dirPath: string): Promise<number> {
+        const normalized = dirPath.replace(/\\/g, '/');
+        const likePattern = `${normalized}/%`;
+        
+        // Get all distinct source paths from atoms table for this directory
+        try {
+            const result = await db.run(
+                `SELECT DISTINCT source_path FROM atoms WHERE source_path LIKE $1`,
+                [likePattern]
+            );
+            
+            let cleaned = 0;
+            if (result?.results) {
+                for (const row of result.results) {
+                    try {
+                        const sourcePath = Array.isArray(row) ? row[0] : row.source_path || '';
+                        
+                        // Determine provenance from path content
+                        const provenance = sourcePath.includes('external-inbox') ? 'external' : 
+                                          sourcePath.includes('quarantine') ? 'quarantine' : 'internal';
+                        
+                        // Resolve mirrored file path
+                        const mirrorPath = getMirrorPath(sourcePath, provenance);
+                        if (fs.existsSync(mirrorPath)) {
+                            fs.unlinkSync(mirrorPath);  // Delete mirrored file
+                            cleaned++;
+                        }
+                    } catch (e: any) {
+                        console.warn(`[AtomicIngest] Failed to delete mirror for ${dirPath}:`, e.message);
+                        // Don't fail entire purge for one missing/wrong file
+                    }
+                }
+            }
+            
+            return cleaned;
+        } catch (dbError: any) {
+            console.error(`[AtomicIngest] ⚠️ Failed to query atoms for filesystem cleanup:`, dbError.message);
+            return 0;
+        }
+    }
+
 
     async ingestResult(
         compound: Compound,

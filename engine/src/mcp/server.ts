@@ -364,12 +364,12 @@ const TOOLS = [
       required: ['path'],
     },
   },
-];
+  ];
 
-// Handle tool list request
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return { tools };
-});
+  // Handle tool list request
+  server.setRequestHandler(ListToolsRequestSchema, async () => {
+   return tools;
+  });
 
 // Handle tool execution
 server.setRequestHandler(CallToolRequestSchema, async request => {

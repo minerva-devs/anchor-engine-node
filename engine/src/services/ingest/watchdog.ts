@@ -285,12 +285,12 @@ export async function removeWatchPath(pathToRemove: string): Promise<boolean> {
         }
     }
 
-    // 🔥 HOT SLOTTING: Purge all database records for this path
+    // 🔥 HOT SLOTTING: Purge all database records for this path AND filesystem mirror
     try {
         const AtomicIngestService = await import('./ingest-atomic.js');
         const ingestService = new AtomicIngestService.AtomicIngestService();
         const purgeSummary = await ingestService.purgeDirectory(pathToRemove);
-        console.log(`[Watchdog] 🧹 Hot-slotting: Purged ${purgeSummary.atoms} atoms, ${purgeSummary.molecules} molecules from removed path`);
+        console.log(`[Watchdog] 🧹 Hot-slotting complete: ${purgeSummary.atoms} atoms, ${purgeSummary.molecules} molecules, ${purgeSummary.files_cleaned} mirrored files`);
     } catch (purgeError: any) {
         console.error(`[Watchdog] ⚠️ Database purge failed for path ${pathToRemove}:`, purgeError.message);
         // Don't fail the entire operation — just log and continue
