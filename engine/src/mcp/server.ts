@@ -368,7 +368,7 @@ const TOOLS = [
 
   // Handle tool list request
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-   return tools;
+    return tools as any;
   });
 
 // Handle tool execution

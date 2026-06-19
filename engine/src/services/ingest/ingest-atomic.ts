@@ -3,7 +3,7 @@ import { config } from '../../config/index.js';
 import type { Atom, Molecule, Compound } from '../../types/atomic.js';
 import { filterTags } from '../../utils/tag-filter.js';
 import { modulateTags, normalizeTag } from '../../utils/tag-modulation.js';
-import { getMirrorPath } from '../mirror.js';
+import { getMirrorPath } from '../mirror/mirror.js';
 import * as fs from 'fs';
 
 export class AtomicIngestService {
