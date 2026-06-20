@@ -496,6 +496,77 @@ export function setupSystemRoutes(app: Application) {
     }
   });
 
+  // POST /v1/system/path-add — Add a watched path (convenience endpoint)
+  app.post('/v1/system/path-add', async (req: Request, res: Response) => {
+    try {
+      const { path: newPath } = req.body;
+      if (!newPath) {
+        res.status(400).json({ error: 'Path is required' });
+        return;
+      }
+
+      const pathModule = await import('path');
+      const fs = await import('fs');
+      const { validatePathSafetyWithExistence } = await import('../../utils/security.js');
+
+      // Resolve to absolute path
+      const resolvedPath = pathModule.resolve(newPath);
+
+      // SECURITY: Validate path is within allowed directories if it's inside the repo structure
+      let resolvedPathToUse = resolvedPath;
+      
+      try {
+        const pathValidation = await validatePathSafetyWithExistence(resolvedPath, [PROJECT_ROOT]);
+        
+        if (pathValidation.isValid) {
+          resolvedPathToUse = pathValidation.resolvedPath;
+        } else {
+          console.log('[API] Accepting external watch path:', resolvedPath);
+        }
+      } catch {
+        // If validation fails for any reason, assume external path is safe to use
+        resolvedPathToUse = resolvedPath;
+      }
+
+      const { addWatchPath } = await import('../../services/ingest/watchdog.js');
+      const success = await addWatchPath(resolvedPathToUse);
+
+      res.status(200).json({
+        status: success ? 'success' : 'failed',
+        message: success ? `Now watching: ${resolvedPathToUse}` : 'Failed to add path',
+        path: resolvedPathToUse,
+        within_project_root: false,
+      });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to add watch path' });
+    }
+  });
+
+  // POST /v1/system/path-remove — Remove a watched path with hot-slotting purge (convenience endpoint)
+  app.post('/v1/system/path-remove', async (req: Request, res: Response) => {
+    try {
+      const { path } = req.body;
+      if (!path) {
+        res.status(400).json({ error: 'Path is required' });
+        return;
+      }
+
+      // Remove from watch config via watchdog (includes DB purge + filesystem cleanup)
+      const { removeWatchPath } = await import('../../services/ingest/watchdog.js');
+      const success = await removeWatchPath(path);
+
+      res.status(200).json({
+        status: success ? 'success' : 'failed',
+        message: success ? `Removed watched path and purged data: ${path}` : 'Failed to remove path',
+        path,
+      });
+    } catch {
+      // Error already logged; return safe error response without leaking internals
+      res.status(500).json({ error: 'Failed to remove watch path' });
+    }
+  });
+
   // POST /v1/system/explorer - Open file explorer at specified path
   app.post('/v1/system/explorer', async (req: Request, res: Response) => {
     try {

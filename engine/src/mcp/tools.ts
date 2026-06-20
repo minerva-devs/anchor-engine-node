@@ -216,4 +216,61 @@ export const tools = [
       return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] };
     },
   },
+
+  // === PATH MANAGEMENT TOOLS (added for hot-slotting support) ===
+
+  {
+    name: 'anchor_set_path',
+    description: 'Add a path to the watch list for ongoing monitoring and ingestion. The engine will monitor this directory for changes.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'Absolute path to add to watching' } }, required: ['path'] },
+    async execute(_ctx: ExecuteContext, args: any): Promise<{ content: Array<{ type: 'text', text: string }>; isError?: boolean }> {
+      if (!args?.path) throw new Error('Path is required');
+
+      // Use direct database operation for reliability (no HTTP dependency)
+      try {
+        const { addWatchPath } = await import('../services/ingest/watchdog.js');
+        const success = await addWatchPath(args.path);
+
+        return { content: [{ type: 'text', text: JSON.stringify({ 
+          status: success ? 'success' : 'failed', 
+          message: success ? `Now watching: ${args.path}` : 'Failed to add path',
+          path: args.path,
+        }, null, 2) }] };
+      } catch (e: any) {
+        console.error('[MCP Tool] Direct watchdog failed, trying HTTP:', e.message);
+        const response = await callAnchorAPI('/v1/system/path-add', { path: args.path });
+        return { content: [{ type: 'text', text: JSON.stringify(response, null, 2) }] };
+      }
+    },
+  },
+
+  {
+    name: 'anchor_remove_path',
+    description: 'Remove a watched path and purge ALL associated database content (hot slotting). This is the full cleanup operation — removes watch config AND deletes all atoms, molecules, tags, edges, and sources from that path.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'Absolute path to remove from watching and purge from database' } }, required: ['path'] },
+    async execute(_ctx: ExecuteContext, args: any): Promise<{ content: Array<{ type: 'text', text: string }>; isError?: boolean }> {
+      if (!args?.path) throw new Error('Path is required');
+
+      // First remove from watch config via watchdog (includes DB purge + filesystem cleanup)
+      let removalResult: any = null;
+      try {
+        const { removeWatchPath } = await import('../services/ingest/watchdog.js');
+        console.log('[MCP Tool] anchor_remove_path: Removing path', args.path);
+        const success = await removeWatchPath(args.path);
+        removalResult = { status: 'success', message: `Removed watched path and purged data: ${args.path}`, path: args.path };
+      } catch (e: any) {
+        console.error('[MCP Tool] anchor_remove_path: Direct watchdog failed, trying HTTP:', e.message);
+        // Fallback to HTTP endpoint
+        try {
+          const response = await callAnchorAPI('/v1/system/path-remove', { path: args.path });
+          removalResult = response;
+        } catch (httpError: any) {
+          console.error('[MCP Tool] anchor_remove_path: Both direct and HTTP failed:', httpError.message);
+          removalResult = null;
+        }
+      }
+
+      return { content: [{ type: 'text', text: JSON.stringify(removalResult, null, 2) }] };
+    },
+  },
 ];

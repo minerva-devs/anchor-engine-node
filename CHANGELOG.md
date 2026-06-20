@@ -7,11 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [5.3.0] - 2026-06-10
+## [5.3.0] - 2026-06-19 (Path Management API & Hot-Slotting Purge)
 
-### Documentation Drift Repair & Standards Consolidation
+### Added
+- **HTTP Endpoints for Path Management** (`Standard 039`)
+  - `POST /v1/system/path-add` — Add watched path via watchdog integration
+  - `POST /v1/system/path-remove` — Remove watched path + trigger hot-slotting purge
+  
+- **MCP Tools with Direct DB Operations**
+  - `anchor_set_path(path)` — Adds path to watch list (direct DB insert + HTTP fallback)
+  - `anchor_remove_path(path)` — Full cleanup: atoms, molecules, edges, tags, sources + mirrored files
 
-**Documentation Policy (v2.3):**
+### Changed
+- **Hot-Slotting Purge Enhancement**
+  - Complete database purge when removing watched paths (was only removing path entry)
+  - Removes all associated data: atoms, molecules, edges, tags, sources from PGlite
+  - Cleans mirrored brain files and metadata notebooks
+  
+- **MCP Tool Architecture**
+  - Tools now use direct database operations as primary method with HTTP fallback
+  - More reliable than pure HTTP approach (doesn't require running server)
+
+### Fixed
+- **Endpoint Registration** — Previously `/v1/system/path-add` returned 404; now properly registered via `setupSystemRoutes()` in system.ts
+- **Data Accumulation Bug** — Watched path removal no longer leaves orphaned database entries and mirrored files
+
+---
+
+## [5.3.0] - 2026-06-10 (Documentation Drift Repair & Standards Consolidation)
+
+### Documentation Policy (v2.3):
 - Updated `doc_policy.md` to match reality: 38 standards, flat directory, current docs/ structure
 - Removed stale `archive-legacy/` references and `decisions/` directory (merged into relevant standards)
 
@@ -62,11 +87,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [5.2.0] - 2026-06-03
+## [5.2.0] - 2026-06-03 (Testing Documentation Cleanup & Consolidation)
 
-### Testing Documentation Cleanup & Consolidation
-
-**Merged duplicate documentation:**
+### Merged duplicate documentation:
 - Consolidated `docs/testing/LIVE-FIRE-TEST-SUITE.md` (571 lines) into `specs/current-standards/search-retrieval/014-search-algorithm-testing.md`
 - Added P5 edge cases section with 10+ test examples
 - Added P6 performance benchmarks section with latency validation tests
@@ -75,14 +98,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added best practices section with 7 key recommendations
 - Standard 014 expanded from 301 to 541 lines (80% increase)
 
-**Removed legacy test files:**
+### Removed legacy test files:
 - Deleted 15 deprecated testing patterns from `tests/legacy/` directory:
   - comprehensive-test.js, full-sequence-test.js, config-test.js, db-close-test.js
   - db-test.js, distillation-test.js, fixed-startup-test.js, individual-import-test.js
   - minimal-db-test.js, minimal-test.js, route-setup-test.js, test-tool-executor.js
   - test-fixed-engine.js, test-native-module.js, test-server.js, accurate-test.js
 
-**Removed duplicate documentation:**
+### Removed duplicate documentation:
 - Consolidated `docs/testing/API-SURFACE.md` references into standard specs
 - Deleted `docs/testing/LIVE-FIRE-TEST-SUITE.md` (merged into Standard 014)
 - Removed now-empty `docs/testing/` directory
@@ -147,7 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [5.1.0] - 2026-05-28
+## [5.1.0] - 2026-05-28 (Testing Infrastructure & QwenPaw Integration)
 
 ### Added
 - **Testing Infrastructure**
@@ -186,7 +209,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [5.1.1] - 2026-06-03
+## [5.1.1] - 2026-06-03 (Distillation Endpoint Optimization)
 
 ### Fixed
 - **Distillation Endpoint Optimization**
@@ -205,7 +228,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [5.0.0] - 2026-05-28
+## [5.0.0] - 2026-05-28 (Radial Distillation v2 & Memory Typing)
 
 ### Added
 - New radial distillation v2 with semantic aggregation across sources
@@ -231,9 +254,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [4.9.5] - 2026-05-24
+## [4.9.5] - 2026-05-24 (Streaming Distillation & Watchdog)
 
 ### Added
 - Streaming distillation with real-time output
 - UI improvements for search results
 - Watchdog process for memory management
+
